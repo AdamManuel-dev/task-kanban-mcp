@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  # Development server
+  mcp-kanban-dev:
+    build:
+      context: .
+      target: development
+    container_name: mcp-kanban-dev
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - kanban-data:/app/data
+      - kanban-logs:/app/logs
+      - kanban-backups:/app/backups
+    environment:
+      - NODE_ENV=development
+      - DATABASE_PATH=/app/data/kanban.db
+      - DATABASE_BACKUP_PATH=/app/backups
+      - LOG_FILE=/app/logs/kanban.log
+    restart: unless-stopped
+    profiles: ["dev"]
+
+  # Production server
+  mcp-kanban:
+    build:
+      context: .
+      target: production
+    container_name: mcp-kanban
+    ports:
+      - "3000:3000"
+    volumes:
+      - kanban-data:/app/data
+      - kanban-logs:/app/logs
+      - kanban-backups:/app/backups
+    environment:
+      - NODE_ENV=production
+      - DATABASE_PATH=/app/data/kanban.db
+      - DATABASE_BACKUP_PATH=/app/backups
+      - LOG_FILE=/app/logs/kanban.log
+    restart: unless-stopped
+    profiles: ["prod"]
+
+  # CLI client (for testing)
+  mcp-kanban-cli:
+    build:
+      context: .
+      target: development
+    container_name: mcp-kanban-cli
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - KANBAN_API_URL=http://mcp-kanban:3000
+      - KANBAN_API_KEY=dev-key-1
+    depends_on:
+      - mcp-kanban
+    profiles: ["cli"]
+    entrypoint: ["dumb-init", "npm", "run", "cli"]
+
+volumes:
+  kanban-data:
+    driver: local
+  kanban-logs:
+    driver: local
+  kanban-backups:
+    driver: local
+
+networks:
+  default:
+    name: mcp-kanban-network

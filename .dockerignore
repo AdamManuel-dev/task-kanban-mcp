@@ -1,0 +1,63 @@
+# Node.js
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+dist
+build
+coverage
+
+# Development files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+logs
+*.log
+
+# Data directories
+data
+backups
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+README.md
+
+# Documentation
+docs
+*.md
+!package.json
+
+# Test files
+tests
+**/*.test.ts
+**/*.spec.ts
+jest.config.js
+coverage
+
+# Development configuration
+nodemon.json
+.prettierrc
+.prettierignore
+.eslintrc.json
+
+# Temporary files
+tmp
+temp
+.tmp

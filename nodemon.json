@@ -1,0 +1,29 @@
+{
+  "watch": ["src"],
+  "ext": "ts,js,json",
+  "ignore": [
+    "src/**/*.test.ts",
+    "src/**/*.spec.ts",
+    "node_modules",
+    "dist",
+    "coverage",
+    "logs",
+    "data",
+    "backups"
+  ],
+  "exec": "ts-node -r tsconfig-paths/register src/index.ts",
+  "env": {
+    "NODE_ENV": "development"
+  },
+  "delay": 1000,
+  "colours": true,
+  "legacyWatch": false,
+  "verbose": true,
+  "restartable": "rs",
+  "events": {
+    "restart": "echo 'MCP Kanban Server restarting due to changes...'",
+    "crash": "echo 'MCP Kanban Server crashed - waiting for file changes before restart'",
+    "start": "echo 'MCP Kanban Server started'",
+    "quit": "echo 'MCP Kanban Server has quit'"
+  }
+}
