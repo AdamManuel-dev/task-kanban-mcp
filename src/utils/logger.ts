@@ -84,7 +84,7 @@ winston.addColors(logColors);
  */
 export const logger = winston.createLogger({
   levels: logLevels,
-  level: process.env.LOG_LEVEL || 'info',
+  level: process.env['LOG_LEVEL'] || 'info',
   format: winston.format.combine(
     winston.format.timestamp({
       format: 'YYYY-MM-DD HH:mm:ss',
@@ -94,7 +94,7 @@ export const logger = winston.createLogger({
   ),
   defaultMeta: {
     service: 'mcp-kanban',
-    version: process.env.npm_package_version || '0.1.0',
+    version: process.env['npm_package_version'] || '0.1.0',
   },
   transports: [
     // File transport for errors
@@ -115,7 +115,7 @@ export const logger = winston.createLogger({
 });
 
 // Add console transport for non-production environments
-if (process.env.NODE_ENV !== 'production') {
+if (process.env['NODE_ENV'] !== 'production') {
   logger.add(
     new winston.transports.Console({
       format: winston.format.combine(

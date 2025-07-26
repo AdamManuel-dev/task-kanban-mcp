@@ -1,0 +1,813 @@
+import { logger } from '@/utils/logger';
+import type { DatabaseConnection } from '@/database/connection';
+import type { BoardService } from './BoardService';
+import type { TaskService } from './TaskService';
+import type { NoteService } from './NoteService';
+import type { TagService } from './TagService';
+import type {
+  Task,
+  Note,
+  Tag,
+  Board,
+  ServiceError,
+} from '@/types';
+
+export interface ProjectContext {
+  summary: string;
+  boards: BoardContextInfo[];
+  recent_activities: ActivityItem[];
+  priorities: PriorityInfo[];
+  blockers: BlockerInfo[];
+  overdue_tasks: Task[];
+  key_metrics: ProjectMetrics;
+  generated_at: Date;
+}
+
+export interface TaskContext {
+  task: Task;
+  board: Board;
+  related_tasks: RelatedTaskInfo[];
+  dependencies: DependencyInfo;
+  notes: Note[];
+  tags: Tag[];
+  history: ActivityItem[];
+  context_summary: string;
+  recommendations: string[];
+  generated_at: Date;
+}
+
+export interface BoardContextInfo {
+  board: Board;
+  task_count: number;
+  completion_rate: number;
+  recent_activity: number;
+  priority_score: number;
+}
+
+export interface ActivityItem {
+  type: 'task_created' | 'task_updated' | 'task_completed' | 'note_added' | 'dependency_added';
+  entity_id: string;
+  entity_title: string;
+  board_name: string;
+  timestamp: Date;
+  description: string;
+}
+
+export interface PriorityInfo {
+  task: Task;
+  score: number;
+  reasoning: string[];
+  blocking_count: number;
+  urgency_level: 'low' | 'medium' | 'high' | 'critical';
+}
+
+export interface BlockerInfo {
+  blocked_task: Task;
+  blocking_task: Task;
+  days_blocked: number;
+  impact_level: 'low' | 'medium' | 'high';
+}
+
+export interface RelatedTaskInfo {
+  task: Task;
+  relationship: 'parent' | 'child' | 'dependency' | 'similar';
+  relevance_score: number;
+}
+
+export interface DependencyInfo {
+  depends_on: Task[];
+  blocks: Task[];
+  circular_risks: string[];
+  critical_path: boolean;
+}
+
+export interface ProjectMetrics {
+  total_tasks: number;
+  completed_tasks: number;
+  completion_rate: number;
+  average_task_age_days: number;
+  overdue_count: number;
+  blocked_count: number;
+  velocity_trend: 'increasing' | 'decreasing' | 'stable';
+  estimated_completion_date?: Date;
+}
+
+export interface ContextOptions {
+  include_completed?: boolean;
+  days_back?: number;
+  max_items?: number;
+  include_metrics?: boolean;
+  detail_level?: 'summary' | 'detailed' | 'comprehensive';
+}
+
+export class ContextService {
+  constructor(
+    private db: DatabaseConnection,
+    private boardService: BoardService,
+    private taskService: TaskService,
+    private noteService: NoteService,
+    private tagService: TagService
+  ) {}
+
+  async getProjectContext(options: ContextOptions = {}): Promise<ProjectContext> {
+    const {
+      include_completed = false,
+      days_back = 30,
+      max_items = 50,
+      include_metrics = true,
+      detail_level = 'detailed',
+    } = options;
+
+    try {
+      logger.info('Generating project context', { options });
+
+      const [boards, recentActivities, priorities, blockers, overdueTasks, metrics] = await Promise.all([
+        this.getBoardsContext(include_completed),
+        this.getRecentActivities(days_back, max_items),
+        this.getPriorityAnalysis(max_items),
+        this.getBlockerAnalysis(),
+        this.taskService.getOverdueTasks(),
+        include_metrics ? this.calculateProjectMetrics() : Promise.resolve(this.getEmptyMetrics()),
+      ]);
+
+      const summary = this.generateProjectSummary(boards, priorities, blockers, metrics, detail_level);
+
+      const context: ProjectContext = {
+        summary,
+        boards,
+        recent_activities: recentActivities,
+        priorities: priorities.slice(0, max_items),
+        blockers,
+        overdue_tasks: overdueTasks.slice(0, max_items),
+        key_metrics: metrics,
+        generated_at: new Date(),
+      };
+
+      logger.info('Project context generated successfully', {
+        boardCount: boards.length,
+        activitiesCount: recentActivities.length,
+        prioritiesCount: priorities.length,
+        blockersCount: blockers.length,
+      });
+
+      return context;
+    } catch (error) {
+      logger.error('Failed to generate project context', { error });
+      throw this.createError('CONTEXT_GENERATION_FAILED', 'Failed to generate project context', error);
+    }
+  }
+
+  async getTaskContext(taskId: string, options: ContextOptions = {}): Promise<TaskContext> {
+    const {
+      days_back = 14,
+      max_items = 20,
+      detail_level = 'comprehensive',
+    } = options;
+
+    try {
+      logger.info('Generating task context', { taskId, options });
+
+      const task = await this.taskService.getTaskById(taskId);
+      if (!task) {
+        throw this.createError('TASK_NOT_FOUND', 'Task not found', { taskId });
+      }
+
+      const [board, relatedTasks, dependencies, notes, tags, history] = await Promise.all([
+        this.boardService.getBoardById(task.board_id),
+        this.getRelatedTasks(taskId, max_items),
+        this.getDependencyContext(taskId),
+        this.noteService.getTaskNotes(taskId),
+        this.tagService.getTaskTags(taskId),
+        this.getTaskHistory(taskId, days_back),
+      ]);
+
+      if (!board) {
+        throw this.createError('BOARD_NOT_FOUND', 'Task board not found');
+      }
+
+      const contextSummary = this.generateTaskContextSummary(task, relatedTasks, dependencies, notes, detail_level);
+      const recommendations = this.generateTaskRecommendations(task, dependencies, notes, tags);
+
+      const context: TaskContext = {
+        task,
+        board,
+        related_tasks: relatedTasks,
+        dependencies,
+        notes,
+        tags,
+        history,
+        context_summary: contextSummary,
+        recommendations,
+        generated_at: new Date(),
+      };
+
+      logger.info('Task context generated successfully', { taskId });
+      return context;
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('_NOT_FOUND')) {
+        throw error;
+      }
+      logger.error('Failed to generate task context', { error, taskId });
+      throw this.createError('TASK_CONTEXT_FAILED', 'Failed to generate task context', error);
+    }
+  }
+
+  async getCurrentWorkContext(options: ContextOptions = {}): Promise<{
+    active_tasks: Task[];
+    next_actions: PriorityInfo[];
+    blockers: BlockerInfo[];
+    focus_recommendations: string[];
+    estimated_work_hours: number;
+  }> {
+    try {
+      const activeTasks = await this.taskService.getTasks({
+        status: 'in_progress',
+        limit: options.max_items || 10,
+        sortBy: 'priority',
+        sortOrder: 'desc',
+      });
+
+      const [nextActions, blockers] = await Promise.all([
+        this.getPriorityAnalysis(10),
+        this.getBlockerAnalysis(),
+      ]);
+
+      const focusRecommendations = this.generateFocusRecommendations(activeTasks, nextActions, blockers);
+      const estimatedHours = this.calculateEstimatedWorkHours(activeTasks);
+
+      return {
+        active_tasks: activeTasks,
+        next_actions: nextActions.slice(0, 5),
+        blockers: blockers.filter(b => b.impact_level !== 'low'),
+        focus_recommendations: focusRecommendations,
+        estimated_work_hours: estimatedHours,
+      };
+    } catch (error) {
+      logger.error('Failed to get current work context', { error });
+      throw this.createError('WORK_CONTEXT_FAILED', 'Failed to generate work context', error);
+    }
+  }
+
+  private async getBoardsContext(_includeCompleted: boolean): Promise<BoardContextInfo[]> {
+    const boards = await this.boardService.getBoards({ archived: false });
+    const boardContexts: BoardContextInfo[] = [];
+
+    for (const board of boards) {
+      const boardWithStats = await this.boardService.getBoardWithStats(board.id);
+      if (!boardWithStats) continue;
+
+      const recentActivityCount = await this.getRecentActivityCount(board.id, 7);
+      const priorityScore = this.calculateBoardPriorityScore(boardWithStats, recentActivityCount);
+
+      boardContexts.push({
+        board,
+        task_count: boardWithStats.taskCount,
+        completion_rate: boardWithStats.taskCount > 0 
+          ? (boardWithStats.completedTasks / boardWithStats.taskCount) * 100 
+          : 0,
+        recent_activity: recentActivityCount,
+        priority_score: priorityScore,
+      });
+    }
+
+    return boardContexts.sort((a, b) => b.priority_score - a.priority_score);
+  }
+
+  private async getRecentActivities(daysBack: number, maxItems: number): Promise<ActivityItem[]> {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - daysBack);
+
+    const activities = await this.db.query<{
+      type: string;
+      entity_id: string;
+      entity_title: string;
+      board_name: string;
+      timestamp: string;
+      description: string;
+    }>(`
+      SELECT 
+        'task_created' as type,
+        t.id as entity_id,
+        t.title as entity_title,
+        b.name as board_name,
+        t.created_at as timestamp,
+        'Task created: ' || t.title as description
+      FROM tasks t
+      INNER JOIN boards b ON t.board_id = b.id
+      WHERE t.created_at >= ?
+      
+      UNION ALL
+      
+      SELECT 
+        'task_completed' as type,
+        t.id as entity_id,
+        t.title as entity_title,
+        b.name as board_name,
+        t.completed_at as timestamp,
+        'Task completed: ' || t.title as description
+      FROM tasks t
+      INNER JOIN boards b ON t.board_id = b.id
+      WHERE t.completed_at >= ? AND t.completed_at IS NOT NULL
+      
+      UNION ALL
+      
+      SELECT 
+        'note_added' as type,
+        n.id as entity_id,
+        t.title as entity_title,
+        b.name as board_name,
+        n.created_at as timestamp,
+        'Note added to: ' || t.title as description
+      FROM notes n
+      INNER JOIN tasks t ON n.task_id = t.id
+      INNER JOIN boards b ON t.board_id = b.id
+      WHERE n.created_at >= ?
+      
+      ORDER BY timestamp DESC
+      LIMIT ?
+    `, [cutoffDate, cutoffDate, cutoffDate, maxItems]);
+
+    return activities.map(activity => ({
+      type: activity.type as ActivityItem['type'],
+      entity_id: activity.entity_id,
+      entity_title: activity.entity_title,
+      board_name: activity.board_name,
+      timestamp: new Date(activity.timestamp),
+      description: activity.description,
+    }));
+  }
+
+  private async getPriorityAnalysis(maxItems: number): Promise<PriorityInfo[]> {
+    const tasks = await this.taskService.getTasks({
+      status: 'todo',
+      limit: maxItems * 2, // Get more to analyze and filter
+      sortBy: 'priority',
+      sortOrder: 'desc',
+    });
+
+    const priorityInfos: PriorityInfo[] = [];
+
+    for (const task of tasks) {
+      const [blockingCount, urgencyFactors] = await Promise.all([
+        this.getBlockingTaskCount(task.id),
+        this.calculateUrgencyFactors(task),
+      ]);
+
+      const score = this.calculatePriorityScore(task, blockingCount, urgencyFactors);
+      const reasoning = this.generatePriorityReasoning(task, blockingCount, urgencyFactors);
+
+      priorityInfos.push({
+        task,
+        score,
+        reasoning,
+        blocking_count: blockingCount,
+        urgency_level: this.determineUrgencyLevel(score, urgencyFactors),
+      });
+    }
+
+    return priorityInfos
+      .sort((a, b) => b.score - a.score)
+      .slice(0, maxItems);
+  }
+
+  private async getBlockerAnalysis(): Promise<BlockerInfo[]> {
+    const blockedTasks = await this.taskService.getBlockedTasks();
+    const blockers: BlockerInfo[] = [];
+
+    for (const blockedTask of blockedTasks) {
+      const dependencies = await this.db.query<{ depends_on_task_id: string }>(`
+        SELECT depends_on_task_id FROM task_dependencies 
+        WHERE task_id = ? AND dependency_type = 'blocks'
+      `, [blockedTask.id]);
+
+      for (const dep of dependencies) {
+        const blockingTask = await this.taskService.getTaskById(dep.depends_on_task_id);
+        if (!blockingTask || blockingTask.status === 'done') continue;
+
+        const daysBlocked = Math.floor(
+          (Date.now() - blockedTask.created_at.getTime()) / (1000 * 60 * 60 * 24)
+        );
+
+        blockers.push({
+          blocked_task: blockedTask,
+          blocking_task: blockingTask,
+          days_blocked: daysBlocked,
+          impact_level: this.determineBlockerImpact(daysBlocked, blockedTask.priority),
+        });
+      }
+    }
+
+    return blockers.sort((a, b) => b.days_blocked - a.days_blocked);
+  }
+
+  private async getRelatedTasks(taskId: string, maxItems: number): Promise<RelatedTaskInfo[]> {
+    const task = await this.taskService.getTaskById(taskId);
+    if (!task) return [];
+
+    const related: RelatedTaskInfo[] = [];
+
+    // Get parent/child tasks
+    if (task.parent_task_id) {
+      const parentTask = await this.taskService.getTaskById(task.parent_task_id);
+      if (parentTask) {
+        related.push({
+          task: parentTask,
+          relationship: 'parent',
+          relevance_score: 10,
+        });
+      }
+    }
+
+    const subtasks = await this.db.query<Task>(`
+      SELECT * FROM tasks WHERE parent_task_id = ? LIMIT ?
+    `, [taskId, maxItems]);
+
+    subtasks.forEach(subtask => {
+      related.push({
+        task: subtask,
+        relationship: 'child',
+        relevance_score: 9,
+      });
+    });
+
+    // Get dependency tasks
+    const dependencies = await this.db.query<Task>(`
+      SELECT t.* FROM tasks t
+      INNER JOIN task_dependencies td ON t.id = td.depends_on_task_id
+      WHERE td.task_id = ?
+      LIMIT ?
+    `, [taskId, maxItems]);
+
+    dependencies.forEach(depTask => {
+      related.push({
+        task: depTask,
+        relationship: 'dependency',
+        relevance_score: 8,
+      });
+    });
+
+    return related
+      .sort((a, b) => b.relevance_score - a.relevance_score)
+      .slice(0, maxItems);
+  }
+
+  private async getDependencyContext(taskId: string): Promise<DependencyInfo> {
+    const taskWithDeps = await this.taskService.getTaskWithDependencies(taskId);
+    if (!taskWithDeps) {
+      return {
+        depends_on: [],
+        blocks: [],
+        circular_risks: [],
+        critical_path: false,
+      };
+    }
+
+    const dependsOn: Task[] = [];
+    const blocks: Task[] = [];
+
+    for (const dep of taskWithDeps.dependencies) {
+      const depTask = await this.taskService.getTaskById(dep.depends_on_task_id);
+      if (depTask) dependsOn.push(depTask);
+    }
+
+    for (const dep of taskWithDeps.dependents) {
+      const depTask = await this.taskService.getTaskById(dep.task_id);
+      if (depTask) blocks.push(depTask);
+    }
+
+    const circularRisks = await this.detectCircularRisks(taskId);
+    const criticalPath = await this.isOnCriticalPath(taskId);
+
+    return {
+      depends_on: dependsOn,
+      blocks: blocks,
+      circular_risks: circularRisks,
+      critical_path: criticalPath,
+    };
+  }
+
+  private async getTaskHistory(taskId: string, daysBack: number): Promise<ActivityItem[]> {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - daysBack);
+
+    return this.getRecentActivities(daysBack, 50).then(activities =>
+      activities.filter(activity => activity.entity_id === taskId)
+    );
+  }
+
+  private generateProjectSummary(
+    boards: BoardContextInfo[],
+    priorities: PriorityInfo[],
+    blockers: BlockerInfo[],
+    metrics: ProjectMetrics,
+    detailLevel: string
+  ): string {
+    const activeBoardCount = boards.length;
+    const highPriorityCount = priorities.filter(p => p.urgency_level === 'high' || p.urgency_level === 'critical').length;
+    const criticalBlockerCount = blockers.filter(b => b.impact_level === 'high').length;
+
+    let summary = `Project Status: ${activeBoardCount} active boards, ${metrics.completion_rate.toFixed(1)}% completion rate. `;
+
+    if (highPriorityCount > 0) {
+      summary += `${highPriorityCount} high-priority tasks need attention. `;
+    }
+
+    if (criticalBlockerCount > 0) {
+      summary += `${criticalBlockerCount} critical blockers identified. `;
+    }
+
+    if (metrics.overdue_count > 0) {
+      summary += `${metrics.overdue_count} tasks are overdue. `;
+    }
+
+    summary += `Current velocity trend: ${metrics.velocity_trend}.`;
+
+    if (detailLevel === 'comprehensive' && metrics.estimated_completion_date) {
+      summary += ` Estimated completion: ${metrics.estimated_completion_date.toLocaleDateString()}.`;
+    }
+
+    return summary;
+  }
+
+  private generateTaskContextSummary(
+    task: Task,
+    _relatedTasks: RelatedTaskInfo[],
+    dependencies: DependencyInfo,
+    notes: Note[],
+    _detailLevel: string
+  ): string {
+    let summary = `Task "${task.title}" (${task.status}, Priority: ${task.priority}). `;
+
+    if (dependencies.depends_on.length > 0) {
+      summary += `Depends on ${dependencies.depends_on.length} task(s). `;
+    }
+
+    if (dependencies.blocks.length > 0) {
+      summary += `Blocks ${dependencies.blocks.length} task(s). `;
+    }
+
+    if (notes.length > 0) {
+      const recentNotes = notes.filter(n => 
+        (Date.now() - n.created_at.getTime()) < 7 * 24 * 60 * 60 * 1000 // 7 days
+      ).length;
+      summary += `${notes.length} notes (${recentNotes} recent). `;
+    }
+
+    if (task.due_date && task.due_date < new Date()) {
+      const daysOverdue = Math.floor((Date.now() - task.due_date.getTime()) / (1000 * 60 * 60 * 24));
+      summary += `Overdue by ${daysOverdue} days. `;
+    }
+
+    return summary.trim();
+  }
+
+  private generateTaskRecommendations(
+    task: Task,
+    dependencies: DependencyInfo,
+    notes: Note[],
+    _tags: Tag[]
+  ): string[] {
+    const recommendations: string[] = [];
+
+    if (task.status === 'todo' && dependencies.depends_on.some(dep => dep.status !== 'done')) {
+      recommendations.push('Resolve blocking dependencies before starting this task');
+    }
+
+    if (task.due_date && task.due_date < new Date()) {
+      recommendations.push('This task is overdue and should be prioritized');
+    }
+
+    if (dependencies.blocks.length > 3) {
+      recommendations.push('This task blocks multiple others - consider breaking it down');
+    }
+
+    if (notes.length === 0 && task.status === 'in_progress') {
+      recommendations.push('Consider adding progress notes to track development');
+    }
+
+    if (dependencies.circular_risks.length > 0) {
+      recommendations.push('Review dependency structure to prevent circular dependencies');
+    }
+
+    if (task.estimated_hours && task.actual_hours && task.actual_hours > task.estimated_hours * 1.5) {
+      recommendations.push('Task is taking longer than estimated - review scope or approach');
+    }
+
+    return recommendations;
+  }
+
+  private generateFocusRecommendations(
+    activeTasks: Task[],
+    nextActions: PriorityInfo[],
+    blockers: BlockerInfo[]
+  ): string[] {
+    const recommendations: string[] = [];
+
+    if (activeTasks.length > 3) {
+      recommendations.push('Consider reducing work in progress - focus on completing current tasks');
+    }
+
+    if (blockers.length > 0) {
+      recommendations.push('Address blocking tasks to improve team velocity');
+    }
+
+    const highPriorityNext = nextActions.filter(a => a.urgency_level === 'high' || a.urgency_level === 'critical');
+    if (highPriorityNext.length > 0) {
+      recommendations.push(`${highPriorityNext.length} high-priority tasks ready to start`);
+    }
+
+    return recommendations;
+  }
+
+  private async calculateProjectMetrics(): Promise<ProjectMetrics> {
+    const [taskStats, overdueCount, blockedCount, avgAge, velocityTrend] = await Promise.all([
+      this.db.queryOne<{ total: number; completed: number }>(`
+        SELECT 
+          COUNT(*) as total,
+          SUM(CASE WHEN status = 'done' THEN 1 ELSE 0 END) as completed
+        FROM tasks WHERE archived = FALSE
+      `),
+      this.db.queryOne<{ count: number }>(`
+        SELECT COUNT(*) as count FROM tasks 
+        WHERE due_date < ? AND status != 'done' AND archived = FALSE
+      `, [new Date()]),
+      this.db.queryOne<{ count: number }>(`
+        SELECT COUNT(DISTINCT t.id) as count FROM tasks t
+        INNER JOIN task_dependencies td ON t.id = td.task_id
+        INNER JOIN tasks blocking ON td.depends_on_task_id = blocking.id
+        WHERE blocking.status != 'done' AND t.archived = FALSE
+      `),
+      this.db.queryOne<{ avg_days: number }>(`
+        SELECT AVG(julianday('now') - julianday(created_at)) as avg_days
+        FROM tasks WHERE status != 'done' AND archived = FALSE
+      `),
+      this.calculateVelocityTrend(),
+    ]);
+
+    const total = taskStats?.total || 0;
+    const completed = taskStats?.completed || 0;
+    const completionRate = total > 0 ? (completed / total) * 100 : 0;
+
+    return {
+      total_tasks: total,
+      completed_tasks: completed,
+      completion_rate: completionRate,
+      average_task_age_days: Math.round(avgAge?.avg_days || 0),
+      overdue_count: overdueCount?.count || 0,
+      blocked_count: blockedCount?.count || 0,
+      velocity_trend: velocityTrend,
+    };
+  }
+
+  private async calculateVelocityTrend(): Promise<'increasing' | 'decreasing' | 'stable'> {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const fifteenDaysAgo = new Date();
+    fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
+
+    const [recentVelocity, olderVelocity] = await Promise.all([
+      this.db.queryOne<{ count: number }>(`
+        SELECT COUNT(*) as count FROM tasks 
+        WHERE completed_at >= ? AND completed_at IS NOT NULL
+      `, [fifteenDaysAgo]),
+      this.db.queryOne<{ count: number }>(`
+        SELECT COUNT(*) as count FROM tasks 
+        WHERE completed_at >= ? AND completed_at < ? AND completed_at IS NOT NULL
+      `, [thirtyDaysAgo, fifteenDaysAgo]),
+    ]);
+
+    const recent = recentVelocity?.count || 0;
+    const older = olderVelocity?.count || 0;
+
+    if (recent > older * 1.1) return 'increasing';
+    if (recent < older * 0.9) return 'decreasing';
+    return 'stable';
+  }
+
+  private getEmptyMetrics(): ProjectMetrics {
+    return {
+      total_tasks: 0,
+      completed_tasks: 0,
+      completion_rate: 0,
+      average_task_age_days: 0,
+      overdue_count: 0,
+      blocked_count: 0,
+      velocity_trend: 'stable',
+    };
+  }
+
+  private async getRecentActivityCount(boardId: string, days: number): Promise<number> {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+
+    const result = await this.db.queryOne<{ count: number }>(`
+      SELECT COUNT(*) as count FROM tasks 
+      WHERE board_id = ? AND (created_at >= ? OR updated_at >= ?)
+    `, [boardId, cutoffDate, cutoffDate]);
+
+    return result?.count || 0;
+  }
+
+  private calculateBoardPriorityScore(board: any, recentActivity: number): number {
+    let score = 0;
+    
+    // Task count factor
+    score += Math.min(board.taskCount * 2, 20);
+    
+    // Completion rate factor (inverse - lower completion means higher priority)
+    score += (100 - board.completion_rate) * 0.3;
+    
+    // Recent activity factor
+    score += recentActivity * 5;
+    
+    return Math.round(score);
+  }
+
+  private async getBlockingTaskCount(taskId: string): Promise<number> {
+    const result = await this.db.queryOne<{ count: number }>(`
+      SELECT COUNT(*) as count FROM task_dependencies 
+      WHERE depends_on_task_id = ?
+    `, [taskId]);
+    
+    return result?.count || 0;
+  }
+
+  private async calculateUrgencyFactors(task: Task): Promise<{
+    has_due_date: boolean;
+    overdue: boolean;
+    blocks_others: boolean;
+    high_priority: boolean;
+  }> {
+    const now = new Date();
+    const blockingCount = await this.getBlockingTaskCount(task.id);
+
+    return {
+      has_due_date: !!task.due_date,
+      overdue: !!(task.due_date && task.due_date < now),
+      blocks_others: blockingCount > 0,
+      high_priority: task.priority >= 7,
+    };
+  }
+
+  private calculatePriorityScore(task: Task, blockingCount: number, urgencyFactors: any): number {
+    let score = task.priority * 10; // Base priority
+
+    if (urgencyFactors.overdue) score += 50;
+    if (urgencyFactors.has_due_date) score += 20;
+    if (urgencyFactors.blocks_others) score += blockingCount * 15;
+    if (urgencyFactors.high_priority) score += 25;
+
+    return Math.round(score);
+  }
+
+  private generatePriorityReasoning(task: Task, blockingCount: number, urgencyFactors: any): string[] {
+    const reasons: string[] = [];
+
+    if (urgencyFactors.overdue) reasons.push('Task is overdue');
+    if (urgencyFactors.blocks_others) reasons.push(`Blocks ${blockingCount} other task(s)`);
+    if (urgencyFactors.high_priority) reasons.push('High priority level set');
+    if (urgencyFactors.has_due_date) reasons.push('Has due date');
+
+    return reasons;
+  }
+
+  private determineUrgencyLevel(score: number, urgencyFactors: any): 'low' | 'medium' | 'high' | 'critical' {
+    if (urgencyFactors.overdue || score >= 100) return 'critical';
+    if (score >= 70) return 'high';
+    if (score >= 40) return 'medium';
+    return 'low';
+  }
+
+  private determineBlockerImpact(daysBlocked: number, priority: number): 'low' | 'medium' | 'high' {
+    if (daysBlocked > 7 || priority >= 8) return 'high';
+    if (daysBlocked > 3 || priority >= 5) return 'medium';
+    return 'low';
+  }
+
+  private async detectCircularRisks(_taskId: string): Promise<string[]> {
+    // Simplified circular dependency detection
+    return []; // Implementation would check for potential circular paths
+  }
+
+  private async isOnCriticalPath(taskId: string): Promise<boolean> {
+    // Simplified critical path detection
+    const blockingCount = await this.getBlockingTaskCount(taskId);
+    return blockingCount > 2; // Simple heuristic
+  }
+
+  private calculateEstimatedWorkHours(tasks: Task[]): number {
+    return tasks.reduce((total, task) => {
+      const remaining = (task.estimated_hours || 0) - (task.actual_hours || 0);
+      return total + Math.max(0, remaining);
+    }, 0);
+  }
+
+  private createError(code: string, message: string, originalError?: any): ServiceError {
+    const error = new Error(message) as ServiceError;
+    error.code = code;
+    error.statusCode = 500;
+    error.details = originalError;
+    return error;
+  }
+}
