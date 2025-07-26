@@ -32,6 +32,8 @@ import fs from 'fs/promises';
 import { logger } from '@/utils/logger';
 import { config } from '@/config';
 import { SchemaManager } from './schema';
+import { MigrationRunner } from './migrations';
+import { SeedRunner } from './seeds';
 
 /**
  * Configuration options for database connection
@@ -74,6 +76,8 @@ export class DatabaseConnection {
   private db: Database<sqlite3.Database, sqlite3.Statement> | null = null;
   private readonly config: DatabaseConfig;
   private schemaManager: SchemaManager | null = null;
+  private migrationRunner: MigrationRunner | null = null;
+  private seedRunner: SeedRunner | null = null;
 
   private constructor() {
     this.config = {
@@ -140,6 +144,19 @@ export class DatabaseConnection {
 
       // Initialize schema manager
       this.schemaManager = new SchemaManager(this);
+
+      // Initialize migration runner
+      if (this.db) {
+        this.migrationRunner = new MigrationRunner(this.db.getDatabaseInstance(), {
+          migrationsPath: path.join(__dirname, 'migrations'),
+          validateChecksums: true,
+        });
+
+        // Initialize seed runner
+        this.seedRunner = new SeedRunner(this.db, {
+          seedsPath: path.join(__dirname, 'seeds'),
+        });
+      }
 
       // Ensure schema exists (unless skipped for testing)
       if (!options.skipSchema) {
@@ -632,6 +649,151 @@ export class DatabaseConnection {
       logger.error('Failed to ensure schema exists', { error });
       throw new Error(`Schema initialization failed: ${(error as Error).message}`);
     }
+  }
+
+  /**
+   * Get the migration runner instance
+   * 
+   * @returns {MigrationRunner} The migration runner instance
+   * @throws {Error} If migration runner is not initialized
+   */
+  public getMigrationRunner(): MigrationRunner {
+    if (!this.migrationRunner) {
+      throw new Error('Migration runner not initialized. Call initialize() first.');
+    }
+    return this.migrationRunner;
+  }
+
+  /**
+   * Run pending migrations
+   * 
+   * @param {string} [target] - Optional target migration ID to migrate up to
+   * @returns {Promise<number>} Number of migrations run
+   * 
+   * @example
+   * ```typescript
+   * // Run all pending migrations
+   * const count = await db.runMigrations();
+   * console.log(`Ran ${count} migrations`);
+   * 
+   * // Run migrations up to specific target
+   * await db.runMigrations('002_add_user_preferences');
+   * ```
+   */
+  public async runMigrations(target?: string): Promise<number> {
+    const runner = this.getMigrationRunner();
+    return await runner.up(target);
+  }
+
+  /**
+   * Rollback migrations
+   * 
+   * @param {string} [target] - Optional target migration ID to rollback to
+   * @returns {Promise<number>} Number of migrations rolled back
+   * 
+   * @example
+   * ```typescript
+   * // Rollback last migration
+   * await db.rollbackMigrations();
+   * 
+   * // Rollback to specific migration
+   * await db.rollbackMigrations('001_initial_schema');
+   * ```
+   */
+  public async rollbackMigrations(target?: string): Promise<number> {
+    const runner = this.getMigrationRunner();
+    return await runner.down(target);
+  }
+
+  /**
+   * Get migration status
+   * 
+   * @returns {Promise<{applied: string[], pending: string[], total: number}>} Migration status
+   * 
+   * @example
+   * ```typescript
+   * const status = await db.getMigrationStatus();
+   * console.log(`Applied: ${status.applied.length}, Pending: ${status.pending.length}`);
+   * ```
+   */
+  public async getMigrationStatus(): Promise<{
+    applied: string[];
+    pending: string[];
+    total: number;
+  }> {
+    const runner = this.getMigrationRunner();
+    return await runner.status();
+  }
+
+  /**
+   * Get the seed runner instance
+   * 
+   * @returns {SeedRunner} The seed runner instance
+   * @throws {Error} If seed runner is not initialized
+   */
+  public getSeedRunner(): SeedRunner {
+    if (!this.seedRunner) {
+      throw new Error('Seed runner not initialized. Call initialize() first.');
+    }
+    return this.seedRunner;
+  }
+
+  /**
+   * Run database seeds
+   * 
+   * @param {Object} options - Seed options
+   * @param {boolean} [options.force] - Force re-run seeds that have already been applied
+   * @returns {Promise<number>} Number of seeds run
+   * 
+   * @example
+   * ```typescript
+   * // Run all pending seeds
+   * const count = await db.runSeeds();
+   * console.log(`Ran ${count} seeds`);
+   * 
+   * // Force re-run all seeds
+   * await db.runSeeds({ force: true });
+   * ```
+   */
+  public async runSeeds(options: { force?: boolean } = {}): Promise<number> {
+    const runner = this.getSeedRunner();
+    return await runner.run(options);
+  }
+
+  /**
+   * Get seed status
+   * 
+   * @returns {Promise<{applied: string[], pending: string[], total: number}>} Seed status
+   * 
+   * @example
+   * ```typescript
+   * const status = await db.getSeedStatus();
+   * console.log(`Applied: ${status.applied.length}, Pending: ${status.pending.length}`);
+   * ```
+   */
+  public async getSeedStatus(): Promise<{
+    applied: string[];
+    pending: string[];
+    total: number;
+  }> {
+    const runner = this.getSeedRunner();
+    return await runner.status();
+  }
+
+  /**
+   * Reset all seed records
+   * 
+   * @returns {Promise<void>}
+   * 
+   * @example
+   * ```typescript
+   * // Clear all seed tracking records (seeds can be re-run)
+   * await db.resetSeeds();
+   * ```
+   */
+  public async resetSeeds(): Promise<void> {
+    const runner = this.getSeedRunner();
+    return await runner.reset();
   }
 }
 
