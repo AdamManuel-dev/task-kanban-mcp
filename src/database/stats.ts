@@ -155,7 +155,6 @@ export class StatisticsCollector {
   private readonly config: StatsConfig;
   private queryHistory: QueryRecord[] = [];
   private monitoringActive = false;
-  private collectionTimer?: NodeJS.Timeout;
 
   constructor(db: DatabaseConnection, config: Partial<StatsConfig> = {}) {
     this.db = db;
@@ -303,15 +302,20 @@ export class StatisticsCollector {
           // Column doesn't exist or other error, skip timestamp
         }
 
-        tableStats.push({
+        const tableStatRecord: TableStats = {
           name: table.name,
           rowCount,
           size,
           sizeFormatted: this.formatBytes(size),
           averageRowSize,
           indexCount,
-          lastModified,
-        });
+        };
+        
+        if (lastModified) {
+          tableStatRecord.lastModified = lastModified;
+        }
+        
+        tableStats.push(tableStatRecord);
       } catch (error) {
         logger.warn('Failed to get statistics for table', {
           table: table.name,
@@ -362,8 +366,12 @@ export class StatisticsCollector {
           if (usageResult?.stat) {
             // Parse stat string to estimate efficiency
             const statParts = usageResult.stat.split(' ');
-            if (statParts.length > 1) {
-              efficiency = Math.min(100, Math.round((parseInt(statParts[0]) / parseInt(statParts[1])) * 100));
+            if (statParts.length > 1 && statParts[0] && statParts[1]) {
+              const first = parseInt(statParts[0], 10);
+              const second = parseInt(statParts[1], 10);
+              if (!isNaN(first) && !isNaN(second) && second > 0) {
+                efficiency = Math.min(100, Math.round((first / second) * 100));
+              }
             }
           }
         } catch {
@@ -418,11 +426,15 @@ export class StatisticsCollector {
     const averageExecutionTime = successfulQueries.length > 0 ? totalDuration / successfulQueries.length : 0;
 
     // Find slowest and fastest queries
-    const slowestQuery = successfulQueries.reduce((slowest, current) => 
-      current.duration > slowest.duration ? current : slowest, successfulQueries[0]);
+    const slowest = successfulQueries.length > 0 
+      ? successfulQueries.reduce((slowest, current) => 
+          current.duration > slowest.duration ? current : slowest)
+      : undefined;
     
-    const fastestQuery = successfulQueries.reduce((fastest, current) => 
-      current.duration < fastest.duration ? current : fastest, successfulQueries[0]);
+    const fastest = successfulQueries.length > 0 
+      ? successfulQueries.reduce((fastest, current) => 
+          current.duration < fastest.duration ? current : fastest)
+      : undefined;
 
     // Calculate error rate
     const errorCount = this.queryHistory.filter(q => !q.success).length;
@@ -455,15 +467,15 @@ export class StatisticsCollector {
     return {
       totalQueries,
       averageExecutionTime: Math.round(averageExecutionTime * 100) / 100,
-      slowestQuery: slowestQuery ? {
-        sql: slowestQuery.sql.substring(0, 100) + (slowestQuery.sql.length > 100 ? '...' : ''),
-        duration: slowestQuery.duration,
-        timestamp: slowestQuery.timestamp,
+      slowestQuery: slowest ? {
+        sql: slowest.sql.substring(0, 100) + (slowest.sql.length > 100 ? '...' : ''),
+        duration: slowest.duration,
+        timestamp: slowest.timestamp,
       } : null,
-      fastestQuery: fastestQuery ? {
-        sql: fastestQuery.sql.substring(0, 100) + (fastestQuery.sql.length > 100 ? '...' : ''),
-        duration: fastestQuery.duration,
-        timestamp: fastestQuery.timestamp,
+      fastestQuery: fastest ? {
+        sql: fastest.sql.substring(0, 100) + (fastest.sql.length > 100 ? '...' : ''),
+        duration: fastest.duration,
+        timestamp: fastest.timestamp,
       } : null,
       errorRate: Math.round(errorRate * 100) / 100,
       queryTypes,
@@ -613,8 +625,11 @@ export class StatisticsCollector {
       duration,
       timestamp: new Date(),
       success,
-      error,
     };
+    
+    if (error !== undefined) {
+      record.error = error;
+    }
 
     this.queryHistory.push(record);
 

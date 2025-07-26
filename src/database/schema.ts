@@ -544,7 +544,9 @@ export class SchemaManager {
     let match;
     
     while ((match = regex.exec(sql)) !== null) {
-      matches.push(match[1]);
+      if (match[1]) {
+        matches.push(match[1]);
+      }
     }
     
     return matches;

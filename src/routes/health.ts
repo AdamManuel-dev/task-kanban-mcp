@@ -2,12 +2,13 @@ import { Router } from 'express';
 import { dbConnection } from '@/database/connection';
 import { config } from '@/config';
 import { webSocketManager } from '@/websocket';
+import '@/middleware/response';
 
 export async function healthRoutes() {
   const router = Router();
 
   // Basic health check
-  router.get('/health', async (req, res) => {
+  router.get('/health', async (_req, res) => {
     const health = await dbConnection.healthCheck();
     
     const status = health.connected && health.responsive ? 'healthy' : 'unhealthy';
@@ -30,7 +31,7 @@ export async function healthRoutes() {
   });
 
   // Detailed health check
-  router.get('/health/detailed', async (req, res) => {
+  router.get('/health/detailed', async (_req, res) => {
     const health = await dbConnection.healthCheck();
     const stats = await dbConnection.getStats();
 
@@ -61,7 +62,7 @@ export async function healthRoutes() {
   });
 
   // Readiness check
-  router.get('/ready', async (req, res) => {
+  router.get('/ready', async (_req, res) => {
     try {
       const health = await dbConnection.healthCheck();
       
@@ -76,7 +77,7 @@ export async function healthRoutes() {
   });
 
   // Liveness check
-  router.get('/live', (req, res) => {
+  router.get('/live', (_req, res) => {
     res.apiSuccess({ alive: true });
   });
 

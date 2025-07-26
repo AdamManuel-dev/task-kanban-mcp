@@ -251,15 +251,15 @@ export class MCPPromptRegistry {
       throw new Error('board_id is required');
     }
 
-    const context = await this.services.contextService.generateProjectContext(board_id, {
-      includeCompletedTasks: true,
-      includeNotes: true,
-      includeTags: true,
-      maxTasks: 200,
-      maxNotes: 100,
+    const context = await this.services.contextService.getProjectContext({
+      include_completed: true,
+      days_back: 30,
+      max_items: 200,
+      include_metrics: true,
+      detail_level: 'comprehensive',
     });
 
-    const analytics = await this.services.boardService.getBoardAnalytics(board_id);
+    const analytics = await this.services.boardService.getBoardWithStats(board_id);
 
     let focusInstruction = '';
     if (focus_area) {
@@ -358,11 +358,12 @@ Format the subtasks in a way that can be easily added to a kanban board.`,
       }
       blockedTasks = [task];
       
-      const taskContext = await this.services.contextService.generateTaskContext(task_id, {
-        includeSubtasks: true,
-        includeDependencies: true,
-        includeNotes: true,
-        includeTags: true,
+      const taskContext = await this.services.contextService.getTaskContext(task_id, {
+        include_completed: true,
+        days_back: 30,
+        max_items: 100,
+        include_metrics: true,
+        detail_level: 'detailed',
       });
       contextInfo = `\nTask Context:\n${taskContext}`;
     } else {
@@ -370,11 +371,12 @@ Format the subtasks in a way that can be easily added to a kanban board.`,
       blockedTasks = await this.services.taskService.getBlockedTasks(board_id);
       
       if (board_id) {
-        const projectContext = await this.services.contextService.generateProjectContext(board_id, {
-          includeCompletedTasks: false,
-          includeNotes: true,
-          includeTags: true,
-          maxTasks: 100,
+        const projectContext = await this.services.contextService.getProjectContext({
+          include_completed: false,
+          days_back: 30,
+          max_items: 100,
+          include_metrics: false,
+          detail_level: 'summary',
         });
         contextInfo = `\nProject Context:\n${projectContext}`;
       }
@@ -418,14 +420,15 @@ Also provide:
       throw new Error('board_id is required');
     }
 
-    const context = await this.services.contextService.generateProjectContext(board_id, {
-      includeCompletedTasks: false,
-      includeNotes: true,
-      includeTags: true,
-      maxTasks: 200,
+    const context = await this.services.contextService.getProjectContext({
+      include_completed: false,
+      days_back: 30,
+      max_items: 200,
+      include_metrics: true,
+      detail_level: 'detailed',
     });
 
-    const analytics = await this.services.boardService.getBoardAnalytics(board_id);
+    const analytics = await this.services.boardService.getBoardWithStats(board_id);
 
     let durationInfo = sprint_duration ? `\nSprint Duration: ${sprint_duration}` : '';
     let capacityInfo = team_capacity ? `\nTeam Capacity: ${team_capacity}` : '';
@@ -472,11 +475,12 @@ Format the recommendations in a way that can guide sprint planning meetings.`,
       throw new Error('board_id is required');
     }
 
-    const context = await this.services.contextService.generateProjectContext(board_id, {
-      includeCompletedTasks: false,
-      includeNotes: true,
-      includeTags: true,
-      maxTasks: 100,
+    const context = await this.services.contextService.getProjectContext({
+      include_completed: false,
+      days_back: 30,
+      max_items: 100,
+      include_metrics: true,
+      detail_level: 'detailed',
     });
 
     const criteriaInfo = criteria ? `\nPrioritization Criteria: ${criteria}` : '';
@@ -523,14 +527,15 @@ Consider factors like:
       throw new Error('board_id is required');
     }
 
-    const context = await this.services.contextService.generateProjectContext(board_id, {
-      includeCompletedTasks: true,
-      includeNotes: true,
-      includeTags: true,
-      maxTasks: 200,
+    const context = await this.services.contextService.getProjectContext({
+      include_completed: true,
+      days_back: 30,
+      max_items: 200,
+      include_metrics: true,
+      detail_level: 'comprehensive',
     });
 
-    const analytics = await this.services.boardService.getBoardAnalytics(board_id);
+    const analytics = await this.services.boardService.getBoardWithStats(board_id);
 
     let timeframeInfo = timeframe ? `\nTimeframe: ${timeframe}` : '';
     let audienceInfo = audience ? `\nTarget Audience: ${audience}` : '';
@@ -598,8 +603,8 @@ Tailor the language and detail level for the specified audience.`,
       const recentTasks = await this.services.taskService.getTasks({
         board_id,
         limit: 50,
-        sort_by: 'updated_at',
-        sort_order: 'desc',
+        sortBy: 'updated_at',
+        sortOrder: 'desc',
       });
       
       historicalContext = `\nRecent Similar Tasks:\n${JSON.stringify(recentTasks.slice(0, 10), null, 2)}`;
@@ -659,14 +664,15 @@ Base your estimates on the historical data provided and industry best practices.
       throw new Error('board_id is required');
     }
 
-    const context = await this.services.contextService.generateProjectContext(board_id, {
-      includeCompletedTasks: true,
-      includeNotes: true,
-      includeTags: true,
-      maxTasks: 200,
+    const context = await this.services.contextService.getProjectContext({
+      include_completed: true,
+      days_back: 30,
+      max_items: 200,
+      include_metrics: true,
+      detail_level: 'comprehensive',
     });
 
-    const analytics = await this.services.boardService.getBoardAnalytics(board_id);
+    const analytics = await this.services.boardService.getBoardWithStats(board_id);
 
     let goalInfo = optimization_goal ? `\nOptimization Goal: ${optimization_goal}` : '';
 
@@ -733,8 +739,8 @@ Focus on the specified optimization goal while considering overall workflow effi
     const recentTasks = await this.services.taskService.getTasks({
       board_id,
       limit: 100,
-      sort_by: 'updated_at',
-      sort_order: 'desc',
+      sortBy: 'updated_at',
+      sortOrder: 'desc',
     });
 
     // Filter tasks updated since the specified date
@@ -801,14 +807,15 @@ Format the content to be concise and suitable for a brief standup meeting (2-3 m
       throw new Error('board_id is required');
     }
 
-    const context = await this.services.contextService.generateProjectContext(board_id, {
-      includeCompletedTasks: true,
-      includeNotes: true,
-      includeTags: true,
-      maxTasks: 200,
+    const context = await this.services.contextService.getProjectContext({
+      include_completed: true,
+      days_back: 30,
+      max_items: 200,
+      include_metrics: true,
+      detail_level: 'comprehensive',
     });
 
-    const analytics = await this.services.boardService.getBoardAnalytics(board_id);
+    const analytics = await this.services.boardService.getBoardWithStats(board_id);
 
     let timeframeInfo = timeframe ? `\nTimeframe: ${timeframe}` : '';
     let focusInfo = focus_areas ? `\nFocus Areas: ${focus_areas}` : '';

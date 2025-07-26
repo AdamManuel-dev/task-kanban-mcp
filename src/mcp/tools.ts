@@ -372,17 +372,19 @@ export class MCPToolRegistry {
     }
 
     // Add additional data if requested
+    const result: any = { success: true, task };
+    
     if (include_notes) {
       const notes = await this.services.noteService.getTaskNotes(task_id, { limit: 100 });
-      task.notes = notes;
+      result.notes = notes;
     }
 
     if (include_tags) {
       const tags = await this.services.tagService.getTaskTags(task_id);
-      task.tags = tags;
+      result.tags = tags;
     }
 
-    return { success: true, task };
+    return result;
   }
 
   private async listTasks(args: any): Promise<any> {
@@ -415,12 +417,14 @@ export class MCPToolRegistry {
       throw new Error(`Board not found: ${board_id}`);
     }
 
+    const result: any = { success: true, board };
+    
     if (include_tasks) {
       const tasks = await this.services.taskService.getTasks({ board_id, limit: 1000 });
-      board.tasks = tasks;
+      result.tasks = tasks;
     }
 
-    return { success: true, board };
+    return result;
   }
 
   private async listBoards(args: any): Promise<any> {
@@ -434,8 +438,7 @@ export class MCPToolRegistry {
   }
 
   private async searchNotes(args: any): Promise<any> {
-    const { query, ...filters } = args;
-    const notes = await this.services.noteService.searchNotes(query, filters);
+    const notes = await this.services.noteService.searchNotes(args);
     return { success: true, notes, count: notes.length };
   }
 
@@ -452,19 +455,19 @@ export class MCPToolRegistry {
 
   private async getProjectContext(args: any): Promise<any> {
     const { board_id, ...options } = args;
-    const context = await this.services.contextService.generateProjectContext(board_id, options);
+    const context = await this.services.contextService.getProjectContext(options);
     return { success: true, context };
   }
 
   private async getTaskContext(args: any): Promise<any> {
     const { task_id, ...options } = args;
-    const context = await this.services.contextService.generateTaskContext(task_id, options);
+    const context = await this.services.contextService.getTaskContext(task_id, options);
     return { success: true, context };
   }
 
   private async analyzeBoard(args: any): Promise<any> {
     const { board_id, ...options } = args;
-    const analysis = await this.services.contextService.getBoardInsights(board_id, options);
+    const analysis = await this.services.contextService.getProjectContext(options);
     return { success: true, analysis };
   }
 

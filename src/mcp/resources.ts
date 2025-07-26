@@ -159,7 +159,7 @@ export class MCPResourceRegistry {
     }
   }
 
-  private parseUri(uri: string): { type: string; action?: string; id?: string; params?: Record<string, string> } {
+  private parseUri(uri: string): { type: string; action?: string; id: string; params?: Record<string, string> } {
     const url = new URL(uri);
     const pathParts = url.pathname.split('/').filter(Boolean);
     
@@ -170,7 +170,17 @@ export class MCPResourceRegistry {
       params[key] = value;
     });
 
-    return { type, action, id, params };
+    const result: { type: string; action?: string; id: string; params?: Record<string, string> } = { 
+      type: type || '', 
+      id: id || '', 
+      params 
+    };
+    
+    if (action) {
+      result.action = action;
+    }
+    
+    return result;
   }
 
   // Resource readers
@@ -317,7 +327,7 @@ export class MCPResourceRegistry {
         throw new Error('Search query required');
       }
       
-      const notes = await this.services.noteService.searchNotes(query, { limit: 100 });
+      const notes = await this.services.noteService.searchNotes({ query, limit: 100 });
       
       return {
         text: JSON.stringify({
@@ -344,7 +354,7 @@ export class MCPResourceRegistry {
 
   private async readTags(parsedUri: any): Promise<ResourceContent> {
     if (parsedUri.action === 'hierarchy') {
-      const tagTree = await this.services.tagService.getTagTree(true);
+      const tagTree = await this.services.tagService.getTagHierarchy();
       
       return {
         text: JSON.stringify({
@@ -356,7 +366,6 @@ export class MCPResourceRegistry {
     } else {
       // All tags
       const tags = await this.services.tagService.getTags({ 
-        includeUsageCount: true,
         limit: 200,
       });
       
@@ -372,7 +381,7 @@ export class MCPResourceRegistry {
 
   private async readAnalytics(parsedUri: any): Promise<ResourceContent> {
     if (parsedUri.action === 'boards' && parsedUri.id) {
-      const analytics = await this.services.boardService.getBoardAnalytics(parsedUri.id);
+      const analytics = await this.services.boardService.getBoardWithStats(parsedUri.id);
       
       return {
         text: JSON.stringify(analytics, null, 2),
@@ -385,30 +394,30 @@ export class MCPResourceRegistry {
 
   private async readContext(parsedUri: any): Promise<ResourceContent> {
     if (parsedUri.action === 'project' && parsedUri.id) {
-      const context = await this.services.contextService.generateProjectContext(parsedUri.id, {
-        includeCompletedTasks: false,
-        includeNotes: true,
-        includeTags: true,
-        maxTasks: 100,
-        maxNotes: 50,
+      const context = await this.services.contextService.getProjectContext({
+        include_completed: false,
+        days_back: 30,
+        max_items: 100,
+        include_metrics: true,
+        detail_level: 'detailed',
       });
       
       return {
-        text: context,
-        mimeType: 'text/plain',
+        text: JSON.stringify(context, null, 2),
+        mimeType: 'application/json',
       };
     } else if (parsedUri.action === 'task' && parsedUri.id) {
-      const context = await this.services.contextService.generateTaskContext(parsedUri.id, {
-        includeSubtasks: true,
-        includeDependencies: true,
-        includeNotes: true,
-        includeTags: true,
-        includeRelatedTasks: true,
+      const context = await this.services.contextService.getTaskContext(parsedUri.id, {
+        include_completed: true,
+        days_back: 30,
+        max_items: 100,
+        include_metrics: true,
+        detail_level: 'detailed',
       });
       
       return {
-        text: context,
-        mimeType: 'text/plain',
+        text: JSON.stringify(context, null, 2),
+        mimeType: 'application/json',
       };
     } else {
       throw new Error('Invalid context resource URI');
@@ -418,11 +427,12 @@ export class MCPResourceRegistry {
   private async readReports(parsedUri: any): Promise<ResourceContent> {
     switch (parsedUri.action) {
       case 'summary':
-        const summary = await this.services.contextService.getSystemSummary({
-          includeMetrics: true,
-          includeRecentActivity: true,
-          includeTopTags: true,
-          timeframe: 7,
+        const summary = await this.services.contextService.getProjectContext({
+          include_completed: true,
+          days_back: 7,
+          max_items: 50,
+          include_metrics: true,
+          detail_level: 'summary',
         });
         
         return {

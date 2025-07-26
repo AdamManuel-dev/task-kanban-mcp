@@ -47,9 +47,11 @@ export class MigrationRunner {
   async getAppliedMigrations(): Promise<AppliedMigration[]> {
     const all = promisify(this.db.all.bind(this.db));
     
-    return all<AppliedMigration>(
+    const result = await all(
       `SELECT id, applied_at, checksum FROM ${this.tableName} ORDER BY id`
-    );
+    ) as AppliedMigration[];
+    
+    return result || [];
   }
 
   /**
@@ -73,6 +75,11 @@ export class MigrationRunner {
           }
 
           const [, number, description] = match;
+          if (!number || !description) {
+            logger.warn(`Invalid migration filename format: ${file}`);
+            continue;
+          }
+          
           const id = `${number}_${description}`;
           const checksum = this.calculateChecksum(content);
 
@@ -191,6 +198,9 @@ export class MigrationRunner {
     // Process in reverse order
     for (let i = applied.length - 1; i >= 0; i--) {
       const appliedMigration = applied[i];
+      if (!appliedMigration) {
+        continue;
+      }
       
       if (target && appliedMigration.id <= target) {
         break;
@@ -259,7 +269,7 @@ export class MigrationRunner {
     checksum: string,
     direction: 'up' | 'down'
   ): Promise<void> {
-    const run = promisify(this.db.run.bind(this.db));
+    const run = promisify(this.db.run.bind(this.db)) as (sql: string, ...params: any[]) => Promise<any>;
     
     // Start transaction
     await run('BEGIN TRANSACTION');
@@ -272,13 +282,13 @@ export class MigrationRunner {
         // Record the migration
         await run(
           `INSERT INTO ${this.tableName} (id, checksum) VALUES (?, ?)`,
-          [migration.id, checksum]
+          migration.id, checksum
         );
       } else {
         // Remove the migration record
         await run(
           `DELETE FROM ${this.tableName} WHERE id = ?`,
-          [migration.id]
+          migration.id
         );
       }
       

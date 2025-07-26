@@ -13,7 +13,7 @@ interface AuthenticatedRequest extends Request {
   };
 }
 
-export function authenticationMiddleware(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+export function authenticationMiddleware(req: AuthenticatedRequest, _res: Response, next: NextFunction) {
   // Skip authentication for public endpoints
   const publicEndpoints = ['/health', '/docs', '/'];
   if (publicEndpoints.some(endpoint => req.path.startsWith(endpoint))) {
@@ -57,7 +57,7 @@ export function authenticationMiddleware(req: AuthenticatedRequest, res: Respons
 }
 
 export function requirePermission(permission: string) {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  return (req: AuthenticatedRequest, _res: Response, next: NextFunction) => {
     if (!req.user) {
       return next(new UnauthorizedError('Authentication required'));
     }
@@ -71,7 +71,7 @@ export function requirePermission(permission: string) {
 }
 
 export function requirePermissions(permissions: string[], requireAll: boolean = false) {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  return (req: AuthenticatedRequest, _res: Response, next: NextFunction) => {
     if (!req.user) {
       return next(new UnauthorizedError('Authentication required'));
     }

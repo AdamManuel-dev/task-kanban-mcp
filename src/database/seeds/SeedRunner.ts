@@ -64,7 +64,6 @@ export class SeedRunner {
    */
   async loadSeed(filename: string): Promise<Seed> {
     const filePath = path.join(this.seedsPath, filename);
-    const content = await fs.readFile(filePath, 'utf-8');
     
     // Dynamic import of the seed file
     const seedModule = await import(filePath);

@@ -1,5 +1,5 @@
 import { logger } from '@/utils/logger';
-import { WebSocketClient, SubscriptionChannel, SubscriptionFilter, MessageContext } from './types';
+import { WebSocketClient, SubscriptionChannel, SubscriptionFilter } from './types';
 import { WebSocketManager } from './server';
 
 export interface Subscription {
@@ -260,9 +260,9 @@ export class SubscriptionManager {
     return this.publishToChannel(
       SubscriptionChannel.SYSTEM_NOTIFICATIONS,
       notification,
-      (subscription, client) => {
+      (_subscription, client) => {
         if (!targetUsers) return true;
-        return client.user && targetUsers.includes(client.user.id);
+        return !!(client.user && targetUsers.includes(client.user.id));
       }
     );
   }

@@ -713,7 +713,7 @@ export class MessageHandler {
   }
 
   private async handleTypingStart(context: MessageContext): Promise<void> {
-    const { clientId, client, message } = context;
+    const { client, message } = context;
     const { taskId, boardId } = message.payload;
 
     if (!client.user) {
@@ -733,7 +733,7 @@ export class MessageHandler {
   }
 
   private async handleTypingStop(context: MessageContext): Promise<void> {
-    const { clientId, client, message } = context;
+    const { client, message } = context;
     const { taskId, boardId } = message.payload;
 
     if (!client.user) {

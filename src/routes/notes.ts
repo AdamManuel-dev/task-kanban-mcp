@@ -25,22 +25,25 @@ export async function noteRoutes() {
         search,
       } = req.query;
 
-      const options = {
+      const options: any = {
         limit: parseInt(limit as string, 10),
         offset: parseInt(offset as string, 10),
         sortBy: sortBy as string,
         sortOrder: sortOrder as 'asc' | 'desc',
-        task_id: task_id as string,
-        board_id: board_id as string,
-        category: category as any,
-        pinned: pinned === 'true' ? true : pinned === 'false' ? false : undefined,
         search: search as string,
       };
+      
+      if (task_id) options.task_id = task_id as string;
+      if (board_id) options.board_id = board_id as string;
+      if (category) options.category = category;
+      if (pinned === 'true') options.pinned = true;
+      else if (pinned === 'false') options.pinned = false;
 
       const notes = await noteService.getNotes(options);
       
       // Get total count for pagination
-      const totalNotes = await noteService.getNotes({ ...options, limit: undefined, offset: undefined });
+      const { limit: _, offset: __, ...countOptions } = options;
+      const totalNotes = await noteService.getNotes(countOptions);
       const total = totalNotes.length;
 
       res.apiPagination(notes, Math.floor(options.offset / options.limit) + 1, options.limit, total);
@@ -52,7 +55,10 @@ export async function noteRoutes() {
   // POST /api/v1/notes - Create note
   router.post('/', requirePermission('write'), async (req, res, next) => {
     try {
-      const noteData = validateInput(NoteValidation.create, req.body);
+      const rawNoteData = validateInput(NoteValidation.create, req.body);
+      const noteData = Object.fromEntries(
+        Object.entries(rawNoteData).filter(([, value]) => value !== undefined)
+      );
       const note = await noteService.createNote(noteData);
       res.status(201).apiSuccess(note);
     } catch (error) {
@@ -64,6 +70,11 @@ export async function noteRoutes() {
   router.get('/:id', requirePermission('read'), async (req, res, next) => {
     try {
       const { id } = req.params;
+      
+      if (!id) {
+        return res.status(400).json({ error: 'Note ID is required' });
+      }
+      
       const note = await noteService.getNoteById(id);
 
       if (!note) {
@@ -80,6 +91,11 @@ export async function noteRoutes() {
   router.patch('/:id', requirePermission('write'), async (req, res, next) => {
     try {
       const { id } = req.params;
+      
+      if (!id) {
+        return res.status(400).json({ error: 'Note ID is required' });
+      }
+      
       const updateData = validateInput(NoteValidation.update, req.body);
       const note = await noteService.updateNote(id, updateData);
       res.apiSuccess(note);
@@ -92,6 +108,11 @@ export async function noteRoutes() {
   router.delete('/:id', requirePermission('write'), async (req, res, next) => {
     try {
       const { id } = req.params;
+      
+      if (!id) {
+        return res.status(400).json({ error: 'Note ID is required' });
+      }
+      
       await noteService.deleteNote(id);
       res.status(204).send();
     } catch (error) {
@@ -103,6 +124,11 @@ export async function noteRoutes() {
   router.post('/:id/pin', requirePermission('write'), async (req, res, next) => {
     try {
       const { id } = req.params;
+      
+      if (!id) {
+        return res.status(400).json({ error: 'Note ID is required' });
+      }
+      
       const note = await noteService.pinNote(id);
       res.apiSuccess(note);
     } catch (error) {
@@ -114,6 +140,11 @@ export async function noteRoutes() {
   router.delete('/:id/pin', requirePermission('write'), async (req, res, next) => {
     try {
       const { id } = req.params;
+      
+      if (!id) {
+        return res.status(400).json({ error: 'Note ID is required' });
+      }
+      
       const note = await noteService.unpinNote(id);
       res.apiSuccess(note);
     } catch (error) {

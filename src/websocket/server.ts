@@ -3,7 +3,6 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { v4 as uuidv4 } from 'uuid';
 import { config } from '@/config';
 import { logger } from '@/utils/logger';
-import { dbConnection } from '@/database/connection';
 import { WebSocketMessage, WebSocketClient, WebSocketError } from './types';
 import { WebSocketAuth } from './auth';
 import { MessageHandler } from './handlers';
@@ -143,7 +142,7 @@ export class WebSocketManager {
       this.clients.set(clientId, client);
 
       // Set up WebSocket event handlers
-      ws.on('message', (data) => this.handleMessage(clientId, data));
+      ws.on('message', (data) => this.handleMessage(clientId, data.toString()));
       ws.on('close', (code, reason) => this.handleDisconnection(clientId, code, reason));
       ws.on('error', (error) => this.handleClientError(clientId, error));
       ws.on('pong', () => this.handlePong(clientId));
@@ -151,6 +150,7 @@ export class WebSocketManager {
       // Send welcome message
       this.sendToClient(clientId, {
         type: 'welcome',
+        id: `welcome-${clientId}`,
         payload: {
           clientId,
           serverVersion: config.mcp.serverVersion,
@@ -275,7 +275,7 @@ export class WebSocketManager {
 
       if (authResult.success) {
         client.authenticated = true;
-        client.user = authResult.user;
+        client.user = authResult.user || null;
         client.permissions = new Set(authResult.permissions);
 
         this.sendToClient(clientId, {
@@ -374,7 +374,7 @@ export class WebSocketManager {
     return sentCount;
   }
 
-  closeConnection(clientId: string, code: string, reason: string): void {
+  closeConnection(clientId: string, _code: string, reason: string): void {
     const client = this.clients.get(clientId);
     if (!client) return;
 

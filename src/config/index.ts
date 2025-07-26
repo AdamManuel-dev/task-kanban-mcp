@@ -60,10 +60,18 @@ const configSchema = z.object({
   // WebSocket configuration
   websocket: z.object({
     port: z.number().int().min(1).max(65535).default(3001),
+    host: z.string().default('localhost'),
     path: z.string().default('/socket.io'),
     corsOrigin: z.string().default('*'),
     heartbeatInterval: z.number().int().positive().default(25000),
     heartbeatTimeout: z.number().int().positive().default(60000),
+    authRequired: z.boolean().default(false),
+    authTimeout: z.number().int().positive().default(30000),
+    maxConnections: z.number().int().positive().default(1000),
+    maxMessagesPerMinute: z.number().int().positive().default(100),
+    maxSubscriptionsPerClient: z.number().int().positive().default(50),
+    compression: z.boolean().default(true),
+    maxPayload: z.number().int().positive().default(1048576), // 1MB
   }),
 
   // Git integration
@@ -215,10 +223,18 @@ const rawConfig = {
   },
   websocket: {
     port: parseEnvVar(process.env['WEBSOCKET_PORT'], 3001),
+    host: parseEnvVar(process.env['WEBSOCKET_HOST'], 'localhost'),
     path: parseEnvVar(process.env['WEBSOCKET_PATH'], '/socket.io'),
     corsOrigin: parseEnvVar(process.env['WEBSOCKET_CORS_ORIGIN'], '*'),
     heartbeatInterval: parseEnvVar(process.env['WEBSOCKET_HEARTBEAT_INTERVAL'], 25000),
     heartbeatTimeout: parseEnvVar(process.env['WEBSOCKET_HEARTBEAT_TIMEOUT'], 60000),
+    authRequired: parseEnvVar(process.env['WEBSOCKET_AUTH_REQUIRED'], false),
+    authTimeout: parseEnvVar(process.env['WEBSOCKET_AUTH_TIMEOUT'], 30000),
+    maxConnections: parseEnvVar(process.env['WEBSOCKET_MAX_CONNECTIONS'], 1000),
+    maxMessagesPerMinute: parseEnvVar(process.env['WEBSOCKET_MAX_MESSAGES_PER_MINUTE'], 100),
+    maxSubscriptionsPerClient: parseEnvVar(process.env['WEBSOCKET_MAX_SUBSCRIPTIONS_PER_CLIENT'], 50),
+    compression: parseEnvVar(process.env['WEBSOCKET_COMPRESSION'], true),
+    maxPayload: parseEnvVar(process.env['WEBSOCKET_MAX_PAYLOAD'], 1048576),
   },
   git: {
     autoDetect: parseEnvVar(process.env['GIT_AUTO_DETECT'], true),

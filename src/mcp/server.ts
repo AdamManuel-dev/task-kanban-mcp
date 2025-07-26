@@ -92,7 +92,13 @@ export class MCPKanbanServer {
     this.boardService = new BoardService(dbConnection);
     this.noteService = new NoteService(dbConnection);
     this.tagService = new TagService(dbConnection);
-    this.contextService = new ContextService(dbConnection);
+    this.contextService = new ContextService(
+      dbConnection,
+      this.boardService,
+      this.taskService,
+      this.noteService,
+      this.tagService
+    );
 
     // Initialize registries
     this.toolRegistry = new MCPToolRegistry({
