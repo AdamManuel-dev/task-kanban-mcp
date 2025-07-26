@@ -357,7 +357,7 @@ export class DatabaseConnection {
    * }
    * ```
    */
-  public async execute(sql: string, params: any[] = []): Promise<sqlite3.RunResult> {
+  public async execute(sql: string, params: any[] = []): Promise<{ lastID?: number | undefined; changes: number }> {
     const db = this.getDatabase();
     try {
       logger.debug('Executing statement', { sql, params });
@@ -366,7 +366,10 @@ export class DatabaseConnection {
         lastID: result.lastID, 
         changes: result.changes 
       });
-      return result;
+      return {
+        lastID: result.lastID,
+        changes: result.changes || 0,
+      };
     } catch (error) {
       logger.error('Statement execution failed', { sql, params, error });
       throw error;
@@ -460,7 +463,7 @@ export class DatabaseConnection {
   }> {
     const db = this.getDatabase();
     
-    const [pragmaInfo, tableCount] = await Promise.all([
+    const [_pragmaInfo, tableCount] = await Promise.all([
       db.all("PRAGMA database_list"),
       db.get<{ count: number }>("SELECT COUNT(*) as count FROM sqlite_master WHERE type='table'")
     ]);

@@ -1,3 +1,35 @@
+/**
+ * Context Service - Intelligent context generation for project and task analysis
+ * 
+ * @module services/ContextService
+ * @description Provides comprehensive context generation for AI-powered project management.
+ * Analyzes project data to generate intelligent summaries, priority insights, blocker detection,
+ * and actionable recommendations. Supports multiple context levels and customizable analysis depth.
+ * 
+ * @example
+ * ```typescript
+ * import { ContextService } from '@/services/ContextService';
+ * import { dbConnection } from '@/database/connection';
+ * 
+ * const contextService = new ContextService(db, boardService, taskService, noteService, tagService);
+ * 
+ * // Get comprehensive project overview
+ * const projectContext = await contextService.getProjectContext({
+ *   days_back: 30,
+ *   detail_level: 'comprehensive'
+ * });
+ * 
+ * // Get focused task analysis
+ * const taskContext = await contextService.getTaskContext('task-123', {
+ *   detail_level: 'detailed'
+ * });
+ * 
+ * // Get current work recommendations
+ * const workContext = await contextService.getCurrentWorkContext();
+ * console.log('Next actions:', workContext.next_actions);
+ * ```
+ */
+
 import { logger } from '@/utils/logger';
 import type { DatabaseConnection } from '@/database/connection';
 import type { BoardService } from './BoardService';
@@ -12,6 +44,13 @@ import type {
   ServiceError,
 } from '@/types';
 
+/**
+ * Comprehensive project context with analytics and insights
+ * 
+ * @interface ProjectContext
+ * @description Contains project-wide analysis including board status, recent activities,
+ * priority analysis, blocker detection, and key performance metrics
+ */
 export interface ProjectContext {
   summary: string;
   boards: BoardContextInfo[];
@@ -23,6 +62,13 @@ export interface ProjectContext {
   generated_at: Date;
 }
 
+/**
+ * Detailed task context with relationships and analysis
+ * 
+ * @interface TaskContext
+ * @description Contains comprehensive task analysis including related tasks,
+ * dependencies, notes, tags, history, and AI-generated recommendations
+ */
 export interface TaskContext {
   task: Task;
   board: Board;
@@ -36,6 +82,13 @@ export interface TaskContext {
   generated_at: Date;
 }
 
+/**
+ * Board information with contextual metrics
+ * 
+ * @interface BoardContextInfo
+ * @description Board data enriched with task counts, completion rates,
+ * recent activity metrics, and calculated priority scores
+ */
 export interface BoardContextInfo {
   board: Board;
   task_count: number;
@@ -44,6 +97,13 @@ export interface BoardContextInfo {
   priority_score: number;
 }
 
+/**
+ * Project activity item for timeline tracking
+ * 
+ * @interface ActivityItem
+ * @description Represents a significant project event with type classification,
+ * entity references, and descriptive information for activity feeds
+ */
 export interface ActivityItem {
   type: 'task_created' | 'task_updated' | 'task_completed' | 'note_added' | 'dependency_added';
   entity_id: string;
@@ -53,6 +113,13 @@ export interface ActivityItem {
   description: string;
 }
 
+/**
+ * Task priority analysis with scoring and reasoning
+ * 
+ * @interface PriorityInfo
+ * @description Comprehensive priority assessment including calculated scores,
+ * reasoning explanations, blocking impact, and urgency classification
+ */
 export interface PriorityInfo {
   task: Task;
   score: number;
@@ -61,6 +128,13 @@ export interface PriorityInfo {
   urgency_level: 'low' | 'medium' | 'high' | 'critical';
 }
 
+/**
+ * Task blocker analysis with impact assessment
+ * 
+ * @interface BlockerInfo
+ * @description Information about task dependencies that are causing blocks,
+ * including duration metrics and impact level classification
+ */
 export interface BlockerInfo {
   blocked_task: Task;
   blocking_task: Task;
@@ -68,12 +142,26 @@ export interface BlockerInfo {
   impact_level: 'low' | 'medium' | 'high';
 }
 
+/**
+ * Related task information with relationship classification
+ * 
+ * @interface RelatedTaskInfo
+ * @description Task relationships with type classification and relevance scoring
+ * for contextual task analysis and recommendations
+ */
 export interface RelatedTaskInfo {
   task: Task;
   relationship: 'parent' | 'child' | 'dependency' | 'similar';
   relevance_score: number;
 }
 
+/**
+ * Task dependency analysis and risk assessment
+ * 
+ * @interface DependencyInfo
+ * @description Comprehensive dependency mapping including upstream/downstream tasks,
+ * circular dependency risks, and critical path analysis
+ */
 export interface DependencyInfo {
   depends_on: Task[];
   blocks: Task[];
@@ -81,6 +169,13 @@ export interface DependencyInfo {
   critical_path: boolean;
 }
 
+/**
+ * Comprehensive project performance metrics
+ * 
+ * @interface ProjectMetrics
+ * @description Key performance indicators including task counts, completion rates,
+ * velocity trends, and predictive analytics for project health assessment
+ */
 export interface ProjectMetrics {
   total_tasks: number;
   completed_tasks: number;
@@ -92,6 +187,13 @@ export interface ProjectMetrics {
   estimated_completion_date?: Date;
 }
 
+/**
+ * Configuration options for context generation
+ * 
+ * @interface ContextOptions
+ * @description Customizable options for controlling context generation scope,
+ * depth, and inclusion criteria for different analysis needs
+ */
 export interface ContextOptions {
   include_completed?: boolean;
   days_back?: number;
@@ -100,7 +202,40 @@ export interface ContextOptions {
   detail_level?: 'summary' | 'detailed' | 'comprehensive';
 }
 
+/**
+ * Context Service - AI-powered project analysis and insight generation
+ * 
+ * @class ContextService
+ * @description Provides intelligent context generation for project management workflows.
+ * Analyzes project data to generate summaries, identify priorities, detect blockers,
+ * and provide actionable recommendations. Integrates with all service layers to provide
+ * comprehensive project insights for AI-powered task management.
+ * 
+ * @example
+ * ```typescript
+ * const contextService = new ContextService(db, boardService, taskService, noteService, tagService);
+ * 
+ * // Generate project overview
+ * const context = await contextService.getProjectContext({
+ *   days_back: 14,
+ *   detail_level: 'comprehensive'
+ * });
+ * 
+ * console.log(context.summary);
+ * console.log(`Priority tasks: ${context.priorities.length}`);
+ * console.log(`Active blockers: ${context.blockers.length}`);
+ * ```
+ */
 export class ContextService {
+  /**
+   * Initialize ContextService with all required service dependencies
+   * 
+   * @param {DatabaseConnection} db - Database connection instance
+   * @param {BoardService} boardService - Board management service
+   * @param {TaskService} taskService - Task management service  
+   * @param {NoteService} noteService - Note management service
+   * @param {TagService} tagService - Tag management service
+   */
   constructor(
     private db: DatabaseConnection,
     private boardService: BoardService,
@@ -109,6 +244,33 @@ export class ContextService {
     private tagService: TagService
   ) {}
 
+  /**
+   * Generate comprehensive project context with analytics and insights
+   * 
+   * @param {ContextOptions} [options={}] - Context generation options
+   * @param {boolean} [options.include_completed=false] - Include completed tasks in analysis
+   * @param {number} [options.days_back=30] - Number of days to look back for activities
+   * @param {number} [options.max_items=50] - Maximum items to include in each category
+   * @param {boolean} [options.include_metrics=true] - Include performance metrics
+   * @param {'summary'|'detailed'|'comprehensive'} [options.detail_level='detailed'] - Analysis depth
+   * @returns {Promise<ProjectContext>} Comprehensive project analysis
+   * @throws {ServiceError} If context generation fails
+   * 
+   * @example
+   * ```typescript
+   * // Get detailed project overview
+   * const context = await contextService.getProjectContext({
+   *   days_back: 14,
+   *   detail_level: 'comprehensive',
+   *   max_items: 25
+   * });
+   * 
+   * console.log(`Project Summary: ${context.summary}`);
+   * console.log(`Active Boards: ${context.boards.length}`);
+   * console.log(`High Priority Tasks: ${context.priorities.filter(p => p.urgency_level === 'high').length}`);
+   * console.log(`Critical Blockers: ${context.blockers.filter(b => b.impact_level === 'high').length}`);
+   * ```
+   */
   async getProjectContext(options: ContextOptions = {}): Promise<ProjectContext> {
     const {
       include_completed = false,
@@ -157,6 +319,33 @@ export class ContextService {
     }
   }
 
+  /**
+   * Generate detailed context analysis for a specific task
+   * 
+   * @param {string} taskId - Task ID (UUID) to analyze
+   * @param {ContextOptions} [options={}] - Context generation options
+   * @param {number} [options.days_back=14] - Days to look back for task history
+   * @param {number} [options.max_items=20] - Maximum related items to include
+   * @param {'summary'|'detailed'|'comprehensive'} [options.detail_level='comprehensive'] - Analysis depth
+   * @returns {Promise<TaskContext>} Detailed task analysis with recommendations
+   * @throws {ServiceError} If task not found or context generation fails
+   * 
+   * @example
+   * ```typescript
+   * const taskContext = await contextService.getTaskContext('task-123', {
+   *   detail_level: 'comprehensive',
+   *   days_back: 7
+   * });
+   * 
+   * console.log(`Task: ${taskContext.task.title}`);
+   * console.log(`Board: ${taskContext.board.name}`);
+   * console.log(`Related Tasks: ${taskContext.related_tasks.length}`);
+   * console.log(`Dependencies: ${taskContext.dependencies.depends_on.length}`);
+   * console.log(`Blocks: ${taskContext.dependencies.blocks.length}`);
+   * console.log(`Notes: ${taskContext.notes.length}`);
+   * console.log(`Recommendations: ${taskContext.recommendations.join(', ')}`);
+   * ```
+   */
   async getTaskContext(taskId: string, options: ContextOptions = {}): Promise<TaskContext> {
     const {
       days_back = 14,
@@ -212,6 +401,35 @@ export class ContextService {
     }
   }
 
+  /**
+   * Get current work context with actionable recommendations
+   * 
+   * @param {ContextOptions} [options={}] - Context generation options
+   * @param {number} [options.max_items=10] - Maximum items per category
+   * @returns {Promise<Object>} Current work context with recommendations
+   * @returns {Task[]} returns.active_tasks - Currently in-progress tasks
+   * @returns {PriorityInfo[]} returns.next_actions - Top priority tasks ready to start
+   * @returns {BlockerInfo[]} returns.blockers - Active blockers requiring attention
+   * @returns {string[]} returns.focus_recommendations - AI-generated focus suggestions
+   * @returns {number} returns.estimated_work_hours - Estimated remaining work hours
+   * @throws {ServiceError} If work context generation fails
+   * 
+   * @example
+   * ```typescript
+   * const workContext = await contextService.getCurrentWorkContext({
+   *   max_items: 5
+   * });
+   * 
+   * console.log(`Active Tasks: ${workContext.active_tasks.length}`);
+   * console.log(`Next Actions: ${workContext.next_actions.length}`);
+   * console.log(`Blockers: ${workContext.blockers.length}`);
+   * console.log(`Estimated Hours: ${workContext.estimated_work_hours}`);
+   * 
+   * workContext.focus_recommendations.forEach(rec => {
+   *   console.log(`Recommendation: ${rec}`);
+   * });
+   * ```
+   */
   async getCurrentWorkContext(options: ContextOptions = {}): Promise<{
     active_tasks: Task[];
     next_actions: PriorityInfo[];
@@ -803,6 +1021,15 @@ export class ContextService {
     }, 0);
   }
 
+  /**
+   * Create a standardized service error
+   * 
+   * @private
+   * @param {string} code - Error code for categorization
+   * @param {string} message - Human-readable error message
+   * @param {any} [originalError] - Original error object for debugging
+   * @returns {ServiceError} Formatted service error with status code
+   */
   private createError(code: string, message: string, originalError?: any): ServiceError {
     const error = new Error(message) as ServiceError;
     error.code = code;

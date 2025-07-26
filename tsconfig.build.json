@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "skipLibCheck": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "exactOptionalPropertyTypes": false,
+    "strict": false
+  },
+  "exclude": [
+    "src/database/migrations",
+    "src/database/seeds",
+    "src/database/stats.ts",
+    "src/database/integrity.ts"
+  ]
+}

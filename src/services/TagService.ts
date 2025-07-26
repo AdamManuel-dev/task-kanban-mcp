@@ -203,7 +203,7 @@ export class TagService {
   }
 
   async getRootTags(): Promise<Tag[]> {
-    return this.getTags({ parent_tag_id: undefined });
+    return this.getTags({ has_parent: false });
   }
 
   async getChildTags(parentId: string): Promise<Tag[]> {
@@ -259,8 +259,8 @@ export class TagService {
         ...tag,
         task_count: taskCount?.count || 0,
         usage_count: usageStats?.count || 0,
-        last_used: usageStats?.last_used ? new Date(usageStats.last_used) : undefined,
         child_count: childCount?.count || 0,
+        ...(usageStats?.last_used ? { last_used: new Date(usageStats.last_used) } : {}),
       };
       
       return tagWithStats;

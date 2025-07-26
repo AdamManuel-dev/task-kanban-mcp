@@ -1,3 +1,36 @@
+/**
+ * Task Service - Core business logic for task management
+ * 
+ * @module services/TaskService
+ * @description Provides comprehensive task management functionality including CRUD operations,
+ * dependencies, priorities, and advanced querying. Handles task positioning, subtask relationships,
+ * and dependency validation to maintain data integrity.
+ * 
+ * @example
+ * ```typescript
+ * import { TaskService } from '@/services/TaskService';
+ * import { dbConnection } from '@/database/connection';
+ * 
+ * const taskService = new TaskService(dbConnection);
+ * 
+ * // Create a new task
+ * const task = await taskService.createTask({
+ *   title: 'Implement user authentication',
+ *   description: 'Add JWT-based authentication system',
+ *   board_id: 'board-123',
+ *   column_id: 'todo',
+ *   priority: 5
+ * });
+ * 
+ * // Get tasks with filtering
+ * const tasks = await taskService.getTasks({
+ *   board_id: 'board-123',
+ *   status: 'in_progress',
+ *   limit: 10
+ * });
+ * ```
+ */
+
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '@/utils/logger';
 import type { DatabaseConnection } from '@/database/connection';
@@ -9,6 +42,12 @@ import type {
   FilterOptions,
 } from '@/types';
 
+/**
+ * Request interface for creating new tasks
+ * 
+ * @interface CreateTaskRequest
+ * @description Defines the structure for task creation requests with all optional and required fields
+ */
 export interface CreateTaskRequest {
   title: string;
   description?: string;
@@ -24,6 +63,13 @@ export interface CreateTaskRequest {
   metadata?: string;
 }
 
+/**
+ * Request interface for updating existing tasks
+ * 
+ * @interface UpdateTaskRequest
+ * @description All fields are optional to support partial updates. Position and column changes
+ * are handled automatically with proper repositioning logic.
+ */
 export interface UpdateTaskRequest {
   title?: string;
   description?: string;
@@ -39,6 +85,14 @@ export interface UpdateTaskRequest {
   metadata?: string;
 }
 
+/**
+ * Advanced filtering options for task queries
+ * 
+ * @interface TaskFilters
+ * @extends FilterOptions
+ * @description Provides comprehensive filtering capabilities for task searches including
+ * board/column filtering, status filtering, dependency checks, and date-based filtering.
+ */
 export interface TaskFilters extends FilterOptions {
   board_id?: string;
   column_id?: string;
@@ -51,18 +105,68 @@ export interface TaskFilters extends FilterOptions {
   priority_max?: number;
 }
 
+/**
+ * Task with loaded subtask relationships
+ * 
+ * @interface TaskWithSubtasks
+ * @extends Task
+ * @description Represents a task with all its subtasks loaded and sorted by position
+ */
 export interface TaskWithSubtasks extends Task {
   subtasks: Task[];
 }
 
+/**
+ * Task with loaded dependency relationships
+ * 
+ * @interface TaskWithDependencies
+ * @extends Task
+ * @description Represents a task with both its dependencies (tasks it depends on)
+ * and dependents (tasks that depend on it) loaded
+ */
 export interface TaskWithDependencies extends Task {
   dependencies: TaskDependency[];
   dependents: TaskDependency[];
 }
 
+/**
+ * Task Service - Manages all task-related operations
+ * 
+ * @class TaskService
+ * @description Core service class providing comprehensive task management functionality.
+ * Handles task CRUD operations, dependency management, positioning, and advanced querying
+ * with proper transaction handling and error recovery.
+ */
 export class TaskService {
+  /**
+   * Creates a new TaskService instance
+   * 
+   * @param db Database connection instance for task operations
+   */
   constructor(private db: DatabaseConnection) {}
 
+  /**
+   * Creates a new task with proper positioning and validation
+   * 
+   * @param data Task creation data including title, board, column, and optional metadata
+   * @returns Promise resolving to the created task with generated ID and timestamps
+   * 
+   * @throws {ServiceError} TASK_CREATE_FAILED - When task creation fails due to database errors
+   * @throws {Error} Parent task not found - When specified parent_task_id doesn't exist
+   * 
+   * @example
+   * ```typescript
+   * const task = await taskService.createTask({
+   *   title: 'Fix login bug',
+   *   description: 'Users cannot login with special characters in password',
+   *   board_id: 'board-123',
+   *   column_id: 'backlog',
+   *   priority: 8,
+   *   assignee: 'dev@example.com',
+   *   due_date: new Date('2024-01-15')
+   * });
+   * ```
+   */
   async createTask(data: CreateTaskRequest): Promise<Task> {
     const id = uuidv4();
     const now = new Date();
@@ -123,6 +227,22 @@ export class TaskService {
     }
   }
 
+  /**
+   * Retrieves a single task by its ID
+   * 
+   * @param id Unique task identifier
+   * @returns Promise resolving to the task if found, null if not found or archived
+   * 
+   * @throws {ServiceError} TASK_FETCH_FAILED - When database query fails
+   * 
+   * @example
+   * ```typescript
+   * const task = await taskService.getTaskById('task-123');
+   * if (task) {
+   *   console.log(`Task: ${task.title}`);
+   * }
+   * ```
+   */
   async getTaskById(id: string): Promise<Task | null> {
     try {
       const task = await this.db.queryOne<Task>(`
@@ -140,6 +260,22 @@ export class TaskService {
     }
   }
 
+  /**
+   * Retrieves a task with all its subtasks loaded
+   * 
+   * @param id Unique task identifier
+   * @returns Promise resolving to task with subtasks array, or null if not found
+   * 
+   * @throws {ServiceError} TASK_FETCH_FAILED - When database query fails
+   * 
+   * @example
+   * ```typescript
+   * const taskWithSubs = await taskService.getTaskWithSubtasks('task-123');
+   * if (taskWithSubs) {
+   *   console.log(`Task has ${taskWithSubs.subtasks.length} subtasks`);
+   * }
+   * ```
+   */
   async getTaskWithSubtasks(id: string): Promise<TaskWithSubtasks | null> {
     try {
       const task = await this.getTaskById(id);
@@ -163,6 +299,23 @@ export class TaskService {
     }
   }
 
+  /**
+   * Retrieves a task with all its dependency relationships
+   * 
+   * @param id Unique task identifier
+   * @returns Promise resolving to task with dependencies and dependents arrays
+   * 
+   * @throws {ServiceError} TASK_FETCH_FAILED - When database query fails
+   * 
+   * @example
+   * ```typescript
+   * const taskWithDeps = await taskService.getTaskWithDependencies('task-123');
+   * if (taskWithDeps) {
+   *   console.log(`Depends on ${taskWithDeps.dependencies.length} tasks`);
+   *   console.log(`${taskWithDeps.dependents.length} tasks depend on this`);
+   * }
+   * ```
+   */
   async getTaskWithDependencies(id: string): Promise<TaskWithDependencies | null> {
     try {
       const task = await this.getTaskById(id);
@@ -191,6 +344,32 @@ export class TaskService {
     }
   }
 
+  /**
+   * Retrieves tasks with advanced filtering, pagination, and sorting
+   * 
+   * @param options Comprehensive options for filtering, pagination, and sorting
+   * @returns Promise resolving to array of tasks matching the criteria
+   * 
+   * @throws {ServiceError} TASKS_FETCH_FAILED - When database query fails
+   * 
+   * @example
+   * ```typescript
+   * // Get recent high-priority tasks
+   * const tasks = await taskService.getTasks({
+   *   board_id: 'board-123',
+   *   priority_min: 7,
+   *   sortBy: 'updated_at',
+   *   sortOrder: 'desc',
+   *   limit: 20
+   * });
+   * 
+   * // Search for overdue tasks
+   * const overdue = await taskService.getTasks({
+   *   overdue: true,
+   *   status: 'in_progress'
+   * });
+   * ```
+   */
   async getTasks(options: PaginationOptions & TaskFilters = {}): Promise<Task[]> {
     const {
       limit = 50,
@@ -289,6 +468,31 @@ export class TaskService {
     }
   }
 
+  /**
+   * Updates an existing task with automatic position handling
+   * 
+   * @param id Unique task identifier
+   * @param data Partial task data to update (only provided fields will be changed)
+   * @returns Promise resolving to the updated task
+   * 
+   * @throws {ServiceError} TASK_NOT_FOUND - When task doesn't exist
+   * @throws {ServiceError} TASK_UPDATE_FAILED - When update operation fails
+   * 
+   * @example
+   * ```typescript
+   * // Update task status and completion
+   * const updated = await taskService.updateTask('task-123', {
+   *   status: 'done',
+   *   actual_hours: 8.5
+   * });
+   * 
+   * // Move task to different column
+   * await taskService.updateTask('task-123', {
+   *   column_id: 'in_progress',
+   *   position: 0 // Move to top of column
+   * });
+   * ```
+   */
   async updateTask(id: string, data: UpdateTaskRequest): Promise<Task> {
     try {
       const existingTask = await this.getTaskById(id);
@@ -396,6 +600,26 @@ export class TaskService {
     }
   }
 
+  /**
+   * Permanently deletes a task and cleans up all related data
+   * 
+   * @param id Unique task identifier
+   * @returns Promise that resolves when deletion is complete
+   * 
+   * @throws {ServiceError} TASK_NOT_FOUND - When task doesn't exist
+   * @throws {ServiceError} TASK_DELETE_FAILED - When deletion fails
+   * 
+   * @description This method:
+   * - Moves subtasks to the deleted task's parent (or makes them top-level)
+   * - Removes all task dependencies
+   * - Deletes all associated notes and tags
+   * - Adjusts positions of remaining tasks in the column
+   * 
+   * @example
+   * ```typescript
+   * await taskService.deleteTask('task-123');
+   * ```
+   */
   async deleteTask(id: string): Promise<void> {
     try {
       const task = await this.getTaskById(id);
@@ -423,6 +647,28 @@ export class TaskService {
     }
   }
 
+  /**
+   * Adds a dependency relationship between two tasks
+   * 
+   * @param taskId ID of the task that depends on another
+   * @param dependsOnTaskId ID of the task that this task depends on
+   * @param dependencyType Type of dependency relationship (default: 'blocks')
+   * @returns Promise resolving to the created dependency relationship
+   * 
+   * @throws {ServiceError} DEPENDENCY_ADD_FAILED - When dependency creation fails
+   * @throws {Error} Task not found - When either task doesn't exist
+   * @throws {Error} Would create circular dependency - When dependency would create a cycle
+   * 
+   * @example
+   * ```typescript
+   * // Task B blocks task A (A depends on B)
+   * const dependency = await taskService.addDependency(
+   *   'task-a',
+   *   'task-b',
+   *   'blocks'
+   * );
+   * ```
+   */
   async addDependency(taskId: string, dependsOnTaskId: string, dependencyType: TaskDependency['dependency_type'] = 'blocks'): Promise<TaskDependency> {
     const id = uuidv4();
     const now = new Date();
@@ -467,6 +713,21 @@ export class TaskService {
     }
   }
 
+  /**
+   * Removes a dependency relationship between two tasks
+   * 
+   * @param taskId ID of the dependent task
+   * @param dependsOnTaskId ID of the task being depended upon
+   * @returns Promise that resolves when dependency is removed
+   * 
+   * @throws {ServiceError} DEPENDENCY_NOT_FOUND - When dependency doesn't exist
+   * @throws {ServiceError} DEPENDENCY_REMOVE_FAILED - When removal fails
+   * 
+   * @example
+   * ```typescript
+   * await taskService.removeDependency('task-a', 'task-b');
+   * ```
+   */
   async removeDependency(taskId: string, dependsOnTaskId: string): Promise<void> {
     try {
       const result = await this.db.execute(`
@@ -488,6 +749,23 @@ export class TaskService {
     }
   }
 
+  /**
+   * Retrieves all tasks that are blocked by incomplete dependencies
+   * 
+   * @param boardId Optional board ID to filter results to a specific board
+   * @returns Promise resolving to array of blocked tasks sorted by priority
+   * 
+   * @throws {ServiceError} TASKS_FETCH_FAILED - When query fails
+   * 
+   * @example
+   * ```typescript
+   * // Get all blocked tasks
+   * const blocked = await taskService.getBlockedTasks();
+   * 
+   * // Get blocked tasks for a specific board
+   * const boardBlocked = await taskService.getBlockedTasks('board-123');
+   * ```
+   */
   async getBlockedTasks(boardId?: string): Promise<Task[]> {
     try {
       let query = `
@@ -515,6 +793,23 @@ export class TaskService {
     }
   }
 
+  /**
+   * Retrieves all tasks that are past their due date and not completed
+   * 
+   * @param boardId Optional board ID to filter results to a specific board
+   * @returns Promise resolving to array of overdue tasks sorted by due date
+   * 
+   * @throws {ServiceError} TASKS_FETCH_FAILED - When query fails
+   * 
+   * @example
+   * ```typescript
+   * // Get all overdue tasks
+   * const overdue = await taskService.getOverdueTasks();
+   * 
+   * // Get overdue tasks for a specific board
+   * const boardOverdue = await taskService.getOverdueTasks('board-123');
+   * ```
+   */
   async getOverdueTasks(boardId?: string): Promise<Task[]> {
     try {
       let query = `
@@ -540,6 +835,13 @@ export class TaskService {
     }
   }
 
+  /**
+   * Calculates the next available position in a column
+   * 
+   * @private
+   * @param columnId Column identifier
+   * @returns Promise resolving to the next position number (0-based)
+   */
   private async getNextPosition(columnId: string): Promise<number> {
     const result = await this.db.queryOne<{ max_position: number }>(`
       SELECT COALESCE(MAX(position), -1) + 1 as max_position 
@@ -550,6 +852,13 @@ export class TaskService {
     return result?.max_position || 0;
   }
 
+  /**
+   * Adjusts positions of existing tasks to make room for insertion at specified position
+   * 
+   * @private
+   * @param columnId Column identifier
+   * @param position Position where new task will be inserted
+   */
   private async adjustPositionsForInsertion(columnId: string, position: number): Promise<void> {
     await this.db.execute(`
       UPDATE tasks 
@@ -558,6 +867,13 @@ export class TaskService {
     `, [columnId, position]);
   }
 
+  /**
+   * Adjusts positions of tasks after a task is removed from specified position
+   * 
+   * @private
+   * @param columnId Column identifier
+   * @param position Position of the removed task
+   */
   private async adjustPositionsForRemoval(columnId: string, position: number): Promise<void> {
     await this.db.execute(`
       UPDATE tasks 
@@ -566,6 +882,14 @@ export class TaskService {
     `, [columnId, position]);
   }
 
+  /**
+   * Adjusts positions when a task is moved within the same column
+   * 
+   * @private
+   * @param columnId Column identifier
+   * @param oldPosition Current position of the task
+   * @param newPosition Target position for the task
+   */
   private async adjustPositionsForMove(columnId: string, oldPosition: number, newPosition: number): Promise<void> {
     if (oldPosition === newPosition) return;
 
@@ -584,6 +908,17 @@ export class TaskService {
     }
   }
 
+  /**
+   * Checks if adding a dependency would create a circular dependency chain
+   * 
+   * @private
+   * @param taskId ID of the task that would depend on another
+   * @param dependsOnTaskId ID of the task to depend on
+   * @returns Promise resolving to true if circular dependency would be created
+   * 
+   * @description Uses depth-first search to detect cycles in the dependency graph.
+   * This prevents infinite loops and ensures dependency integrity.
+   */
   private async wouldCreateCircularDependency(taskId: string, dependsOnTaskId: string): Promise<boolean> {
     const visited = new Set<string>();
     const stack = [dependsOnTaskId];
@@ -613,6 +948,15 @@ export class TaskService {
     return false;
   }
 
+  /**
+   * Converts string date fields to Date objects for a task
+   * 
+   * @private
+   * @param task Task object with potentially string-based dates
+   * 
+   * @description SQLite stores dates as strings, so this method ensures
+   * proper Date object conversion for JavaScript usage.
+   */
   private convertTaskDates(task: Task): void {
     task.created_at = new Date(task.created_at);
     task.updated_at = new Date(task.updated_at);
@@ -620,6 +964,15 @@ export class TaskService {
     if (task.completed_at) task.completed_at = new Date(task.completed_at);
   }
 
+  /**
+   * Creates a standardized service error with proper error codes and status codes
+   * 
+   * @private
+   * @param code Error code identifier for categorization
+   * @param message Human-readable error message
+   * @param originalError Optional original error for debugging context
+   * @returns Standardized ServiceError with status code and details
+   */
   private createError(code: string, message: string, originalError?: any): ServiceError {
     const error = new Error(message) as ServiceError;
     error.code = code;
@@ -628,6 +981,13 @@ export class TaskService {
     return error;
   }
 
+  /**
+   * Maps error codes to appropriate HTTP status codes
+   * 
+   * @private
+   * @param code Error code identifier
+   * @returns HTTP status code (404 for not found, 500 for server errors)
+   */
   private getStatusCodeForError(code: string): number {
     switch (code) {
       case 'TASK_NOT_FOUND':
