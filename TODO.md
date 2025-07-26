@@ -484,16 +484,78 @@ This TODO list captures all tasks required to implement the MCP Server for Headl
 
 ## Phase 7: Testing Implementation
 
-### 7.1 Unit Testing
-- [ ] **P0/L** Create unit tests for all repositories
-- [ ] **P0/L** Create unit tests for all services
-- [ ] **P0/M** Create unit tests for API endpoints
-- [ ] **P0/M** Create unit tests for MCP tools
-- [ ] **P0/M** Create unit tests for CLI commands
-- [ ] **P0/M** Add test coverage reporting
-- [ ] **P0/S** Implement test data factories
+### 7.1 Unit Testing - CRITICAL MISSING COVERAGE
+
+#### 7.1.1 Application Server (0% coverage)
+- [ ] **P0/L** Test `src/server.ts` (lines 14-273) - Main application server initialization and startup
+- [ ] **P0/M** Add server lifecycle tests (startup, shutdown, error handling)
+- [ ] **P0/M** Test server middleware integration
+- [ ] **P0/S** Test server configuration loading
+
+#### 7.1.2 Database Layer Missing Coverage
+- [ ] **P0/L** Test `src/database/maintenance.ts` (lines 78-620) - Database maintenance operations
+- [ ] **P0/L** Test `src/database/stats.ts` (lines 156-738) - Database statistics collection
+- [ ] **P0/M** Test `src/database/migrations/001_initial_schema.ts` (lines 10-400) - Initial schema migration
+- [ ] **P0/S** Test database seed files:
+  - [ ] `001_sample_boards.ts` (lines 4-44) 
+  - [ ] `002_sample_tasks.ts` (lines 4-45)
+  - [ ] `003_sample_tags_and_notes.ts` (lines 4-77)
+- [ ] **P0/M** Complete connection.ts coverage (lines 171-172, 209, 324-325, 540, 556-561, 602, 633-799)
+
+#### 7.1.3 Business Services (0% coverage) - CRITICAL
+- [ ] **P0/XL** Test `src/services/TaskService.ts` (lines 146-1006) - Core task management logic
+- [ ] **P0/L** Test `src/services/BoardService.ts` (lines 72-586) - Board management and operations  
+- [ ] **P0/L** Test `src/services/ContextService.ts` (lines 240-1038) - AI context generation
+- [ ] **P0/L** Test `src/services/NoteService.ts` (lines 51-527) - Note management and search
+- [ ] **P0/L** Test `src/services/TagService.ts` (lines 57-683) - Tag hierarchy and operations
+
+#### 7.1.4 REST API Routes (0% coverage) - CRITICAL  
+- [ ] **P0/L** Test `src/routes/tasks.ts` (lines 11-340) - Task CRUD endpoints
+- [ ] **P0/L** Test `src/routes/boards.ts` (lines 10-305) - Board management endpoints
+- [ ] **P0/M** Test `src/routes/notes.ts` (lines 9-260) - Note management endpoints  
+- [ ] **P0/M** Test `src/routes/tags.ts` (lines 9-244) - Tag management endpoints
+- [ ] **P0/M** Test `src/routes/context.ts` (lines 13-228) - Context and AI endpoints
+- [ ] **P0/S** Test `src/routes/health.ts` (lines 8-84) - Health check endpoints
+
+#### 7.1.5 Middleware Layer (0% coverage) - HIGH PRIORITY
+- [ ] **P0/M** Test `src/middleware/auth.ts` (lines 18-126) - Authentication middleware
+- [ ] **P0/M** Test `src/middleware/validation.ts` (lines 7-66) - Request validation  
+- [ ] **P0/M** Test `src/middleware/response.ts` (lines 42-106) - Response formatting
+- [ ] **P0/S** Test `src/middleware/logging.ts` (lines 5-44) - Request logging
+- [ ] **P0/S** Test `src/middleware/requestId.ts` (lines 13-18) - Request ID generation
+
+#### 7.1.6 MCP Server (0% coverage) - HIGH PRIORITY
+- [ ] **P0/L** Test `src/mcp/server.ts` (lines 76-437) - MCP server core
+- [ ] **P0/L** Test `src/mcp/tools.ts` (lines 21-483) - MCP tools implementation
+- [ ] **P0/L** Test `src/mcp/prompts.ts` (lines 14-823) - MCP prompt management
+- [ ] **P0/M** Test `src/mcp/resources.ts` (lines 14-526) - MCP resource management
+
+#### 7.1.7 WebSocket Layer (0% coverage) - HIGH PRIORITY
+- [ ] **P0/L** Test `src/websocket/server.ts` (lines 13-411) - WebSocket server
+- [ ] **P0/L** Test `src/websocket/handlers.ts` (lines 24-744) - WebSocket message handlers
+- [ ] **P0/M** Test `src/websocket/subscriptions.ts` (lines 15-410) - Subscription management
+- [ ] **P0/M** Test `src/websocket/auth.ts` (lines 7-300) - WebSocket authentication
+- [ ] **P0/M** Test `src/websocket/rateLimit.ts` (lines 19-396) - WebSocket rate limiting
+
+#### 7.1.8 Utility Functions (Missing Coverage)
+- [ ] **P0/M** Test `src/utils/errors.ts` (lines 26-413) - Error handling utilities
+- [ ] **P0/M** Test `src/utils/validation.ts` (lines 43-642) - Validation utilities  
+- [ ] **P0/M** Test `src/utils/transactions.ts` (lines 29-549) - Transaction utilities
+- [ ] **P0/S** Complete `src/utils/logger.ts` coverage (line 137)
+
+#### 7.1.9 Test Infrastructure
+- [ ] **P0/M** Add test coverage reporting and monitoring
+- [ ] **P0/M** Implement test data factories for complex objects
+- [ ] **P0/S** Set up test database isolation
+- [ ] **P0/S** Create test utilities for common patterns
 - [ ] **P1/M** Add mutation testing
 - [ ] **P1/S** Create test documentation
+
+#### 7.1.10 Coverage Targets
+- [ ] **P0/M** Achieve 80% statement coverage (currently 14.76%)
+- [ ] **P0/M** Achieve 80% branch coverage (currently 9.56%) 
+- [ ] **P0/M** Achieve 80% function coverage (currently 13.28%)
+- [ ] **P0/M** Achieve 80% line coverage (currently 14.68%)
 
 ### 7.2 Integration Testing
 - [ ] **P0/L** Create API integration tests
@@ -710,9 +772,22 @@ This TODO list captures all tasks required to implement the MCP Server for Headl
 - ✅ **Real-time Capabilities:** Full WebSocket implementation with subscriptions
 - ✅ **AI Integration:** Complete MCP server with tools, resources, and prompts
 
+### Critical Coverage Gap Identified ⚠️
+**Current Test Coverage:** 14.76% statements, 9.56% branches, 13.28% functions, 14.68% lines
+**Target Coverage:** 80% across all metrics
+**Missing Coverage:** 65+ percentage points across all layers
+
+**Critical Missing Tests:**
+- 🔴 **0% coverage** on ALL business services (TaskService, BoardService, etc.)
+- 🔴 **0% coverage** on ALL REST API routes 
+- 🔴 **0% coverage** on ALL middleware components
+- 🔴 **0% coverage** on ALL MCP server functionality
+- 🔴 **0% coverage** on ALL WebSocket functionality
+- 🔴 **0% coverage** on main application server
+
 ### Remaining Work
 - **CLI Development:** 85 tasks across 13 command categories
-- **Testing & Quality:** Comprehensive test suite and performance optimization
+- **CRITICAL Testing:** 50+ new test tasks identified from coverage analysis
 - **Documentation:** Complete user and developer documentation
 - **Deployment:** Production setup, monitoring, and DevOps pipeline
 
