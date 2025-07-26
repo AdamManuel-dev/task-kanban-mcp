@@ -4,6 +4,9 @@
   "description": "MCP Server for Headless Kanban Task Management System",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "kanban": "dist/cli/index.js"
+  },
   "scripts": {
     "dev": "nodemon",
     "build": "tsc",
@@ -12,6 +15,7 @@
     "start:mcp": "node dist/mcp/server.js",
     "dev:server": "nodemon --exec tsx src/server.ts",
     "dev:mcp": "nodemon --exec tsx src/mcp/server.ts",
+    "dev:cli": "tsx src/cli/index.ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
@@ -71,6 +75,7 @@
     "@types/compression": "^1.8.1",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
+    "@types/inquirer": "^9.0.8",
     "@types/jest": "^29.5.11",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.10.5",
