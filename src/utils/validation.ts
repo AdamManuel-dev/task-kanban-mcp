@@ -303,16 +303,6 @@ export const BusinessRules = {
         // Allow any valid hex color, but warn about recommended colors
       }
     },
-
-    validateColor: (color: string): void => {
-      const validColors = [
-        '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
-        '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'
-      ];
-      if (!validColors.includes(color.toUpperCase())) {
-        // Allow any valid hex color, but warn about recommended colors
-      }
-    },
   },
 
   /**
@@ -403,49 +393,6 @@ export const BusinessRules = {
       }
     },
 
-    validatePriority: (priority: number): void => {
-      if (!Number.isInteger(priority)) {
-        throw new ValidationError('Priority must be an integer');
-      }
-      if (priority < 0 || priority > 10) {
-        throw new ValidationError('Priority must be between 0 and 10');
-      }
-    },
-
-    validateEstimatedHours: (hours: number): void => {
-      if (hours <= 0) {
-        throw new ValidationError('Estimated hours must be positive');
-      }
-      if (hours > 1000) {
-        throw new ValidationError('Estimated hours cannot exceed 1000');
-      }
-    },
-
-    validateDueDate: (dueDate: Date): void => {
-      const now = new Date();
-      const oneYearFromNow = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate());
-      
-      if (dueDate < now) {
-        // Allow past due dates for historical tasks
-      }
-      if (dueDate > oneYearFromNow) {
-        throw new ValidationError('Due date cannot be more than one year in the future');
-      }
-    },
-
-    validateStatusTransition: (currentStatus: string, newStatus: string): void => {
-      const validTransitions: Record<string, string[]> = {
-        'todo': ['in_progress', 'blocked', 'archived'],
-        'in_progress': ['done', 'todo', 'blocked', 'archived'],
-        'done': ['todo', 'in_progress', 'archived'],
-        'blocked': ['todo', 'in_progress', 'archived'],
-        'archived': ['todo', 'in_progress', 'done', 'blocked'],
-      };
-
-      if (!validTransitions[currentStatus]?.includes(newStatus)) {
-        throw new ValidationError(`Invalid status transition from ${currentStatus} to ${newStatus}`);
-      }
-    },
   },
 
   /**

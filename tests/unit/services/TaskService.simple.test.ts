@@ -67,7 +67,7 @@ describe('TaskService - Simple Tests', () => {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       taskId, 'Manual Task', 'Test task', 'test-board', 'todo', 
-      1, 1, 'pending', new Date(), new Date(), false
+      1, 1, 'todo', new Date(), new Date(), false
     ]);
 
     // Try to retrieve it

@@ -92,6 +92,11 @@ export class BoardService {
    * ```
    */
   async createBoard(data: CreateBoardRequest): Promise<Board> {
+    // Validate required fields
+    if (!data.name || data.name.trim().length === 0) {
+      throw this.createError('INVALID_NAME', 'Board name is required and cannot be empty');
+    }
+
     const id = uuidv4();
     const now = new Date();
     
@@ -574,6 +579,8 @@ export class BoardService {
     switch (code) {
       case 'BOARD_NOT_FOUND':
         return 404;
+      case 'INVALID_NAME':
+        return 400;
       case 'BOARD_CREATE_FAILED':
       case 'BOARD_UPDATE_FAILED':
       case 'BOARD_DELETE_FAILED':

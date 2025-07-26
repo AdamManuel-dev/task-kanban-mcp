@@ -168,6 +168,11 @@ export class TaskService {
    * ```
    */
   async createTask(data: CreateTaskRequest): Promise<Task> {
+    // Validate required fields
+    if (!data.title || data.title.trim().length === 0) {
+      throw this.createError('INVALID_TITLE', 'Task title is required and cannot be empty');
+    }
+
     const id = uuidv4();
     const now = new Date();
     
@@ -180,7 +185,7 @@ export class TaskService {
       board_id: data.board_id,
       column_id: data.column_id,
       position,
-      priority: data.priority || 0,
+      priority: data.priority || 1,
       status: data.status || 'todo',
       assignee: data.assignee,
       due_date: data.due_date,
@@ -844,12 +849,12 @@ export class TaskService {
    */
   private async getNextPosition(columnId: string): Promise<number> {
     const result = await this.db.queryOne<{ max_position: number }>(`
-      SELECT COALESCE(MAX(position), -1) + 1 as max_position 
+      SELECT COALESCE(MAX(position), 0) + 1 as max_position 
       FROM tasks 
       WHERE column_id = ? AND archived = FALSE
     `, [columnId]);
     
-    return result?.max_position || 0;
+    return result?.max_position || 1;
   }
 
   /**
@@ -894,12 +899,14 @@ export class TaskService {
     if (oldPosition === newPosition) return;
 
     if (oldPosition < newPosition) {
+      // Moving down: shift tasks between old and new position up by 1
       await this.db.execute(`
         UPDATE tasks 
         SET position = position - 1 
         WHERE column_id = ? AND position > ? AND position <= ? AND archived = FALSE
       `, [columnId, oldPosition, newPosition]);
     } else {
+      // Moving up: shift tasks between new and old position down by 1
       await this.db.execute(`
         UPDATE tasks 
         SET position = position + 1 
@@ -982,6 +989,248 @@ export class TaskService {
   }
 
   /**
+   * Gets all subtasks for a given parent task
+   * 
+   * @param parentTaskId ID of the parent task
+   * @returns Promise resolving to array of child tasks
+   * 
+   * @throws {ServiceError} TASKS_FETCH_FAILED - When fetching subtasks fails
+   * 
+   * @example
+   * ```typescript
+   * const subtasks = await taskService.getSubtasks('parent-task-123');
+   * console.log(`Found ${subtasks.length} subtasks`);
+   * ```
+   */
+  async getSubtasks(parentTaskId: string): Promise<Task[]> {
+    try {
+      const query = `
+        SELECT t.* FROM tasks t
+        WHERE t.parent_task_id = ? AND t.archived = FALSE
+        ORDER BY t.position ASC, t.created_at ASC
+      `;
+      
+      const tasks = await this.db.query<Task>(query, [parentTaskId]);
+      tasks.forEach(task => this.convertTaskDates(task));
+      
+      return tasks;
+    } catch (error) {
+      logger.error('Failed to get subtasks', { error, parentTaskId });
+      throw this.createError('TASKS_FETCH_FAILED', 'Failed to fetch subtasks', error);
+    }
+  }
+
+  /**
+   * Adds a dependency relationship between two tasks
+   * 
+   * @param taskId ID of the task that depends on another
+   * @param dependsOnTaskId ID of the task to depend on
+   * 
+   * @throws {ServiceError} TASK_NOT_FOUND - When either task doesn't exist
+   * @throws {ServiceError} CIRCULAR_DEPENDENCY - When adding would create a cycle
+   * @throws {ServiceError} SELF_DEPENDENCY - When trying to depend on self
+   * @throws {ServiceError} DEPENDENCY_ADD_FAILED - When creation fails
+   * 
+   * @example
+   * ```typescript
+   * // Task B depends on Task A
+   * await taskService.addTaskDependency('task-b-id', 'task-a-id');
+   * ```
+   */
+  async addTaskDependency(taskId: string, dependsOnTaskId: string): Promise<void> {
+    try {
+      // Prevent self-dependency
+      if (taskId === dependsOnTaskId) {
+        throw this.createError('SELF_DEPENDENCY', 'A task cannot depend on itself');
+      }
+
+      // Verify both tasks exist
+      const [task, dependsOnTask] = await Promise.all([
+        this.getTaskById(taskId),
+        this.getTaskById(dependsOnTaskId)
+      ]);
+
+      if (!task) {
+        throw this.createError('TASK_NOT_FOUND', 'Task not found', { taskId });
+      }
+      
+      if (!dependsOnTask) {
+        throw this.createError('TASK_NOT_FOUND', 'Dependency task not found', { dependsOnTaskId });
+      }
+
+      // Check for circular dependencies
+      if (await this.wouldCreateCircularDependency(taskId, dependsOnTaskId)) {
+        throw this.createError('CIRCULAR_DEPENDENCY', 'Adding this dependency would create a circular dependency');
+      }
+
+      // Check if dependency already exists
+      const existing = await this.db.query<{ id: string }>(`
+        SELECT id FROM task_dependencies 
+        WHERE task_id = ? AND depends_on_task_id = ?
+      `, [taskId, dependsOnTaskId]);
+
+      if (existing.length > 0) {
+        return; // Dependency already exists, no need to add
+      }
+
+      await this.db.execute(`
+        INSERT INTO task_dependencies (id, task_id, depends_on_task_id, created_at)
+        VALUES (?, ?, ?, ?)
+      `, [uuidv4(), taskId, dependsOnTaskId, new Date()]);
+
+      logger.info('Task dependency added successfully', { taskId, dependsOnTaskId });
+    } catch (error) {
+      if (error instanceof Error && (error.message.includes('TASK_') || error.message.includes('CIRCULAR_') || error.message.includes('SELF_'))) {
+        throw error;
+      }
+      logger.error('Failed to add task dependency', { error, taskId, dependsOnTaskId });
+      throw this.createError('DEPENDENCY_ADD_FAILED', 'Failed to add task dependency', error);
+    }
+  }
+
+  /**
+   * Removes a dependency relationship between two tasks
+   * 
+   * @param taskId ID of the task that currently depends on another
+   * @param dependsOnTaskId ID of the task to remove dependency on
+   * 
+   * @throws {ServiceError} DEPENDENCY_REMOVE_FAILED - When removal fails
+   * 
+   * @example
+   * ```typescript
+   * // Remove dependency from Task B to Task A
+   * await taskService.removeTaskDependency('task-b-id', 'task-a-id');
+   * ```
+   */
+  async removeTaskDependency(taskId: string, dependsOnTaskId: string): Promise<void> {
+    try {
+      const result = await this.db.execute(`
+        DELETE FROM task_dependencies 
+        WHERE task_id = ? AND depends_on_task_id = ?
+      `, [taskId, dependsOnTaskId]);
+
+      logger.info('Task dependency removed', { 
+        taskId, 
+        dependsOnTaskId, 
+        found: result.changes > 0 
+      });
+    } catch (error) {
+      logger.error('Failed to remove task dependency', { error, taskId, dependsOnTaskId });
+      throw this.createError('DEPENDENCY_REMOVE_FAILED', 'Failed to remove task dependency', error);
+    }
+  }
+
+  /**
+   * Gets all dependencies for a specific task
+   * 
+   * @param taskId ID of the task to get dependencies for
+   * @returns Promise resolving to array of task dependencies with related task info
+   * 
+   * @throws {ServiceError} TASKS_FETCH_FAILED - When fetching dependencies fails
+   * 
+   * @example
+   * ```typescript
+   * const dependencies = await taskService.getTaskDependencies('task-123');
+   * console.log(`Task depends on ${dependencies.length} other tasks`);
+   * ```
+   */
+  async getTaskDependencies(taskId: string): Promise<TaskDependency[]> {
+    try {
+      const query = `
+        SELECT 
+          td.*,
+          t.title as depends_on_title,
+          t.status as depends_on_status,
+          t.board_id as depends_on_board_id
+        FROM task_dependencies td
+        JOIN tasks t ON td.depends_on_task_id = t.id
+        WHERE td.task_id = ? AND t.archived = FALSE
+        ORDER BY td.created_at ASC
+      `;
+      
+      const dependencies = await this.db.query<TaskDependency>(query, [taskId]);
+      dependencies.forEach(dep => {
+        dep.created_at = new Date(dep.created_at);
+      });
+      
+      return dependencies;
+    } catch (error) {
+      logger.error('Failed to get task dependencies', { error, taskId });
+      throw this.createError('TASKS_FETCH_FAILED', 'Failed to fetch task dependencies', error);
+    }
+  }
+
+  /**
+   * Searches tasks by title and description using full-text search
+   * 
+   * @param query Search query string
+   * @param options Optional filtering and pagination options
+   * @returns Promise resolving to array of matching tasks
+   * 
+   * @throws {ServiceError} TASKS_FETCH_FAILED - When search fails
+   * 
+   * @example
+   * ```typescript
+   * // Search for authentication-related tasks
+   * const results = await taskService.searchTasks('authentication jwt');
+   * 
+   * // Search with additional filters
+   * const results = await taskService.searchTasks('bug fix', {
+   *   board_id: 'board-123',
+   *   status: 'todo'
+   * });
+   * ```
+   */
+  async searchTasks(query: string, options: Partial<TaskFilters & PaginationOptions> = {}): Promise<Task[]> {
+    try {
+      const {
+        board_id,
+        column_id,
+        status,
+        limit = 50,
+        offset = 0
+      } = options;
+
+      let sql = `
+        SELECT t.*, 
+               ts.rank
+        FROM tasks_fts ts
+        JOIN tasks t ON ts.rowid = t.rowid
+        WHERE ts.tasks_fts MATCH ?
+          AND t.archived = FALSE
+      `;
+      
+      const params: any[] = [query];
+
+      if (board_id) {
+        sql += ' AND t.board_id = ?';
+        params.push(board_id);
+      }
+
+      if (column_id) {
+        sql += ' AND t.column_id = ?';
+        params.push(column_id);
+      }
+
+      if (status) {
+        sql += ' AND t.status = ?';
+        params.push(status);
+      }
+
+      sql += ` ORDER BY ts.rank, t.priority DESC, t.created_at DESC LIMIT ? OFFSET ?`;
+      params.push(limit, offset);
+
+      const tasks = await this.db.query<Task>(sql, params);
+      tasks.forEach(task => this.convertTaskDates(task));
+
+      return tasks;
+    } catch (error) {
+      logger.error('Failed to search tasks', { error, query, options });
+      throw this.createError('TASKS_FETCH_FAILED', 'Failed to search tasks', error);
+    }
+  }
+
+  /**
    * Maps error codes to appropriate HTTP status codes
    * 
    * @private
@@ -993,6 +1242,10 @@ export class TaskService {
       case 'TASK_NOT_FOUND':
       case 'DEPENDENCY_NOT_FOUND':
         return 404;
+      case 'CIRCULAR_DEPENDENCY':
+      case 'SELF_DEPENDENCY':
+      case 'INVALID_TITLE':
+        return 400;
       case 'TASK_CREATE_FAILED':
       case 'TASK_UPDATE_FAILED':
       case 'TASK_DELETE_FAILED':

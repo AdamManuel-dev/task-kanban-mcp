@@ -351,6 +351,14 @@ export class TagService {
         throw this.createError('TAG_NOT_FOUND', 'Tag not found', { id });
       }
 
+      if (!reassignToParent) {
+        // Delete children recursively first
+        const childTags = await this.getChildTags(id);
+        for (const child of childTags) {
+          await this.deleteTag(child.id, false);
+        }
+      }
+
       await this.db.transaction(async (db) => {
         if (reassignToParent) {
           await db.run(`
@@ -358,11 +366,6 @@ export class TagService {
             SET parent_tag_id = ? 
             WHERE parent_tag_id = ?
           `, [tag.parent_tag_id, id]);
-        } else {
-          const childTags = await this.getChildTags(id);
-          for (const child of childTags) {
-            await this.deleteTag(child.id, false);
-          }
         }
 
         await db.run('DELETE FROM task_tags WHERE tag_id = ?', [id]);
@@ -388,7 +391,7 @@ export class TagService {
         const [taskExists, tagExists, existingRelation] = await Promise.all([
           db.get('SELECT id FROM tasks WHERE id = ?', [taskId]),
           db.get('SELECT id FROM tags WHERE id = ?', [tagId]),
-          db.get('SELECT id FROM task_tags WHERE task_id = ? AND tag_id = ?', [taskId, tagId])
+          db.get('SELECT task_id FROM task_tags WHERE task_id = ? AND tag_id = ?', [taskId, tagId])
         ]);
 
         if (!taskExists) {
@@ -402,13 +405,13 @@ export class TagService {
         }
 
         await db.run(`
-          INSERT INTO task_tags (id, task_id, tag_id, created_at)
-          VALUES (?, ?, ?, ?)
-        `, [id, taskId, tagId, now]);
+          INSERT INTO task_tags (task_id, tag_id, created_at)
+          VALUES (?, ?, ?)
+        `, [taskId, tagId, now]);
       });
 
       const taskTag: TaskTag = {
-        id,
+        id, // Generate ID for interface compatibility
         task_id: taskId,
         tag_id: tagId,
         created_at: now,
@@ -500,7 +503,7 @@ export class TagService {
         SELECT 
           t.id as tag_id,
           t.name as tag_name,
-          COUNT(tt.id) as usage_count,
+          COUNT(tt.task_id) as usage_count,
           COUNT(DISTINCT tt.task_id) as unique_tasks,
           MIN(tt.created_at) as first_used,
           MAX(tt.created_at) as last_used
@@ -517,8 +520,8 @@ export class TagService {
         tag_name: stat.tag_name,
         usage_count: stat.usage_count,
         unique_tasks: stat.unique_tasks,
-        first_used: new Date(stat.first_used),
-        last_used: new Date(stat.last_used),
+        first_used: stat.first_used ? new Date(stat.first_used) : new Date(),
+        last_used: stat.last_used ? new Date(stat.last_used) : new Date(),
         trend: this.calculateTrend(stat.usage_count, days), // Simplified trend calculation
       }));
     } catch (error) {
