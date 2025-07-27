@@ -199,9 +199,8 @@ describe('Type Safety Tests', () => {
 
     describe('Object Type Guards', () => {
       it('should identify valid objects', () => {
-        const isObject = (value: unknown): value is Record<string, unknown> => {
-          return typeof value === 'object' && value !== null && !Array.isArray(value);
-        };
+        const isObject = (value: unknown): value is Record<string, unknown> =>
+          typeof value === 'object' && value !== null && !Array.isArray(value);
 
         expect(isObject({})).toBe(true);
         expect(isObject({ key: 'value' })).toBe(true);
@@ -240,9 +239,8 @@ describe('Type Safety Tests', () => {
 
     describe('String Type Guards', () => {
       it('should validate string types', () => {
-        const isNonEmptyString = (value: unknown): value is string => {
-          return typeof value === 'string' && value.length > 0;
-        };
+        const isNonEmptyString = (value: unknown): value is string =>
+          typeof value === 'string' && value.length > 0;
 
         expect(isNonEmptyString('valid')).toBe(true);
         expect(isNonEmptyString('')).toBe(false);
@@ -267,9 +265,8 @@ describe('Type Safety Tests', () => {
 
     describe('Number Type Guards', () => {
       it('should validate number types', () => {
-        const isPositiveNumber = (value: unknown): value is number => {
-          return typeof value === 'number' && !Number.isNaN(value) && value > 0;
-        };
+        const isPositiveNumber = (value: unknown): value is number =>
+          typeof value === 'number' && !Number.isNaN(value) && value > 0;
 
         expect(isPositiveNumber(5)).toBe(true);
         expect(isPositiveNumber(0.5)).toBe(true);
@@ -280,9 +277,8 @@ describe('Type Safety Tests', () => {
       });
 
       it('should validate integer types', () => {
-        const isInteger = (value: unknown): value is number => {
-          return typeof value === 'number' && Number.isInteger(value);
-        };
+        const isInteger = (value: unknown): value is number =>
+          typeof value === 'number' && Number.isInteger(value);
 
         expect(isInteger(5)).toBe(true);
         expect(isInteger(0)).toBe(true);
@@ -294,9 +290,8 @@ describe('Type Safety Tests', () => {
 
     describe('Date Type Guards', () => {
       it('should validate Date objects', () => {
-        const isValidDate = (value: unknown): value is Date => {
-          return value instanceof Date && !Number.isNaN(value.getTime());
-        };
+        const isValidDate = (value: unknown): value is Date =>
+          value instanceof Date && !Number.isNaN(value.getTime());
 
         expect(isValidDate(new Date())).toBe(true);
         expect(isValidDate(new Date('2023-01-01'))).toBe(true);
@@ -321,18 +316,14 @@ describe('Type Safety Tests', () => {
 
   describe('Union Type Handling', () => {
     it('should handle string | undefined unions', () => {
-      const processOptionalString = (value: string | undefined): string => {
-        return value ?? 'default';
-      };
+      const processOptionalString = (value: string | undefined): string => value ?? 'default';
 
       expect(processOptionalString('test')).toBe('test');
       expect(processOptionalString(undefined)).toBe('default');
     });
 
     it('should handle string | null unions', () => {
-      const processNullableString = (value: string | null): string => {
-        return value ?? 'default';
-      };
+      const processNullableString = (value: string | null): string => value ?? 'default';
 
       expect(processNullableString('test')).toBe('test');
       expect(processNullableString(null)).toBe('default');
@@ -366,9 +357,7 @@ describe('Type Safety Tests', () => {
     });
 
     it('should handle generic array functions', () => {
-      const getFirst = <T>(array: T[]): T | undefined => {
-        return array.length > 0 ? array[0] : undefined;
-      };
+      const getFirst = <T>(array: T[]): T | undefined => (array.length > 0 ? array[0] : undefined);
 
       expect(getFirst([1, 2, 3])).toBe(1);
       expect(getFirst<string>([])).toBeUndefined();
@@ -376,9 +365,7 @@ describe('Type Safety Tests', () => {
     });
 
     it('should handle constrained generics', () => {
-      const getId = <T extends { id: string }>(obj: T): string => {
-        return obj.id;
-      };
+      const getId = <T extends { id: string }>(obj: T): string => obj.id;
 
       expect(getId({ id: 'test', name: 'Test' })).toBe('test');
       expect(getId({ id: '123', value: 42 })).toBe('123');
@@ -433,16 +420,13 @@ describe('Type Safety Tests', () => {
     });
 
     it('should validate JSON structure', () => {
-      const isValidTaskJson = (value: unknown): value is { title: string; id: string } => {
-        return (
-          typeof value === 'object' &&
-          value !== null &&
-          'title' in value &&
-          'id' in value &&
-          typeof (value as any).title === 'string' &&
-          typeof (value as any).id === 'string'
-        );
-      };
+      const isValidTaskJson = (value: unknown): value is { title: string; id: string } =>
+        typeof value === 'object' &&
+        value !== null &&
+        'title' in value &&
+        'id' in value &&
+        typeof (value as any).title === 'string' &&
+        typeof (value as any).id === 'string';
 
       expect(isValidTaskJson({ title: 'Test', id: '123' })).toBe(true);
       expect(isValidTaskJson({ title: 'Test' })).toBe(false);
@@ -464,7 +448,7 @@ describe('Type Safety Tests', () => {
 
         return Object.entries(task.metadata)
           .filter(([, value]) => typeof value === 'string')
-          .map(([key, value]) => `${key}: ${value}`);
+          .map(([key, value]) => `${key}: ${String(value)}`);
       };
 
       const task: TaskWithMetadata = {
@@ -495,12 +479,11 @@ describe('Type Safety Tests', () => {
         [key: string]: unknown;
       }
 
-      const processDatabaseRows = (rows: DatabaseRow[]): Array<{ id: string; created: Date }> => {
-        return rows.map(row => ({
+      const processDatabaseRows = (rows: DatabaseRow[]): Array<{ id: string; created: Date }> =>
+        rows.map(row => ({
           id: row.id,
           created: new Date(row.created_at),
         }));
-      };
 
       const mockRows: DatabaseRow[] = [
         { id: '1', created_at: '2023-01-01T00:00:00Z', updated_at: '2023-01-01T00:00:00Z' },

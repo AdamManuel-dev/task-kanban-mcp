@@ -296,7 +296,9 @@ export function createTemplatesCommand(): Command {
         }
 
         // Extract variables from template
-        const variables = extractTemplateVariables(`${template.title_template} ${template.description_template || ''}`);
+        const variables = extractTemplateVariables(
+          `${template.title_template} ${template.description_template || ''}`
+        );
 
         let variableValues: Record<string, any> = {};
         if (variables.length > 0) {
@@ -475,4 +477,3 @@ function extractTemplateVariables(template: string): string[] {
 
   return Array.from(variables).sort();
 }
-

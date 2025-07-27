@@ -163,11 +163,11 @@ export function registerNoteCommands(program: Command): void {
         }
 
         // Use command line options or answers
-        noteData['title'] = options.title ?? noteData['title'];
-        noteData['content'] = options.content ?? noteData['content'];
-        noteData['category'] = options.category ?? noteData['category'] ?? 'general';
-        noteData['taskId'] = options.task ?? noteData['taskId'];
-        noteData['pinned'] = options.pin ?? noteData['pinned'] ?? false;
+        noteData.title = options.title ?? noteData.title;
+        noteData.content = options.content ?? noteData.content;
+        noteData.category = options.category ?? noteData.category ?? 'general';
+        noteData.taskId = options.task ?? noteData.taskId;
+        noteData.pinned = options.pin ?? noteData.pinned ?? false;
 
         try {
           const note = (await apiClient.createNote(noteData as CreateNoteRequest)) as any;
@@ -312,8 +312,8 @@ export function registerNoteCommands(program: Command): void {
 
       try {
         const searchParams: Record<string, string> = {};
-        if (options.category) searchParams['category'] = options.category;
-        if (options.limit) searchParams['limit'] = options.limit;
+        if (options.category) searchParams.category = options.category;
+        if (options.limit) searchParams.limit = options.limit;
 
         const notes = (await apiClient.searchNotes(query)) as any;
 

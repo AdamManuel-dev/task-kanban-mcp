@@ -32,8 +32,10 @@ export interface CLIServices {
  */
 export class CLIServiceContainer {
   private static instance: CLIServiceContainer;
+
   private services: CLIServices | null = null;
-  private db: DatabaseConnection;
+
+  private readonly db: DatabaseConnection;
 
   private constructor() {
     this.db = dbConnection;

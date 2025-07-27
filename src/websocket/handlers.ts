@@ -19,8 +19,10 @@
  * ```
  */
 
+import type { UpdateBoardRequest } from '@/types';
 import { logger } from '../utils/logger';
-import { CreateTaskRequest, TaskService, UpdateTaskRequest } from '../services/TaskService';
+import type { CreateTaskRequest, UpdateTaskRequest } from '../services/TaskService';
+import { TaskService } from '../services/TaskService';
 import { BoardService } from '../services/BoardService';
 import { NoteService } from '../services/NoteService';
 import { TagService } from '../services/TagService';
@@ -34,7 +36,6 @@ import type {
   UnsubscribeMessage,
   UpdateSubtaskMessage,
 } from './types';
-import { UpdateBoardRequest } from '@/types';
 
 /**
  * Handles WebSocket messages for real-time kanban board collaboration
@@ -194,15 +195,15 @@ export class MessageHandler {
           break;
 
         case 'user_presence':
-          await this.handleUserPresence(context);
+          this.handleUserPresence(context);
           break;
 
         case 'typing_start':
-          await this.handleTypingStart(context);
+          this.handleTypingStart(context);
           break;
 
         case 'typing_stop':
-          await this.handleTypingStop(context);
+          this.handleTypingStop(context);
           break;
 
         case 'add_dependency':
@@ -230,7 +231,7 @@ export class MessageHandler {
           break;
 
         case 'filter_subscription':
-          await this.handleFilterSubscription(context);
+          this.handleFilterSubscription(context);
           break;
 
         default:
@@ -1319,7 +1320,7 @@ export class MessageHandler {
 
     try {
       const existingSubtask = await this.taskService.getTaskById(payload?.subtaskId ?? 'unknown');
-      if (!existingSubtask || !existingSubtask.parent_task_id) {
+      if (!existingSubtask?.parent_task_id) {
         throw new Error('Subtask not found');
       }
 
@@ -1369,7 +1370,7 @@ export class MessageHandler {
 
     try {
       const subtask = await this.taskService.getTaskById(payload?.subtaskId ?? 'unknown');
-      if (!subtask || !subtask.parent_task_id) {
+      if (!subtask?.parent_task_id) {
         throw new Error('Subtask not found');
       }
 
@@ -1423,7 +1424,7 @@ export class MessageHandler {
       | undefined;
 
     try {
-      let results: any[] = [];
+      const results: any[] = [];
       let boardId = '';
 
       switch (payload?.operation) {
@@ -1481,7 +1482,7 @@ export class MessageHandler {
   /**
    * Handle filter subscription for client-side event filtering
    */
-  private async handleFilterSubscription(context: MessageContext): Promise<void> {
+  private handleFilterSubscription(context: MessageContext): void {
     const { message, clientId } = context;
     const payload = message.payload as
       | {
@@ -1519,7 +1520,7 @@ export class MessageHandler {
   private async calculateParentProgress(parentTaskId: string): Promise<number> {
     try {
       const taskWithSubtasks = await this.taskService.getTaskWithSubtasks(parentTaskId);
-      if (!taskWithSubtasks || !taskWithSubtasks.subtasks) {
+      if (!taskWithSubtasks?.subtasks) {
         return 0;
       }
 

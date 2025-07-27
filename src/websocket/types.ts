@@ -1,6 +1,6 @@
 import type { WebSocket } from 'ws';
-import { SubscriptionManager } from './subscriptions';
-import { WebSocketManager } from './server';
+import type { SubscriptionManager } from './subscriptions';
+import type { WebSocketManager } from './server';
 
 export interface WebSocketMessage {
   type: string;

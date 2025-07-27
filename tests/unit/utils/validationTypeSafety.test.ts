@@ -266,7 +266,7 @@ describe('Validation Type Safety Tests', () => {
         const xssAttempts = [
           '<script>alert("xss")</script>',
           '<img src="x" onerror="alert(1)">',
-          'javascript:void(0)',
+          'javascript:void(0)', // eslint-disable-line no-script-url
           '<svg onload="alert(1)">',
           '"><script>alert("xss")</script>',
         ];

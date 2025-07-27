@@ -96,16 +96,26 @@ export interface AlertRule {
 
 export class PerformanceMonitoringService extends EventEmitter {
   private static instance: PerformanceMonitoringService;
+
   private metrics: PerformanceMetrics[] = [];
-  private alertRules: AlertRule[] = [];
-  private alertStates = new Map<string, { triggered: boolean; since: number }>();
-  private startTime = Date.now();
-  private requestCounts = new Map<string, number>();
-  private responseTimes = new Map<string, number[]>();
-  private errorCounts = new Map<string, number>();
+
+  private readonly alertRules: AlertRule[] = [];
+
+  private readonly alertStates = new Map<string, { triggered: boolean; since: number }>();
+
+  private readonly startTime = Date.now();
+
+  private readonly requestCounts = new Map<string, number>();
+
+  private readonly responseTimes = new Map<string, number[]>();
+
+  private readonly errorCounts = new Map<string, number>();
+
   private cleanupInterval: NodeJS.Timeout | null = null;
-  private metricsRetentionMs = 24 * 60 * 60 * 1000; // 24 hours
-  private dbQueryTracker = new Map<string, { count: number; totalTime: number }>();
+
+  private readonly metricsRetentionMs = 24 * 60 * 60 * 1000; // 24 hours
+
+  private readonly dbQueryTracker = new Map<string, { count: number; totalTime: number }>();
 
   public static getInstance(): PerformanceMonitoringService {
     if (!PerformanceMonitoringService.instance) {

@@ -16,9 +16,10 @@ export interface Subscription {
 }
 
 export class SubscriptionManager {
-  setClientFilter(clientId: string, channel: string, filter: Record<string, unknown>) {
+  setClientFilter(_clientId: string, _channel: string, _filter: Record<string, unknown>): void {
     throw new Error('Method not implemented.');
   }
+
   private readonly subscriptions = new Map<string, Subscription>();
 
   private readonly clientSubscriptions = new Map<string, Set<string>>();

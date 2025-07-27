@@ -166,8 +166,8 @@ router.get(
 router.get(
   '/metrics/endpoint',
   asyncHandler(async (req, res) => {
-    const endpoint = req.query['endpoint'] as string;
-    const timeframe = req.query['timeframe'] ? Number(req.query['timeframe']) : undefined;
+    const endpoint = req.query.endpoint as string;
+    const timeframe = req.query.timeframe ? Number(req.query.timeframe) : undefined;
 
     const metrics = performanceMonitor.getEndpointMetrics(endpoint, timeframe);
 
@@ -453,7 +453,7 @@ router.get(
 
     // For now, return the trends from dashboard
     // In a full implementation, this would calculate trends for the specific timeframe
-    const trends = dashboard.trends;
+    const { trends } = dashboard;
 
     logger.debug('Performance trends requested', { hours });
 

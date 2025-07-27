@@ -277,7 +277,7 @@ describe('TaskHistoryService', () => {
       );
 
       expect(allHistory.length).toBeGreaterThanOrEqual(4); // title, priority, status, assignee
-      
+
       const fieldNames = allHistory.map(h => h.field_name);
       expect(fieldNames).toContain('title');
       expect(fieldNames).toContain('priority');

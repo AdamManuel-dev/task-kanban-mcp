@@ -3,7 +3,7 @@
  * Provides AI-powered task recommendation
  */
 
-import { Command } from 'commander';
+import type { Command } from 'commander';
 import type { CliComponents } from '../types';
 
 const getComponents = (): CliComponents => global.cliComponents;

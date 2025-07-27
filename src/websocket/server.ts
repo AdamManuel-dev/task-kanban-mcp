@@ -13,9 +13,10 @@ import { SubscriptionManager } from './subscriptions';
 import { RateLimiter } from './rateLimit';
 
 export class WebSocketManager {
-  sendSuccess(clientId: string, dependency: TaskDependency, id: string) {
+  sendSuccess(_clientId: string, _dependency: TaskDependency, _id: string): void {
     throw new Error('Method not implemented.');
   }
+
   static broadcastToChannel(
     _channel: string,
     _message: { type: string; payload: { task: Task } }

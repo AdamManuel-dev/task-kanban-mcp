@@ -3,7 +3,7 @@
  * Provides per-user rate limiting, adaptive limits, and comprehensive monitoring
  */
 
-import { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import { logger } from '@/utils/logger';
 import { config } from '@/config';
 
@@ -33,8 +33,11 @@ interface RateLimitAnalytics {
 
 export class EnhancedRateLimiter {
   private readonly globalLimits = new Map<string, RateLimitEntry>();
+
   private readonly userLimits = new Map<string, RateLimitEntry>();
+
   private readonly userConfigs = new Map<string, UserRateLimitConfig>();
+
   private readonly analytics: RateLimitAnalytics = {
     totalRequests: 0,
     blockedRequests: 0,
@@ -45,6 +48,7 @@ export class EnhancedRateLimiter {
   };
 
   private cleanupInterval: NodeJS.Timeout | null = null;
+
   private readonly cleanupIntervalMs = 300000; // 5 minutes
 
   constructor() {
