@@ -29,7 +29,7 @@ describe('HTTP API E2E Tests', () => {
     server = app.listen(0);
 
     // Generate test API key
-    testApiKey = `test-api-key-${Date.now()}`;
+    testApiKey = `test-api-key-${String(String(Date.now()))}`;
     process.env.KANBAN_API_KEYS = testApiKey;
   });
 
@@ -102,7 +102,10 @@ describe('HTTP API E2E Tests', () => {
     });
 
     it('should handle authorization header format', async () => {
-      await request(app).get('/api/tasks').set('Authorization', `Bearer ${testApiKey}`).expect(200);
+      await request(app)
+        .get('/api/tasks')
+        .set('Authorization', `Bearer ${String(testApiKey)}`)
+        .expect(200);
     });
   });
 
@@ -243,7 +246,7 @@ describe('HTTP API E2E Tests', () => {
       };
 
       const response = await request(app)
-        .put(`/api/tasks/${testTaskId}`)
+        .put(`/api/tasks/${String(testTaskId)}`)
         .set('X-API-Key', testApiKey)
         .send(updates)
         .expect(200);
@@ -266,24 +269,26 @@ describe('HTTP API E2E Tests', () => {
 
       // Delete task
       await request(app)
-        .delete(`/api/tasks/${taskToDelete.body.id}`)
+        .delete(`/api/tasks/${String(String(taskToDelete.body.id))}`)
         .set('X-API-Key', testApiKey)
         .expect(204);
 
       // Verify deletion
       await request(app)
-        .get(`/api/tasks/${taskToDelete.body.id}`)
+        .get(`/api/tasks/${String(String(taskToDelete.body.id))}`)
         .set('X-API-Key', testApiKey)
         .expect(404);
     });
 
     it('should prevent unauthorized task access', async () => {
       // Try to access task without proper authorization
-      await request(app).get(`/api/tasks/${testTaskId}`).expect(401);
+      await request(app)
+        .get(`/api/tasks/${String(testTaskId)}`)
+        .expect(401);
 
       // Try with invalid API key
       await request(app)
-        .get(`/api/tasks/${testTaskId}`)
+        .get(`/api/tasks/${String(testTaskId)}`)
         .set('X-API-Key', 'invalid-key')
         .expect(401);
     });
@@ -338,14 +343,14 @@ describe('HTTP API E2E Tests', () => {
 
       // Archive board
       await request(app)
-        .patch(`/api/boards/${boardId}`)
+        .patch(`/api/boards/${String(boardId)}`)
         .set('X-API-Key', testApiKey)
         .send({ archived: true })
         .expect(200);
 
       // Verify archived
       const archivedBoard = await request(app)
-        .get(`/api/boards/${boardId}`)
+        .get(`/api/boards/${String(boardId)}`)
         .set('X-API-Key', testApiKey)
         .expect(200);
 
@@ -434,7 +439,7 @@ describe('HTTP API E2E Tests', () => {
       const maliciousId = '<script>alert("error-xss")</script>';
 
       const response = await request(app)
-        .get(`/api/tasks/${maliciousId}`)
+        .get(`/api/tasks/${String(maliciousId)}`)
         .set('X-API-Key', testApiKey)
         .expect(404);
 
@@ -453,7 +458,7 @@ describe('HTTP API E2E Tests', () => {
             .post('/api/tasks')
             .set('X-API-Key', testApiKey)
             .send({
-              title: `Concurrent Task ${index}`,
+              title: `Concurrent Task ${String(index)}`,
               board_id: 'test-board',
               column_id: 'todo',
             })

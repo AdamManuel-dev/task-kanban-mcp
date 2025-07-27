@@ -8,7 +8,6 @@
 import { TaskService } from '@/services/TaskService';
 import { DatabaseConnection } from '@/database/connection';
 import { logger } from '@/utils/logger';
-import type { Task, TaskDependency } from '@/types';
 
 // Mock the logger to avoid console output during tests
 jest.mock('@/utils/logger', () => ({
@@ -267,7 +266,7 @@ describe('TaskService', () => {
       // Create more tasks for pagination test
       for (let i = 3; i <= 5; i++) {
         await taskService.createTask({
-          title: `Task ${i}`,
+          title: `Task ${String(i)}`,
           board_id: boardId,
           column_id: columnId,
         });
@@ -373,7 +372,9 @@ describe('TaskService', () => {
       expect(originalTime).not.toBeNaN();
 
       // Wait a bit to ensure timestamp difference
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise<void>(resolve => {
+        setTimeout(resolve, 10);
+      });
 
       const updatedTask = await taskService.updateTask(taskId, {
         title: 'New timestamp test',

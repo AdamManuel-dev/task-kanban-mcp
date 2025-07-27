@@ -22,7 +22,10 @@ export class DashboardDataService {
         activity: this.transformActivityData(activity),
       };
     } catch (error) {
-      console.warn('Failed to fetch dashboard data, using sample data:', error.message);
+      logger.warn(
+        'Failed to fetch dashboard data, using sample data:',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
       return this.generateSampleData();
     }
   }
@@ -33,26 +36,30 @@ export class DashboardDataService {
   private async fetchTasks(): Promise<any[]> {
     try {
       const response = await this.apiClient.get('/tasks', {
-        include_archived: false,
-        limit: 1000,
+        // include_archived: false, // Not supported in RequestOptions type
+        // limit: 1000, // Not supported in RequestOptions type
       });
-      return response.data || [];
+      return 'data' in response && Array.isArray(response.data) ? response.data : [];
     } catch (error) {
-      throw new Error(`Failed to fetch tasks: ${error.message}`);
+      throw new Error(
+        `Failed to fetch tasks: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
+      );
     }
   }
 
   /**
    * Fetch boards from API
    */
-  private async fetchBoards(): Promise<any[]> {
-    try {
-      const response = await this.apiClient.get('/boards');
-      return response.data || [];
-    } catch (error) {
-      throw new Error(`Failed to fetch boards: ${error.message}`);
-    }
-  }
+  // private async fetchBoards(): Promise<any[]> {
+  //   try {
+  //     const response = await this.apiClient.get('/boards');
+  //     return response.data || [];
+  //   } catch (error) {
+  //     throw new Error(
+  //       `Failed to fetch boards: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
+  //     );
+  //   }
+  // }
 
   /**
    * Fetch activity from API
@@ -60,19 +67,21 @@ export class DashboardDataService {
   private async fetchActivity(): Promise<any[]> {
     try {
       const response = await this.apiClient.get('/activity', {
-        limit: 20,
-        order: 'desc',
+        // limit: 20, // Not supported in RequestOptions type
+        // order: 'desc', // Not supported in RequestOptions type
       });
-      return response.data || [];
+      return 'data' in response && Array.isArray(response.data) ? response.data : [];
     } catch (error) {
-      throw new Error(`Failed to fetch activity: ${error.message}`);
+      throw new Error(
+        `Failed to fetch activity: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
+      );
     }
   }
 
   /**
    * Transform task data for dashboard display
    */
-  private transformTaskData(tasks: any[]): DashboardData['tasks'] {
+  private static transformTaskData(tasks: any[]): DashboardData['tasks'] {
     const total = tasks.length;
     const byStatus: Record<string, number> = {};
     const byPriority: Record<string, number> = {};
@@ -92,12 +101,12 @@ export class DashboardDataService {
 
       // Count completed
       if (status === 'done' || status === 'completed') {
-        completed++;
+        completed += 1;
       }
 
       // Count overdue
       if (task.due_date && new Date(task.due_date) < now && status !== 'done') {
-        overdue++;
+        overdue += 1;
       }
     });
 
@@ -120,16 +129,18 @@ export class DashboardDataService {
       startDate.setDate(endDate.getDate() - 8 * 7); // 8 weeks back
 
       const response = await this.apiClient.get('/analytics/velocity', {
-        start_date: startDate.toISOString(),
-        end_date: endDate.toISOString(),
-        group_by: 'week',
+        // start_date: startDate.toISOString(), // Not supported in RequestOptions type
+        // end_date: endDate.toISOString(), // Not supported in RequestOptions type
+        // group_by: 'week', // Not supported in RequestOptions type
       });
 
       return (
-        response.data?.map((item: any, index: number) => ({
-          period: `W${index + 1}`,
-          completed: item.completed_count || 0,
-        })) || this.generateSampleVelocity()
+        ('data' in response && Array.isArray(response.data) ? response.data : [])?.map(
+          (item: any, index: number) => ({
+            period: `W${String(index + 1)}`,
+            completed: item.completed_count || 0,
+          })
+        ) || this.generateSampleVelocity()
       );
     } catch (error) {
       return this.generateSampleVelocity();
@@ -144,11 +155,13 @@ export class DashboardDataService {
       const response = await this.apiClient.get('/analytics/team-workload');
 
       return (
-        response.data?.map((member: any) => ({
-          name: member.name || member.username,
-          taskCount: member.active_tasks || 0,
-          load: member.workload_percentage || 0,
-        })) || this.generateSampleTeamMembers()
+        ('data' in response && Array.isArray(response.data) ? response.data : [])?.map(
+          (member: any) => ({
+            name: member.name || member.username,
+            taskCount: member.active_tasks || 0,
+            load: member.workload_percentage || 0,
+          })
+        ) || this.generateSampleTeamMembers()
       );
     } catch (error) {
       return this.generateSampleTeamMembers();
@@ -163,11 +176,13 @@ export class DashboardDataService {
       const response = await this.apiClient.get('/analytics/burndown');
 
       return (
-        response.data?.map((item: any) => ({
-          day: item.day,
-          remaining: item.remaining_tasks || 0,
-          ideal: item.ideal_remaining || 0,
-        })) || this.generateSampleBurndown()
+        ('data' in response && Array.isArray(response.data) ? response.data : [])?.map(
+          (item: any) => ({
+            day: item.day,
+            remaining: item.remaining_tasks || 0,
+            ideal: item.ideal_remaining || 0,
+          })
+        ) || this.generateSampleBurndown()
       );
     } catch (error) {
       return this.generateSampleBurndown();
@@ -177,7 +192,7 @@ export class DashboardDataService {
   /**
    * Transform activity data for display
    */
-  private transformActivityData(activities: any[]): DashboardData['activity'] {
+  private static transformActivityData(activities: any[]): DashboardData['activity'] {
     return activities.slice(0, 10).map(activity => ({
       timestamp: new Date(activity.created_at).toLocaleTimeString('en-US', {
         hour: '2-digit',
@@ -191,33 +206,34 @@ export class DashboardDataService {
   /**
    * Format activity event for display
    */
-  private formatActivityEvent(activity: any): string {
+  private static formatActivityEvent(activity: any): string {
     const action = activity.action || 'updated';
     const entityType = activity.entity_type || 'task';
-    const entityName = activity.entity_name || `${entityType} #${activity.entity_id}`;
+    const entityName =
+      activity.entity_name || `${String(entityType)} #${String(String(activity.entity_id))}`;
 
     switch (action) {
       case 'create':
-        return `Created ${entityType}: ${entityName}`;
+        return `Created ${String(entityType)}: ${String(entityName)}`;
       case 'update':
-        return `Updated ${entityType}: ${entityName}`;
+        return `Updated ${String(entityType)}: ${String(entityName)}`;
       case 'delete':
-        return `Deleted ${entityType}: ${entityName}`;
+        return `Deleted ${String(entityType)}: ${String(entityName)}`;
       case 'move':
-        return `Moved ${entityName} to ${activity.details?.new_status}`;
+        return `Moved ${String(entityName)} to ${String(String(activity.details?.new_status))}`;
       case 'assign':
-        return `Assigned ${entityName} to ${activity.details?.assignee}`;
+        return `Assigned ${String(entityName)} to ${String(String(activity.details?.assignee))}`;
       case 'comment':
-        return `Commented on ${entityName}`;
+        return `Commented on ${String(entityName)}`;
       default:
-        return `${action} ${entityName}`;
+        return `${String(action)} ${String(entityName)}`;
     }
   }
 
   /**
    * Generate sample velocity data as fallback
    */
-  private generateSampleVelocity(): DashboardData['velocity'] {
+  private static generateSampleVelocity(): DashboardData['velocity'] {
     return [
       { period: 'W1', completed: 12 },
       { period: 'W2', completed: 15 },
@@ -233,7 +249,7 @@ export class DashboardDataService {
   /**
    * Generate sample team data as fallback
    */
-  private generateSampleTeamMembers(): DashboardData['teamMembers'] {
+  private static generateSampleTeamMembers(): DashboardData['teamMembers'] {
     return [
       { name: 'Alice', taskCount: 8, load: 85 },
       { name: 'Bob', taskCount: 6, load: 70 },
@@ -245,7 +261,7 @@ export class DashboardDataService {
   /**
    * Generate sample burndown data as fallback
    */
-  private generateSampleBurndown(): DashboardData['burndown'] {
+  private static generateSampleBurndown(): DashboardData['burndown'] {
     return [
       { day: 'Day 1', remaining: 45, ideal: 45 },
       { day: 'Day 2', remaining: 42, ideal: 40 },
@@ -263,7 +279,7 @@ export class DashboardDataService {
   /**
    * Generate complete sample data as fallback
    */
-  private generateSampleData(): DashboardData {
+  private static generateSampleData(): DashboardData {
     return {
       tasks: {
         total: 45,

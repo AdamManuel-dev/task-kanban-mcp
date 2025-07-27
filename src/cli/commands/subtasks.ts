@@ -26,7 +26,7 @@ export function registerSubtaskCommands(program: Command): void {
         // Verify parent task exists
         const parentTask = (await apiClient.getTask(parentId)) as any;
         if (!parentTask) {
-          formatter.error(`Parent task ${parentId} not found`);
+          formatter.error(`Parent task ${String(parentId)} not found`);
           process.exit(1);
         }
 
@@ -94,11 +94,11 @@ export function registerSubtaskCommands(program: Command): void {
         }
 
         const subtask = (await apiClient.createTask(subtaskData)) as any;
-        formatter.success(`Subtask created successfully: ${subtask.id}`);
+        formatter.success(`Subtask created successfully: ${String(String(subtask.id))}`);
         formatter.output(subtask);
       } catch (error) {
         formatter.error(
-          `Failed to create subtask: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to create subtask: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -125,7 +125,7 @@ export function registerSubtaskCommands(program: Command): void {
         const subtasks = (await apiClient.getTasks(params)) as any;
 
         if (!subtasks || subtasks.length === 0) {
-          formatter.info(`No subtasks found for task ${parentId}`);
+          formatter.info(`No subtasks found for task ${String(parentId)}`);
           return;
         }
 
@@ -135,7 +135,7 @@ export function registerSubtaskCommands(program: Command): void {
         });
       } catch (error) {
         formatter.error(
-          `Failed to list subtasks: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to list subtasks: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -154,14 +154,14 @@ export function registerSubtaskCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        await apiClient.request(`/api/tasks/${taskId}/dependencies`, {
+        await apiClient.request(`/api/tasks/${String(taskId)}/dependencies`, {
           method: 'POST',
           body: { dependsOn: dependsOnId },
         });
-        formatter.success(`Task ${taskId} now depends on task ${dependsOnId}`);
+        formatter.success(`Task ${String(taskId)} now depends on task ${String(dependsOnId)}`);
       } catch (error) {
         formatter.error(
-          `Failed to add dependency: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to add dependency: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -174,15 +174,18 @@ export function registerSubtaskCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        await apiClient.request(`/api/tasks/${taskId}/dependencies/${dependsOnId}`, {
-          method: 'DELETE',
-        });
+        await apiClient.request(
+          `/api/tasks/${String(taskId)}/dependencies/${String(dependsOnId)}`,
+          {
+            method: 'DELETE',
+          }
+        );
         formatter.success(
-          `Removed dependency: task ${taskId} no longer depends on task ${dependsOnId}`
+          `Removed dependency: task ${String(taskId)} no longer depends on task ${String(dependsOnId)}`
         );
       } catch (error) {
         formatter.error(
-          `Failed to remove dependency: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to remove dependency: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -198,14 +201,16 @@ export function registerSubtaskCommands(program: Command): void {
       try {
         if (options.blocked) {
           // Show tasks that are blocked by this task
-          const blockedTasks = (await apiClient.request(`/api/tasks/${taskId}/blocking`)) as any;
+          const blockedTasks = (await apiClient.request(
+            `/api/tasks/${String(taskId)}/blocking`
+          )) as any;
 
           if (!blockedTasks || blockedTasks.length === 0) {
-            formatter.info(`No tasks are blocked by task ${taskId}`);
+            formatter.info(`No tasks are blocked by task ${String(taskId)}`);
             return;
           }
 
-          formatter.info(`Tasks blocked by ${taskId}:`);
+          formatter.info(`Tasks blocked by ${String(taskId)}:`);
           formatter.output(blockedTasks, {
             fields: ['id', 'title', 'status', 'priority'],
             headers: ['ID', 'Title', 'Status', 'Priority'],
@@ -213,15 +218,15 @@ export function registerSubtaskCommands(program: Command): void {
         } else {
           // Show dependencies of this task
           const dependencies = (await apiClient.request(
-            `/api/tasks/${taskId}/dependencies`
+            `/api/tasks/${String(taskId)}/dependencies`
           )) as any;
 
           if (!dependencies || dependencies.length === 0) {
-            formatter.info(`Task ${taskId} has no dependencies`);
+            formatter.info(`Task ${String(taskId)} has no dependencies`);
             return;
           }
 
-          formatter.info(`Dependencies for task ${taskId}:`);
+          formatter.info(`Dependencies for task ${String(taskId)}:`);
           formatter.output(dependencies, {
             fields: ['id', 'title', 'status', 'priority'],
             headers: ['ID', 'Title', 'Status', 'Priority'],
@@ -229,7 +234,7 @@ export function registerSubtaskCommands(program: Command): void {
         }
       } catch (error) {
         formatter.error(
-          `Failed to list dependencies: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to list dependencies: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -244,22 +249,24 @@ export function registerSubtaskCommands(program: Command): void {
 
       try {
         const depth = parseInt(options.depth, 10);
-        const graph = (await apiClient.request(`/api/tasks/${taskId}/dependency-graph`, {
+        const graph = (await apiClient.request(`/api/tasks/${String(taskId)}/dependency-graph`, {
           params: { depth: depth.toString() },
         })) as any;
 
         if (!graph) {
-          formatter.info(`No dependency graph available for task ${taskId}`);
+          formatter.info(`No dependency graph available for task ${String(taskId)}`);
           return;
         }
 
-        formatter.info(`Dependency graph for task ${taskId}:`);
+        formatter.info(`Dependency graph for task ${String(taskId)}:`);
 
         // Simple text-based visualization
         const printNode = (node: any, indent = 0) => {
           const prefix = '  '.repeat(indent) + (indent > 0 ? '└─ ' : '');
           const status = node.status === 'completed' ? '✓' : node.status === 'blocked' ? '⚠' : '○';
-          console.log(`${prefix}${status} ${node.id}: ${node.title} (${node.status})`);
+          logger.log(
+            `${String(prefix)}${String(status)} ${String(String(node.id))}: ${String(String(node.title))} (${String(String(node.status))})`
+          );
 
           if (node.dependencies && node.dependencies.length > 0) {
             node.dependencies.forEach((dep: any) => printNode(dep, indent + 1));
@@ -269,7 +276,7 @@ export function registerSubtaskCommands(program: Command): void {
         printNode(graph);
       } catch (error) {
         formatter.error(
-          `Failed to visualize dependencies: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to visualize dependencies: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }

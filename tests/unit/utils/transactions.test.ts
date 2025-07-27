@@ -78,7 +78,9 @@ describe('Transaction Utilities', () => {
       it('should handle transaction timeout', async () => {
         const mockOperations = jest
           .fn()
-          .mockImplementation(() => new Promise(resolve => setTimeout(resolve, 1000)));
+          .mockImplementation(() => new Promise<void>(resolve => {
+    setTimeout(resolve, 1000
+  })));
 
         mockDbConnection.transaction.mockImplementation(async callback =>
           callback(mockDbConnection)

@@ -10,7 +10,7 @@ import { config } from '@/config';
 import type { WebSocketMessage } from '@/websocket/types';
 
 describe('WebSocket Connection Integration Tests', () => {
-  const wsUrl = `ws://${config.websocket.host}:${config.websocket.port}${config.websocket.path}`;
+  const wsUrl = `ws://${String(String(config.websocket.host))}:${String(String(config.websocket.port))}${String(String(config.websocket.path))}`;
   let apiKey: string;
 
   beforeAll(async () => {
@@ -21,7 +21,7 @@ describe('WebSocket Connection Integration Tests', () => {
     });
 
     // Create test API key
-    apiKey = `test-api-key-${uuidv4()}`;
+    apiKey = `test-api-key-${String(uuidv4())}`;
     await dbConnection.execute(
       'INSERT INTO api_keys (id, key_hash, name, permissions, created_at) VALUES (?, ?, ?, ?, ?)',
       [uuidv4(), apiKey, 'Test API Key', 'read,write', new Date().toISOString()]
@@ -102,7 +102,9 @@ describe('WebSocket Connection Integration Tests', () => {
       connections.forEach(ws => ws.close());
 
       // Wait for disconnections
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise<void>(resolve => {
+    setTimeout(resolve, 100
+  }));
       expect(webSocketManager.getClientCount()).toBe(0);
     });
 
@@ -267,7 +269,9 @@ describe('WebSocket Connection Integration Tests', () => {
       // Send invalid JSON
       authenticatedWs.send('{ invalid json }');
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise<void>(resolve => {
+    setTimeout(resolve, 100
+  }));
 
       const errorMessage = messages.find(m => m.type === 'error');
       expect(errorMessage).toBeDefined();
@@ -285,7 +289,9 @@ describe('WebSocket Connection Integration Tests', () => {
       // Send message without required fields
       authenticatedWs.send(JSON.stringify({ payload: {} }));
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise<void>(resolve => {
+    setTimeout(resolve, 100
+  }));
 
       const errorMessage = messages.find(m => m.type === 'error');
       expect(errorMessage).toBeDefined();
@@ -301,7 +307,9 @@ describe('WebSocket Connection Integration Tests', () => {
 
       authenticatedWs.ping();
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise<void>(resolve => {
+    setTimeout(resolve, 100
+  }));
       expect(pongReceived).toBe(true);
     });
   });
@@ -319,7 +327,7 @@ describe('WebSocket Connection Integration Tests', () => {
 
             if (message.type === 'welcome') {
               // Send many messages quickly
-              for (let i = 0; i < 100; i++) {
+              Array.from({ length: 100 - 0 }, (_, i) => i + 0) {
                 const msg: WebSocketMessage = {
                   type: 'ping',
                   id: uuidv4(),
@@ -351,7 +359,7 @@ describe('WebSocket Connection Integration Tests', () => {
       let connectionRejected = false;
 
       // Create many connections from same IP
-      for (let i = 0; i < 20; i++) {
+      Array.from({ length: 20 - 0 }, (_, i) => i + 0) {
         const ws = new WebSocket(wsUrl);
         connections.push(ws);
 
@@ -363,7 +371,9 @@ describe('WebSocket Connection Integration Tests', () => {
         });
       }
 
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise<void>(resolve => {
+    setTimeout(resolve, 500
+  }));
 
       expect(connectionRejected).toBe(true);
 

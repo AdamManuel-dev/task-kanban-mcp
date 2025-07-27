@@ -39,18 +39,20 @@ export function registerSearchCommands(program: Command): void {
         const results = await apiClient.searchTasks(query, params);
 
         if (!results || (results as any).length === 0) {
-          formatter.info(`No tasks found for "${query}"`);
+          formatter.info(`No tasks found for "${String(query)}"`);
           return;
         }
 
-        formatter.success(`Found ${(results as any).length} tasks matching "${query}"`);
+        formatter.success(
+          `Found ${String(String((results as any).length))} tasks matching "${String(query)}"`
+        );
         formatter.output(results, {
           fields: ['id', 'title', 'status', 'priority', 'relevance', 'board'],
           headers: ['ID', 'Title', 'Status', 'Priority', 'Relevance', 'Board'],
         });
       } catch (error) {
         formatter.error(
-          `Failed to search tasks: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to search tasks: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -79,18 +81,20 @@ export function registerSearchCommands(program: Command): void {
         const results = await apiClient.searchNotes(query);
 
         if (!results || (results as any).length === 0) {
-          formatter.info(`No notes found for "${query}"`);
+          formatter.info(`No notes found for "${String(query)}"`);
           return;
         }
 
-        formatter.success(`Found ${(results as any).length} notes matching "${query}"`);
+        formatter.success(
+          `Found ${String(String((results as any).length))} notes matching "${String(query)}"`
+        );
         formatter.output(results, {
           fields: ['id', 'title', 'category', 'relevance', 'createdAt'],
           headers: ['ID', 'Title', 'Category', 'Relevance', 'Created'],
         });
       } catch (error) {
         formatter.error(
-          `Failed to search notes: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to search notes: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -107,18 +111,20 @@ export function registerSearchCommands(program: Command): void {
         const results = await apiClient.searchTags(query);
 
         if (!results || (results as any).length === 0) {
-          formatter.info(`No tags found for "${query}"`);
+          formatter.info(`No tags found for "${String(query)}"`);
           return;
         }
 
-        formatter.success(`Found ${(results as any).length} tags matching "${query}"`);
+        formatter.success(
+          `Found ${String(String((results as any).length))} tags matching "${String(query)}"`
+        );
         formatter.output(results, {
           fields: ['id', 'name', 'description', 'taskCount', 'parentId'],
           headers: ['ID', 'Name', 'Description', 'Tasks', 'Parent'],
         });
       } catch (error) {
         formatter.error(
-          `Failed to search tags: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to search tags: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -162,7 +168,9 @@ export function registerSearchCommands(program: Command): void {
           totalResults += count;
 
           if (count > 0 && type) {
-            console.log(`\n--- ${type.toUpperCase()} (${count} results) ---`);
+            logger.log(
+              `\n--- ${String(String(type.toUpperCase()))} (${String(count)} results) ---`
+            );
 
             if (type === 'tasks') {
               formatter.output(result, {
@@ -184,13 +192,13 @@ export function registerSearchCommands(program: Command): void {
         });
 
         if (totalResults === 0) {
-          formatter.info(`No results found for "${query}"`);
+          formatter.info(`No results found for "${String(query)}"`);
         } else {
-          formatter.success(`Found ${totalResults} total results for "${query}"`);
+          formatter.success(`Found ${String(totalResults)} total results for "${String(query)}"`);
         }
       } catch (error) {
         formatter.error(
-          `Failed to search: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to search: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -237,14 +245,14 @@ export function registerSearchCommands(program: Command): void {
           return;
         }
 
-        formatter.success(`Found ${results.length} results with advanced filters`);
+        formatter.success(`Found ${String(String(results.length))} results with advanced filters`);
         formatter.output(results, {
           fields: ['id', 'title', 'status', 'priority', 'dueDate', 'createdAt'],
           headers: ['ID', 'Title', 'Status', 'Priority', 'Due Date', 'Created'],
         });
       } catch (error) {
         formatter.error(
-          `Failed to perform advanced search: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to perform advanced search: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }

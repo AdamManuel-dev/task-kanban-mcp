@@ -7,13 +7,7 @@
 
 import { BoardService } from '../../../src/services/BoardService';
 import { DatabaseConnection } from '../../../src/database/connection';
-import type {
-  Board,
-  BoardWithColumns,
-  BoardWithStats,
-  CreateBoardRequest,
-  UpdateBoardRequest,
-} from '../../../src/types';
+import type { CreateBoardRequest } from '../../../src/types';
 
 describe('BoardService', () => {
   let boardService: BoardService;
@@ -183,7 +177,7 @@ describe('BoardService', () => {
     it('should handle pagination', async () => {
       // Create multiple boards
       for (let i = 1; i <= 5; i++) {
-        await boardService.createBoard({ name: `Pagination Board ${i}` });
+        await boardService.createBoard({ name: `Pagination Board ${String(i)}` });
       }
 
       const firstPage = await boardService.getBoards({ limit: 2, offset: 0 });
@@ -267,7 +261,9 @@ describe('BoardService', () => {
       expect(originalBoard).toBeDefined();
 
       // Wait a bit to ensure timestamp difference
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise<void>(resolve => {
+        setTimeout(resolve, 10);
+      });
 
       const updatedBoard = await boardService.updateBoard(testBoardId, {
         name: 'Timestamp Test',

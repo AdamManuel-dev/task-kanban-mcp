@@ -297,7 +297,7 @@ describe('ContextService - Core Functionality', () => {
 
     it('should recommend reducing WIP for many active tasks', async () => {
       const manyActiveTasks = Array.from({ length: 5 }, (_, i) =>
-        createTestTask({ id: `task-${i}`, status: 'in_progress' })
+        createTestTask({ id: `task-${String(i)}`, status: 'in_progress' })
       );
 
       mockTaskService.getTasks.mockResolvedValue(manyActiveTasks);

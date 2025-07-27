@@ -16,13 +16,13 @@ export function registerConfigCommands(program: Command): void {
       const { config, formatter } = getComponents();
 
       if (options.path) {
-        console.log(config.getConfigPath());
+        logger.log(config.getConfigPath());
         return;
       }
 
       if (!config.exists()) {
         formatter.warn('No configuration file found');
-        console.log('Run "kanban config init" to create initial configuration');
+        logger.log('Run "kanban config init" to create initial configuration');
         return;
       }
 
@@ -32,7 +32,7 @@ export function registerConfigCommands(program: Command): void {
       if (!validation.valid) {
         formatter.warn('Configuration has issues:');
         validation.errors.forEach(error => formatter.error(error));
-        console.log();
+        logger.log();
       }
 
       formatter.output(configData);
@@ -61,7 +61,7 @@ export function registerConfigCommands(program: Command): void {
           apiClient.updateConfig();
         }
 
-        formatter.success(`Set ${key} = ${parsedValue}`);
+        formatter.success(`Set ${String(key)} = ${String(parsedValue)}`);
 
         // Validate after setting
         const validation = config.validate();
@@ -71,7 +71,7 @@ export function registerConfigCommands(program: Command): void {
         }
       } catch (error) {
         formatter.error(
-          `Failed to set configuration: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to set configuration: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -90,7 +90,7 @@ export function registerConfigCommands(program: Command): void {
 
       const value = config.get(key);
       if (value === undefined) {
-        formatter.error(`Configuration key "${key}" not found`);
+        formatter.error(`Configuration key "${String(key)}" not found`);
         process.exit(1);
       }
 
@@ -189,13 +189,13 @@ export function registerConfigCommands(program: Command): void {
             }
           } catch (error) {
             formatter.warn(
-              `Connection test failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+              `Connection test failed: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
             );
           }
         }
       } catch (error) {
         formatter.error(
-          `Failed to save configuration: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to save configuration: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -218,7 +218,7 @@ export function registerConfigCommands(program: Command): void {
         formatter.success('Configuration is valid');
       } else {
         formatter.error('Configuration validation failed:');
-        validation.errors.forEach(error => formatter.error(`  ${error}`));
+        validation.errors.forEach(error => formatter.error(`  ${String(error)}`));
         process.exit(1);
       }
     });
@@ -252,7 +252,7 @@ export function registerConfigCommands(program: Command): void {
         formatter.success('Configuration reset to defaults');
       } catch (error) {
         formatter.error(
-          `Failed to reset configuration: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to reset configuration: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -272,11 +272,11 @@ export function registerConfigCommands(program: Command): void {
       const validation = config.validate();
       if (!validation.valid) {
         formatter.error('Configuration is invalid:');
-        validation.errors.forEach(error => formatter.error(`  ${error}`));
+        validation.errors.forEach(error => formatter.error(`  ${String(error)}`));
         process.exit(1);
       }
 
-      formatter.info(`Testing connection to ${config.getServerUrl()}...`);
+      formatter.info(`Testing connection to ${String(String(config.getServerUrl()))}...`);
 
       try {
         const connected = await apiClient.testConnection();
@@ -298,7 +298,7 @@ export function registerConfigCommands(program: Command): void {
         }
       } catch (error) {
         formatter.error(
-          `✗ Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `✗ Connection failed: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }

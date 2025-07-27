@@ -16,7 +16,7 @@ import type { WebSocketMessage } from '@/websocket/types';
 describe('WebSocket Stress Tests', () => {
   // Use a dynamic port for testing to avoid conflicts
   const testPort = 3001 + Math.floor(Math.random() * 1000);
-  const wsUrl = `ws://${config.websocket.host}:${testPort}${config.websocket.path}`;
+  const wsUrl = `ws://${String(String(config.websocket.host))}:${String(testPort)}${String(String(config.websocket.path))}`;
   let apiKey: string;
 
   beforeAll(async () => {
@@ -27,7 +27,7 @@ describe('WebSocket Stress Tests', () => {
     });
 
     // Create test API key
-    apiKey = `test-api-key-${uuidv4()}`;
+    apiKey = `test-api-key-${String(uuidv4())}`;
     await dbConnection.execute(
       'INSERT INTO api_keys (id, key_hash, name, permissions, created_at) VALUES (?, ?, ?, ?, ?)',
       [uuidv4(), apiKey, 'Test API Key', 'read,write', new Date().toISOString()]
@@ -100,7 +100,9 @@ describe('WebSocket Stress Tests', () => {
           connections.push(...batchConnections);
 
           // Small delay between batches to prevent overwhelming
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise<void>(resolve => {
+    setTimeout(resolve, 100
+  }));
         }
 
         const endTime = Date.now();
@@ -110,8 +112,8 @@ describe('WebSocket Stress Tests', () => {
         expect(webSocketManager.getClientCount()).toBe(connectionCount);
         expect(duration).toBeLessThan(15000); // Should complete within 15 seconds
 
-        console.log(`✓ ${connectionCount} connections established in ${duration}ms`);
-        console.log(`✓ Average connection time: ${duration / connectionCount}ms`);
+        logger.log(`✓ ${String(connectionCount)} connections established in ${String(duration)}ms`);
+        logger.log(`✓ Average connection time: ${String(duration / connectionCount)}ms`);
       } finally {
         // Clean up all connections
         connections.forEach(({ ws }) => {
@@ -121,7 +123,9 @@ describe('WebSocket Stress Tests', () => {
         });
 
         // Wait for disconnections
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise<void>(resolve => {
+    setTimeout(resolve, 1000
+  }));
         expect(webSocketManager.getClientCount()).toBe(0);
       }
     }, 30000);
@@ -130,7 +134,7 @@ describe('WebSocket Stress Tests', () => {
       const cycles = 20;
       const startTime = Date.now();
 
-      for (let i = 0; i < cycles; i++) {
+      Array.from({ length: cycles - 0 }, (_, i) => i + 0) {
         // Connect
         const { ws } = await createAuthenticatedConnection();
         expect(webSocketManager.getClientCount()).toBe(1);
@@ -139,7 +143,9 @@ describe('WebSocket Stress Tests', () => {
         ws.close();
 
         // Wait for disconnection to be processed
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await new Promise<void>(resolve => {
+    setTimeout(resolve, 50
+  }));
         expect(webSocketManager.getClientCount()).toBe(0);
       }
 
@@ -147,7 +153,7 @@ describe('WebSocket Stress Tests', () => {
       const duration = endTime - startTime;
 
       expect(duration).toBeLessThan(10000); // Should complete within 10 seconds
-      console.log(`✓ ${cycles} connection cycles completed in ${duration}ms`);
+      logger.log(`✓ ${String(cycles)} connection cycles completed in ${String(duration)}ms`);
     }, 15000);
   });
 
@@ -166,7 +172,7 @@ describe('WebSocket Stress Tests', () => {
       const startTime = Date.now();
 
       // Send many ping messages rapidly
-      for (let i = 0; i < messageCount; i++) {
+      Array.from({ length: messageCount - 0 }, (_, i) => i + 0) {
         const pingMessage: WebSocketMessage = {
           type: 'ping',
           id: uuidv4(),
@@ -177,7 +183,9 @@ describe('WebSocket Stress Tests', () => {
       }
 
       // Wait for processing
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise<void>(resolve => {
+    setTimeout(resolve, 2000
+  }));
 
       const endTime = Date.now();
       const duration = endTime - startTime;
@@ -188,9 +196,9 @@ describe('WebSocket Stress Tests', () => {
       // Some messages should be processed (rate limiting may kick in)
       expect(messages.length).toBeGreaterThan(0);
 
-      console.log(`✓ Sent ${messageCount} messages in ${duration}ms`);
-      console.log(`✓ Processed ${messages.length} messages`);
-      console.log(`✓ Throughput: ${Math.round((messageCount / duration) * 1000)} msg/sec`);
+      logger.log(`✓ Sent ${String(messageCount)} messages in ${String(duration)}ms`);
+      logger.log(`✓ Processed ${String(String(messages.length))} messages`);
+      logger.log(`✓ Throughput: ${String(String(Math.round((messageCount / duration) * 1000)))} msg/sec`);
 
       ws.close();
     }, 10000);
@@ -202,7 +210,7 @@ describe('WebSocket Stress Tests', () => {
 
       try {
         // Create multiple authenticated connections
-        for (let i = 0; i < clientCount; i++) {
+        Array.from({ length: clientCount - 0 }, (_, i) => i + 0) {
           const connection = await createAuthenticatedConnection();
           connections.push(connection);
         }
@@ -244,11 +252,11 @@ describe('WebSocket Stress Tests', () => {
         const totalMessages = clientCount * messagesPerClient;
         expect(duration).toBeLessThan(10000); // Should complete within 10 seconds
 
-        console.log(
-          `✓ ${clientCount} clients sent ${totalMessages} total messages in ${duration}ms`
+        logger.log(
+          `✓ ${String(clientCount)} clients sent ${String(totalMessages)} total messages in ${String(duration)}ms`
         );
-        console.log(
-          `✓ Concurrent throughput: ${Math.round((totalMessages / duration) * 1000)} msg/sec`
+        logger.log(
+          `✓ Concurrent throughput: ${String(String(Math.round((totalMessages / duration) * 1000)))} msg/sec`
         );
       } finally {
         // Clean up connections
@@ -275,24 +283,28 @@ describe('WebSocket Stress Tests', () => {
       const startTime = Date.now();
 
       // Create many subscriptions
-      for (let i = 0; i < subscriptionCount; i++) {
+      Array.from({ length: subscriptionCount - 0 }, (_, i) => i + 0) {
         const subscribeMessage: WebSocketMessage = {
           type: 'subscribe',
           id: uuidv4(),
           payload: {
             channel: SubscriptionChannel.BOARD,
-            filters: { boardId: `board-${i}` },
+            filters: { boardId: `board-${String(i)}` },
           },
           timestamp: new Date().toISOString(),
         };
         ws.send(JSON.stringify(subscribeMessage));
 
         // Small delay to avoid overwhelming
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise<void>(resolve => {
+    setTimeout(resolve, 10
+  }));
       }
 
       // Wait for all subscription responses
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise<void>(resolve => {
+    setTimeout(resolve, 1000
+  }));
 
       const endTime = Date.now();
       const duration = endTime - startTime;
@@ -301,7 +313,7 @@ describe('WebSocket Stress Tests', () => {
       expect(successResponses.length).toBeGreaterThan(0);
       expect(duration).toBeLessThan(5000);
 
-      console.log(`✓ Created ${successResponses.length} subscriptions in ${duration}ms`);
+      logger.log(`✓ Created ${String(String(successResponses.length))} subscriptions in ${String(duration)}ms`);
 
       ws.close();
     }, 10000);
@@ -313,7 +325,7 @@ describe('WebSocket Stress Tests', () => {
 
       try {
         // Create multiple subscribers
-        for (let i = 0; i < subscriberCount; i++) {
+        Array.from({ length: subscriberCount - 0 }, (_, i) => i + 0) {
           const connection = await createAuthenticatedConnection();
           connections.push(connection);
 
@@ -339,7 +351,9 @@ describe('WebSocket Stress Tests', () => {
         }
 
         // Wait for subscriptions to be established
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise<void>(resolve => {
+    setTimeout(resolve, 1000
+  }));
 
         const startTime = Date.now();
 
@@ -358,7 +372,9 @@ describe('WebSocket Stress Tests', () => {
         );
 
         // Wait for message propagation
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise<void>(resolve => {
+    setTimeout(resolve, 500
+  }));
 
         const endTime = Date.now();
         const duration = endTime - startTime;
@@ -371,8 +387,8 @@ describe('WebSocket Stress Tests', () => {
           messages.some(m => m.type === 'channel_message')
         ).length;
 
-        console.log(`✓ Broadcast to ${broadcastCount} subscribers in ${duration}ms`);
-        console.log(`✓ ${receivedCount} subscribers received the message`);
+        logger.log(`✓ Broadcast to ${String(broadcastCount)} subscribers in ${String(duration)}ms`);
+        logger.log(`✓ ${String(receivedCount)} subscribers received the message`);
       } finally {
         // Clean up connections
         connections.forEach(({ ws }) => {
@@ -390,7 +406,7 @@ describe('WebSocket Stress Tests', () => {
       const connections: Array<{ ws: WebSocket; clientId: string }> = [];
 
       // Create many connections
-      for (let i = 0; i < connectionCount; i++) {
+      Array.from({ length: connectionCount - 0 }, (_, i) => i + 0) {
         const connection = await createAuthenticatedConnection();
         connections.push(connection);
 
@@ -400,7 +416,7 @@ describe('WebSocket Stress Tests', () => {
           id: uuidv4(),
           payload: {
             channel: SubscriptionChannel.BOARD,
-            filters: { boardId: `cleanup-test-${i}` },
+            filters: { boardId: `cleanup-test-${String(i)}` },
           },
           timestamp: new Date().toISOString(),
         };
@@ -408,7 +424,9 @@ describe('WebSocket Stress Tests', () => {
       }
 
       // Wait for connections and subscriptions to be established
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise<void>(resolve => {
+    setTimeout(resolve, 1000
+  }));
 
       expect(webSocketManager.getClientCount()).toBe(connectionCount);
 
@@ -419,7 +437,9 @@ describe('WebSocket Stress Tests', () => {
       connections.forEach(({ ws }) => ws.close());
 
       // Wait for cleanup
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise<void>(resolve => {
+    setTimeout(resolve, 2000
+  }));
 
       // Verify cleanup
       expect(webSocketManager.getClientCount()).toBe(0);
@@ -427,9 +447,9 @@ describe('WebSocket Stress Tests', () => {
       const finalStats = webSocketManager.getSubscriptionManager().getStats();
       expect(finalStats.totalSubscriptions).toBe(0);
 
-      console.log(`✓ Cleaned up ${connectionCount} connections and their subscriptions`);
-      console.log(`✓ Initial subscriptions: ${initialStats.totalSubscriptions}`);
-      console.log(`✓ Final subscriptions: ${finalStats.totalSubscriptions}`);
+      logger.log(`✓ Cleaned up ${String(connectionCount)} connections and their subscriptions`);
+      logger.log(`✓ Initial subscriptions: ${String(String(initialStats.totalSubscriptions))}`);
+      logger.log(`✓ Final subscriptions: ${String(String(finalStats.totalSubscriptions))}`);
     }, 10000);
 
     it('should handle sustained connection churn', async () => {
@@ -437,11 +457,11 @@ describe('WebSocket Stress Tests', () => {
       const connectionsPerIteration = 5;
       const startTime = Date.now();
 
-      for (let i = 0; i < iterations; i++) {
+      Array.from({ length: iterations - 0 }, (_, i) => i + 0) {
         const batchConnections: Array<{ ws: WebSocket; clientId: string }> = [];
 
         // Create batch of connections
-        for (let j = 0; j < connectionsPerIteration; j++) {
+        Array.from({ length: connectionsPerIteration - 0 }, (_, j) => j + 0) {
           const connection = await createAuthenticatedConnection();
           batchConnections.push(connection);
         }
@@ -461,7 +481,9 @@ describe('WebSocket Stress Tests', () => {
         batchConnections.forEach(({ ws }) => ws.close());
 
         // Brief pause between iterations
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise<void>(resolve => {
+    setTimeout(resolve, 100
+  }));
       }
 
       const endTime = Date.now();
@@ -471,8 +493,8 @@ describe('WebSocket Stress Tests', () => {
       expect(duration).toBeLessThan(20000);
       expect(webSocketManager.getClientCount()).toBe(0);
 
-      console.log(
-        `✓ Handled ${iterations * connectionsPerIteration} connection churn in ${duration}ms`
+      logger.log(
+        `✓ Handled ${String(iterations * connectionsPerIteration)} connection churn in ${String(duration)}ms`
       );
     }, 25000);
   });
@@ -491,7 +513,7 @@ describe('WebSocket Stress Tests', () => {
       const startTime = Date.now();
 
       // Send flood of invalid messages
-      for (let i = 0; i < invalidMessageCount; i++) {
+      Array.from({ length: invalidMessageCount - 0 }, (_, i) => i + 0) {
         ws.send('{ invalid json }');
         ws.send(JSON.stringify({ type: 'invalid_type', incomplete: true }));
       }
@@ -506,7 +528,9 @@ describe('WebSocket Stress Tests', () => {
       ws.send(JSON.stringify(validMessage));
 
       // Wait for processing
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise<void>(resolve => {
+    setTimeout(resolve, 1000
+  }));
 
       const endTime = Date.now();
       const duration = endTime - startTime;
@@ -518,8 +542,8 @@ describe('WebSocket Stress Tests', () => {
       const errorResponses = responses.filter(m => m.type === 'error');
       expect(errorResponses.length).toBeGreaterThan(0);
 
-      console.log(`✓ Recovered from ${invalidMessageCount} invalid messages in ${duration}ms`);
-      console.log(`✓ Generated ${errorResponses.length} error responses`);
+      logger.log(`✓ Recovered from ${String(invalidMessageCount)} invalid messages in ${String(duration)}ms`);
+      logger.log(`✓ Generated ${String(String(errorResponses.length))} error responses`);
 
       ws.close();
     }, 5000);

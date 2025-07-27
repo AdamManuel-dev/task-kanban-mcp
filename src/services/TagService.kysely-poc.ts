@@ -130,7 +130,7 @@ export class TagServiceKysely {
       }
 
       if (filters.name_search) {
-        query = query.where('name', 'like', `%${filters.name_search}%`);
+        query = query.where('name', 'like', `%${String(filters.name_search)}%`);
       }
 
       // Pagination with type safety
@@ -281,55 +281,15 @@ export class TagServiceKysely {
       const tagMap = new Map(allTags.map(tag => [tag.id, { ...tag, children: [] }]));
       const rootTags: Array<Tag & { children?: Tag[] }> = [];
 
-      for (const tag of allTags) {
-        const tagWithChildren = tagMap.get(tag.id)!;
-
-        if (tag.parent_id) {
-          const parent = tagMap.get(tag.parent_id);
-          if (parent) {
-            parent.children = parent.children || [];
-            parent.children.push(tagWithChildren);
-          }
-        } else {
-          rootTags.push(tagWithChildren);
-        }
-      }
-
-      return rootTags;
-    } catch (error) {
-      logger.error('Failed to get tag hierarchy', { error });
-      throw new BaseServiceError(
-        'TAG_HIERARCHY_FETCH_FAILED',
-        'Failed to fetch tag hierarchy',
-        error
+      await Promise.all(
+        allTags.map(async tag => {
+          this.db
+            .selectFrom('tags')
+            .select(['parent_id'])
+            .where('id', '=', currentParentId)
+            .executeTakeFirst();
+        })
       );
-    }
-  }
-
-  /**
-   * Check for circular references in tag hierarchy
-   */
-  private async wouldCreateCircularReference(tagId: string, parentId: string): Promise<boolean> {
-    try {
-      // Walk up the parent chain to see if we encounter the tag we're trying to move
-      let currentParentId: string | null = parentId;
-      const visited = new Set<string>();
-
-      while (currentParentId && !visited.has(currentParentId)) {
-        if (currentParentId === tagId) {
-          return true; // Circular reference detected
-        }
-
-        visited.add(currentParentId);
-
-        const parent = await this.db
-          .selectFrom('tags')
-          .select(['parent_id'])
-          .where('id', '=', currentParentId)
-          .executeTakeFirst();
-
-        currentParentId = parent?.parent_id || null;
-      }
 
       return false;
     } catch (error) {
@@ -348,7 +308,10 @@ export class TagServiceKysely {
         .selectFrom('tags')
         .selectAll()
         .where(eb =>
-          eb.or([eb('name', 'like', `%${query}%`), eb('description', 'like', `%${query}%`)])
+          eb.or([
+            eb('name', 'like', `%${String(query)}%`),
+            eb('description', 'like', `%${String(query)}%`),
+          ])
         )
         .orderBy('name', 'asc')
         .limit(limit)

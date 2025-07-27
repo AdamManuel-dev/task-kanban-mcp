@@ -28,7 +28,7 @@ export function registerRealtimeCommands(program: Command): void {
 
         // Convert HTTP URL to WebSocket URL
         const wsUrl = serverUrl.replace(/^https?:\/\//, 'ws://').replace(/^ws:\/\//, 'wss://');
-        const wsEndpoint = `${wsUrl}/ws?apiKey=${apiKey}`;
+        const wsEndpoint = `${String(wsUrl)}/ws?apiKey=${String(apiKey)}`;
 
         formatter.info('Connecting to real-time updates...');
 
@@ -72,27 +72,27 @@ export function registerRealtimeCommands(program: Command): void {
               const timestamp = new Date().toLocaleTimeString();
 
               if (options.format === 'json') {
-                console.log(JSON.stringify({ timestamp, ...event }, null, 2));
+                logger.log(JSON.stringify({ timestamp, ...event }, null, 2));
               } else if (options.format === 'table') {
                 formatter.output([{ timestamp, ...event }]);
               } else {
                 // Compact format
                 const icon = getEventIcon(event.type);
                 const color = getEventColor(event.type);
-                console.log(
-                  `${timestamp} ${icon} ${color(event.type)}: ${event.message || formatEventMessage(event)}`
+                logger.log(
+                  `${String(timestamp)} ${String(icon)} ${String(String(color(event.type)))}: ${String(String(event.message || formatEventMessage(event)))}`
                 );
               }
             } else if (message.type === 'error') {
-              formatter.error(`WebSocket error: ${message.data.message}`);
+              formatter.error(`WebSocket error: ${String(String(message.data.message))}`);
             }
           } catch (error) {
-            formatter.warn(`Failed to parse message: ${data}`);
+            formatter.warn(`Failed to parse message: ${String(data)}`);
           }
         });
 
         ws.on('error', (error: any) => {
-          formatter.error(`WebSocket error: ${error.message}`);
+          formatter.error(`WebSocket error: ${String(String(error.message))}`);
           process.exit(1);
         });
 
@@ -100,7 +100,7 @@ export function registerRealtimeCommands(program: Command): void {
           if (code === 1000) {
             formatter.info('Connection closed normally');
           } else {
-            formatter.error(`Connection closed: ${code} ${reason}`);
+            formatter.error(`Connection closed: ${String(code)} ${String(reason)}`);
             process.exit(1);
           }
         });
@@ -113,7 +113,7 @@ export function registerRealtimeCommands(program: Command): void {
         });
       } catch (error) {
         formatter.error(
-          `Failed to start watching: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to start watching: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -151,8 +151,10 @@ export function registerRealtimeCommands(program: Command): void {
                 logs.forEach((log: any) => {
                   const timestamp = new Date(log.timestamp).toLocaleTimeString();
                   const level = log.level.toUpperCase().padEnd(5);
-                  const component = log.component ? `[${log.component}]` : '';
-                  console.log(`${timestamp} ${level} ${component} ${log.message}`);
+                  const component = log.component ? `[${String(String(log.component))}]` : '';
+                  logger.log(
+                    `${String(timestamp)} ${String(level)} ${String(component)} ${String(String(log.message))}`
+                  );
                 });
               }
             } catch (error) {
@@ -188,7 +190,7 @@ export function registerRealtimeCommands(program: Command): void {
         }
       } catch (error) {
         formatter.error(
-          `Failed to get logs: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to get logs: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -220,25 +222,25 @@ export function registerRealtimeCommands(program: Command): void {
   function formatEventMessage(event: any): string {
     switch (event.type) {
       case 'task:created':
-        return `Task "${event.data.title}" created`;
+        return `Task "${String(String(event.data.title))}" created`;
       case 'task:updated':
-        return `Task "${event.data.title}" updated`;
+        return `Task "${String(String(event.data.title))}" updated`;
       case 'task:moved':
-        return `Task "${event.data.title}" moved to ${event.data.columnName}`;
+        return `Task "${String(String(event.data.title))}" moved to ${String(String(event.data.columnName))}`;
       case 'task:deleted':
-        return `Task "${event.data.title}" deleted`;
+        return `Task "${String(String(event.data.title))}" deleted`;
       case 'task:completed':
-        return `Task "${event.data.title}" completed`;
+        return `Task "${String(String(event.data.title))}" completed`;
       case 'note:added':
-        return `Note "${event.data.title}" added to task ${event.data.taskId}`;
+        return `Note "${String(String(event.data.title))}" added to task ${String(String(event.data.taskId))}`;
       case 'note:updated':
-        return `Note "${event.data.title}" updated`;
+        return `Note "${String(String(event.data.title))}" updated`;
       case 'priority:changed':
-        return `Task "${event.data.title}" priority changed to ${event.data.newPriority}`;
+        return `Task "${String(String(event.data.title))}" priority changed to ${String(String(event.data.newPriority))}`;
       case 'dependency:blocked':
-        return `Task "${event.data.title}" blocked by dependency`;
+        return `Task "${String(String(event.data.title))}" blocked by dependency`;
       case 'subtask:completed':
-        return `Subtask "${event.data.title}" completed`;
+        return `Subtask "${String(String(event.data.title))}" completed`;
       default:
         return event.data ? JSON.stringify(event.data) : 'Unknown event';
     }

@@ -88,16 +88,16 @@ export class SecureCliWrapper {
       if (arg.length > this.config.maxArgumentLength) {
         this.logSecurityEvent({
           type: 'validation_failed',
-          details: `Argument ${index} exceeds maximum length`,
-          input: `${arg.substring(0, 100)}...`,
+          details: `Argument ${String(index)} exceeds maximum length`,
+          input: `${String(String(arg.substring(0, 100)))}...`,
           risk: 'medium',
         });
         if (this.config.strictMode) {
           throw new Error(
-            `Argument ${index} exceeds maximum length (${this.config.maxArgumentLength})`
+            `Argument ${String(index)} exceeds maximum length (${String(String(this.config.maxArgumentLength))})`
           );
         }
-        warnings.push(`Argument ${index} truncated`);
+        warnings.push(`Argument ${String(index)} truncated`);
         arg = arg.substring(0, this.config.maxArgumentLength);
       }
 
@@ -106,16 +106,16 @@ export class SecureCliWrapper {
       if (blockedPattern) {
         this.logSecurityEvent({
           type: 'command_blocked',
-          details: `Blocked pattern detected: ${blockedPattern.source}`,
+          details: `Blocked pattern detected: ${String(String(blockedPattern.source))}`,
           input: arg,
           risk: 'high',
         });
         if (this.config.strictMode) {
           throw new Error(
-            `Blocked pattern detected in argument ${index}: ${blockedPattern.source}`
+            `Blocked pattern detected in argument ${String(index)}: ${String(String(blockedPattern.source))}`
           );
         }
-        warnings.push(`Blocked pattern removed from argument ${index}`);
+        warnings.push(`Blocked pattern removed from argument ${String(index)}`);
         arg = arg.replace(blockedPattern, '');
       }
 
@@ -125,11 +125,11 @@ export class SecureCliWrapper {
         if (sanitizationResult.modified) {
           this.logSecurityEvent({
             type: 'input_sanitized',
-            details: `Argument ${index} sanitized: ${sanitizationResult.warnings.join(', ')}`,
+            details: `Argument ${String(index)} sanitized: ${String(String(sanitizationResult.warnings.join(', ')))}`,
             input: arg,
             risk: 'low',
           });
-          warnings.push(`Argument ${index} sanitized`);
+          warnings.push(`Argument ${String(index)} sanitized`);
         }
         sanitized.push(sanitizationResult.sanitized);
       } else {
@@ -164,23 +164,27 @@ export class SecureCliWrapper {
             if (!validation.safe) {
               this.logSecurityEvent({
                 type: 'command_blocked',
-                details: `Command validation failed: ${validation.blockedPatterns.join(', ')}`,
-                input: `${name} ${stringArgs.join(' ')}`,
+                details: `Command validation failed: ${String(String(validation.blockedPatterns.join(', ')))}`,
+                input: `${String(name)} ${String(String(stringArgs.join(' ')))}`,
                 risk: 'critical',
               });
-              throw new Error(`Command blocked: ${validation.blockedPatterns.join(', ')}`);
+              throw new Error(
+                `Command blocked: ${String(String(validation.blockedPatterns.join(', ')))}`
+              );
             }
 
             if (validation.warnings.length > 0) {
               this.logSecurityEvent({
                 type: 'suspicious_pattern',
-                details: `Command warnings: ${validation.warnings.join(', ')}`,
-                input: `${name} ${stringArgs.join(' ')}`,
+                details: `Command warnings: ${String(String(validation.warnings.join(', ')))}`,
+                input: `${String(name)} ${String(String(stringArgs.join(' ')))}`,
                 risk: 'medium',
               });
               if (this.config.logSecurityEvents) {
-                console.warn(
-                  chalk.yellow(`⚠️  Security warnings: ${validation.warnings.join(', ')}`)
+                logger.warn(
+                  chalk.yellow(
+                    `⚠️  Security warnings: ${String(String(validation.warnings.join(', ')))}`
+                  )
                 );
               }
             }
@@ -194,12 +198,12 @@ export class SecureCliWrapper {
                 if (suspicious.suspicious) {
                   this.logSecurityEvent({
                     type: 'suspicious_pattern',
-                    details: `Suspicious pattern in option ${key}: ${suspicious.patterns.join(', ')}`,
+                    details: `Suspicious pattern in option ${String(key)}: ${String(String(suspicious.patterns.join(', ')))}`,
                     input: value,
                     risk: 'medium',
                   });
                   if (this.config.strictMode) {
-                    throw new Error(`Suspicious pattern detected in option ${key}`);
+                    throw new Error(`Suspicious pattern detected in option ${String(key)}`);
                   }
                 }
               }
@@ -210,7 +214,7 @@ export class SecureCliWrapper {
           return await fn(...args);
         } catch (error) {
           if (error instanceof Error && error.message.includes('blocked')) {
-            console.error(chalk.red(`🚫 Security: ${error.message}`));
+            logger.error(chalk.red(`🚫 Security: ${String(String(error.message))}`));
             process.exit(1);
           }
           throw error;
@@ -234,14 +238,16 @@ export class SecureCliWrapper {
           const sanitizedArgs = this.sanitizeArguments(args.filter(arg => typeof arg === 'string'));
 
           if (sanitizedArgs.warnings.length > 0 && this.config.logSecurityEvents) {
-            console.warn(chalk.yellow(`⚠️  Security: ${sanitizedArgs.warnings.join(', ')}`));
+            logger.warn(
+              chalk.yellow(`⚠️  Security: ${String(String(sanitizedArgs.warnings.join(', ')))}`)
+            );
           }
 
           // Execute original action with sanitized args
           return await originalAction(...args);
         } catch (error) {
           if (error instanceof Error && error.message.includes('blocked')) {
-            console.error(chalk.red(`🚫 Security: ${error.message}`));
+            logger.error(chalk.red(`🚫 Security: ${String(String(error.message))}`));
             process.exit(1);
           }
           throw error;
@@ -255,7 +261,7 @@ export class SecureCliWrapper {
   /**
    * Log security events
    */
-  private logSecurityEvent(event: Omit<SecurityEvent, 'timestamp'>): void {
+  private static logSecurityEvent(event: Omit<SecurityEvent, 'timestamp'>): void {
     const fullEvent: SecurityEvent = {
       ...event,
       timestamp: new Date(),
@@ -276,8 +282,10 @@ export class SecureCliWrapper {
         critical: chalk.red,
       }[event.risk];
 
-      console.log(
-        color(`🔒 Security [${event.risk.toUpperCase()}]: ${event.type} - ${event.details}`)
+      logger.log(
+        color(
+          `🔒 Security [${String(String(event.risk.toUpperCase()))}]: ${String(String(event.type))} - ${String(String(event.details))}`
+        )
       );
     }
   }
@@ -350,7 +358,7 @@ export class SecureCliWrapper {
     if (suspicious.suspicious) {
       this.logSecurityEvent({
         type: 'suspicious_pattern',
-        details: `Command line contains suspicious patterns: ${suspicious.patterns.join(', ')}`,
+        details: `Command line contains suspicious patterns: ${String(String(suspicious.patterns.join(', ')))}`,
         input: fullCommand,
         risk: 'high',
       });
@@ -382,7 +390,7 @@ export class SecureCliWrapper {
 🔒 CLI Security Report
 ===================
 
-Total Security Events: ${stats.totalEvents}
+Total Security Events: ${String(String(stats.totalEvents))}
 
 Events by Type:
 ${Object.entries(stats.eventsByType)
@@ -403,12 +411,12 @@ ${recentEvents
   .join('\n')}
 
 Security Configuration:
-  Input Sanitization: ${this.config.enableInputSanitization ? 'Enabled' : 'Disabled'}
-  Command Validation: ${this.config.enableCommandValidation ? 'Enabled' : 'Disabled'}
-  Strict Mode: ${this.config.strictMode ? 'Enabled' : 'Disabled'}
-  Max Argument Length: ${this.config.maxArgumentLength}
-  Allowed Commands: ${this.config.allowedCommands.length}
-  Blocked Patterns: ${this.config.blockedPatterns.length}
+  Input Sanitization: ${String(String(this.config.enableInputSanitization ? 'Enabled' : 'Disabled'))}
+  Command Validation: ${String(String(this.config.enableCommandValidation ? 'Enabled' : 'Disabled'))}
+  Strict Mode: ${String(String(this.config.strictMode ? 'Enabled' : 'Disabled'))}
+  Max Argument Length: ${String(String(this.config.maxArgumentLength))}
+  Allowed Commands: ${String(String(this.config.allowedCommands.length))}
+  Blocked Patterns: ${String(String(this.config.blockedPatterns.length))}
 `;
 
     return report;
@@ -419,7 +427,7 @@ Security Configuration:
 export const secureCliWrapper = SecureCliWrapper.getInstance({
   enableInputSanitization: true,
   enableCommandValidation: true,
-  logSecurityEvents: process.env['NODE_ENV'] !== 'production',
+  logSecurityEvents: process.env.NODE_ENV !== 'production',
   strictMode: false,
   maxArgumentLength: 1000,
   allowedCommands: [
@@ -443,12 +451,15 @@ export const secureCliWrapper = SecureCliWrapper.getInstance({
   ],
 });
 
-export const createSecureCommand = (name: string, description: string) =>
+export const createSecureCommand = (name: string, description: string): Command =>
   secureCliWrapper.createSecureCommand(name, description);
 
-export const secureCommand = (command: Command) => secureCliWrapper.secureCommand(command);
+export const secureCommand = (command: Command): Command => secureCliWrapper.secureCommand(command);
 
-export const validateProgramArgs = (argv: string[]) => secureCliWrapper.validateProgramArgs(argv);
+export const validateProgramArgs = (
+  argv: string[]
+): { safe: boolean; sanitized: string[]; warnings: string[] } =>
+  secureCliWrapper.validateProgramArgs(argv);
 
 /**
  * Security middleware for Commander.js programs
@@ -469,13 +480,13 @@ export function addSecurityMiddleware(program: Command): Command {
     const validation = validateProgramArgs(args.slice(2));
 
     if (!validation.safe) {
-      console.error(chalk.red('🚫 Security: Command blocked due to security concerns'));
-      console.error(chalk.yellow('Warnings:', validation.warnings.join(', ')));
+      logger.error(chalk.red('🚫 Security: Command blocked due to security concerns'));
+      logger.error(chalk.yellow('Warnings:', validation.warnings.join(', ')));
       process.exit(1);
     }
 
     if (validation.warnings.length > 0) {
-      console.warn(chalk.yellow('⚠️  Security warnings:', validation.warnings.join(', ')));
+      logger.warn(chalk.yellow('⚠️  Security warnings:', validation.warnings.join(', ')));
     }
 
     return originalParse.call(this, argv, options);
@@ -488,20 +499,20 @@ export function addSecurityMiddleware(program: Command): Command {
     .command('report')
     .description('Show security report')
     .action(() => {
-      console.log(secureCliWrapper.generateSecurityReport());
+      logger.log(secureCliWrapper.generateSecurityReport());
     });
 
   securityCmd
     .command('events [limit]')
     .description('Show recent security events')
     .action((limit?: string) => {
-      const events = secureCliWrapper.getSecurityEvents(limit ? parseInt(limit) : 20);
+      const events = secureCliWrapper.getSecurityEvents(limit ? parseInt(limit, 10) : 20);
       if (events.length === 0) {
-        console.log(chalk.green('✅ No security events recorded'));
+        logger.log(chalk.green('✅ No security events recorded'));
         return;
       }
 
-      console.log(chalk.blue('🔒 Recent Security Events:'));
+      logger.log(chalk.blue('🔒 Recent Security Events:'));
       events.forEach(event => {
         const color = {
           low: chalk.blue,
@@ -510,10 +521,8 @@ export function addSecurityMiddleware(program: Command): Command {
           critical: chalk.red,
         }[event.risk];
 
-        console.log(
-          `${event.timestamp.toISOString()} ${color(`[${event.risk.toUpperCase()}]`)} ${
-            event.type
-          }: ${event.details}`
+        logger.log(
+          `${event.timestamp.toISOString()} ${color(`[${event.risk.toUpperCase()}]`)} ${event.type}: ${event.details}`
         );
       });
     });
@@ -523,7 +532,7 @@ export function addSecurityMiddleware(program: Command): Command {
     .description('Clear security event log')
     .action(() => {
       secureCliWrapper.clearSecurityEvents();
-      console.log(chalk.green('✅ Security events cleared'));
+      logger.log(chalk.green('✅ Security events cleared'));
     });
 
   securityCmd
@@ -531,8 +540,8 @@ export function addSecurityMiddleware(program: Command): Command {
     .description('Show security configuration')
     .action(() => {
       const config = secureCliWrapper.getConfig();
-      console.log(chalk.blue('🔧 Security Configuration:'));
-      console.log(JSON.stringify(config, null, 2));
+      logger.log(chalk.blue('🔧 Security Configuration:'));
+      logger.log(JSON.stringify(config, null, 2));
     });
 
   return program;

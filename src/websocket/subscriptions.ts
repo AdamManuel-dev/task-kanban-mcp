@@ -51,7 +51,7 @@ export class SubscriptionManager {
       }
 
       // Create subscription ID
-      const subscriptionId = `${clientId}_${channel}_${Date.now()}`;
+      const subscriptionId = `${String(clientId)}_${String(channel)}_${String(String(Date.now()))}`;
 
       // Create subscription
       const subscription: Subscription = {
@@ -195,7 +195,7 @@ export class SubscriptionManager {
       if (
         this.webSocketManager.sendToClient(subscription.clientId, {
           type: 'channel_message',
-          id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          id: `msg_${String(String(Date.now()))}_${String(String(Math.random().toString(36).substr(2, 9)))}`,
           payload: {
             channel,
             subscriptionId,
@@ -354,7 +354,10 @@ export class SubscriptionManager {
   }
 
   // Private helper methods
-  private matchesFilters(message: AllWebSocketMessages, filters: SubscriptionFilter): boolean {
+  private static matchesFilters(
+    message: AllWebSocketMessages,
+    filters: SubscriptionFilter
+  ): boolean {
     // If no filters, match all
     if (!filters || Object.keys(filters).length === 0) {
       return true;
@@ -376,7 +379,7 @@ export class SubscriptionManager {
     return true;
   }
 
-  private getNestedProperty(obj: AllWebSocketMessages, path: string): unknown {
+  private static getNestedProperty(obj: AllWebSocketMessages, path: string): unknown {
     // For our message structure, common paths are:
     // - type: message.type
     // - boardId: message.data.boardId

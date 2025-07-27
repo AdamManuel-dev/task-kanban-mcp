@@ -30,8 +30,8 @@ export function registerPriorityCommands(program: Command): void {
           formatter.output(nextTask);
 
           if (options.explain && (nextTask as any).priorityReasoning) {
-            console.log('\n--- Priority Reasoning ---');
-            console.log((nextTask as any).priorityReasoning);
+            logger.log('\n--- Priority Reasoning ---');
+            logger.log((nextTask as any).priorityReasoning);
           }
         } else {
           const priorities = await apiClient.getPriorities();
@@ -42,7 +42,7 @@ export function registerPriorityCommands(program: Command): void {
           }
 
           const topTasks = (priorities as any[]).slice(0, count);
-          formatter.success(`Top ${count} prioritized tasks:`);
+          formatter.success(`Top ${String(count)} prioritized tasks:`);
           formatter.output(topTasks, {
             fields: ['id', 'title', 'priority', 'status', 'dueDate'],
             headers: ['ID', 'Title', 'Priority', 'Status', 'Due Date'],
@@ -50,7 +50,7 @@ export function registerPriorityCommands(program: Command): void {
         }
       } catch (error) {
         formatter.error(
-          `Failed to get next task: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to get next task: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -88,7 +88,7 @@ export function registerPriorityCommands(program: Command): void {
         });
       } catch (error) {
         formatter.error(
-          `Failed to list priorities: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to list priorities: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -111,11 +111,11 @@ export function registerPriorityCommands(program: Command): void {
         }
 
         if ((result as any).updated) {
-          formatter.info(`Updated ${(result as any).updated} task priorities`);
+          formatter.info(`Updated ${String(String((result as any).updated))} task priorities`);
         }
       } catch (error) {
         formatter.error(
-          `Failed to recalculate priorities: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to recalculate priorities: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -142,14 +142,14 @@ export function registerPriorityCommands(program: Command): void {
         }
 
         await apiClient.updateTaskPriority(taskId, priorityNum);
-        formatter.success(`Task ${taskId} priority set to ${priorityNum}`);
+        formatter.success(`Task ${String(taskId)} priority set to ${String(priorityNum)}`);
 
         if (options.reason) {
-          formatter.info(`Reason: ${options.reason}`);
+          formatter.info(`Reason: ${String(String(options.reason))}`);
         }
       } catch (error) {
         formatter.error(
-          `Failed to set task priority: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to set task priority: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -164,7 +164,7 @@ export function registerPriorityCommands(program: Command): void {
       try {
         const task = (await apiClient.getTask(taskId)) as any;
         if (!task) {
-          formatter.error(`Task ${taskId} not found`);
+          formatter.error(`Task ${String(taskId)} not found`);
           process.exit(1);
         }
 
@@ -173,11 +173,11 @@ export function registerPriorityCommands(program: Command): void {
 
         await apiClient.updateTaskPriority(taskId, newPriority);
         formatter.success(
-          `Task ${taskId} priority boosted from ${currentPriority} to ${newPriority}`
+          `Task ${String(taskId)} priority boosted from ${String(currentPriority)} to ${String(newPriority)}`
         );
       } catch (error) {
         formatter.error(
-          `Failed to boost task priority: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to boost task priority: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -192,7 +192,7 @@ export function registerPriorityCommands(program: Command): void {
       try {
         const task = (await apiClient.getTask(taskId)) as any;
         if (!task) {
-          formatter.error(`Task ${taskId} not found`);
+          formatter.error(`Task ${String(taskId)} not found`);
           process.exit(1);
         }
 
@@ -201,11 +201,11 @@ export function registerPriorityCommands(program: Command): void {
 
         await apiClient.updateTaskPriority(taskId, newPriority);
         formatter.success(
-          `Task ${taskId} priority lowered from ${currentPriority} to ${newPriority}`
+          `Task ${String(taskId)} priority lowered from ${String(currentPriority)} to ${String(newPriority)}`
         );
       } catch (error) {
         formatter.error(
-          `Failed to lower task priority: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to lower task priority: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }

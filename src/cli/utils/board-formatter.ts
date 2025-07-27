@@ -1,12 +1,6 @@
 import chalk from 'chalk';
 import Table from 'cli-table3';
-import {
-  formatTaskListItem,
-  formatBoardColumn,
-  formatStatus,
-  formatPercentage,
-  truncate,
-} from './formatter';
+import { formatTaskListItem, formatBoardColumn, formatPercentage, truncate } from './formatter';
 
 export interface Task {
   id: string;
@@ -52,7 +46,7 @@ export class BoardFormatter {
     const output: string[] = [];
 
     // Board header
-    output.push(chalk.bold.cyan(`\n📋 ${board.name}\n`));
+    output.push(chalk.bold.cyan(`\n📋 ${String(String(board.name))}\n`));
 
     if (showDescription && board.description) {
       output.push(chalk.gray(board.description));
@@ -78,7 +72,7 @@ export class BoardFormatter {
     const maxTasks = Math.max(...board.columns.map(col => col.tasks.length));
 
     // Add rows
-    for (let i = 0; i < maxTasks; i++) {
+    for (let i = 0; i < maxTasks; i += 1) {
       const row = board.columns.map(col => {
         const task = col.tasks[i];
         return task ? this.formatTaskCard(task) : '';
@@ -93,21 +87,21 @@ export class BoardFormatter {
   /**
    * Format a single task card for board view
    */
-  private formatTaskCard(task: Task): string {
+  private static formatTaskCard(task: Task): string {
     const lines: string[] = [];
 
     // Task ID and title
-    lines.push(chalk.bold(`[${task.id}]`));
+    lines.push(chalk.bold(`[${String(String(task.id))}]`));
     lines.push(truncate(task.title, 30));
 
     // Priority and status
     if (task.priority) {
-      lines.push(`Priority: ${task.priority}`);
+      lines.push(`Priority: ${String(String(task.priority))}`);
     }
 
     // Assignee
     if (task.assignee) {
-      lines.push(chalk.cyan(`@${task.assignee}`));
+      lines.push(chalk.cyan(`@${String(String(task.assignee))}`));
     }
 
     // Due date
@@ -115,12 +109,14 @@ export class BoardFormatter {
       const dueDate = new Date(task.due_date);
       const isOverdue = dueDate < new Date();
       const dateStr = dueDate.toLocaleDateString();
-      lines.push(isOverdue ? chalk.red(`⏰ ${dateStr}`) : chalk.gray(`📅 ${dateStr}`));
+      lines.push(
+        isOverdue ? chalk.red(`⏰ ${String(dateStr)}`) : chalk.gray(`📅 ${String(dateStr)}`)
+      );
     }
 
     // Tags
     if (task.tags && task.tags.length > 0) {
-      lines.push(task.tags.map(tag => chalk.magenta(`#${tag}`)).join(' '));
+      lines.push(task.tags.map(tag => chalk.magenta(`#${String(tag)}`)).join(' '));
     }
 
     return lines.join('\n');
@@ -132,16 +128,20 @@ export class BoardFormatter {
   formatBoardList(board: Board): string {
     const output: string[] = [];
 
-    output.push(chalk.bold.cyan(`\n📋 ${board.name}\n`));
+    output.push(chalk.bold.cyan(`\n📋 ${String(String(board.name))}\n`));
 
     for (const column of board.columns) {
-      output.push(chalk.bold.underline(`\n${column.name} (${column.tasks.length})`));
+      output.push(
+        chalk.bold.underline(
+          `\n${String(String(column.name))} (${String(String(column.tasks.length))})`
+        )
+      );
 
       if (column.tasks.length === 0) {
         output.push(chalk.gray('  No tasks'));
       } else {
         for (const task of column.tasks) {
-          output.push(`  ${formatTaskListItem(task)}`);
+          output.push(`  ${String(formatTaskListItem(task))}`);
         }
       }
     }
@@ -152,7 +152,7 @@ export class BoardFormatter {
   /**
    * Calculate board statistics
    */
-  private calculateBoardStats(board: Board): {
+  private static calculateBoardStats(board: Board): {
     totalTasks: number;
     tasksByColumn: Map<string, number>;
     tasksByPriority: Map<string, number>;
@@ -180,7 +180,7 @@ export class BoardFormatter {
         if (task.due_date) {
           const dueDate = new Date(task.due_date);
           if (dueDate < new Date()) {
-            stats.overdueTasks++;
+            stats.overdueTasks += 1;
           }
         }
       }
@@ -192,22 +192,24 @@ export class BoardFormatter {
   /**
    * Format board statistics
    */
-  private formatBoardStats(stats: ReturnType<BoardFormatter['calculateBoardStats']>): string {
+  private static formatBoardStats(
+    stats: ReturnType<BoardFormatter['calculateBoardStats']>
+  ): string {
     const lines: string[] = [];
 
     lines.push(chalk.gray('─'.repeat(40)));
     lines.push(chalk.bold('Board Statistics:'));
-    lines.push(`  Total Tasks: ${stats.totalTasks}`);
+    lines.push(`  Total Tasks: ${String(String(stats.totalTasks))}`);
 
     if (stats.overdueTasks > 0) {
-      lines.push(chalk.red(`  Overdue Tasks: ${stats.overdueTasks}`));
+      lines.push(chalk.red(`  Overdue Tasks: ${String(String(stats.overdueTasks))}`));
     }
 
     if (stats.tasksByPriority.size > 0) {
       lines.push('  By Priority:');
       for (const [priority, count] of stats.tasksByPriority) {
         const percentage = formatPercentage(count, stats.totalTasks);
-        lines.push(`    ${priority}: ${count} (${percentage})`);
+        lines.push(`    ${String(priority)}: ${String(count)} (${String(percentage)})`);
       }
     }
 
@@ -219,7 +221,7 @@ export class BoardFormatter {
   /**
    * Calculate column widths for table display
    */
-  private calculateColumnWidths(columnCount: number, maxWidth: number): number[] {
+  private static calculateColumnWidths(columnCount: number, maxWidth: number): number[] {
     const borderWidth = (columnCount + 1) * 3; // Account for table borders
     const availableWidth = maxWidth - borderWidth;
     const columnWidth = Math.floor(availableWidth / columnCount);
@@ -244,7 +246,7 @@ export class BoardFormatter {
         const row = [
           column.name,
           task.id,
-          `"${task.title.replace(/"/g, '""')}"`,
+          `"${String(String(task.title.replace(/"/g, '""')))}"`,
           task.status,
           task.priority || '',
           task.assignee || '',

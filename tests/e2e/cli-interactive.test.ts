@@ -12,7 +12,7 @@ describe('CLI Interactive Features E2E Tests', () => {
   let testConfigDir: string;
 
   beforeAll(async () => {
-    testConfigDir = join(tmpdir(), `kanban-interactive-test-${Date.now()}`);
+    testConfigDir = join(tmpdir(), `kanban-interactive-test-${String(String(Date.now()))}`);
     await fs.mkdir(testConfigDir, { recursive: true });
     process.env.KANBAN_CONFIG_DIR = testConfigDir;
   });
@@ -50,7 +50,7 @@ describe('CLI Interactive Features E2E Tests', () => {
           if (code === 0) {
             resolve(output);
           } else {
-            reject(new Error(`Process exited with code ${code}`));
+            reject(new Error(`Process exited with code ${String(code)}`));
           }
         });
       });
@@ -84,7 +84,7 @@ describe('CLI Interactive Features E2E Tests', () => {
           if (code === 0) {
             resolve(output);
           } else {
-            reject(new Error(`Process exited with code ${code}`));
+            reject(new Error(`Process exited with code ${String(code)}`));
           }
         });
       });
@@ -117,7 +117,7 @@ describe('CLI Interactive Features E2E Tests', () => {
           if (code === 0) {
             resolve(output);
           } else {
-            reject(new Error(`Process exited with code ${code}`));
+            reject(new Error(`Process exited with code ${String(code)}`));
           }
         });
       });
@@ -154,7 +154,7 @@ describe('CLI Interactive Features E2E Tests', () => {
           if (code === 0) {
             resolve(output);
           } else {
-            reject(new Error(`Process exited with code ${code}`));
+            reject(new Error(`Process exited with code ${String(code)}`));
           }
         });
       });
@@ -189,7 +189,7 @@ describe('CLI Interactive Features E2E Tests', () => {
           if (code === 0) {
             resolve(output);
           } else {
-            reject(new Error(`Process exited with code ${code}`));
+            reject(new Error(`Process exited with code ${String(code)}`));
           }
         });
       });
@@ -224,7 +224,7 @@ describe('CLI Interactive Features E2E Tests', () => {
           if (code === 0) {
             resolve(output);
           } else {
-            reject(new Error(`Process exited with code ${code}`));
+            reject(new Error(`Process exited with code ${String(code)}`));
           }
         });
       });
@@ -258,7 +258,7 @@ describe('CLI Interactive Features E2E Tests', () => {
           if (code === 0) {
             resolve(output);
           } else {
-            reject(new Error(`Process exited with code ${code}`));
+            reject(new Error(`Process exited with code ${String(code)}`));
           }
         });
       });
@@ -340,8 +340,10 @@ describe('CLI Interactive Features E2E Tests', () => {
         output += data.toString();
       });
 
-      await new Promise(resolve => {
-        child.on('close', () => {
+      await new Promise<void>(resolve => {
+    {
+        child.on('close', (
+  }) => {
           resolve(output);
         });
       });
@@ -369,8 +371,10 @@ describe('CLI Interactive Features E2E Tests', () => {
         output += data.toString();
       });
 
-      await new Promise(resolve => {
-        child.on('close', () => {
+      await new Promise<void>(resolve => {
+    {
+        child.on('close', (
+  }) => {
           resolve(output);
         });
       });

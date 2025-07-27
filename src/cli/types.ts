@@ -16,7 +16,7 @@ export interface CliComponents {
 
 // Global type declaration to extend Node.js global
 declare global {
-  // eslint-disable-next-line no-var
+  // eslint-disable-next-line no-var, vars-on-top
   var cliComponents: CliComponents;
 }
 

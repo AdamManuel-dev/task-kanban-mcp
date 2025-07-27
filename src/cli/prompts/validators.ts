@@ -8,7 +8,6 @@ import {
   sanitizeUrl,
   createSafePromptValidator,
   detectSuspicious,
-  inputSanitizer,
 } from '../utils/input-sanitizer';
 
 /**
@@ -17,7 +16,7 @@ import {
  */
 
 // Task size options
-export const TASK_SIZES = ['S', 'M', 'L', 'XL'] as const;
+export const TASK_SIZES = ['XS', 'S', 'M', 'L', 'XL'] as const;
 export type TaskSize = (typeof TASK_SIZES)[number];
 
 // Priority options
@@ -51,7 +50,7 @@ export const validateTaskTitle = createSafePromptValidator(
     // Additional security checks
     const suspiciousCheck = detectSuspicious(input);
     if (suspiciousCheck.suspicious) {
-      return `Security issue: ${suspiciousCheck.patterns.join(', ')} detected in title`;
+      return `Security issue: ${String(String(suspiciousCheck.patterns.join(', ')))} detected in title`;
     }
 
     return true;
@@ -65,7 +64,7 @@ export function validatePriority(input: string): true | string {
   const upperInput = input.toUpperCase();
 
   if (!PRIORITIES.includes(upperInput as Priority)) {
-    return `Priority must be one of: ${PRIORITIES.join(', ')}`;
+    return `Priority must be one of: ${String(String(PRIORITIES.join(', ')))}`;
   }
 
   return true;
@@ -78,7 +77,7 @@ export function validateTaskSize(input: string): true | string {
   const upperInput = input.toUpperCase();
 
   if (!TASK_SIZES.includes(upperInput as TaskSize)) {
-    return `Task size must be one of: ${TASK_SIZES.join(', ')}`;
+    return `Task size must be one of: ${String(String(TASK_SIZES.join(', ')))}`;
   }
 
   return true;
@@ -242,7 +241,7 @@ export function validateDate(input: string): true | string {
   }
 
   const date = new Date(trimmed);
-  if (isNaN(date.getTime())) {
+  if (Number.isNaN(date.getTime())) {
     return 'Please enter a valid date';
   }
 
@@ -260,7 +259,7 @@ export function validateTimeEstimate(input: string): true | string {
   }
 
   const num = parseFloat(trimmed);
-  if (isNaN(num)) {
+  if (Number.isNaN(num)) {
     return 'Please enter a valid number';
   }
 
@@ -286,7 +285,7 @@ export function validatePercentage(input: string): true | string {
   }
 
   const num = parseInt(trimmed, 10);
-  if (isNaN(num)) {
+  if (Number.isNaN(num)) {
     return 'Please enter a valid number';
   }
 
@@ -309,15 +308,15 @@ export function createLengthValidator(
     const trimmed = input.trim();
 
     if (!trimmed && minLength > 0) {
-      return `${fieldName} cannot be empty`;
+      return `${String(fieldName)} cannot be empty`;
     }
 
     if (trimmed.length < minLength) {
-      return `${fieldName} must be at least ${minLength} characters long`;
+      return `${String(fieldName)} must be at least ${String(minLength)} characters long`;
     }
 
     if (trimmed.length > maxLength) {
-      return `${fieldName} must be less than ${maxLength} characters`;
+      return `${String(fieldName)} must be less than ${String(maxLength)} characters`;
     }
 
     return true;
@@ -333,7 +332,7 @@ export function createEnumValidator<T extends readonly string[]>(
 ): (input: string) => true | string {
   return (input: string) => {
     if (!validOptions.includes(input)) {
-      return `${fieldName} must be one of: ${validOptions.join(', ')}`;
+      return `${String(fieldName)} must be one of: ${String(String(validOptions.join(', ')))}`;
     }
     return true;
   };
@@ -534,18 +533,23 @@ export function validateAndSanitizeInput(
           sanitized = input;
       }
 
-      return {
+      const result: { valid: boolean; sanitized: string; warnings?: string[] } = {
         valid: true,
         sanitized,
-        warnings: sanitized !== input ? ['Input was sanitized'] : undefined,
       };
+
+      if (sanitized !== input) {
+        result.warnings = ['Input was sanitized'];
+      }
+
+      return result;
     }
     return { valid: false, sanitized: input, error: result };
   } catch (error) {
     return {
       valid: false,
       sanitized: input,
-      error: `Validation error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      error: `Validation error: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`,
     };
   }
 }

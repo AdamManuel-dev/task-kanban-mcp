@@ -87,10 +87,18 @@ describe('Validator Functions', () => {
     });
 
     it('should reject invalid priorities', () => {
-      expect(validatePriority('P0')).toBe(`Priority must be one of: ${PRIORITIES.join(', ')}`);
-      expect(validatePriority('P6')).toBe(`Priority must be one of: ${PRIORITIES.join(', ')}`);
-      expect(validatePriority('HIGH')).toBe(`Priority must be one of: ${PRIORITIES.join(', ')}`);
-      expect(validatePriority('')).toBe(`Priority must be one of: ${PRIORITIES.join(', ')}`);
+      expect(validatePriority('P0')).toBe(
+        `Priority must be one of: ${String(String(PRIORITIES.join(', ')))}`
+      );
+      expect(validatePriority('P6')).toBe(
+        `Priority must be one of: ${String(String(PRIORITIES.join(', ')))}`
+      );
+      expect(validatePriority('HIGH')).toBe(
+        `Priority must be one of: ${String(String(PRIORITIES.join(', ')))}`
+      );
+      expect(validatePriority('')).toBe(
+        `Priority must be one of: ${String(String(PRIORITIES.join(', ')))}`
+      );
     });
 
     it('should handle case insensitive input', () => {
@@ -109,7 +117,6 @@ describe('Validator Functions', () => {
     });
 
     it('should reject invalid task sizes', () => {
-      expect(validateTaskSize('XS')).toBe(`Task size must be one of: ${TASK_SIZES.join(', ')}`);
       expect(validateTaskSize('XXL')).toBe(`Task size must be one of: ${TASK_SIZES.join(', ')}`);
       expect(validateTaskSize('SMALL')).toBe(`Task size must be one of: ${TASK_SIZES.join(', ')}`);
       expect(validateTaskSize('')).toBe(`Task size must be one of: ${TASK_SIZES.join(', ')}`);
@@ -416,7 +423,7 @@ describe('Validator Functions', () => {
 
   describe('Constants', () => {
     it('should export correct task sizes', () => {
-      expect(TASK_SIZES).toEqual(['S', 'M', 'L', 'XL']);
+      expect(TASK_SIZES).toEqual(['XS', 'S', 'M', 'L', 'XL']);
     });
 
     it('should export correct priorities', () => {

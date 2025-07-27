@@ -25,11 +25,11 @@ export const processTodosCommand = new Command('process-todos')
     try {
       // Validate file exists
       if (!existsSync(file)) {
-        console.error(chalk.red(`Error: File not found: ${file}`));
+        logger.error(chalk.red(`Error: File not found: ${String(file)}`));
         process.exit(1);
       }
 
-      console.log(chalk.cyan('\n🚀 Processing TODOs...\n'));
+      logger.log(chalk.cyan('\n🚀 Processing TODOs...\n'));
 
       await todoProcessor.processTodos(file, {
         concurrent: options.concurrent,
@@ -40,9 +40,9 @@ export const processTodosCommand = new Command('process-todos')
         dryRun: options.dryRun,
       });
 
-      console.log(chalk.green('\n✅ TODO processing complete!\n'));
+      logger.log(chalk.green('\n✅ TODO processing complete!\n'));
     } catch (error) {
-      console.error(
+      logger.error(
         chalk.red('\n❌ Error processing TODOs:'),
         error instanceof Error ? error.message : String(error)
       );

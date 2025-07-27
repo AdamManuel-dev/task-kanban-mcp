@@ -163,7 +163,7 @@ export class WebSocketManager {
       // Send welcome message
       this.sendToClient(clientId, {
         type: 'welcome',
-        id: `welcome-${clientId}`,
+        id: `welcome-${String(clientId)}`,
         payload: {
           clientId,
           serverVersion: config.mcp.serverVersion,
@@ -239,7 +239,7 @@ export class WebSocketManager {
     }
   }
 
-  private handleDisconnection(clientId: string, code: number, reason: Buffer): void {
+  private static handleDisconnection(clientId: string, code: number, reason: Buffer): void {
     const client = this.clients.get(clientId);
     if (!client) return;
 
@@ -257,7 +257,7 @@ export class WebSocketManager {
     this.clients.delete(clientId);
   }
 
-  private handleClientError(clientId: string, error: Error): void {
+  private static handleClientError(clientId: string, error: Error): void {
     logger.error('WebSocket client error', { clientId, error });
 
     const client = this.clients.get(clientId);
@@ -266,11 +266,11 @@ export class WebSocketManager {
     }
   }
 
-  private handleServerError(error: Error): void {
+  private static handleServerError(error: Error): void {
     logger.error('WebSocket server error', { error });
   }
 
-  private handlePong(clientId: string): void {
+  private static handlePong(clientId: string): void {
     const client = this.clients.get(clientId);
     if (client) {
       client.lastHeartbeat = new Date();
@@ -322,7 +322,7 @@ export class WebSocketManager {
     }
   }
 
-  private startHeartbeat(): void {
+  private static startHeartbeat(): void {
     this.heartbeatInterval = setInterval(() => {
       const now = new Date();
       const timeout = config.websocket.heartbeatInterval * 2;

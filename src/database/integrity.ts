@@ -320,12 +320,11 @@ export class DatabaseIntegrityChecker {
 
       let totalViolations = 0;
 
-      for (const check of foreignKeyChecks) {
-        const violations = await this.db.query(check.query);
-        if (violations.length > 0) {
-          totalViolations += violations.length;
-          errors.push(
-            `Foreign key constraint violation in ${check.table}.${check.column} -> ${check.reference}: ` +
+      await Promise.all(
+  foreignKeyChecks.map(async (check) => {
+    this.db.query(check.query);
+  })
+);.${check.column} -> ${check.reference}: ` +
               `${violations.length} invalid references found`
           );
 

@@ -1,6 +1,6 @@
 import blessed from 'blessed';
 import contrib from 'blessed-contrib';
-import chalk from 'chalk';
+
 import { DashboardDataService } from '../services/dashboard-data';
 import type { ApiClient } from '../client';
 import { ThemeHelper, getThemeNames } from '../ui/themes/dashboard-themes';
@@ -46,11 +46,11 @@ export class DashboardManager {
 
   private currentLayout: 'overview' | 'velocity' | 'personal' = 'overview';
 
-  private focusedWidget: string | null = null;
+  private readonly focusedWidget: string | null = null;
 
-  private isFullscreen = false;
+  private readonly isFullscreen = false;
 
-  private debugMode = false;
+  private readonly debugMode = false;
 
   constructor(config: Partial<DashboardConfig> = {}, apiClient?: ApiClient) {
     this.config = {
@@ -89,7 +89,7 @@ export class DashboardManager {
   /**
    * Setup keyboard navigation
    */
-  private setupKeyBindings(): void {
+  private static setupKeyBindings(): void {
     // Exit commands
     this.screen.key(['q', 'C-c'], () => {
       this.destroy();
@@ -220,7 +220,9 @@ export class DashboardManager {
 
     // Populate activity log
     data.activity.forEach(activity => {
-      activityLog.log(`${activity.timestamp}: ${activity.event} (${activity.user})`);
+      activityLog.log(
+        `${String(String(activity.timestamp))}: ${String(String(activity.event))} (${String(String(activity.user))})`
+      );
     });
 
     this.widgets.set('statusDonut', statusDonut);
@@ -301,7 +303,7 @@ export class DashboardManager {
       data: data.teamMembers.map(member => [
         member.name,
         member.taskCount.toString(),
-        `${member.load}%`,
+        `${String(String(member.load))}%`,
       ]),
     });
 
@@ -408,7 +410,7 @@ export class DashboardManager {
   /**
    * Add header with current info
    */
-  private addHeader(title: string): void {
+  private static addHeader(title: string): void {
     const headerStyles = this.themeHelper.getHeaderStyles();
     const header = this.grid.set(-1, 0, 1, 12, blessed.box, {
       label: title,
@@ -417,14 +419,14 @@ export class DashboardManager {
     });
 
     const now = new Date().toLocaleString();
-    header.setContent(`${title} | ${now} | Press 'h' for help`);
+    header.setContent(`${String(title)} | ${String(now)} | Press 'h' for help`);
     this.widgets.set('header', header);
   }
 
   /**
    * Add footer with controls
    */
-  private addFooter(): void {
+  private static addFooter(): void {
     const footerStyles = this.themeHelper.getFooterStyles();
     const footer = this.grid.set(12, 0, 1, 12, blessed.box, {
       ...footerStyles,
@@ -433,7 +435,7 @@ export class DashboardManager {
 
     const currentTheme = this.themeHelper.getTheme().name;
     footer.setContent(
-      `1-3:Layouts | Tab:Navigate | r:Refresh | t:Theme(${currentTheme}) | s:Stats | d:Debug | h:Help | q:Quit`
+      `1-3:Layouts | Tab:Navigate | r:Refresh | t:Theme(${String(currentTheme)}) | s:Stats | d:Debug | h:Help | q:Quit`
     );
     this.widgets.set('footer', footer);
   }
@@ -441,11 +443,11 @@ export class DashboardManager {
   /**
    * Show error notification
    */
-  private showErrorNotification(message: string): void {
+  private static showErrorNotification(message: string): void {
     const errorBox = blessed.box({
       top: 1,
       right: 1,
-      width: '40%',
+      width: Math.floor((this.screen as any).width * 0.4),
       height: 3,
       border: { type: 'line', fg: 'red' },
       style: { fg: 'white', bg: 'red' },
@@ -467,11 +469,11 @@ export class DashboardManager {
   /**
    * Show theme change notification
    */
-  private showThemeNotification(message: string): void {
+  private static showThemeNotification(message: string): void {
     const themeBox = blessed.box({
       top: 1,
       left: 1,
-      width: '30%',
+      width: Math.floor((this.screen as any).width * 0.3),
       height: 3,
       border: { type: 'line', fg: this.themeHelper.getColor('primary') },
       style: {
@@ -496,7 +498,7 @@ export class DashboardManager {
   /**
    * Show help overlay
    */
-  private showHelp(): void {
+  private static showHelp(): void {
     const helpBox = blessed.box({
       top: 'center',
       left: 'center',
@@ -565,7 +567,7 @@ Press any key to close this help...
   /**
    * Toggle between available themes
    */
-  private toggleTheme(): void {
+  private static toggleTheme(): void {
     const themes = getThemeNames();
     const currentIndex = themes.indexOf(this.config.theme);
     const nextIndex = (currentIndex + 1) % themes.length;
@@ -574,7 +576,7 @@ Press any key to close this help...
     this.themeHelper.setTheme(this.config.theme);
 
     // Show theme change notification
-    this.showThemeNotification(`Theme changed to: ${this.config.theme}`);
+    this.showThemeNotification(`Theme changed to: ${String(String(this.config.theme))}`);
 
     // Refresh dashboard with new theme
     this.refreshData();
@@ -583,7 +585,7 @@ Press any key to close this help...
   /**
    * Toggle auto-refresh
    */
-  private toggleAutoRefresh(): void {
+  private static toggleAutoRefresh(): void {
     this.config.autoRefresh = !this.config.autoRefresh;
 
     if (this.config.autoRefresh) {
@@ -639,7 +641,7 @@ Press any key to close this help...
       this.screen.render();
     } catch (error) {
       // Show error notification and use sample data
-      this.showErrorNotification(`Data refresh failed: ${error.message}`);
+      this.showErrorNotification(`Data refresh failed: ${String(String(error.message))}`);
       const fallbackData = this.generateSampleData();
 
       switch (this.currentLayout) {
@@ -661,7 +663,7 @@ Press any key to close this help...
   /**
    * Clear all widgets
    */
-  private clearWidgets(): void {
+  private static clearWidgets(): void {
     for (const widget of this.widgets.values()) {
       widget.destroy();
     }
@@ -671,20 +673,20 @@ Press any key to close this help...
   /**
    * Get color for task status
    */
-  private getStatusColor(status: string): string {
-    const colors = {
-      todo: 'gray',
-      in_progress: 'yellow',
-      done: 'green',
-      blocked: 'red',
-    };
-    return colors[status as keyof typeof colors] || 'white';
-  }
+  // private static getStatusColor(status: string): string {
+  //   const colors = {
+  //     todo: 'gray',
+  //     in_progress: 'yellow',
+  //     done: 'green',
+  //     blocked: 'red',
+  //   };
+  //   return colors[status as keyof typeof colors] || 'white';
+  // }
 
   /**
    * Generate sample data for demo
    */
-  private generateSampleData(): DashboardData {
+  private static generateSampleData(): DashboardData {
     return {
       tasks: {
         total: 45,
@@ -753,7 +755,7 @@ Press any key to close this help...
   /**
    * Focus next widget for navigation
    */
-  private focusNextWidget(): void {
+  private static focusNextWidget(): void {
     const widgetKeys = Array.from(this.widgets.keys());
     if (widgetKeys.length === 0) return;
 
@@ -772,7 +774,7 @@ Press any key to close this help...
   /**
    * Focus previous widget for navigation
    */
-  private focusPreviousWidget(): void {
+  private static focusPreviousWidget(): void {
     const widgetKeys = Array.from(this.widgets.keys());
     if (widgetKeys.length === 0) return;
 
@@ -791,7 +793,7 @@ Press any key to close this help...
   /**
    * Toggle fullscreen mode for focused widget
    */
-  private toggleFullscreen(): void {
+  private static toggleFullscreen(): void {
     if (!this.focusedWidget) {
       this.showNotification('No widget focused. Use Tab to focus a widget first.');
       return;
@@ -800,7 +802,9 @@ Press any key to close this help...
     this.isFullscreen = !this.isFullscreen;
 
     if (this.isFullscreen) {
-      this.showNotification(`Fullscreen mode: ${this.focusedWidget} (press F or F11 to exit)`);
+      this.showNotification(
+        `Fullscreen mode: ${String(String(this.focusedWidget))} (press F or F11 to exit)`
+      );
       // In a real implementation, this would resize the focused widget to full screen
     } else {
       this.showNotification('Exited fullscreen mode');
@@ -811,7 +815,7 @@ Press any key to close this help...
   /**
    * Show quick statistics overlay
    */
-  private showQuickStats(): void {
+  private static showQuickStats(): void {
     const statsBox = blessed.box({
       top: 'center',
       left: 'center',
@@ -825,10 +829,10 @@ Press any key to close this help...
       label: '📊 Quick Statistics',
       content: `
 📈 Performance Metrics:
-  • Dashboard Refresh Rate: ${this.config.refreshInterval / 1000}s
-  • Active Widgets: ${this.widgets.size}
-  • Current Theme: ${this.themeHelper.getTheme().name}
-  • Auto-refresh: ${this.config.autoRefresh ? 'Enabled' : 'Disabled'}
+  • Dashboard Refresh Rate: ${String(String(this.config.refreshInterval / 1000))}s
+  • Active Widgets: ${String(String(this.widgets.size))}
+  • Current Theme: ${String(String(this.themeHelper.getTheme().name))}
+  • Auto-refresh: ${String(String(this.config.autoRefresh ? 'Enabled' : 'Disabled'))}
 
 🎮 Navigation Tips:
   • Tab/Shift+Tab: Navigate between widgets
@@ -858,14 +862,14 @@ Press any key to close...
   /**
    * Export dashboard (placeholder)
    */
-  private exportDashboard(): void {
+  private static exportDashboard(): void {
     this.showNotification('Export functionality coming soon! (PNG/SVG export)');
   }
 
   /**
    * Toggle debug mode
    */
-  private toggleDebugMode(): void {
+  private static toggleDebugMode(): void {
     this.debugMode = !this.debugMode;
 
     if (this.debugMode) {
@@ -880,9 +884,9 @@ Press any key to close...
   /**
    * Show debug overlay with widget information
    */
-  private showDebugOverlay(): void {
+  private static showDebugOverlay(): void {
     const debugInfo = Array.from(this.widgets.entries())
-      .map(([name, widget]) => `${name}: ${widget.constructor.name}`)
+      .map(([name, widget]) => `${String(name)}: ${String(String(widget.constructor.name))}`)
       .join('\n');
 
     const debugBox = blessed.box({
@@ -894,14 +898,14 @@ Press any key to close...
       style: { fg: 'yellow', bg: 'black' },
       label: '🐛 Debug Info',
       content: `
-Widgets: ${this.widgets.size}
-Focused: ${this.focusedWidget || 'none'}
-Layout: ${this.currentLayout}
-Fullscreen: ${this.isFullscreen}
-Theme: ${this.themeHelper.getTheme().name}
+Widgets: ${String(String(this.widgets.size))}
+Focused: ${String(String(this.focusedWidget || 'none'))}
+Layout: ${String(String(this.currentLayout))}
+Fullscreen: ${String(String(this.isFullscreen))}
+Theme: ${String(String(this.themeHelper.getTheme().name))}
 
 Active Widgets:
-${debugInfo}
+${String(debugInfo)}
       `,
       padding: { left: 1, right: 1 },
     });
@@ -914,7 +918,7 @@ ${debugInfo}
   /**
    * Hide debug overlay
    */
-  private hideDebugOverlay(): void {
+  private static hideDebugOverlay(): void {
     const debugWidget = this.widgets.get('debug');
     if (debugWidget) {
       this.screen.remove(debugWidget);
@@ -926,7 +930,7 @@ ${debugInfo}
   /**
    * Reset view to default state
    */
-  private resetView(): void {
+  private static resetView(): void {
     this.isFullscreen = false;
     this.focusedWidget = null;
     this.debugMode = false;
@@ -938,7 +942,7 @@ ${debugInfo}
   /**
    * Show general notification
    */
-  private showNotification(message: string): void {
+  private static showNotification(message: string): void {
     const notificationBox = blessed.box({
       top: 1,
       left: 'center',

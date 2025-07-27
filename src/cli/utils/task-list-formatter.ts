@@ -86,7 +86,7 @@ export class TaskListFormatter {
       ];
 
       if (showAssignee) {
-        row.push(task.assignee ? chalk.cyan(`@${task.assignee}`) : '-');
+        row.push(task.assignee ? chalk.cyan(`@${String(String(task.assignee))}`) : '-');
       }
 
       if (showDates) {
@@ -101,7 +101,7 @@ export class TaskListFormatter {
       }
 
       if (showTags) {
-        row.push(task.tags ? task.tags.map(t => chalk.magenta(`#${t}`)).join(' ') : '-');
+        row.push(task.tags ? task.tags.map(t => chalk.magenta(`#${String(t)}`)).join(' ') : '-');
       }
 
       table.push(row);
@@ -111,7 +111,7 @@ export class TaskListFormatter {
         const descRow = [
           {
             colSpan: headers.length,
-            content: chalk.gray(`  ${truncate(task.description, 100)}`),
+            content: chalk.gray(`  ${String(String(truncate(task.description, 100)))}`),
           },
         ];
         table.push(descRow);
@@ -132,7 +132,9 @@ export class TaskListFormatter {
       const grouped = this.groupTasks(tasks, groupBy);
 
       for (const [group, groupTasks] of grouped) {
-        output.push(chalk.bold.underline(`\n${group} (${groupTasks.length})`));
+        output.push(
+          chalk.bold.underline(`\n${String(group)} (${String(String(groupTasks.length))})`)
+        );
 
         const tasksToShow = maxItems ? groupTasks.slice(0, maxItems) : groupTasks;
         for (const task of tasksToShow) {
@@ -140,7 +142,7 @@ export class TaskListFormatter {
         }
 
         if (maxItems && groupTasks.length > maxItems) {
-          output.push(chalk.gray(`  ... and ${groupTasks.length - maxItems} more`));
+          output.push(chalk.gray(`  ... and ${String(String(groupTasks.length - maxItems))} more`));
         }
       }
     } else {
@@ -150,7 +152,7 @@ export class TaskListFormatter {
       }
 
       if (maxItems && tasks.length > maxItems) {
-        output.push(chalk.gray(`\n... and ${tasks.length - maxItems} more tasks`));
+        output.push(chalk.gray(`\n... and ${String(String(tasks.length - maxItems))} more tasks`));
       }
     }
 
@@ -160,12 +162,12 @@ export class TaskListFormatter {
   /**
    * Format a single task list item
    */
-  private formatTaskListItem(task: TaskDetails): string {
+  private static formatTaskListItem(task: TaskDetails): string {
     const lines: string[] = [];
 
     // Main task line
     const mainLine = [
-      chalk.dim(`[${task.id}]`),
+      chalk.dim(`[${String(String(task.id))}]`),
       task.title,
       task.priority ? formatPriority(task.priority) : '',
       formatStatus(task.status),
@@ -173,13 +175,13 @@ export class TaskListFormatter {
       .filter(Boolean)
       .join(' ');
 
-    lines.push(`  ${mainLine}`);
+    lines.push(`  ${String(mainLine)}`);
 
     // Additional details
     const details: string[] = [];
 
     if (task.assignee) {
-      details.push(chalk.cyan(`@${task.assignee}`));
+      details.push(chalk.cyan(`@${String(String(task.assignee))}`));
     }
 
     if (task.due_date) {
@@ -187,17 +189,17 @@ export class TaskListFormatter {
       const isOverdue = dueDate < new Date() && task.status !== 'done';
       details.push(
         isOverdue
-          ? chalk.red(`Due: ${formatDateTime(dueDate, 'MMM dd')}`)
-          : chalk.gray(`Due: ${formatDateTime(dueDate, 'MMM dd')}`)
+          ? chalk.red(`Due: ${String(formatDateTime(dueDate, 'MMM dd'))}`)
+          : chalk.gray(`Due: ${String(formatDateTime(dueDate, 'MMM dd'))}`)
       );
     }
 
     if (task.tags && task.tags.length > 0) {
-      details.push(task.tags.map(tag => chalk.magenta(`#${tag}`)).join(' '));
+      details.push(task.tags.map(tag => chalk.magenta(`#${String(tag)}`)).join(' '));
     }
 
     if (details.length > 0) {
-      lines.push(`    ${details.join(' | ')}`);
+      lines.push(`    ${String(String(details.join(' | ')))}`);
     }
 
     return lines.join('\n');
@@ -210,7 +212,7 @@ export class TaskListFormatter {
     const output: string[] = [];
 
     // Header
-    output.push(formatHeader(`Task ${task.id}`, 60));
+    output.push(formatHeader(`Task ${String(String(task.id))}`, 60));
     output.push('');
 
     // Title and status
@@ -238,10 +240,10 @@ export class TaskListFormatter {
       output.push('');
       output.push(chalk.bold('Time Tracking:'));
       if (task.estimated_hours) {
-        output.push(formatKeyValue('Estimated', `${task.estimated_hours}h`));
+        output.push(formatKeyValue('Estimated', `${String(String(task.estimated_hours))}h`));
       }
       if (task.actual_hours) {
-        output.push(formatKeyValue('Actual', `${task.actual_hours}h`));
+        output.push(formatKeyValue('Actual', `${String(String(task.actual_hours))}h`));
       }
     }
 
@@ -262,10 +264,12 @@ export class TaskListFormatter {
     // Subtasks
     if (task.subtasks && task.subtasks.length > 0) {
       output.push('');
-      output.push(chalk.bold(`Subtasks (${task.subtasks.length}):`));
+      output.push(chalk.bold(`Subtasks (${String(String(task.subtasks.length))}):`));
       for (const subtask of task.subtasks) {
         const icon = subtask.status === 'done' ? '✓' : '○';
-        output.push(`  ${chalk.green(icon)} [${subtask.id}] ${subtask.title}`);
+        output.push(
+          `  ${String(String(chalk.green(icon)))} [${String(String(subtask.id))}] ${String(String(subtask.title))}`
+        );
       }
     }
 
@@ -273,7 +277,7 @@ export class TaskListFormatter {
     if (task.dependencies && task.dependencies.length > 0) {
       output.push('');
       output.push(chalk.bold('Dependencies:'));
-      output.push(`  ${task.dependencies.join(', ')}`);
+      output.push(`  ${String(String(task.dependencies.join(', ')))}`);
     }
 
     // Tags
@@ -301,7 +305,7 @@ export class TaskListFormatter {
   /**
    * Sort tasks by specified field
    */
-  private sortTasks(tasks: TaskDetails[], sortBy: string): TaskDetails[] {
+  private static sortTasks(tasks: TaskDetails[], sortBy: string): TaskDetails[] {
     return [...tasks].sort((a, b) => {
       switch (sortBy) {
         case 'priority':
@@ -334,7 +338,7 @@ export class TaskListFormatter {
   /**
    * Group tasks by specified field
    */
-  private groupTasks(tasks: TaskDetails[], groupBy: string): Map<string, TaskDetails[]> {
+  private static groupTasks(tasks: TaskDetails[], groupBy: string): Map<string, TaskDetails[]> {
     const grouped = new Map<string, TaskDetails[]>();
 
     for (const task of tasks) {
@@ -366,7 +370,7 @@ export class TaskListFormatter {
   /**
    * Calculate column widths for table
    */
-  private calculateTableWidths(headers: string[], showDescription: boolean): number[] {
+  private static calculateTableWidths(headers: string[], showDescription: boolean): number[] {
     const baseWidths = {
       ID: 10,
       Title: showDescription ? 40 : 50,

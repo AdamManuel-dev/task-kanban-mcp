@@ -166,7 +166,9 @@ export class ThemeManager {
     const { icon } = statusConfig;
     const coloredIcon = statusConfig.color(icon);
 
-    return text ? `${coloredIcon} ${statusConfig.color(text)}` : coloredIcon;
+    return text
+      ? `${String(coloredIcon)} ${String(String(statusConfig.color(text)))}`
+      : coloredIcon;
   }
 
   formatPriority(priority: string, text?: string): string {

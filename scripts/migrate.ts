@@ -74,9 +74,9 @@ program
       const status = await dbConnection.getMigrationStatus();
 
       console.log('\n📊 Migration Status:');
-      console.log(`   Total migrations: ${status.total}`);
-      console.log(`   Applied: ${status.applied.length}`);
-      console.log(`   Pending: ${status.pending.length}`);
+      console.log(`   Total migrations: ${String(status.total)}`);
+      console.log(`   Applied: ${String(status.applied.length)}`);
+      console.log(`   Pending: ${String(status.pending.length)}`);
 
       if (status.applied.length > 0) {
         console.log('\n✅ Applied Migrations:');
@@ -105,7 +105,7 @@ program
       const migrationsPath = path.join(__dirname, '..', 'src', 'database', 'migrations');
       const filename = await MigrationRunner.createMigration(name, migrationsPath);
       console.log(`✅ Created migration: ${filename}`);
-      console.log(`📝 Edit the file at: ${path.join(migrationsPath, filename)}`);
+      console.log(`📝 Edit the file at: ${String(path.join(migrationsPath, filename))}`);
     } catch (error) {
       console.error('❌ Failed to create migration:', error);
       process.exit(1);

@@ -36,13 +36,13 @@ export class StatusIndicatorFormatter {
 
     // Status icon
     const icon = this.getStatusIcon(props.status);
-    output.push(`${icon} ${props.message}`);
+    output.push(`${String(icon)} ${String(String(props.message))}`);
 
     // Details if provided
     if (props.details && props.details.length > 0) {
       output.push('');
       props.details.forEach(detail => {
-        output.push(`  • ${detail}`);
+        output.push(`  • ${String(detail)}`);
       });
     }
 
@@ -58,15 +58,17 @@ export class StatusIndicatorFormatter {
     output.push('Progress:');
     output.push('');
 
-    props.steps.forEach((step, index) => {
+    props.steps.forEach(step => {
       const icon = this.getProgressIcon(step.status);
       const isCurrent = step.id === props.currentStep;
       const prefix = isCurrent ? '→' : ' ';
 
-      output.push(`${prefix} ${icon} ${step.title}${isCurrent ? ' (current)' : ''}`);
+      output.push(
+        `${String(prefix)} ${String(icon)} ${String(String(step.title))}${String(isCurrent ? ' (current)' : '')}`
+      );
 
       if (step.details) {
-        output.push(`    ${step.details}`);
+        output.push(`    ${String(String(step.details))}`);
       }
     });
 
@@ -82,19 +84,19 @@ export class StatusIndicatorFormatter {
     const statusIcon = props.isConnected ? '🟢' : '🔴';
     const statusText = props.isConnected ? 'Connected' : 'Disconnected';
 
-    output.push(`${statusIcon} ${statusText}`);
+    output.push(`${String(statusIcon)} ${String(statusText)}`);
 
     if (props.serverUrl) {
-      output.push(`  Server: ${props.serverUrl}`);
+      output.push(`  Server: ${String(String(props.serverUrl))}`);
     }
 
     if (props.lastSync) {
       const lastSyncText = this.formatLastSync(props.lastSync);
-      output.push(`  Last sync: ${lastSyncText}`);
+      output.push(`  Last sync: ${String(lastSyncText)}`);
     }
 
     if (props.error) {
-      output.push(`  Error: ${props.error}`);
+      output.push(`  Error: ${String(String(props.error))}`);
     }
 
     return output.join('\n');
@@ -126,13 +128,13 @@ export class StatusIndicatorFormatter {
     const diffMinutes = Math.floor(diffMs / (1000 * 60));
 
     if (diffMinutes < 1) return 'just now';
-    if (diffMinutes < 60) return `${diffMinutes}m ago`;
+    if (diffMinutes < 60) return `${String(diffMinutes)}m ago`;
 
     const diffHours = Math.floor(diffMinutes / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffHours < 24) return `${String(diffHours)}h ago`;
 
     const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays}d ago`;
+    return `${String(diffDays)}d ago`;
   }
 }
 

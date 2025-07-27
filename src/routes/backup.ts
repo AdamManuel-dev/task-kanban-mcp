@@ -113,7 +113,7 @@ router.post('/create', validateRequest(CreateBackupSchema), async (req, res) => 
       backup = await backupService.createFullBackup(options);
     }
 
-    logger.info(`Backup created via API: ${backup.id}`);
+    logger.info(`Backup created via API: ${String(String(backup.id))}`);
     return res.status(201).json(formatSuccessResponse(backup));
   } catch (error) {
     logger.error('Backup creation failed:', error);
@@ -240,7 +240,7 @@ router.get('/:id', async (req, res) => {
 
     return res.json(formatSuccessResponse(backup));
   } catch (error) {
-    logger.error(`Failed to get backup ${req.params.id}:`, error);
+    logger.error(`Failed to get backup ${String(String(req.params.id))}:`, error);
     return res
       .status(500)
       .json(
@@ -313,10 +313,10 @@ router.post('/:id/restore', validateRequest(RestoreBackupSchema), async (req, re
 
     await backupService.restoreFromBackup(id, options);
 
-    logger.info(`Database restored from backup: ${id}`);
+    logger.info(`Database restored from backup: ${String(id)}`);
     return res.json(formatSuccessResponse(null, 'Database restored successfully'));
   } catch (error) {
-    logger.error(`Restore failed for backup ${req.params['id']}:`, error);
+    logger.error(`Restore failed for backup ${String(String(req.params.id))}:`, error);
     return res
       .status(500)
       .json(
@@ -402,14 +402,14 @@ router.post('/restore-to-time', async (req, res) => {
         );
     }
 
-    logger.info(`Point-in-time restoration requested to: ${targetTime}`);
+    logger.info(`Point-in-time restoration requested to: ${String(targetTime)}`);
 
     await backupService.restoreToPointInTime(targetTime, {
       verify,
       preserveExisting,
     });
 
-    logger.info(`Point-in-time restoration completed to: ${targetTime}`);
+    logger.info(`Point-in-time restoration completed to: ${String(targetTime)}`);
     return res.json(
       formatSuccessResponse({
         restoredTo: targetTime,
@@ -480,7 +480,7 @@ router.post('/:id/verify', async (req, res) => {
       })
     );
   } catch (error) {
-    logger.error(`Backup verification failed for ${req.params.id}:`, error);
+    logger.error(`Backup verification failed for ${String(String(req.params.id))}:`, error);
     return res
       .status(500)
       .json(
@@ -536,7 +536,7 @@ router.get('/:id/export', async (req, res) => {
     if (!id) {
       return res.status(400).json(formatErrorResponse('Backup ID is required'));
     }
-    const format = (req.query['format'] as string) || 'json';
+    const format = (req.query.format as string) || 'json';
 
     const backup = await backupService.getBackupMetadata(id);
     if (!backup) {
@@ -548,28 +548,37 @@ router.get('/:id/export', async (req, res) => {
     switch (format) {
       case 'json':
         res.setHeader('Content-Type', 'application/json');
-        res.setHeader('Content-Disposition', `attachment; filename="${backup.name}.json"`);
+        res.setHeader(
+          'Content-Disposition',
+          `attachment; filename="${String(String(backup.name))}.json"`
+        );
         return res.json(backup);
         break;
       case 'sql':
         res.setHeader('Content-Type', 'application/sql');
-        res.setHeader('Content-Disposition', `attachment; filename="${backup.name}.sql"`);
+        res.setHeader(
+          'Content-Disposition',
+          `attachment; filename="${String(String(backup.name))}.sql"`
+        );
         return res.send(
-          `-- Backup metadata for ${backup.name}\n-- ID: ${backup.id}\n-- Created: ${backup.createdAt}`
+          `-- Backup metadata for ${String(String(backup.name))}\n-- ID: ${String(String(backup.id))}\n-- Created: ${String(String(backup.createdAt))}`
         );
         break;
       case 'csv':
         res.setHeader('Content-Type', 'text/csv');
-        res.setHeader('Content-Disposition', `attachment; filename="${backup.name}.csv"`);
+        res.setHeader(
+          'Content-Disposition',
+          `attachment; filename="${String(String(backup.name))}.csv"`
+        );
         return res.send(
-          `id,name,type,status,size,created_at\n${backup.id},${backup.name},${backup.type},${backup.status},${backup.size},${backup.createdAt}`
+          `id,name,type,status,size,created_at\n${String(String(backup.id))},${String(String(backup.name))},${String(String(backup.type))},${String(String(backup.status))},${String(String(backup.size))},${String(String(backup.createdAt))}`
         );
         break;
       default:
         return res.status(400).json(formatErrorResponse('Unsupported export format'));
     }
   } catch (error) {
-    logger.error(`Backup export failed for ${req.params.id}:`, error);
+    logger.error(`Backup export failed for ${String(String(req.params.id))}:`, error);
     return res
       .status(500)
       .json(
@@ -622,10 +631,10 @@ router.delete('/:id', async (req, res) => {
     }
     await backupService.deleteBackup(id);
 
-    logger.info(`Backup deleted via API: ${id}`);
+    logger.info(`Backup deleted via API: ${String(id)}`);
     return res.json(formatSuccessResponse(null, 'Backup deleted successfully'));
   } catch (error) {
-    logger.error(`Failed to delete backup ${req.params.id}:`, error);
+    logger.error(`Failed to delete backup ${String(String(req.params.id))}:`, error);
     return res
       .status(500)
       .json(
@@ -665,10 +674,12 @@ router.post('/:id/validate', async (req, res) => {
     const { id } = req.params;
     const validationResult = await backupService.validateRestoration(id);
 
-    logger.info(`Backup restoration validated via API: ${id}, valid: ${validationResult.isValid}`);
+    logger.info(
+      `Backup restoration validated via API: ${String(id)}, valid: ${String(String(validationResult.isValid))}`
+    );
     return res.json(formatSuccessResponse(validationResult));
   } catch (error) {
-    logger.error(`Failed to validate restoration for ${req.params.id}:`, error);
+    logger.error(`Failed to validate restoration for ${String(String(req.params.id))}:`, error);
     return res
       .status(500)
       .json(
@@ -698,7 +709,9 @@ router.get('/integrity-check', async (_req, res) => {
   try {
     const integrityResult = await backupService.performIntegrityChecks();
 
-    logger.info(`Database integrity check performed via API. Passed: ${integrityResult.isPassed}`);
+    logger.info(
+      `Database integrity check performed via API. Passed: ${String(String(integrityResult.isPassed))}`
+    );
     return res.json(formatSuccessResponse(integrityResult));
   } catch (error) {
     logger.error('Failed to perform integrity check:', error);
@@ -782,7 +795,7 @@ router.post(
       const { backupId, ...options } = req.body;
       await backupService.restorePartial(backupId, options);
 
-      logger.info(`Partial restore completed via API from backup: ${backupId}`);
+      logger.info(`Partial restore completed via API from backup: ${String(backupId)}`);
       return res.json(formatSuccessResponse(null, 'Partial restore completed successfully'));
     } catch (error) {
       logger.error('Failed to perform partial restore:', error);
@@ -832,7 +845,7 @@ router.get('/restore-progress/:id', async (req, res) => {
 
     return res.json(formatSuccessResponse(progress));
   } catch (error) {
-    logger.error(`Failed to get restore progress for ${req.params.id}:`, error);
+    logger.error(`Failed to get restore progress for ${String(String(req.params.id))}:`, error);
     return res
       .status(500)
       .json(

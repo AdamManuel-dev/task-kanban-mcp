@@ -353,14 +353,14 @@ export class RateLimiter {
   }
 
   // Start cleanup interval
-  private startCleanup(): void {
+  private static startCleanup(): void {
     this.cleanupInterval = setInterval(() => {
       this.cleanup();
     }, this.config.windowMs);
   }
 
   // Clean up expired entries
-  private cleanup(): void {
+  private static cleanup(): void {
     const now = Date.now();
     const windowStart = now - this.config.windowMs;
     let cleanedConnections = 0;

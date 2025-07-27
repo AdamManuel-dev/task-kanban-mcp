@@ -1,13 +1,6 @@
 import type { Command } from 'commander';
 import inquirer from 'inquirer';
-import type {
-  CliComponents,
-  DatabaseStats,
-  DatabaseIntegrityResult,
-  DatabaseRepairResult,
-  Migration,
-  MigrationResult,
-} from '../types';
+import type { CliComponents } from '../types';
 
 export function registerDatabaseCommands(program: Command): void {
   const dbCmd = program.command('db').description('Database management commands');
@@ -37,7 +30,7 @@ export function registerDatabaseCommands(program: Command): void {
         });
       } catch (error) {
         formatter.error(
-          `Failed to optimize database: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to optimize database: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -80,7 +73,7 @@ export function registerDatabaseCommands(program: Command): void {
         });
       } catch (error) {
         formatter.error(
-          `Failed to vacuum database: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to vacuum database: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -106,7 +99,7 @@ export function registerDatabaseCommands(program: Command): void {
         });
       } catch (error) {
         formatter.error(
-          `Failed to analyze database: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to analyze database: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -132,17 +125,17 @@ export function registerDatabaseCommands(program: Command): void {
         formatter.info('Database Statistics:');
 
         // General stats
-        if (stats.general) {
-          formatter.output(stats.general, {
+        if ((stats as any).general) {
+          formatter.output((stats as any).general, {
             fields: ['metric', 'value'],
             headers: ['Metric', 'Value'],
           });
         }
 
         // Table stats
-        if (stats.tables && options.tables) {
-          console.log('\n--- Table Statistics ---');
-          formatter.output(stats.tables, {
+        if ((stats as any).tables && options.tables) {
+          logger.log('\n--- Table Statistics ---');
+          formatter.output((stats as any).tables, {
             fields: ['name', 'rowCount', 'size', 'lastModified'],
             headers: ['Table', 'Rows', 'Size', 'Last Modified'],
           });
@@ -150,7 +143,7 @@ export function registerDatabaseCommands(program: Command): void {
 
         // Index stats
         if (stats.indexes && options.indexes) {
-          console.log('\n--- Index Statistics ---');
+          logger.log('\n--- Index Statistics ---');
           formatter.output(stats.indexes, {
             fields: ['name', 'table', 'size', 'usage'],
             headers: ['Index', 'Table', 'Size', 'Usage'],
@@ -159,7 +152,7 @@ export function registerDatabaseCommands(program: Command): void {
 
         // Performance metrics
         if (stats.performance && options.performance) {
-          console.log('\n--- Performance Metrics ---');
+          logger.log('\n--- Performance Metrics ---');
           formatter.output(stats.performance, {
             fields: ['metric', 'value', 'unit'],
             headers: ['Metric', 'Value', 'Unit'],
@@ -167,7 +160,7 @@ export function registerDatabaseCommands(program: Command): void {
         }
       } catch (error) {
         formatter.error(
-          `Failed to get database stats: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to get database stats: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -200,7 +193,7 @@ export function registerDatabaseCommands(program: Command): void {
         });
 
         if (result.issues && result.issues.length > 0) {
-          console.log('\n--- Issues Found ---');
+          logger.log('\n--- Issues Found ---');
           formatter.output(result.issues, {
             fields: ['type', 'severity', 'message', 'suggestion'],
             headers: ['Type', 'Severity', 'Message', 'Suggestion'],
@@ -208,7 +201,7 @@ export function registerDatabaseCommands(program: Command): void {
         }
       } catch (error) {
         formatter.error(
-          `Failed to check database: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to check database: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -259,7 +252,7 @@ export function registerDatabaseCommands(program: Command): void {
         });
       } catch (error) {
         formatter.error(
-          `Failed to repair database: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to repair database: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -288,7 +281,7 @@ export function registerDatabaseCommands(program: Command): void {
         });
       } catch (error) {
         formatter.error(
-          `Failed to get migration status: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to get migration status: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -321,7 +314,7 @@ export function registerDatabaseCommands(program: Command): void {
         });
       } catch (error) {
         formatter.error(
-          `Failed to run migrations: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to run migrations: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -373,7 +366,7 @@ export function registerDatabaseCommands(program: Command): void {
         });
       } catch (error) {
         formatter.error(
-          `Failed to rollback migrations: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to rollback migrations: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -391,14 +384,14 @@ export function registerDatabaseCommands(program: Command): void {
           body: { name },
         });
 
-        formatter.success(`Migration created: ${migration.filename}`);
+        formatter.success(`Migration created: ${String(String(migration.filename))}`);
         formatter.output(migration, {
           fields: ['name', 'version', 'filename', 'createdAt'],
           headers: ['Name', 'Version', 'Filename', 'Created At'],
         });
       } catch (error) {
         formatter.error(
-          `Failed to create migration: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to create migration: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }

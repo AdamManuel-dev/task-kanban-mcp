@@ -65,7 +65,7 @@ export class TaskListFormatter {
 
     // Show scroll indicator if there are tasks above
     if (startIndex > 0) {
-      output.push(`  ⬆ ${startIndex} more above`);
+      output.push(`  ⬆ ${String(startIndex)} more above`);
       output.push('');
     }
 
@@ -79,7 +79,7 @@ export class TaskListFormatter {
     // Show scroll indicator if there are more tasks below
     if (endIndex < this.tasks.length) {
       output.push('');
-      output.push(`  ⬇ ${this.tasks.length - endIndex} more below`);
+      output.push(`  ⬇ ${String(String(this.tasks.length - endIndex))} more below`);
     }
 
     // Footer with summary
@@ -94,25 +94,25 @@ export class TaskListFormatter {
     return output.join('\n');
   }
 
-  private formatTaskItem(task: Task, isSelected: boolean): string {
+  private static formatTaskItem(task: Task, isSelected: boolean): string {
     const prefix = isSelected ? '→' : ' ';
     const statusIcon = this.getStatusIcon(task.status);
     const priorityText = this.formatPriority(task.priority);
     const dueDateText = this.formatDueDate(task.due_date);
 
-    const titleLine = `${prefix} ${statusIcon} ${this.truncateText(task.title, 40)} ${priorityText}`;
+    const titleLine = `${String(prefix)} ${String(statusIcon)} ${String(String(this.truncateText(task.title, 40)))} ${String(priorityText)}`;
 
     let output = titleLine;
 
     if (task.assignee || dueDateText) {
-      const detailsLine = `    ${task.assignee ? `@${task.assignee}` : ''} ${dueDateText}`;
+      const detailsLine = `${task.assignee ? `@${task.assignee}` : ''} ${dueDateText}`;
       output += `\n${detailsLine.trim()}`;
     }
 
     return output;
   }
 
-  private processTaskList(
+  private static processTaskList(
     tasks: Task[],
     sortBy?: TaskListProps['sortBy'],
     filterBy?: TaskFilter
@@ -161,7 +161,7 @@ export class TaskListFormatter {
     return processed;
   }
 
-  private getStatusIcon(status: Task['status']): string {
+  private static getStatusIcon(status: Task['status']): string {
     const statusMap = {
       todo: '○',
       in_progress: '◐',
@@ -172,14 +172,14 @@ export class TaskListFormatter {
     return statusMap[status] || '○';
   }
 
-  private formatPriority(priority: number): string {
+  private static formatPriority(priority: number): string {
     if (priority <= 0) return '';
 
     const stars = '★'.repeat(Math.min(priority, 5));
-    return `[${stars}]`;
+    return `[${String(stars)}]`;
   }
 
-  private formatDueDate(dueDate?: Date | string): string {
+  private static formatDueDate(dueDate?: Date | string): string {
     if (!dueDate) return '';
 
     const date = new Date(dueDate);
@@ -190,17 +190,17 @@ export class TaskListFormatter {
     if (diffDays < 0) return '[OVERDUE]';
     if (diffDays === 0) return '[TODAY]';
     if (diffDays === 1) return '[TOMORROW]';
-    if (diffDays <= 7) return `[${diffDays}d]`;
+    if (diffDays <= 7) return `[${String(diffDays)}d]`;
 
-    return `[${date.toLocaleDateString()}]`;
+    return `[${String(String(date.toLocaleDateString()))}]`;
   }
 
-  private truncateText(text: string, maxLength: number): string {
+  private static truncateText(text: string, maxLength: number): string {
     if (text.length <= maxLength) return text;
-    return `${text.substring(0, maxLength - 3)}...`;
+    return `${String(String(text.substring(0, maxLength - 3)))}...`;
   }
 
-  private renderSummary(): string {
+  private static renderSummary(): string {
     const statusCounts = this.tasks.reduce(
       (acc, task) => {
         acc[task.status] = (acc[task.status] || 0) + 1;
@@ -214,7 +214,7 @@ export class TaskListFormatter {
     const inProgress = statusCounts.in_progress || 0;
     const blocked = statusCounts.blocked || 0;
 
-    return `Total: ${total} | Done: ${completed} | In Progress: ${inProgress} | Blocked: ${blocked}`;
+    return `Total: ${String(total)} | Done: ${String(completed)} | In Progress: ${String(inProgress)} | Blocked: ${String(blocked)}`;
   }
 }
 

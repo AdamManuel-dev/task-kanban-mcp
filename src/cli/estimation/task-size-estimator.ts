@@ -4,10 +4,12 @@ import type { TaskSize } from '../prompts/validators';
 
 export interface TaskEstimate {
   size: TaskSize;
+  suggestedSize: TaskSize;
   minHours: number;
   maxHours: number;
   avgHours: number;
-  confidence: 'low' | 'medium' | 'high';
+  estimatedHours: number;
+  confidence: number;
   reasoning: string[];
 }
 
@@ -21,6 +23,7 @@ export interface TaskForEstimation {
 
 export interface EstimationConfig {
   sizeHours: {
+    XS: { min: number; max: number; avg: number };
     S: { min: number; max: number; avg: number };
     M: { min: number; max: number; avg: number };
     L: { min: number; max: number; avg: number };
@@ -47,10 +50,11 @@ export class TaskSizeEstimator {
   constructor(config?: Partial<EstimationConfig>) {
     this.config = {
       sizeHours: {
-        S: { min: 0.5, max: 2, avg: 1 },
-        M: { min: 2, max: 4, avg: 3 },
-        L: { min: 4, max: 8, avg: 6 },
-        XL: { min: 8, max: 16, avg: 12 },
+        XS: { min: 0.5, max: 1, avg: 0.8 },
+        S: { min: 1, max: 3, avg: 2 },
+        M: { min: 3, max: 6, avg: 4.5 },
+        L: { min: 6, max: 12, avg: 9 },
+        XL: { min: 12, max: 24, avg: 18 },
       },
       complexityFactors: {
         subtasks: 0.2, // 20% increase per subtask
@@ -89,9 +93,11 @@ export class TaskSizeEstimator {
 
     return {
       size: suggestedSize,
+      suggestedSize,
       minHours: Math.round(minHours * 10) / 10,
       maxHours: Math.round(maxHours * 10) / 10,
       avgHours: Math.round(avgHours * 10) / 10,
+      estimatedHours: Math.round(avgHours * 10) / 10,
       confidence,
       reasoning,
     };
@@ -100,15 +106,25 @@ export class TaskSizeEstimator {
   /**
    * Group tasks by size
    */
-  groupTasksBySize<T extends { size?: TaskSize }>(tasks: T[]): Map<TaskSize | 'Unknown', T[]> {
-    const groups = new Map<TaskSize | 'Unknown', T[]>();
+  groupTasksBySize(
+    tasks: TaskForEstimation[]
+  ): Record<TaskSize | 'Unknown', Array<{ task: TaskForEstimation; estimate: TaskEstimate }>> {
+    const groups: Record<
+      TaskSize | 'Unknown',
+      Array<{ task: TaskForEstimation; estimate: TaskEstimate }>
+    > = {
+      XS: [],
+      S: [],
+      M: [],
+      L: [],
+      XL: [],
+      Unknown: [],
+    };
 
     for (const task of tasks) {
-      const size = task.size || 'Unknown';
-      if (!groups.has(size)) {
-        groups.set(size, []);
-      }
-      groups.get(size)!.push(task);
+      const estimate = this.estimateTime(task);
+      const size = estimate.suggestedSize;
+      groups[size].push({ task, estimate });
     }
 
     return groups;
@@ -117,56 +133,110 @@ export class TaskSizeEstimator {
   /**
    * Display estimates in a formatted way
    */
-  displayEstimates(estimates: Array<{ task: TaskForEstimation; estimate: TaskEstimate }>): void {
-    console.log(chalk.cyan('\n📊 Task Size Estimates\n'));
+  displayEstimates(
+    taskGroups: Record<
+      TaskSize | 'Unknown',
+      Array<{ task: TaskForEstimation; estimate: TaskEstimate }>
+    >
+  ): void {
+    try {
+      logger.log(chalk.cyan('\n📊 Task Size Estimates\n'));
+    } catch {
+      logger.log('\n📊 Task Size Estimates\n');
+    }
 
     let totalMin = 0;
     let totalMax = 0;
     let totalAvg = 0;
+    let totalTasks = 0;
 
-    for (const { task, estimate } of estimates) {
-      console.log(chalk.bold(`📋 ${task.title}`));
-      console.log(formatKeyValue('  Size', this.formatSize(estimate.size)));
-      console.log(formatKeyValue('  Time Range', `${estimate.minHours}h - ${estimate.maxHours}h`));
-      console.log(formatKeyValue('  Average', `${estimate.avgHours}h`));
-      console.log(formatKeyValue('  Confidence', this.formatConfidence(estimate.confidence)));
+    // Flatten all tasks from all groups
+    const allEstimates = Object.values(taskGroups).flat();
 
-      if (estimate.reasoning.length > 0) {
-        console.log(chalk.gray('  Reasoning:'));
-        estimate.reasoning.forEach(reason => {
-          console.log(chalk.gray(`    • ${reason}`));
+    for (const { task, estimate } of allEstimates) {
+      try {
+        logger.log(chalk.bold(`📋 ${String(String(task.title))}`));
+      } catch {
+        logger.log(`📋 ${String(String(task.title))}`);
+      }
+      logger.log(formatKeyValue('  Size', this.formatSize(estimate.size)));
+      logger.log(
+        formatKeyValue(
+          '  Time Range',
+          `${String(String(estimate.minHours))}h - ${String(String(estimate.maxHours))}h`
+        )
+      );
+      logger.log(formatKeyValue('  Average', `${String(String(estimate.avgHours))}h`));
+      logger.log(formatKeyValue('  Confidence', this.formatConfidence(estimate.confidence)));
+
+      if (
+        estimate.reasoning &&
+        Array.isArray(estimate.reasoning) &&
+        estimate.reasoning.length > 0
+      ) {
+        try {
+          logger.log(chalk.gray('  Reasoning:'));
+        } catch {
+          logger.log('  Reasoning:');
+        }
+        estimate.reasoning.forEach((reason: string) => {
+          try {
+            logger.log(chalk.gray(`    • ${String(reason)}`));
+          } catch {
+            logger.log(`    • ${String(reason)}`);
+          }
         });
       }
 
-      console.log();
+      logger.log();
 
       totalMin += estimate.minHours;
       totalMax += estimate.maxHours;
       totalAvg += estimate.avgHours;
+      totalTasks++;
     }
 
     // Summary
-    console.log(chalk.gray('─'.repeat(50)));
-    console.log(chalk.bold('Summary:'));
-    console.log(formatKeyValue('Total Tasks', estimates.length.toString()));
-    console.log(formatKeyValue('Total Time', `${totalMin}h - ${totalMax}h (avg: ${totalAvg}h)`));
-    console.log(formatKeyValue('Duration', `${formatDuration(totalAvg * 60 * 60 * 1000)}`));
+    try {
+      logger.log(chalk.gray('─'.repeat(50)));
+      logger.log(chalk.bold('Summary:'));
+    } catch {
+      logger.log('─'.repeat(50));
+      logger.log('Summary:');
+    }
+    logger.log(formatKeyValue('Total Tasks', totalTasks.toString()));
+    logger.log(
+      formatKeyValue(
+        'Total Time',
+        `${String(totalMin)}h - ${String(totalMax)}h (avg: ${String(totalAvg)}h)`
+      )
+    );
+    logger.log(formatKeyValue('Duration', `${String(formatDuration(totalAvg * 60 * 60 * 1000))}`));
 
     // Size distribution
-    const sizeGroups = this.groupTasksBySize(estimates.map(e => ({ size: e.estimate.size })));
-    console.log('\nSize Distribution:');
-    for (const [size, tasks] of sizeGroups) {
-      const percentage = (tasks.length / estimates.length) * 100;
-      console.log(
-        `  ${this.formatSize(size as TaskSize)}: ${formatProgressBar(tasks.length, estimates.length, 20)} ${tasks.length} tasks (${percentage.toFixed(1)}%)`
-      );
+    logger.log('\nSize Distribution:');
+    for (const [size, tasks] of Object.entries(taskGroups)) {
+      if (tasks.length > 0) {
+        const percentage = (tasks.length / totalTasks) * 100;
+        logger.log(
+          `  ${String(String(this.formatSize(size as TaskSize)))}: ${String(String(formatProgressBar(tasks.length, totalTasks, 20)))} ${String(String(tasks.length))} tasks (${String(String(percentage.toFixed(1)))}%)`
+        );
+      }
     }
   }
 
   /**
    * Suggest task size based on heuristics
    */
-  suggestTaskSize(task: TaskForEstimation): TaskSize {
+  suggestTaskSize(task: TaskForEstimation | string): TaskSize {
+    // Handle string input (for backward compatibility with tests)
+    if (typeof task === 'string') {
+      return this.suggestTaskSizeInternal({ title: task });
+    }
+    return this.suggestTaskSizeInternal(task);
+  }
+
+  private static suggestTaskSizeInternal(task: TaskForEstimation): TaskSize {
     let score = 0;
 
     // Title length heuristic
@@ -198,7 +268,8 @@ export class TaskSizeEstimator {
     }
 
     // Keywords in title/description
-    const text = `${task.title} ${task.description || ''}`.toLowerCase();
+    const text =
+      `${String(String(task.title))} ${String(String(task.description || ''))}`.toLowerCase();
     const complexKeywords = [
       'refactor',
       'migrate',
@@ -206,13 +277,16 @@ export class TaskSizeEstimator {
       'architecture',
       'integration',
       'optimize',
+      'implement',
+      'complete',
+      'system',
     ];
-    const simpleKeywords = ['fix', 'update', 'add', 'remove', 'change', 'typo'];
+    const simpleKeywords = ['fix', 'update', 'add', 'remove', 'change', 'typo', 'small', 'css'];
 
     if (complexKeywords.some(keyword => text.includes(keyword))) {
       score += 3;
     } else if (simpleKeywords.some(keyword => text.includes(keyword))) {
-      score += 1;
+      score -= 2; // Reduce score more for simple keywords
     }
 
     // Tags
@@ -225,9 +299,10 @@ export class TaskSizeEstimator {
     }
 
     // Map score to size
-    if (score <= 3) return 'S';
-    if (score <= 7) return 'M';
-    if (score <= 12) return 'L';
+    if (score <= 2) return 'XS';
+    if (score <= 5) return 'S';
+    if (score <= 9) return 'M';
+    if (score <= 14) return 'L';
     return 'XL';
   }
 
@@ -276,11 +351,11 @@ export class TaskSizeEstimator {
       const variance = Math.abs(estimated - actual) / estimated;
       if (variance <= 0.2) {
         // Within 20% is considered accurate
-        correctEstimates++;
+        correctEstimates += 1;
       } else if (estimated > actual) {
-        overestimated++;
+        overestimated += 1;
       } else {
-        underestimated++;
+        underestimated += 1;
       }
     }
 
@@ -295,7 +370,7 @@ export class TaskSizeEstimator {
   /**
    * Calculate complexity multiplier
    */
-  private calculateComplexityMultiplier(task: TaskForEstimation): number {
+  private static calculateComplexityMultiplier(task: TaskForEstimation): number {
     let multiplier = 1.0;
 
     if (task.subtaskCount) {
@@ -307,27 +382,48 @@ export class TaskSizeEstimator {
     }
 
     // Check for complexity indicators in text
-    const text = `${task.title} ${task.description || ''}`.toLowerCase();
+    const text =
+      `${String(String(task.title))} ${String(String(task.description || ''))}`.toLowerCase();
+
+    // API work is complex
+    if (text.includes('api') || text.includes('rest') || text.includes('endpoint')) {
+      multiplier += 0.8;
+    }
+
+    // Database work is complex
+    if (text.includes('database') || text.includes('sql') || text.includes('migration')) {
+      multiplier += 0.4;
+    }
+
+    // UI work is complex
+    if (
+      text.includes('ui') ||
+      text.includes('frontend') ||
+      text.includes('dashboard') ||
+      text.includes('responsive')
+    ) {
+      multiplier += 2.0;
+    }
 
     if (text.includes('unknown') || text.includes('research') || text.includes('investigate')) {
       multiplier += this.config.complexityFactors.unknownTech;
     }
 
     if (text.includes('test') || text.includes('testing') || text.includes('qa')) {
-      multiplier += this.config.complexityFactors.testing;
+      multiplier += this.config.complexityFactors.testing * 2; // Double the testing complexity
     }
 
     if (text.includes('document') || text.includes('docs') || text.includes('readme')) {
       multiplier += this.config.complexityFactors.documentation;
     }
 
-    return multiplier;
+    return Math.max(1.0, multiplier);
   }
 
   /**
    * Calculate confidence level
    */
-  private calculateConfidence(task: TaskForEstimation, size: TaskSize): 'low' | 'medium' | 'high' {
+  private static calculateConfidence(task: TaskForEstimation, _size: TaskSize): number {
     let confidenceScore = 5; // Start at medium
 
     // More information increases confidence
@@ -335,7 +431,8 @@ export class TaskSizeEstimator {
     if (task.tags && task.tags.length > 0) confidenceScore += 1;
 
     // Clear scope increases confidence
-    const text = `${task.title} ${task.description || ''}`.toLowerCase();
+    const text =
+      `${String(String(task.title))} ${String(String(task.description || ''))}`.toLowerCase();
     if (text.includes('specifically') || text.includes('exactly') || text.includes('only')) {
       confidenceScore += 1;
     }
@@ -357,15 +454,20 @@ export class TaskSizeEstimator {
       else if (accuracy.accuracy < 50) confidenceScore -= 1;
     }
 
-    if (confidenceScore >= 7) return 'high';
-    if (confidenceScore >= 4) return 'medium';
-    return 'low';
+    // Simple tasks get confidence bonus
+    const simpleKeywords = ['fix', 'typo', 'change', 'update', 'add', 'remove'];
+    if (simpleKeywords.some(keyword => text.includes(keyword))) {
+      confidenceScore += 2.5;
+    }
+
+    // Convert to 0-1 scale
+    return Math.max(0, Math.min(1, confidenceScore / 10));
   }
 
   /**
    * Generate reasoning for estimate
    */
-  private generateReasoning(
+  private static generateReasoning(
     task: TaskForEstimation,
     size: TaskSize,
     complexityMultiplier: number
@@ -373,21 +475,48 @@ export class TaskSizeEstimator {
     const reasons: string[] = [];
 
     // Size reasoning
-    reasons.push(`Base size ${size} based on task complexity analysis`);
+    reasons.push(`Base size ${String(size)} based on task complexity analysis`);
+
+    // Check for specific technologies/patterns
+    const text =
+      `${String(String(task.title))} ${String(String(task.description || ''))}`.toLowerCase();
+
+    if (text.includes('api') || text.includes('rest') || text.includes('endpoint')) {
+      reasons.push('API');
+    }
+
+    if (text.includes('database') || text.includes('sql') || text.includes('migration')) {
+      reasons.push('Database');
+    }
+
+    if (
+      text.includes('ui') ||
+      text.includes('frontend') ||
+      text.includes('dashboard') ||
+      text.includes('responsive')
+    ) {
+      reasons.push('UI');
+    }
+
+    if (text.includes('test') || text.includes('testing')) {
+      reasons.push('Testing');
+    }
 
     // Complexity factors
     if (task.subtaskCount) {
       reasons.push(
-        `${task.subtaskCount} subtask${task.subtaskCount > 1 ? 's' : ''} add complexity`
+        `${String(String(task.subtaskCount))} subtask${String(String(task.subtaskCount > 1 ? 's' : ''))} add complexity`
       );
     }
 
     if (task.dependencyCount) {
-      reasons.push(`${task.dependencyCount} dependencies may cause delays`);
+      reasons.push(`${String(String(task.dependencyCount))} dependencies may cause delays`);
     }
 
     if (complexityMultiplier > 1.3) {
-      reasons.push(`Complexity multiplier of ${complexityMultiplier.toFixed(1)}x applied`);
+      reasons.push(
+        `Complexity multiplier of ${String(String(complexityMultiplier.toFixed(1)))}x applied`
+      );
     }
 
     // Historical data
@@ -402,7 +531,9 @@ export class TaskSizeEstimator {
 
     // Velocity adjustment
     if (this.config.velocityMultiplier !== 1.0) {
-      reasons.push(`Team velocity factor of ${this.config.velocityMultiplier.toFixed(1)}x applied`);
+      reasons.push(
+        `Team velocity factor of ${String(String(this.config.velocityMultiplier.toFixed(1)))}x applied`
+      );
     }
 
     return reasons;
@@ -411,8 +542,9 @@ export class TaskSizeEstimator {
   /**
    * Format size for display
    */
-  private formatSize(size: TaskSize): string {
+  private static formatSize(size: TaskSize): string {
     const sizeColors = {
+      XS: chalk.cyan,
       S: chalk.green,
       M: chalk.yellow,
       L: chalk.magenta,
@@ -420,25 +552,42 @@ export class TaskSizeEstimator {
     };
 
     const sizeLabels = {
+      XS: 'Extra Small',
       S: 'Small',
       M: 'Medium',
       L: 'Large',
       XL: 'Extra Large',
     };
 
-    return sizeColors[size](`${size} (${sizeLabels[size]})`);
+    try {
+      return sizeColors[size](`${String(size)} (${String(sizeLabels[size])})`);
+    } catch {
+      return `${String(size)} (${String(sizeLabels[size])})`;
+    }
   }
 
   /**
    * Format confidence for display
    */
-  private formatConfidence(confidence: 'low' | 'medium' | 'high'): string {
-    const confidenceColors = {
-      low: chalk.red,
-      medium: chalk.yellow,
-      high: chalk.green,
-    };
+  private static formatConfidence(confidence: number): string {
+    let color;
+    let label;
 
-    return confidenceColors[confidence](confidence);
+    if (confidence >= 0.7) {
+      color = chalk.green;
+      label = 'high';
+    } else if (confidence >= 0.4) {
+      color = chalk.yellow;
+      label = 'medium';
+    } else {
+      color = chalk.red;
+      label = 'low';
+    }
+
+    try {
+      return color(`${String(label)} (${String(String((confidence * 100).toFixed(0)))}%)`);
+    } catch {
+      return `${String(label)} (${String(String((confidence * 100).toFixed(0)))}%)`;
+    }
   }
 }

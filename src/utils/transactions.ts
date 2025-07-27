@@ -40,7 +40,7 @@ type RollbackAction = () => Promise<void>;
 export class TransactionManager {
   private readonly activeTransactions = new Map<string, TransactionContext>();
 
-  private transactionCounter = 0;
+  private static transactionCounter = 0;
 
   constructor(private readonly db: DatabaseConnection) {}
 
@@ -51,7 +51,7 @@ export class TransactionManager {
     operations: TransactionCallback<T>,
     options: TransactionOptions = {}
   ): Promise<T> {
-    const transactionId = this.generateTransactionId();
+    const transactionId = TransactionManager.generateTransactionId();
     const context: TransactionContext = {
       id: transactionId,
       startTime: new Date(),
@@ -134,7 +134,7 @@ export class TransactionManager {
     operations: TransactionCallback<T>,
     options: TransactionOptions = {}
   ): Promise<T> {
-    const maxAttempts = options.retryAttempts ?? 3;
+    const maxAttempts = options.retryAttempts || 3;
     let lastError: unknown;
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -144,7 +144,7 @@ export class TransactionManager {
       } catch (error) {
         lastError = error;
 
-        if (!this.isRetryableError(error) || attempt === maxAttempts) {
+        if (!TransactionManager.isRetryableError(error) || attempt === maxAttempts) {
           throw error;
         }
 
@@ -156,7 +156,9 @@ export class TransactionManager {
           error: getErrorMessage(error),
         });
 
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await new Promise<void>(resolve => {
+          setTimeout(resolve, delay);
+        });
       }
     }
 
@@ -233,7 +235,7 @@ export class TransactionManager {
     }
 
     if (errors.length > 0) {
-      throw new DatabaseError(`Rollback failed with ${errors.length} errors`, {
+      throw new DatabaseError(`Rollback failed with ${String(String(errors.length))} errors`, {
         errors: errors.map(e => e.message),
       });
     }
@@ -254,20 +256,23 @@ export class TransactionManager {
     };
 
     const sqlLevel = levelMap[level!];
-    await db.exec(`PRAGMA read_uncommitted = ${sqlLevel === 'READ UNCOMMITTED' ? 'ON' : 'OFF'}`);
+    await db.exec(
+      `PRAGMA read_uncommitted = ${String(sqlLevel === 'READ UNCOMMITTED' ? 'ON' : 'OFF')}`
+    );
   }
 
   /**
    * Generate unique transaction ID
    */
-  private generateTransactionId(): string {
-    return `txn_${Date.now()}_${++this.transactionCounter}`;
+  private static generateTransactionId(): string {
+    TransactionManager.transactionCounter += 1;
+    return `txn_${String(String(Date.now()))}_${String(String(TransactionManager.transactionCounter))}`;
   }
 
   /**
    * Check if an error is retryable
    */
-  private isRetryableError(error: unknown): boolean {
+  private static isRetryableError(error: unknown): boolean {
     if (!isError(error)) return false;
 
     const retryableMessages = [
@@ -321,12 +326,12 @@ export async function batchInTransaction<T, R>(
   const manager = new TransactionManager(db);
   const results: R[] = [];
 
-  for (let i = 0; i < items.length; i += batchSize) {
+  for (let i = 0; i < items.length; i = i + batchSize) {
     const batch = items.slice(i, i + batchSize);
 
     const batchResults = await manager.executeTransaction(async context => {
       const promises = batch.map((item, index) => {
-        manager.addOperation(context, 'batch', `item_${i + index}`);
+        manager.addOperation(context, 'batch', `item_${String(i + index)}`);
         return operation(item, i + index);
       });
 
@@ -349,15 +354,15 @@ export class Savepoint {
   ) {}
 
   async create(): Promise<void> {
-    await this.db.exec(`SAVEPOINT ${this.name}`);
+    await this.db.exec(`SAVEPOINT ${String(String(this.name))}`);
   }
 
   async release(): Promise<void> {
-    await this.db.exec(`RELEASE SAVEPOINT ${this.name}`);
+    await this.db.exec(`RELEASE SAVEPOINT ${String(String(this.name))}`);
   }
 
   async rollback(): Promise<void> {
-    await this.db.exec(`ROLLBACK TO SAVEPOINT ${this.name}`);
+    await this.db.exec(`ROLLBACK TO SAVEPOINT ${String(String(this.name))}`);
   }
 }
 

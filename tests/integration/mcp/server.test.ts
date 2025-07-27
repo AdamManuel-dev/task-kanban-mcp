@@ -274,7 +274,9 @@ describe('MCP Server Integration Tests', () => {
     it('should read specific board resource', async () => {
       const resourceRegistry = server.getResourceRegistry();
 
-      const result = await resourceRegistry.readResource(`kanban://boards/${testBoard.id}`);
+      const result = await resourceRegistry.readResource(
+        `kanban://boards/${String(String(testBoard.id))}`
+      );
 
       expect(result.text).toBeDefined();
 
@@ -286,7 +288,9 @@ describe('MCP Server Integration Tests', () => {
     it('should read board tasks resource', async () => {
       const resourceRegistry = server.getResourceRegistry();
 
-      const result = await resourceRegistry.readResource(`kanban://boards/${testBoard.id}/tasks`);
+      const result = await resourceRegistry.readResource(
+        `kanban://boards/${String(String(testBoard.id))}/tasks`
+      );
 
       expect(result.text).toBeDefined();
 
@@ -436,20 +440,22 @@ describe('MCP Server Integration Tests', () => {
       expect(boards.length).toBeGreaterThan(0);
 
       // 2. Get specific board
-      const boardResult = await resourceRegistry.readResource(`kanban://boards/${testBoard.id}`);
+      const boardResult = await resourceRegistry.readResource(
+        `kanban://boards/${String(String(testBoard.id))}`
+      );
       const board = JSON.parse(boardResult.text);
       expect(board.id).toBe(testBoard.id);
 
       // 3. Get board tasks
       const tasksResult = await resourceRegistry.readResource(
-        `kanban://boards/${testBoard.id}/tasks`
+        `kanban://boards/${String(String(testBoard.id))}/tasks`
       );
       const tasks = JSON.parse(tasksResult.text);
       expect(Array.isArray(tasks)).toBe(true);
 
       // 4. Get task context
       const contextResult = await resourceRegistry.readResource(
-        `kanban://context/board/${testBoard.id}`
+        `kanban://context/board/${String(String(testBoard.id))}`
       );
       const context = JSON.parse(contextResult.text);
       expect(context.board).toBeDefined();
@@ -533,7 +539,7 @@ describe('MCP Server Integration Tests', () => {
       // Create multiple tasks concurrently
       const taskPromises = Array.from({ length: 5 }, (_, i) =>
         toolRegistry.callTool('create_task', {
-          title: `Concurrent Task ${i + 1}`,
+          title: `Concurrent Task ${String(i + 1)}`,
           boardId: testBoard.id,
           columnId: global.testColumnId,
           status: 'todo',

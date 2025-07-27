@@ -46,15 +46,16 @@ describe('Task API Integration Tests', () => {
 
     // Create test columns and store IDs
     const columns = ['To Do', 'In Progress', 'Done'];
-    const columnIds = [];
-    for (let i = 0; i < columns.length; i++) {
-      const columnId = uuidv4();
-      columnIds.push(columnId);
-      await dbConnection.execute(
-        'INSERT INTO columns (id, board_id, name, position, created_at) VALUES (?, ?, ?, ?, ?)',
-        [columnId, boardId, columns[i], i, new Date().toISOString()]
-      );
-    }
+    const columnIds = await Promise.all(
+      columns.map(async (column, i) => {
+        const columnId = uuidv4();
+        await dbConnection.execute(
+          'INSERT INTO columns (id, board_id, name, position, created_at) VALUES (?, ?, ?, ?, ?)',
+          [columnId, boardId, column, i, new Date().toISOString()]
+        );
+        return columnId;
+      })
+    );
 
     // Store first column ID for task creation
     global.testColumnId = columnIds[0];
@@ -230,21 +231,23 @@ describe('Task API Integration Tests', () => {
 
     it('should support pagination', async () => {
       // Create multiple tasks
-      for (let i = 0; i < 5; i++) {
-        await dbConnection.execute(
-          `INSERT INTO tasks (id, title, board_id, column_id, status, position, created_at) 
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          [
-            uuidv4(),
-            `Task ${i + 2}`,
-            testBoard.id,
-            global.testColumnId,
-            'todo',
-            i + 1,
-            new Date().toISOString(),
-          ]
-        );
-      }
+      await Promise.all(
+        Array.from({ length: 5 }, async (_, i) => {
+          await dbConnection.execute(
+            `INSERT INTO tasks (id, title, board_id, column_id, status, position, created_at) 
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [
+              uuidv4(),
+              `Task ${String(i + 2)}`,
+              testBoard.id,
+              global.testColumnId,
+              'todo',
+              i + 1,
+              new Date().toISOString(),
+            ]
+          );
+        })
+      );
 
       const response = await request(app)
         .get('/api/v1/tasks')
@@ -264,7 +267,7 @@ describe('Task API Integration Tests', () => {
   describe('GET /api/v1/tasks/:id', () => {
     it('should get a specific task', async () => {
       const response = await request(app)
-        .get(`/api/v1/tasks/${testTask.id}`)
+        .get(`/api/v1/tasks/${String(String(testTask.id))}`)
         .set('X-API-Key', apiKey)
         .expect(200);
 
@@ -280,7 +283,7 @@ describe('Task API Integration Tests', () => {
       const fakeId = uuidv4();
 
       const response = await request(app)
-        .get(`/api/v1/tasks/${fakeId}`)
+        .get(`/api/v1/tasks/${String(fakeId)}`)
         .set('X-API-Key', apiKey)
         .expect(404);
 
@@ -298,7 +301,7 @@ describe('Task API Integration Tests', () => {
       };
 
       const response = await request(app)
-        .patch(`/api/v1/tasks/${testTask.id}`)
+        .patch(`/api/v1/tasks/${String(String(testTask.id))}`)
         .set('X-API-Key', apiKey)
         .send(updates)
         .expect(200);
@@ -314,7 +317,7 @@ describe('Task API Integration Tests', () => {
       };
 
       const response = await request(app)
-        .patch(`/api/v1/tasks/${testTask.id}`)
+        .patch(`/api/v1/tasks/${String(String(testTask.id))}`)
         .set('X-API-Key', apiKey)
         .send(invalidUpdate)
         .expect(400);
@@ -326,7 +329,7 @@ describe('Task API Integration Tests', () => {
   describe('DELETE /api/v1/tasks/:id', () => {
     it('should delete a task', async () => {
       const response = await request(app)
-        .delete(`/api/v1/tasks/${testTask.id}`)
+        .delete(`/api/v1/tasks/${String(String(testTask.id))}`)
         .set('X-API-Key', apiKey)
         .expect(200);
 
@@ -334,7 +337,7 @@ describe('Task API Integration Tests', () => {
 
       // Verify task is deleted
       const checkResponse = await request(app)
-        .get(`/api/v1/tasks/${testTask.id}`)
+        .get(`/api/v1/tasks/${String(String(testTask.id))}`)
         .set('X-API-Key', apiKey)
         .expect(404);
     });
@@ -363,7 +366,7 @@ describe('Task API Integration Tests', () => {
 
     it('should add task dependencies', async () => {
       const response = await request(app)
-        .post(`/api/v1/tasks/${testTask.id}/dependencies`)
+        .post(`/api/v1/tasks/${String(String(testTask.id))}/dependencies`)
         .set('X-API-Key', apiKey)
         .send({ dependsOn: [dependentTaskId] })
         .expect(200);
@@ -375,14 +378,14 @@ describe('Task API Integration Tests', () => {
     it('should prevent circular dependencies', async () => {
       // First add A depends on B
       await request(app)
-        .post(`/api/v1/tasks/${testTask.id}/dependencies`)
+        .post(`/api/v1/tasks/${String(String(testTask.id))}/dependencies`)
         .set('X-API-Key', apiKey)
         .send({ dependsOn: [dependentTaskId] })
         .expect(200);
 
       // Then try to add B depends on A (circular)
       const response = await request(app)
-        .post(`/api/v1/tasks/${dependentTaskId}/dependencies`)
+        .post(`/api/v1/tasks/${String(dependentTaskId)}/dependencies`)
         .set('X-API-Key', apiKey)
         .send({ dependsOn: [testTask.id] })
         .expect(400);
@@ -401,22 +404,24 @@ describe('Task API Integration Tests', () => {
         { title: 'Documentation update', description: 'Update API docs' },
       ];
 
-      for (const task of tasks) {
-        await dbConnection.execute(
-          `INSERT INTO tasks (id, title, description, board_id, column_id, status, position, created_at) 
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            uuidv4(),
-            task.title,
-            task.description,
-            testBoard.id,
-            global.testColumnId,
-            'todo',
-            0,
-            new Date().toISOString(),
-          ]
-        );
-      }
+      await Promise.all(
+        tasks.map(async task => {
+          await dbConnection.execute(
+            `INSERT INTO tasks (id, title, description, board_id, column_id, status, position, created_at) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              uuidv4(),
+              task.title,
+              task.description,
+              testBoard.id,
+              global.testColumnId,
+              'todo',
+              0,
+              new Date().toISOString(),
+            ]
+          );
+        })
+      );
     });
 
     it('should search tasks by title', async () => {

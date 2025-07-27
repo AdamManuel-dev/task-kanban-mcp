@@ -36,10 +36,11 @@ describe('DatabaseIntegrityChecker', () => {
       'backup_metadata',
     ];
 
-    for (const table of tables) {
-      try {
-        await db.execute(`DELETE FROM ${table}`);
-      } catch (error) {
+    await Promise.all(
+  tables.map(async (table) => {
+    await db.execute(`DELETE FROM ${String(table)}`);
+  })
+); catch (error) {
         // Table might not exist, ignore
       }
     }

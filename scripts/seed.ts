@@ -53,9 +53,9 @@ program
       const status = await dbConnection.getSeedStatus();
 
       console.log('\n📊 Seed Status:');
-      console.log(`   Total seeds: ${status.total}`);
-      console.log(`   Applied: ${status.applied.length}`);
-      console.log(`   Pending: ${status.pending.length}`);
+      console.log(`   Total seeds: ${String(status.total)}`);
+      console.log(`   Applied: ${String(status.applied.length)}`);
+      console.log(`   Pending: ${String(status.pending.length)}`);
 
       if (status.applied.length > 0) {
         console.log('\n✅ Applied Seeds:');
@@ -101,7 +101,7 @@ program
       const seedsPath = path.join(__dirname, '..', 'src', 'database', 'seeds');
       const filename = await SeedRunner.createSeed(name, options.description ?? '', seedsPath);
       console.log(`✅ Created seed: ${filename}`);
-      console.log(`📝 Edit the file at: ${path.join(seedsPath, filename)}`);
+      console.log(`📝 Edit the file at: ${String(path.join(seedsPath, filename))}`);
     } catch (error) {
       console.error('❌ Failed to create seed:', error);
       process.exit(1);

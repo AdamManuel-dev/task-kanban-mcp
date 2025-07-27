@@ -321,7 +321,7 @@ describe('MCP Types', () => {
             content: [
               {
                 type: 'text',
-                text: `Executed ${call.name} with ${Object.keys(call.arguments).length} arguments`,
+                text: `Executed ${String(String(call.name))} with ${String(String(Object.keys(call.arguments).length))} arguments`,
               },
             ],
             isError: false,

@@ -4,7 +4,7 @@ import { config } from '@/config';
 import { webSocketManager } from '@/websocket';
 import '@/middleware/response';
 
-export async function healthRoutes(): Promise<Router> {
+export async function healthRoutes(): Promise<void>(): Promise<Router> {
   const router = Router();
 
   // Basic health check

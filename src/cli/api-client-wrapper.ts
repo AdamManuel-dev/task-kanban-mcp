@@ -21,6 +21,34 @@ import type {
   AnyApiResponse,
 } from './types';
 
+// Helper function to check if response is successful and has data
+export function isSuccessResponse<T>(response: AnyApiResponse): response is T & { data: unknown } {
+  return 'data' in response && response.data !== undefined;
+}
+
+// Helper function to safely extract data from API responses
+export function extractApiData<T>(response: AnyApiResponse): T | null {
+  if (isSuccessResponse(response)) {
+    return response.data as T;
+  }
+  return null;
+}
+
+// Helper function to handle API response with error handling
+export function handleApiResponse<T>(response: AnyApiResponse, errorMessage: string): T {
+  if (isSuccessResponse(response)) {
+    return response.data as T;
+  }
+
+  if ('error' in response) {
+    const errorDetails =
+      typeof response.error === 'string' ? response.error : JSON.stringify(response.error);
+    throw new Error(`${String(errorMessage)}: ${String(errorDetails)}`);
+  }
+
+  throw new Error(`${String(errorMessage)}: Unknown error`);
+}
+
 interface RequestMetadata {
   operationName: string;
   retries?: number;
@@ -65,8 +93,6 @@ export interface ApiWrapperOptions {
 export class ApiClientWrapper {
   private readonly apiClient: ApiClient;
 
-  private readonly config: ConfigManager;
-
   private readonly options: ApiWrapperOptions;
 
   private isOnline: boolean = true;
@@ -78,7 +104,6 @@ export class ApiClientWrapper {
   }> = [];
 
   constructor(config: ConfigManager, options: Partial<ApiWrapperOptions> = {}) {
-    this.config = config;
     this.apiClient = new ApiClient(config);
 
     this.options = {
@@ -124,7 +149,7 @@ export class ApiClientWrapper {
       retries = this.options.retry!.maxRetries,
       timeout = this.options.timeout!.default,
       showSpinner = this.options.spinner!.showByDefault,
-      spinnerText = `Executing ${operationName}...`,
+      spinnerText = `Executing ${String(operationName)}...`,
       successText,
       errorText,
     } = metadata;
@@ -139,8 +164,8 @@ export class ApiClientWrapper {
         spinnerText,
         this.executeWithRetry(operation, retries, operationName),
         {
-          successText: successText ?? `${operationName} completed successfully`,
-          failText: errorText ?? `Failed to ${operationName.toLowerCase()}`,
+          successText: successText || `${String(operationName)} completed successfully`,
+          failText: errorText || `Failed to ${String(String(operationName.toLowerCase()))}`,
           timeout,
         }
       );
@@ -160,20 +185,20 @@ export class ApiClientWrapper {
     let lastError: Error | null = null;
     const { baseDelay, maxDelay, backoffFactor, retryableErrors } = this.options.retry!;
 
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const attemptOperation = async (attempt: number): Promise<T> => {
       try {
         return await operation();
       } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error));
+        const currentError = error instanceof Error ? error : new Error(String(error));
 
         // Don't retry on final attempt
         if (attempt === maxRetries) {
-          break;
+          throw currentError;
         }
 
         // Check if error is retryable
-        if (!ApiClientWrapper.isRetryableError(lastError, retryableErrors!)) {
-          break;
+        if (!ApiClientWrapper.isRetryableError(currentError, retryableErrors!)) {
+          throw currentError;
         }
 
         // Calculate delay with exponential backoff
@@ -182,17 +207,26 @@ export class ApiClientWrapper {
         // Log retry attempt
         logger.warn(
           chalk.yellow(
-            `⚠️  ${operationName} failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${delay}ms...`
+            `⚠️  ${String(operationName)} failed (attempt ${String(attempt + 1)}/${String(maxRetries + 1)}), retrying in ${String(delay)}ms...`
           )
         );
-        logger.debug(chalk.gray(`   Error: ${lastError.message}`));
+        logger.debug(chalk.gray(`   Error: ${String(String(currentError.message))}`));
 
         await ApiClientWrapper.sleep(delay);
+
+        // Recursive call for next attempt
+        return attemptOperation(attempt + 1);
       }
+    };
+
+    try {
+      return await attemptOperation(0);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
     }
 
     // Update online status if we consistently fail
-    if (ApiClientWrapper.isNetworkError(lastError!)) {
+    if (ApiClientWrapper.isNetworkError(lastError)) {
       this.isOnline = false;
     }
 
@@ -229,22 +263,24 @@ export class ApiClientWrapper {
       ApiClientWrapper.isModifyingOperation(operationName)
     ) {
       // Queue the operation for when we're back online
-      return new Promise((resolve, reject) => {
+      return new Promise<T>((resolve, reject) => {
         this.operationQueue.push({
           operation: () => this.apiClient.request(''),
-          resolve,
+          resolve: resolve as (value: unknown) => void,
           reject,
         });
-        logger.info(chalk.yellow(`📱 ${operationName} queued for when connection is restored`));
+        logger.info(
+          chalk.yellow(`📱 ${String(operationName)} queued for when connection is restored`)
+        );
       });
     }
 
     if (this.options.offline!.fallbackResponse) {
-      logger.info(chalk.yellow(`📱 Using cached data for ${operationName}`));
-      return this.options.offline!.fallbackResponse;
+      logger.info(chalk.yellow(`📱 Using cached data for ${String(operationName)}`));
+      return this.options.offline!.fallbackResponse as T;
     }
 
-    throw new Error(`Operation ${operationName} not available offline`);
+    throw new Error(`Operation ${String(operationName)} not available offline`);
   }
 
   /**
@@ -258,7 +294,7 @@ export class ApiClientWrapper {
   /**
    * Set up offline detection
    */
-  private setupOfflineDetection(): void {
+  private static setupOfflineDetection(): void {
     // Check connection periodically
     setInterval(() => {
       (async (): Promise<void> => {
@@ -287,7 +323,9 @@ export class ApiClientWrapper {
   private async processQueuedOperations(): Promise<void> {
     if (this.operationQueue.length === 0) return;
 
-    logger.info(chalk.cyan(`🔄 Processing ${this.operationQueue.length} queued operations...`));
+    logger.info(
+      chalk.cyan(`🔄 Processing ${String(String(this.operationQueue.length))} queued operations...`)
+    );
 
     await Promise.allSettled(
       this.operationQueue.map(async ({ operation, resolve, reject }) => {
@@ -308,7 +346,7 @@ export class ApiClientWrapper {
    * Sleep utility for retry delays
    */
   private static sleep(ms: number): Promise<void> {
-    return new Promise(resolve => {
+    return new Promise<void>(resolve => {
       setTimeout(resolve, ms);
     });
   }
@@ -349,7 +387,7 @@ export class ApiClientWrapper {
     return this.executeWithEnhancements(() => this.apiClient.getTask(id), {
       operationName: 'Fetch Task',
       showSpinner: true,
-      spinnerText: `Loading task ${id}...`,
+      spinnerText: `Loading task ${String(id)}...`,
       timeout: this.options.timeout!.fast,
     });
   }
@@ -358,7 +396,7 @@ export class ApiClientWrapper {
     return this.executeWithEnhancements(() => this.apiClient.createTask(task), {
       operationName: 'Create Task',
       showSpinner: true,
-      spinnerText: `Creating task: ${task.title}`,
+      spinnerText: `Creating task: ${String(String(task.title))}`,
       successText: 'Task created successfully',
       errorText: 'Failed to create task',
     });
@@ -368,7 +406,7 @@ export class ApiClientWrapper {
     return this.executeWithEnhancements(() => this.apiClient.updateTask(id, updates), {
       operationName: 'Update Task',
       showSpinner: true,
-      spinnerText: `Updating task ${id}...`,
+      spinnerText: `Updating task ${String(id)}...`,
       successText: 'Task updated successfully',
       errorText: 'Failed to update task',
     });
@@ -378,7 +416,7 @@ export class ApiClientWrapper {
     return this.executeWithEnhancements(() => this.apiClient.deleteTask(id), {
       operationName: 'Delete Task',
       showSpinner: true,
-      spinnerText: `Deleting task ${id}...`,
+      spinnerText: `Deleting task ${String(id)}...`,
       successText: 'Task deleted successfully',
       errorText: 'Failed to delete task',
     });
@@ -388,7 +426,7 @@ export class ApiClientWrapper {
     return this.executeWithEnhancements(() => this.apiClient.moveTask(id, columnId, position), {
       operationName: 'Move Task',
       showSpinner: true,
-      spinnerText: `Moving task ${id}...`,
+      spinnerText: `Moving task ${String(id)}...`,
       successText: 'Task moved successfully',
       errorText: 'Failed to move task',
     });
@@ -408,7 +446,7 @@ export class ApiClientWrapper {
     return this.executeWithEnhancements(() => this.apiClient.getBoard(id), {
       operationName: 'Fetch Board',
       showSpinner: true,
-      spinnerText: `Loading board ${id}...`,
+      spinnerText: `Loading board ${String(id)}...`,
     });
   }
 
@@ -416,7 +454,7 @@ export class ApiClientWrapper {
     return this.executeWithEnhancements(() => this.apiClient.createBoard(board), {
       operationName: 'Create Board',
       showSpinner: true,
-      spinnerText: `Creating board: ${board.name}`,
+      spinnerText: `Creating board: ${String(String(board.name))}`,
       successText: 'Board created successfully',
       errorText: 'Failed to create board',
     });
@@ -426,7 +464,7 @@ export class ApiClientWrapper {
     return this.executeWithEnhancements(() => this.apiClient.updateBoard(id, updates), {
       operationName: 'Update Board',
       showSpinner: true,
-      spinnerText: `Updating board ${id}...`,
+      spinnerText: `Updating board ${String(id)}...`,
       successText: 'Board updated successfully',
       errorText: 'Failed to update board',
     });
@@ -436,7 +474,7 @@ export class ApiClientWrapper {
     return this.executeWithEnhancements(() => this.apiClient.deleteBoard(id), {
       operationName: 'Delete Board',
       showSpinner: true,
-      spinnerText: `Deleting board ${id}...`,
+      spinnerText: `Deleting board ${String(id)}...`,
       successText: 'Board deleted successfully',
       errorText: 'Failed to delete board',
     });
@@ -464,7 +502,7 @@ export class ApiClientWrapper {
     return this.executeWithEnhancements(() => this.apiClient.getNote(id), {
       operationName: 'Fetch Note',
       showSpinner: true,
-      spinnerText: `Loading note ${id}...`,
+      spinnerText: `Loading note ${String(id)}...`,
       timeout: this.options.timeout!.fast,
     });
   }
@@ -473,7 +511,7 @@ export class ApiClientWrapper {
     return this.executeWithEnhancements(() => this.apiClient.createNote(note), {
       operationName: 'Create Note',
       showSpinner: true,
-      spinnerText: `Creating note: ${note.title}`,
+      spinnerText: `Creating note: ${String(String(note.content.substring(0, 50)))}${String(String(note.content.length > 50 ? '...' : ''))}`,
       successText: 'Note created successfully',
       errorText: 'Failed to create note',
     });
@@ -483,7 +521,7 @@ export class ApiClientWrapper {
     return this.executeWithEnhancements(() => this.apiClient.updateNote(id, updates), {
       operationName: 'Update Note',
       showSpinner: true,
-      spinnerText: `Updating note ${id}...`,
+      spinnerText: `Updating note ${String(id)}...`,
       successText: 'Note updated successfully',
       errorText: 'Failed to update note',
     });
@@ -493,7 +531,7 @@ export class ApiClientWrapper {
     return this.executeWithEnhancements(() => this.apiClient.deleteNote(id), {
       operationName: 'Delete Note',
       showSpinner: true,
-      spinnerText: `Deleting note ${id}...`,
+      spinnerText: `Deleting note ${String(id)}...`,
       successText: 'Note deleted successfully',
       errorText: 'Failed to delete note',
     });
@@ -503,7 +541,7 @@ export class ApiClientWrapper {
     return this.executeWithEnhancements(() => this.apiClient.searchNotes(query), {
       operationName: 'Search Notes',
       showSpinner: true,
-      spinnerText: `Searching notes for: ${query}`,
+      spinnerText: `Searching notes for: ${String(query)}`,
       timeout: this.options.timeout!.slow,
     });
   }
@@ -521,7 +559,7 @@ export class ApiClientWrapper {
     return this.executeWithEnhancements(() => this.apiClient.getTag(id), {
       operationName: 'Fetch Tag',
       showSpinner: true,
-      spinnerText: `Loading tag ${id}...`,
+      spinnerText: `Loading tag ${String(id)}...`,
       timeout: this.options.timeout!.fast,
     });
   }
@@ -530,7 +568,7 @@ export class ApiClientWrapper {
     return this.executeWithEnhancements(() => this.apiClient.createTag(tag), {
       operationName: 'Create Tag',
       showSpinner: true,
-      spinnerText: `Creating tag: ${tag.name}`,
+      spinnerText: `Creating tag: ${String(String(tag.name))}`,
       successText: 'Tag created successfully',
       errorText: 'Failed to create tag',
     });
@@ -540,7 +578,7 @@ export class ApiClientWrapper {
     return this.executeWithEnhancements(() => this.apiClient.addTagsToTask(taskId, tags), {
       operationName: 'Add Tags to Task',
       showSpinner: true,
-      spinnerText: `Adding tags to task ${taskId}...`,
+      spinnerText: `Adding tags to task ${String(taskId)}...`,
       successText: 'Tags added successfully',
       errorText: 'Failed to add tags',
     });
@@ -550,7 +588,7 @@ export class ApiClientWrapper {
     return this.executeWithEnhancements(() => this.apiClient.removeTagFromTask(taskId, tag), {
       operationName: 'Remove Tag from Task',
       showSpinner: true,
-      spinnerText: `Removing tag from task ${taskId}...`,
+      spinnerText: `Removing tag from task ${String(taskId)}...`,
       successText: 'Tag removed successfully',
       errorText: 'Failed to remove tag',
     });
@@ -560,7 +598,7 @@ export class ApiClientWrapper {
     return this.executeWithEnhancements(() => this.apiClient.updateTag(id, updates), {
       operationName: 'Update Tag',
       showSpinner: true,
-      spinnerText: `Updating tag ${id}...`,
+      spinnerText: `Updating tag ${String(id)}...`,
       successText: 'Tag updated successfully',
       errorText: 'Failed to update tag',
     });
@@ -570,7 +608,7 @@ export class ApiClientWrapper {
     return this.executeWithEnhancements(() => this.apiClient.deleteTag(id), {
       operationName: 'Delete Tag',
       showSpinner: true,
-      spinnerText: `Deleting tag ${id}...`,
+      spinnerText: `Deleting tag ${String(id)}...`,
       successText: 'Tag deleted successfully',
       errorText: 'Failed to delete tag',
     });
@@ -580,7 +618,7 @@ export class ApiClientWrapper {
     return this.executeWithEnhancements(() => this.apiClient.searchTags(query), {
       operationName: 'Search Tags',
       showSpinner: true,
-      spinnerText: `Searching tags for: ${query}`,
+      spinnerText: `Searching tags for: ${String(query)}`,
     });
   }
 
@@ -588,7 +626,7 @@ export class ApiClientWrapper {
     return this.executeWithEnhancements(() => this.apiClient.mergeTags(fromId, toId), {
       operationName: 'Merge Tags',
       showSpinner: true,
-      spinnerText: `Merging tags ${fromId} → ${toId}...`,
+      spinnerText: `Merging tags ${String(fromId)} → ${String(toId)}...`,
       successText: 'Tags merged successfully',
       errorText: 'Failed to merge tags',
       timeout: this.options.timeout!.slow,
@@ -628,7 +666,7 @@ export class ApiClientWrapper {
     return this.executeWithEnhancements(() => this.apiClient.updateTaskPriority(id, priority), {
       operationName: 'Update Task Priority',
       showSpinner: true,
-      spinnerText: `Updating priority for task ${id}...`,
+      spinnerText: `Updating priority for task ${String(id)}...`,
       successText: 'Task priority updated successfully',
       errorText: 'Failed to update task priority',
     });
@@ -648,7 +686,7 @@ export class ApiClientWrapper {
     return this.executeWithEnhancements(() => this.apiClient.getTaskContext(id), {
       operationName: 'Fetch Task Context',
       showSpinner: true,
-      spinnerText: `Loading context for task ${id}...`,
+      spinnerText: `Loading context for task ${String(id)}...`,
       timeout: this.options.timeout!.slow,
     });
   }
@@ -667,7 +705,7 @@ export class ApiClientWrapper {
     return this.executeWithEnhancements(() => this.apiClient.searchTasks(query, params), {
       operationName: 'Search Tasks',
       showSpinner: true,
-      spinnerText: `Searching tasks for: ${query}`,
+      spinnerText: `Searching tasks for: ${String(query)}`,
       timeout: this.options.timeout!.slow,
     });
   }

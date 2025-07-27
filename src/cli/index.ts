@@ -1,5 +1,26 @@
 #!/usr/bin/env node
 
+/**
+ * @module cli/index
+ * @description Main entry point for the MCP Kanban CLI application.
+ *
+ * This module sets up the commander CLI framework, initializes global components,
+ * registers all command modules, and handles application-wide error handling and
+ * graceful shutdown.
+ *
+ * @example
+ * ```bash
+ * # Show help
+ * kanban --help
+ *
+ * # List tasks with verbose output
+ * kanban task list --verbose
+ *
+ * # Create a new board in JSON format
+ * kanban board create --name "My Board" --format json
+ * ```
+ */
+
 import { Command } from 'commander';
 import chalk from 'chalk';
 
@@ -73,9 +94,7 @@ program
         parentCommand !== 'config' &&
         grandParentCommand !== 'config'
       ) {
-        console.error(
-          chalk.red('No configuration found. Run "kanban config init" to get started.')
-        );
+        logger.error(chalk.red('No configuration found. Run "kanban config init" to get started.'));
         process.exit(1);
       }
     }
@@ -116,11 +135,11 @@ program.exitOverride(err => {
 
   // Handle different error types
   const errorMessage = formatError(err);
-  console.error(errorMessage);
+  logger.error(errorMessage);
 
   if (program.opts().verbose) {
-    console.error(chalk.gray('\nStack trace:'));
-    console.error(chalk.gray(err.stack || 'No stack trace available'));
+    logger.error(chalk.gray('\nStack trace:'));
+    logger.error(chalk.gray(err.stack || 'No stack trace available'));
   }
 
   // Log error to file if possible
@@ -130,7 +149,21 @@ program.exitOverride(err => {
 });
 
 /**
- * Format error message with appropriate styling
+ * Format error message with appropriate styling and context-specific help.
+ *
+ * @param error - The error object to format
+ * @returns Formatted error message with color coding and helpful suggestions
+ *
+ * @example
+ * ```typescript
+ * // Connection error
+ * formatError(new Error('ECONNREFUSED'))
+ * // Returns: "❌ Connection Error: Unable to connect to the server\n   • Check if the server is running..."
+ *
+ * // Authentication error
+ * formatError(new Error('401 Unauthorized'))
+ * // Returns: "❌ Authentication Error: Invalid credentials\n   • Check your API key..."
+ * ```
  */
 function formatError(error: Error): string {
   const timestamp = new Date().toISOString();
@@ -141,7 +174,7 @@ function formatError(error: Error): string {
   }
 
   if (error.name === 'SpinnerError') {
-    return chalk.red(`\n❌ ${error.message}`);
+    return chalk.red(`\n❌ ${String(String(error.message))}`);
   }
 
   if (error.message.includes('ECONNREFUSED') || error.message.includes('ENOTFOUND')) {
@@ -208,13 +241,26 @@ function formatError(error: Error): string {
   return (
     chalk.red('\n❌ Error: ') +
     error.message +
-    chalk.gray(`\n   Time: ${timestamp}`) +
+    chalk.gray(`\n   Time: ${String(timestamp)}`) +
     chalk.gray('\n   Use --verbose for more details')
   );
 }
 
 /**
- * Get appropriate exit code based on error type
+ * Get appropriate exit code based on error type.
+ *
+ * Maps different error types to standard Unix exit codes for proper
+ * shell script integration and error handling.
+ *
+ * @param error - The error object to analyze
+ * @returns Exit code number
+ *
+ * @example
+ * ```typescript
+ * getExitCode(new Error('ECONNREFUSED')) // Returns: 111
+ * getExitCode(new Error('401 Unauthorized')) // Returns: 401
+ * getExitCode(new Error('Generic error')) // Returns: 1
+ * ```
  */
 function getExitCode(error: Error): number {
   if (error.name === 'PromptCancelledError') return 130; // SIGINT equivalent
@@ -226,7 +272,29 @@ function getExitCode(error: Error): number {
 }
 
 /**
- * Log error to file for debugging (optional)
+ * Log error to file for debugging purposes.
+ *
+ * Writes error details to a log file in the user's config directory.
+ * Fails silently if logging is not possible (e.g., no write permissions).
+ *
+ * @param error - The error object to log
+ *
+ * Log file location: `~/.config/mcp-kanban/logs/cli-errors.log`
+ *
+ * Log entry format:
+ * ```json
+ * {
+ *   "timestamp": "2024-01-20T10:30:00.000Z",
+ *   "error": {
+ *     "name": "Error",
+ *     "message": "Connection refused",
+ *     "stack": "Error: Connection refused..."
+ *   },
+ *   "command": "task list --board 123",
+ *   "nodeVersion": "v20.0.0",
+ *   "platform": "darwin"
+ * }
+ * ```
  */
 function logErrorToFile(error: Error): void {
   try {
@@ -254,7 +322,7 @@ function logErrorToFile(error: Error): void {
       platform: process.platform,
     };
 
-    fs.appendFileSync(logFile, `${JSON.stringify(logEntry)}\n`);
+    fs.appendFileSync(logFile, `${String(String(JSON.stringify(logEntry)))}\n`);
   } catch (logError) {
     // Silently fail if logging doesn't work
   }
@@ -262,23 +330,23 @@ function logErrorToFile(error: Error): void {
 
 // Process-level error handlers
 process.on('uncaughtException', error => {
-  console.error(chalk.red('\n💥 Uncaught Exception:'));
-  console.error(formatError(error));
+  logger.error(chalk.red('\n💥 Uncaught Exception:'));
+  logger.error(formatError(error));
   logErrorToFile(error);
   process.exit(1);
 });
 
 process.on('unhandledRejection', reason => {
   const error = reason instanceof Error ? reason : new Error(String(reason));
-  console.error(chalk.red('\n💥 Unhandled Promise Rejection:'));
-  console.error(formatError(error));
+  logger.error(chalk.red('\n💥 Unhandled Promise Rejection:'));
+  logger.error(formatError(error));
   logErrorToFile(error);
   process.exit(1);
 });
 
 // Graceful shutdown handlers
 process.on('SIGINT', () => {
-  console.log(chalk.yellow('\n⚠️  Received SIGINT, shutting down gracefully...'));
+  logger.log(chalk.yellow('\n⚠️  Received SIGINT, shutting down gracefully...'));
   // Clean up spinners and other resources
   if (global.cliComponents?.apiClient) {
     // Cleanup any ongoing requests
@@ -287,7 +355,7 @@ process.on('SIGINT', () => {
 });
 
 process.on('SIGTERM', () => {
-  console.log(chalk.yellow('\n⚠️  Received SIGTERM, shutting down gracefully...'));
+  logger.log(chalk.yellow('\n⚠️  Received SIGTERM, shutting down gracefully...'));
   process.exit(143);
 });
 

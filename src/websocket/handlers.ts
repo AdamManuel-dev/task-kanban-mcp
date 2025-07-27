@@ -116,7 +116,7 @@ export class MessageHandler {
           this.webSocketManager.sendError(
             clientId,
             'UNKNOWN_MESSAGE_TYPE',
-            `Unknown message type: ${message.type}`,
+            `Unknown message type: ${String(String(message.type))}`,
             message.id
           );
       }
@@ -262,7 +262,10 @@ export class MessageHandler {
 
     try {
       // Check permissions
-      if (!client.permissions.has('read:all') && !client.permissions.has(`read:task:${taskId}`)) {
+      if (
+        !client.permissions.has('read:all') &&
+        !client.permissions.has(`read:task:${String(taskId)}`)
+      ) {
         this.webSocketManager.sendError(
           clientId,
           'INSUFFICIENT_PERMISSIONS',
@@ -311,7 +314,10 @@ export class MessageHandler {
 
     try {
       // Check permissions
-      if (!client.permissions.has('write:all') && !client.permissions.has(`write:task:${taskId}`)) {
+      if (
+        !client.permissions.has('write:all') &&
+        !client.permissions.has(`write:task:${String(taskId)}`)
+      ) {
         this.webSocketManager.sendError(
           clientId,
           'INSUFFICIENT_PERMISSIONS',
@@ -362,7 +368,7 @@ export class MessageHandler {
       // Check permissions
       if (
         !client.permissions.has('write:all') &&
-        !client.permissions.has(`write:board:${taskData.board_id}`)
+        !client.permissions.has(`write:board:${String(String(taskData.board_id))}`)
       ) {
         this.webSocketManager.sendError(
           clientId,
@@ -421,7 +427,7 @@ export class MessageHandler {
       // Check permissions
       if (
         !client.permissions.has('delete:all') &&
-        !client.permissions.has(`delete:task:${taskId}`)
+        !client.permissions.has(`delete:task:${String(taskId)}`)
       ) {
         this.webSocketManager.sendError(
           clientId,
@@ -471,7 +477,10 @@ export class MessageHandler {
 
     try {
       // Check permissions
-      if (!client.permissions.has('read:all') && !client.permissions.has(`read:board:${boardId}`)) {
+      if (
+        !client.permissions.has('read:all') &&
+        !client.permissions.has(`read:board:${String(boardId)}`)
+      ) {
         this.webSocketManager.sendError(
           clientId,
           'INSUFFICIENT_PERMISSIONS',
@@ -522,7 +531,7 @@ export class MessageHandler {
       // Check permissions
       if (
         !client.permissions.has('write:all') &&
-        !client.permissions.has(`write:board:${boardId}`)
+        !client.permissions.has(`write:board:${String(boardId)}`)
       ) {
         this.webSocketManager.sendError(
           clientId,
@@ -580,7 +589,7 @@ export class MessageHandler {
       // Check permissions
       if (
         !client.permissions.has('write:all') &&
-        !client.permissions.has(`write:task:${noteData.task_id}`)
+        !client.permissions.has(`write:task:${String(String(noteData.task_id))}`)
       ) {
         this.webSocketManager.sendError(
           clientId,
@@ -628,7 +637,10 @@ export class MessageHandler {
 
     try {
       // Check permissions
-      if (!client.permissions.has('write:all') && !client.permissions.has(`write:task:${taskId}`)) {
+      if (
+        !client.permissions.has('write:all') &&
+        !client.permissions.has(`write:task:${String(taskId)}`)
+      ) {
         this.webSocketManager.sendError(
           clientId,
           'INSUFFICIENT_PERMISSIONS',

@@ -22,7 +22,7 @@
  *
  * // Get board with statistics
  * const stats = await boardService.getBoardWithStats(board.id);
- * console.log(`Tasks: ${stats.taskCount}, Completion: ${stats.completedTasks}/${stats.taskCount}`);
+ * logger.log(`Tasks: ${String(String(stats.taskCount))}, Completion: ${String(String(stats.completedTasks))}/${String(String(stats.taskCount))}`);
  * ```
  */
 
@@ -69,7 +69,9 @@ export class BoardService {
    *
    * @param {DatabaseConnection} db - Database connection instance
    */
-  constructor(private readonly db: DatabaseConnection) {}
+  constructor(private readonly db: DatabaseConnection) {
+    // Constructor intentionally empty - dependency injection only
+  }
 
   /**
    * Create a new board with default columns
@@ -88,7 +90,7 @@ export class BoardService {
    *   description: 'Sprint 1 planning board',
    *   color: '#4CAF50'
    * });
-   * console.log(`Created board: ${board.name} with ID: ${board.id}`);
+   * logger.log(`Created board: ${String(String(board.name))} with ID: ${String(String(board.id))}`);
    * ```
    */
   async createBoard(data: CreateBoardRequest): Promise<Board> {
@@ -134,16 +136,18 @@ export class BoardService {
           { name: 'Done', position: 2 },
         ];
 
-        for (const col of defaultColumns) {
-          const columnId = uuidv4();
-          await db.run(
-            `
+        await Promise.all(
+          defaultColumns.map(async col => {
+            const columnId = uuidv4();
+            await db.run(
+              `
             INSERT INTO columns (id, board_id, name, position, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?)
           `,
-            [columnId, board.id, col.name, col.position, now, now]
-          );
-        }
+              [columnId, board.id, col.name, col.position, now, now]
+            );
+          })
+        );
       });
 
       logger.info('Board created successfully', { boardId: board.id, name: board.name });
@@ -165,9 +169,9 @@ export class BoardService {
    * ```typescript
    * const board = await boardService.getBoardById('board-123');
    * if (board) {
-   *   console.log(`Found board: ${board.name}`);
+   *   logger.log(`Found board: ${String(String(board.name))}`);
    * } else {
-   *   console.log('Board not found');
+   *   logger.log('Board not found');
    * }
    * ```
    */
@@ -181,8 +185,10 @@ export class BoardService {
       );
 
       if (board) {
-        board.created_at = new Date(board.created_at);
-        board.updated_at = new Date(board.updated_at);
+        const boardData = { ...board };
+        boardData.created_at = new Date(boardData.created_at);
+        boardData.updated_at = new Date(boardData.updated_at);
+        Object.assign(board, boardData);
       }
 
       return board || null;
@@ -203,9 +209,9 @@ export class BoardService {
    * ```typescript
    * const boardWithColumns = await boardService.getBoardWithColumns('board-123');
    * if (boardWithColumns) {
-   *   console.log(`Board has ${boardWithColumns.columns.length} columns`);
+   *   logger.log(`Board has ${String(String(boardWithColumns.columns.length))} columns`);
    *   boardWithColumns.columns.forEach(col => {
-   *     console.log(`Column: ${col.name} (position: ${col.position})`);
+   *     logger.log(`Column: ${String(String(col.name))} (position: ${String(String(col.position))})`);
    *   });
    * }
    * ```
@@ -225,8 +231,10 @@ export class BoardService {
       );
 
       columns.forEach(col => {
-        col.created_at = new Date(col.created_at);
-        col.updated_at = new Date(col.updated_at);
+        const column = { ...col };
+        column.created_at = new Date(column.created_at);
+        column.updated_at = new Date(column.updated_at);
+        Object.assign(col, column);
       });
 
       return {
@@ -250,12 +258,12 @@ export class BoardService {
    * ```typescript
    * const stats = await boardService.getBoardWithStats('board-123');
    * if (stats) {
-   *   console.log(`Board: ${stats.name}`);
-   *   console.log(`Total tasks: ${stats.taskCount}`);
-   *   console.log(`Completed: ${stats.completedTasks}`);
-   *   console.log(`In progress: ${stats.inProgressTasks}`);
-   *   console.log(`Todo: ${stats.todoTasks}`);
-   *   console.log(`Columns: ${stats.columnCount}`);
+   *   logger.log(`Board: ${String(String(stats.name))}`);
+   *   logger.log(`Total tasks: ${String(String(stats.taskCount))}`);
+   *   logger.log(`Completed: ${String(String(stats.completedTasks))}`);
+   *   logger.log(`In progress: ${String(String(stats.inProgressTasks))}`);
+   *   logger.log(`Todo: ${String(String(stats.todoTasks))}`);
+   *   logger.log(`Columns: ${String(String(stats.columnCount))}`);
    * }
    * ```
    */
@@ -349,17 +357,19 @@ export class BoardService {
 
       if (search) {
         query += ' AND (name LIKE ? OR description LIKE ?)';
-        params.push(`%${search}%`, `%${search}%`);
+        params.push(`%${String(search)}%`, `%${String(search)}%`);
       }
 
-      query += ` ORDER BY ${sortBy} ${sortOrder.toUpperCase()} LIMIT ? OFFSET ?`;
+      query += ` ORDER BY ${String(sortBy)} ${String(String(sortOrder.toUpperCase()))} LIMIT ? OFFSET ?`;
       params.push(limit, offset);
 
       const boards = await this.db.query<Board>(query, params);
 
       boards.forEach(board => {
-        board.created_at = new Date(board.created_at);
-        board.updated_at = new Date(board.updated_at);
+        const boardData = { ...board };
+        boardData.created_at = new Date(boardData.created_at);
+        boardData.updated_at = new Date(boardData.updated_at);
+        Object.assign(board, boardData);
       });
 
       return boards;
@@ -388,7 +398,7 @@ export class BoardService {
    *   description: 'Updated description',
    *   color: '#FF5722'
    * });
-   * console.log(`Updated board: ${updatedBoard.name}`);
+   * logger.log(`Updated board: ${String(String(updatedBoard.name))}`);
    * ```
    */
   async updateBoard(id: string, data: UpdateBoardRequest): Promise<Board> {
@@ -430,7 +440,7 @@ export class BoardService {
       await this.db.execute(
         `
         UPDATE boards 
-        SET ${updates.join(', ')}
+        SET ${String(String(updates.join(', ')))}
         WHERE id = ?
       `,
         params
@@ -463,7 +473,7 @@ export class BoardService {
    * ```typescript
    * // WARNING: This permanently deletes the board and all its data
    * await boardService.deleteBoard('board-123');
-   * console.log('Board and all associated data deleted');
+   * logger.log('Board and all associated data deleted');
    * ```
    */
   async deleteBoard(id: string): Promise<void> {
@@ -511,7 +521,7 @@ export class BoardService {
    * @example
    * ```typescript
    * const archivedBoard = await boardService.archiveBoard('board-123');
-   * console.log(`Archived board: ${archivedBoard.name}`);
+   * logger.log(`Archived board: ${String(String(archivedBoard.name))}`);
    * ```
    */
   async archiveBoard(id: string): Promise<Board> {
@@ -528,7 +538,7 @@ export class BoardService {
    * @example
    * ```typescript
    * const restoredBoard = await boardService.unarchiveBoard('board-123');
-   * console.log(`Restored board: ${restoredBoard.name}`);
+   * logger.log(`Restored board: ${String(String(restoredBoard.name))}`);
    * ```
    */
   async unarchiveBoard(id: string): Promise<Board> {
@@ -547,7 +557,7 @@ export class BoardService {
    * ```typescript
    * // Duplicate with auto-generated name
    * const duplicate = await boardService.duplicateBoard('board-123');
-   * console.log(`Created duplicate: ${duplicate.name}`);
+   * logger.log(`Created duplicate: ${String(String(duplicate.name))}`);
    *
    * // Duplicate with custom name
    * const namedDuplicate = await boardService.duplicateBoard('board-123', 'Sprint 2 Board');
@@ -561,7 +571,7 @@ export class BoardService {
       }
 
       const duplicatedBoard = await this.createBoard({
-        name: newName || `${originalBoard.name} (Copy)`,
+        name: newName || `${String(String(originalBoard.name))} (Copy)`,
         description: originalBoard.description,
         color: originalBoard.color,
       });
@@ -569,24 +579,26 @@ export class BoardService {
       await this.db.transaction(async db => {
         await db.run('DELETE FROM columns WHERE board_id = ?', [duplicatedBoard.id]);
 
-        for (const column of originalBoard.columns) {
-          const newColumnId = uuidv4();
-          await db.run(
-            `
-            INSERT INTO columns (id, board_id, name, position, wip_limit, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-          `,
-            [
-              newColumnId,
-              duplicatedBoard.id,
-              column.name,
-              column.position,
-              column.wip_limit,
-              new Date(),
-              new Date(),
-            ]
-          );
-        }
+        await Promise.all(
+          originalBoard.columns.map(async column => {
+            const newColumnId = uuidv4();
+            await db.run(
+              `
+              INSERT INTO columns (id, board_id, name, position, wip_limit, created_at, updated_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?)
+            `,
+              [
+                newColumnId,
+                duplicatedBoard.id,
+                column.name,
+                column.position,
+                column.wip_limit,
+                new Date(),
+                new Date(),
+              ]
+            );
+          })
+        );
       });
 
       logger.info('Board duplicated successfully', { originalId: id, newId: duplicatedBoard.id });
@@ -609,10 +621,10 @@ export class BoardService {
    * @param {any} [originalError] - Original error object for debugging
    * @returns {ServiceError} Formatted service error with status code
    */
-  private createError(code: string, message: string, originalError?: any): ServiceError {
+  private static createError(code: string, message: string, originalError?: any): ServiceError {
     const error = new Error(message) as ServiceError;
     error.code = code;
-    error.statusCode = this.getStatusCodeForError(code);
+    error.statusCode = BoardService.getStatusCodeForError(code);
     error.details = originalError;
     return error;
   }
@@ -624,7 +636,7 @@ export class BoardService {
    * @param {string} code - Error code
    * @returns {number} HTTP status code
    */
-  private getStatusCodeForError(code: string): number {
+  private static getStatusCodeForError(code: string): number {
     switch (code) {
       case 'BOARD_NOT_FOUND':
         return 404;

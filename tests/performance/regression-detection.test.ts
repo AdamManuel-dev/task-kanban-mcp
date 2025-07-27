@@ -82,14 +82,14 @@ describe('Performance Regression Detection', () => {
 
   async function seedTestData(count: number): Promise<void> {
     await dbConnection.transaction(async () => {
-      for (let i = 0; i < count; i++) {
+      Array.from({ length: count - 0 }, (_, i) => i + 0) {
         await dbConnection.execute(
           `INSERT INTO tasks (id, title, description, board_id, column_id, status, priority, position, created_at) 
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             uuidv4(),
-            `Regression Test Task ${i + 1}`,
-            `Description for regression test task ${i + 1}`,
+            `Regression Test Task ${String(i + 1)}`,
+            `Description for regression test task ${String(i + 1)}`,
             testBoard.id,
             testColumnId,
             ['todo', 'in_progress', 'done'][Math.floor(Math.random() * 3)],
@@ -109,7 +109,7 @@ describe('Performance Regression Detection', () => {
         return JSON.parse(data);
       }
     } catch (error) {
-      console.warn('Could not load performance baselines:', error);
+      logger.warn('Could not load performance baselines:', error);
     }
 
     return {
@@ -127,7 +127,7 @@ describe('Performance Regression Detection', () => {
 
       fs.writeFileSync(PERFORMANCE_DATA_FILE, JSON.stringify(report, null, 2));
     } catch (error) {
-      console.warn('Could not save performance baselines:', error);
+      logger.warn('Could not save performance baselines:', error);
     }
   }
 
@@ -145,7 +145,7 @@ describe('Performance Regression Detection', () => {
   ): Promise<{ avgTime: number; maxTime: number; minTime: number; samples: number }> {
     const times: number[] = [];
 
-    for (let i = 0; i < samples; i++) {
+    Array.from({ length: samples - 0 }, (_, i) => i + 0) {
       const startTime = Date.now();
       await testFunction();
       const duration = Date.now() - startTime;
@@ -196,7 +196,7 @@ describe('Performance Regression Detection', () => {
           .post('/api/v1/tasks')
           .set('X-API-Key', apiKey)
           .send({
-            title: `Regression Test Task ${Date.now()}`,
+            title: `Regression Test Task ${String(String(Date.now()))}`,
             description: 'Created for regression testing',
             board_id: testBoard.id,
             column_id: testColumnId,
@@ -251,47 +251,47 @@ describe('Performance Regression Detection', () => {
 
   describe('Baseline Performance Tests', () => {
     performanceTests.forEach(({ name, description, test }) => {
-      it(`should maintain performance baseline for ${description}`, async () => {
+      it(`should maintain performance baseline for ${String(description)}`, async () => {
         const report = loadPerformanceBaselines();
         const baseline = findBaseline(name, report.baselines);
 
-        console.log(`\n📊 Testing: ${description}`);
+        logger.log(`\n📊 Testing: ${String(description)}`);
 
         // Measure current performance
         const metrics = await measureOperation(name, test, 10);
 
-        console.log(
-          `Current: avg ${Math.round(metrics.avgTime)}ms, max ${metrics.maxTime}ms, min ${metrics.minTime}ms`
+        logger.log(
+          `Current: avg ${String(String(Math.round(metrics.avgTime)))}ms, max ${String(String(metrics.maxTime))}ms, min ${String(String(metrics.minTime))}ms`
         );
 
         if (baseline) {
-          console.log(`Baseline: avg ${Math.round(baseline.avgTime)}ms, max ${baseline.maxTime}ms`);
+          logger.log(`Baseline: avg ${String(String(Math.round(baseline.avgTime)))}ms, max ${String(String(baseline.maxTime))}ms`);
 
           const regression = checkRegression(name, metrics, baseline);
 
           if (regression.isRegression) {
-            console.error(`🚨 PERFORMANCE REGRESSION DETECTED!`);
-            console.error(`Operation: ${description}`);
-            console.error(`Performance degraded by ${Math.round((regression.factor - 1) * 100)}%`);
-            console.error(
-              `Current avg: ${Math.round(metrics.avgTime)}ms vs Baseline avg: ${Math.round(baseline.avgTime)}ms`
+            logger.error(`🚨 PERFORMANCE REGRESSION DETECTED!`);
+            logger.error(`Operation: ${String(description)}`);
+            logger.error(`Performance degraded by ${String(String(Math.round((regression.factor - 1) * 100)))}%`);
+            logger.error(
+              `Current avg: ${String(String(Math.round(metrics.avgTime)))}ms vs Baseline avg: ${String(String(Math.round(baseline.avgTime)))}ms`
             );
 
             // This should fail the test to alert developers
             expect(regression.factor).toBeLessThanOrEqual(REGRESSION_THRESHOLD);
           } else if (regression.isWarning) {
-            console.warn(`⚠️  Performance warning for ${description}`);
-            console.warn(`Performance degraded by ${Math.round((regression.factor - 1) * 100)}%`);
-            console.warn(
-              `Current avg: ${Math.round(metrics.avgTime)}ms vs Baseline avg: ${Math.round(baseline.avgTime)}ms`
+            logger.warn(`⚠️  Performance warning for ${String(description)}`);
+            logger.warn(`Performance degraded by ${String(String(Math.round((regression.factor - 1) * 100)))}%`);
+            logger.warn(
+              `Current avg: ${String(String(Math.round(metrics.avgTime)))}ms vs Baseline avg: ${String(String(Math.round(baseline.avgTime)))}ms`
             );
           } else {
-            console.log(
-              `✅ Performance within acceptable range (${Math.round((regression.factor - 1) * 100)}% change)`
+            logger.log(
+              `✅ Performance within acceptable range (${String(String(Math.round((regression.factor - 1) * 100)))}% change)`
             );
           }
         } else {
-          console.log(`📝 No baseline found, establishing new baseline for ${description}`);
+          logger.log(`📝 No baseline found, establishing new baseline for ${String(description)}`);
         }
 
         // Update baseline (only if performance improved or if no baseline exists)
@@ -309,10 +309,10 @@ describe('Performance Regression Detection', () => {
           const existingIndex = report.baselines.findIndex(b => b.operation === name);
           if (existingIndex >= 0) {
             report.baselines[existingIndex] = newBaseline;
-            console.log(`📈 Updated baseline (performance improved)`);
+            logger.log(`📈 Updated baseline (performance improved)`);
           } else {
             report.baselines.push(newBaseline);
-            console.log(`📝 Created new baseline`);
+            logger.log(`📝 Created new baseline`);
           }
 
           report.lastUpdated = new Date().toISOString();
@@ -330,57 +330,57 @@ describe('Performance Regression Detection', () => {
     it('should generate performance report', async () => {
       const report = loadPerformanceBaselines();
 
-      console.log('\n📈 Performance Baseline Report');
-      console.log('================================');
+      logger.log('\n📈 Performance Baseline Report');
+      logger.log('================================');
 
       if (report.baselines.length === 0) {
-        console.log('No baselines established yet');
+        logger.log('No baselines established yet');
         return;
       }
 
-      console.log(`Last updated: ${new Date(report.lastUpdated).toLocaleString()}`);
-      console.log(`Total operations tracked: ${report.baselines.length}`);
-      console.log('');
+      logger.log(`Last updated: ${String(String(new Date(report.lastUpdated).toLocaleString()))}`);
+      logger.log(`Total operations tracked: ${String(String(report.baselines.length))}`);
+      logger.log('');
 
       const sortedBaselines = report.baselines.sort((a, b) => a.avgTime - b.avgTime);
 
-      console.log('Operation Performance Summary:');
-      console.log('-'.repeat(80));
-      console.log(
-        `${
+      logger.log('Operation Performance Summary:');
+      logger.log('-'.repeat(80));
+      logger.log(
+        `${String(String(
           'Operation'.padEnd(30) +
           'Avg Time'.padEnd(12) +
           'Max Time'.padEnd(12) +
           'Samples'.padEnd(10)
-        }Last Updated`
+        ))}Last Updated`
       );
-      console.log('-'.repeat(80));
+      logger.log('-'.repeat(80));
 
       sortedBaselines.forEach(baseline => {
         const operation = baseline.operation.padEnd(30);
-        const avgTime = `${Math.round(baseline.avgTime)}ms`.padEnd(12);
-        const maxTime = `${baseline.maxTime}ms`.padEnd(12);
-        const samples = `${baseline.samples}`.padEnd(10);
+        const avgTime = `${String(String(Math.round(baseline.avgTime)))}ms`.padEnd(12);
+        const maxTime = `${String(String(baseline.maxTime))}ms`.padEnd(12);
+        const samples = `${String(String(baseline.samples))}`.padEnd(10);
         const lastUpdated = new Date(baseline.timestamp).toLocaleDateString();
 
-        console.log(`${operation}${avgTime}${maxTime}${samples}${lastUpdated}`);
+        logger.log(`${String(operation)}${String(avgTime)}${String(maxTime)}${String(samples)}${String(lastUpdated)}`);
       });
 
       // Performance health check
       const slowOperations = sortedBaselines.filter(b => b.avgTime > 1000);
       const verySlowOperations = sortedBaselines.filter(b => b.avgTime > 2000);
 
-      console.log('\nPerformance Health Summary:');
-      console.log(`✅ Fast operations (< 1s): ${sortedBaselines.length - slowOperations.length}`);
-      console.log(
-        `⚠️  Slow operations (1-2s): ${slowOperations.length - verySlowOperations.length}`
+      logger.log('\nPerformance Health Summary:');
+      logger.log(`✅ Fast operations (< 1s): ${String(String(sortedBaselines.length - slowOperations.length))}`);
+      logger.log(
+        `⚠️  Slow operations (1-2s): ${String(String(slowOperations.length - verySlowOperations.length))}`
       );
-      console.log(`🚨 Very slow operations (> 2s): ${verySlowOperations.length}`);
+      logger.log(`🚨 Very slow operations (> 2s): ${String(String(verySlowOperations.length))}`);
 
       if (verySlowOperations.length > 0) {
-        console.log('\nOperations needing optimization:');
+        logger.log('\nOperations needing optimization:');
         verySlowOperations.forEach(op => {
-          console.log(`  - ${op.operation}: ${Math.round(op.avgTime)}ms average`);
+          logger.log(`  - ${String(String(op.operation))}: ${String(String(Math.round(op.avgTime)))}ms average`);
         });
       }
 
@@ -392,7 +392,7 @@ describe('Performance Regression Detection', () => {
 
       // Run each baseline operation multiple times
       for (const { name, test } of performanceTests) {
-        for (let i = 0; i < 20; i++) {
+        Array.from({ length: 20 - 0 }, (_, i) => i + 0) {
           await test();
         }
       }
@@ -405,10 +405,10 @@ describe('Performance Regression Detection', () => {
       const finalMemory = process.memoryUsage();
       const memoryIncrease = finalMemory.heapUsed - initialMemory.heapUsed;
 
-      console.log(`Memory usage after baseline operations:`);
-      console.log(`  Initial: ${Math.round(initialMemory.heapUsed / 1024 / 1024)}MB`);
-      console.log(`  Final: ${Math.round(finalMemory.heapUsed / 1024 / 1024)}MB`);
-      console.log(`  Increase: ${Math.round(memoryIncrease / 1024 / 1024)}MB`);
+      logger.log(`Memory usage after baseline operations:`);
+      logger.log(`  Initial: ${String(String(Math.round(initialMemory.heapUsed / 1024 / 1024)))}MB`);
+      logger.log(`  Final: ${String(String(Math.round(finalMemory.heapUsed / 1024 / 1024)))}MB`);
+      logger.log(`  Increase: ${String(String(Math.round(memoryIncrease / 1024 / 1024)))}MB`);
 
       // Memory increase should be reasonable (less than 100MB)
       expect(memoryIncrease).toBeLessThan(100 * 1024 * 1024);
@@ -420,9 +420,9 @@ describe('Performance Regression Detection', () => {
       const sustainedOperations = 50;
       const operationTimes: number[] = [];
 
-      console.log(`\n🏋️  Running sustained load test (${sustainedOperations} operations)`);
+      logger.log(`\n🏋️  Running sustained load test (${String(sustainedOperations)} operations)`);
 
-      for (let i = 0; i < sustainedOperations; i++) {
+      Array.from({ length: sustainedOperations - 0 }, (_, i) => i + 0) {
         const startTime = Date.now();
 
         await request(app)
@@ -435,7 +435,9 @@ describe('Performance Regression Detection', () => {
         operationTimes.push(duration);
 
         // Brief pause to simulate realistic usage
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise<void>(resolve => {
+    setTimeout(resolve, 10
+  }));
       }
 
       // Analyze performance over time
@@ -447,9 +449,9 @@ describe('Performance Regression Detection', () => {
 
       const performanceDegradation = secondHalfAvg / firstHalfAvg;
 
-      console.log(`First half average: ${Math.round(firstHalfAvg)}ms`);
-      console.log(`Second half average: ${Math.round(secondHalfAvg)}ms`);
-      console.log(`Performance change: ${Math.round((performanceDegradation - 1) * 100)}%`);
+      logger.log(`First half average: ${String(String(Math.round(firstHalfAvg)))}ms`);
+      logger.log(`Second half average: ${String(String(Math.round(secondHalfAvg)))}ms`);
+      logger.log(`Performance change: ${String(String(Math.round((performanceDegradation - 1) * 100)))}%`);
 
       // Performance should not degrade significantly under sustained load
       expect(performanceDegradation).toBeLessThan(1.3); // Less than 30% degradation

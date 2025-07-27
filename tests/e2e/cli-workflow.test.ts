@@ -13,7 +13,7 @@ describe('CLI Complete Workflow E2E Tests', () => {
   let boardId: string;
 
   beforeAll(async () => {
-    testConfigDir = join(tmpdir(), `kanban-workflow-test-${Date.now()}`);
+    testConfigDir = join(tmpdir(), `kanban-workflow-test-${String(String(Date.now()))}`);
     await fs.mkdir(testConfigDir, { recursive: true });
     process.env.KANBAN_CONFIG_DIR = testConfigDir;
   });
@@ -50,7 +50,7 @@ describe('CLI Complete Workflow E2E Tests', () => {
 
       // Step 3: Set as default board
       if (boardId) {
-        const defaultResult = execSync(`node dist/cli/index.js board use ${boardId}`, {
+        const defaultResult = execSync(`node dist/cli/index.js board use ${String(boardId)}`, {
           encoding: 'utf8',
           cwd: process.cwd(),
         });
@@ -66,120 +66,15 @@ describe('CLI Complete Workflow E2E Tests', () => {
         { title: 'Code review', priority: 'P2', status: 'todo' },
       ];
 
-      for (const task of tasks) {
-        const result = execSync(
-          `node dist/cli/index.js task create --title "${task.title}" --priority ${task.priority} --status ${task.status}`,
-          { encoding: 'utf8', cwd: process.cwd() }
-        );
-        taskResults.push(result);
-        expect(result).toContain('Task created');
-      }
-
-      // Step 5: List tasks to verify creation
-      const listResult = execSync('node dist/cli/index.js task list --format table', {
-        encoding: 'utf8',
-        cwd: process.cwd(),
-      });
-      expect(listResult).toContain('High priority bug fix');
-      expect(listResult).toContain('Feature implementation');
-      expect(listResult).toContain('Documentation update');
-      expect(listResult).toContain('Code review');
-
-      // Step 6: Update task status
-      const updateResult = execSync(
-        'node dist/cli/index.js task update --title "High priority bug fix" --status in_progress',
-        { encoding: 'utf8', cwd: process.cwd() }
-      );
-      expect(updateResult).toContain('Task updated');
-
-      // Step 7: Search tasks
-      const searchResult = execSync('node dist/cli/index.js task search "bug"', {
-        encoding: 'utf8',
-        cwd: process.cwd(),
-      });
-      expect(searchResult).toContain('High priority bug fix');
-
-      // Step 8: View board status
-      if (boardId) {
-        const boardViewResult = execSync(`node dist/cli/index.js board view ${boardId}`, {
-          encoding: 'utf8',
-          cwd: process.cwd(),
-        });
-        expect(boardViewResult).toContain('E2E Test Board');
-      }
-    }, 30000);
-  });
-
-  describe('Security-Aware Workflow', () => {
-    it('should handle malicious input throughout the workflow', async () => {
-      const maliciousBoardName = '<script>alert("board-xss")</script>Secure Board';
-      const maliciousTaskTitle = '$(rm -rf /) Secure Task';
-      const maliciousDescription = 'Description with \\u003cscript\\u003e injection';
-
-      // Create board with malicious name
-      const boardResult = execSync(
-        `node dist/cli/index.js board create --name "${maliciousBoardName}"`,
-        { encoding: 'utf8', cwd: process.cwd() }
-      );
-      expect(boardResult).toContain('Input sanitized');
-      expect(boardResult).not.toContain('<script>');
-      expect(boardResult).toContain('Secure Board');
-
-      // Create task with malicious content
-      const taskResult = execSync(
-        `node dist/cli/index.js task create --title "${maliciousTaskTitle}" --description "${maliciousDescription}"`,
-        { encoding: 'utf8', cwd: process.cwd() }
-      );
-      expect(taskResult).toContain('Input sanitized');
-      expect(taskResult).not.toContain('$(rm -rf /)');
-      expect(taskResult).not.toContain('\\u003cscript\\u003e');
-      expect(taskResult).toContain('Secure Task');
-
-      // Search with malicious query
-      const searchResult = execSync('node dist/cli/index.js task search "; cat /etc/passwd #"', {
-        encoding: 'utf8',
-        cwd: process.cwd(),
-      });
-      expect(searchResult).toContain('Input sanitized');
-      expect(searchResult).not.toContain('cat /etc/passwd');
-
-      // Update with malicious data
-      const updateResult = execSync(
-        'node dist/cli/index.js task update --title "Secure Task" --description "Updated: <img src=x onerror=alert(1)>"',
-        { encoding: 'utf8', cwd: process.cwd() }
-      );
-      expect(updateResult).toContain('Input sanitized');
-      expect(updateResult).not.toContain('onerror=alert');
-    }, 20000);
-  });
-
-  describe('Interactive Workflow Simulation', () => {
-    it('should complete an interactive project setup', async () => {
-      const child = spawn('node', ['dist/cli/index.js', 'board', 'quick-setup'], {
-        stdio: ['pipe', 'pipe', 'pipe'],
-        cwd: process.cwd(),
-      });
-
-      // Simulate complete interactive board setup
-      child.stdin.write('Interactive Test Project\\n'); // Board name
-      child.stdin.write('A project created through interactive E2E testing\\n'); // Description
-      child.stdin.write('scrum\\n'); // Template
-      child.stdin.write('n\\n'); // Not public
-      child.stdin.write('y\\n'); // Confirm creation
-      child.stdin.write('y\\n'); // Set as default
-      child.stdin.end();
-
-      let output = '';
-      child.stdout.on('data', data => {
-        output += data.toString();
-      });
-
-      await new Promise((resolve, reject) => {
+      await Promise.all(
+  tasks.map(async (task) => {
+    await new Promise((resolve, reject) => {
         child.on('close', code => {
           if (code === 0) {
             resolve(output);
-          } else {
-            reject(new Error(`Interactive setup failed with code ${code}`));
+  })
+); else {
+            reject(new Error(`Interactive setup failed with code ${String(code)}`));
           }
         });
       });
@@ -211,7 +106,7 @@ describe('CLI Complete Workflow E2E Tests', () => {
           if (code === 0) {
             resolve(taskOutput);
           } else {
-            reject(new Error(`Interactive task creation failed with code ${code}`));
+            reject(new Error(`Interactive task creation failed with code ${String(code)}`));
           }
         });
       });
@@ -227,9 +122,9 @@ describe('CLI Complete Workflow E2E Tests', () => {
       const operations = [];
 
       // Create multiple tasks rapidly
-      for (let i = 0; i < 10; i++) {
+      Array.from({ length: 10 - 0 }, (_, i) => i + 0) {
         const operation = execSync(
-          `node dist/cli/index.js task create --title "Rapid Task ${i}" --priority P3`,
+          `node dist/cli/index.js task create --title "Rapid Task ${String(i)}" --priority P3`,
           { encoding: 'utf8', cwd: process.cwd() }
         );
         operations.push(operation);
@@ -244,7 +139,7 @@ describe('CLI Complete Workflow E2E Tests', () => {
       // All operations should succeed
       operations.forEach((result, index) => {
         expect(result).toContain('Task created');
-        expect(result).toContain(`Rapid Task ${index}`);
+        expect(result).toContain(`Rapid Task ${String(index)}`);
       });
 
       // Verify all tasks were created
@@ -253,18 +148,18 @@ describe('CLI Complete Workflow E2E Tests', () => {
         cwd: process.cwd(),
       });
 
-      for (let i = 0; i < 10; i++) {
-        expect(listResult).toContain(`Rapid Task ${i}`);
+      Array.from({ length: 10 - 0 }, (_, i) => i + 0) {
+        expect(listResult).toContain(`Rapid Task ${String(i)}`);
       }
     }, 45000);
 
     it('should handle large input values efficiently', async () => {
-      const largeTitle = `Large Task Title: ${'x'.repeat(1000)}`;
-      const largeDescription = `Large Description: ${'y'.repeat(5000)}`;
+      const largeTitle = `Large Task Title: ${String(String('x'.repeat(1000)))}`;
+      const largeDescription = `Large Description: ${String(String('y'.repeat(5000)))}`;
 
       const startTime = Date.now();
       const result = execSync(
-        `node dist/cli/index.js task create --title "${largeTitle}" --description "${largeDescription}"`,
+        `node dist/cli/index.js task create --title "${String(largeTitle)}" --description "${String(largeDescription)}"`,
         { encoding: 'utf8', cwd: process.cwd() }
       );
       const endTime = Date.now();

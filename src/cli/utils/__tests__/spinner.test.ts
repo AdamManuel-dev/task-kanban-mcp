@@ -67,7 +67,7 @@ describe('SpinnerManager', () => {
       spinnerManager.start(longText);
 
       expect(ora).toHaveBeenCalledWith({
-        text: `${'a'.repeat(197)}...`,
+        text: `${String(String('a'.repeat(197)))}...`,
         color: 'cyan',
         spinner: 'dots',
         hideCursor: true,
@@ -264,7 +264,9 @@ describe('SpinnerManager', () => {
     });
 
     it('should handle timeout', async () => {
-      const slowPromise = new Promise(resolve => setTimeout(resolve, 1000));
+      const slowPromise = new Promise<void>(resolve => {
+        setTimeout(resolve, 1000);
+      });
 
       await expect(
         spinnerManager.withSpinner('Processing...', slowPromise, { timeout: 100 })

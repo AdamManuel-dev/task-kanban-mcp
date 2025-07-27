@@ -131,7 +131,7 @@ router.post('/create', validateRequest(CreateScheduleSchema), async (req, res) =
     const { schedulingService } = getServices();
     const schedule = await schedulingService.createSchedule(req.body);
 
-    logger.info(`Backup schedule created via API: ${schedule.id}`);
+    logger.info(`Backup schedule created via API: ${String(String(schedule.id))}`);
     return res.status(201).json(formatSuccessResponse(schedule));
   } catch (error) {
     logger.error('Schedule creation failed:', error);
@@ -235,7 +235,7 @@ router.get('/:id', async (req, res) => {
 
     return res.json(formatSuccessResponse(schedule));
   } catch (error) {
-    logger.error(`Failed to get schedule ${req.params.id}:`, error);
+    logger.error(`Failed to get schedule ${String(String(req.params.id))}:`, error);
     return res
       .status(500)
       .json(
@@ -306,14 +306,14 @@ router.put('/:id', validateRequest(UpdateScheduleSchema), async (req, res) => {
     const { schedulingService } = getServices();
     const schedule = await schedulingService.updateSchedule(id, req.body);
 
-    logger.info(`Schedule updated via API: ${id}`);
+    logger.info(`Schedule updated via API: ${String(id)}`);
     return res.json(formatSuccessResponse(schedule));
   } catch (error) {
     if (error instanceof Error && error.message.includes('not found')) {
       return res.status(404).json(formatErrorResponse('Schedule not found'));
     }
 
-    logger.error(`Schedule update failed for ${req.params.id}:`, error);
+    logger.error(`Schedule update failed for ${String(String(req.params.id))}:`, error);
     return res
       .status(500)
       .json(
@@ -358,14 +358,14 @@ router.post('/:id/execute', async (req, res) => {
     const { schedulingService } = getServices();
     await schedulingService.executeSchedule(id);
 
-    logger.info(`Schedule executed manually via API: ${id}`);
+    logger.info(`Schedule executed manually via API: ${String(id)}`);
     return res.json(formatSuccessResponse(null, 'Schedule executed successfully'));
   } catch (error) {
     if (error instanceof Error && error.message.includes('not found')) {
       return res.status(404).json(formatErrorResponse('Schedule not found'));
     }
 
-    logger.error(`Schedule execution failed for ${req.params.id}:`, error);
+    logger.error(`Schedule execution failed for ${String(String(req.params.id))}:`, error);
     return res
       .status(500)
       .json(
@@ -410,14 +410,14 @@ router.delete('/:id', async (req, res) => {
     const { schedulingService } = getServices();
     await schedulingService.deleteSchedule(id);
 
-    logger.info(`Schedule deleted via API: ${id}`);
+    logger.info(`Schedule deleted via API: ${String(id)}`);
     return res.json(formatSuccessResponse(null, 'Schedule deleted successfully'));
   } catch (error) {
     if (error instanceof Error && error.message.includes('not found')) {
       return res.status(404).json(formatErrorResponse('Schedule not found'));
     }
 
-    logger.error(`Failed to delete schedule ${req.params.id}:`, error);
+    logger.error(`Failed to delete schedule ${String(String(req.params.id))}:`, error);
     return res
       .status(500)
       .json(

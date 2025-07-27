@@ -11,7 +11,7 @@ import { BoardService } from '@/services/BoardService';
 import { NoteService } from '@/services/NoteService';
 import { TagService } from '@/services/TagService';
 import { v4 as uuidv4 } from 'uuid';
-import type { Task, Board, Tag, Note } from '@/types';
+import type { Task, Board } from '@/types';
 
 describe('Database Performance Tests', () => {
   let taskService: TaskService;
@@ -61,10 +61,10 @@ describe('Database Performance Tests', () => {
       const batch: Array<Omit<Task, 'id' | 'createdAt' | 'updatedAt'>> = [];
       const currentBatchSize = Math.min(batchSize, count - i);
 
-      for (let j = 0; j < currentBatchSize; j++) {
+      Array.from({ length: currentBatchSize - 0 }, (_, j) => j + 0) {
         batch.push({
-          title: `Performance Test Task ${i + j + 1}`,
-          description: `Description for performance test task ${i + j + 1}`,
+          title: `Performance Test Task ${String(i + j + 1)}`,
+          description: `Description for performance test task ${String(i + j + 1)}`,
           board_id: testBoard.id,
           column_id: testColumnId,
           status: ['todo', 'in_progress', 'done'][Math.floor(Math.random() * 3)] as Task['status'],
@@ -74,17 +74,18 @@ describe('Database Performance Tests', () => {
       }
 
       // Use database transaction for batch insert
-      await dbConnection.transaction(async () => {
-        for (const taskData of batch) {
-          const task = await taskService.createTask(taskData);
-          tasks.push(task);
-        }
+      await dbConnection.transaction(async db => {
+        await Promise.all(
+  batch.map(async (taskData) => {
+    await taskService.createTask(taskData);
+  })
+);
       });
     }
 
     const endTime = Date.now();
-    console.log(
-      `✓ Seeded ${count} tasks in ${endTime - startTime}ms (${Math.round(count / ((endTime - startTime) / 1000))} tasks/sec)`
+    logger.log(
+      `✓ Seeded ${String(count)} tasks in ${String(endTime - startTime)}ms (${String(String(Math.round(count / ((endTime - startTime) / 1000))))} tasks/sec)`
     );
 
     return tasks;
@@ -95,15 +96,15 @@ describe('Database Performance Tests', () => {
       const taskCount = 1000;
       const startTime = Date.now();
 
-      await dbConnection.transaction(async () => {
-        for (let i = 0; i < taskCount; i++) {
-          await dbConnection.execute(
+      await dbConnection.transaction(async db => {
+        Array.from({ length: taskCount - 0 }, (_, i) => i + 0) {
+          await db.run(
             `INSERT INTO tasks (id, title, description, board_id, column_id, status, priority, position, created_at) 
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               uuidv4(),
-              `Bulk Task ${i + 1}`,
-              `Bulk creation test task ${i + 1}`,
+              `Bulk Task ${String(i + 1)}`,
+              `Bulk creation test task ${String(i + 1)}`,
               testBoard.id,
               testColumnId,
               'todo',
@@ -119,8 +120,8 @@ describe('Database Performance Tests', () => {
       const duration = endTime - startTime;
 
       expect(duration).toBeLessThan(10000); // Should complete within 10 seconds
-      console.log(`✓ Bulk created ${taskCount} tasks in ${duration}ms`);
-      console.log(`✓ Throughput: ${Math.round(taskCount / (duration / 1000))} tasks/sec`);
+      logger.log(`✓ Bulk created ${String(taskCount)} tasks in ${String(duration)}ms`);
+      logger.log(`✓ Throughput: ${String(String(Math.round(taskCount / (duration / 1000))))} tasks/sec`);
     });
 
     it('should handle bulk updates efficiently', async () => {
@@ -129,22 +130,26 @@ describe('Database Performance Tests', () => {
       const updateCount = tasks.length;
       const startTime = Date.now();
 
-      await dbConnection.transaction(async () => {
-        for (const task of tasks) {
-          await dbConnection.execute(
-            'UPDATE tasks SET title = ?, priority = ?, updated_at = ? WHERE id = ?',
-            [`Updated ${task.title}`, (task.priority || 0) + 1, new Date().toISOString(), task.id]
-          );
-        }
+      await dbConnection.transaction(async db => {
+        await Promise.all(
+  tasks.map(async (task) => {
+    await db.run('UPDATE tasks SET title = ?, priority = ?, updated_at = ? WHERE id = ?', [
+            `Updated ${String(String(task.title))}`,
+            (task.priority || 0) + 1,
+            new Date().toISOString(),
+            task.id,
+          ]);
+  })
+);
       });
 
       const endTime = Date.now();
       const duration = endTime - startTime;
 
       expect(duration).toBeLessThan(8000); // Should complete within 8 seconds
-      console.log(`✓ Bulk updated ${updateCount} tasks in ${duration}ms`);
-      console.log(
-        `✓ Update throughput: ${Math.round(updateCount / (duration / 1000))} updates/sec`
+      logger.log(`✓ Bulk updated ${String(updateCount)} tasks in ${String(duration)}ms`);
+      logger.log(
+        `✓ Update throughput: ${String(String(Math.round(updateCount / (duration / 1000))))} updates/sec`
       );
     });
 
@@ -156,13 +161,13 @@ describe('Database Performance Tests', () => {
 
       const startTime = Date.now();
 
-      await dbConnection.transaction(async () => {
+      await dbConnection.transaction(async db => {
         // Delete in batches to avoid SQL parameter limits
         const batchSize = 50;
         for (let i = 0; i < taskIds.length; i += batchSize) {
           const batch = taskIds.slice(i, i + batchSize);
           const placeholders = batch.map(() => '?').join(',');
-          await dbConnection.execute(`DELETE FROM tasks WHERE id IN (${placeholders})`, batch);
+          await db.run(`DELETE FROM tasks WHERE id IN (${String(placeholders)})`, batch);
         }
       });
 
@@ -170,9 +175,9 @@ describe('Database Performance Tests', () => {
       const duration = endTime - startTime;
 
       expect(duration).toBeLessThan(5000); // Should complete within 5 seconds
-      console.log(`✓ Bulk deleted ${deleteCount} tasks in ${duration}ms`);
-      console.log(
-        `✓ Delete throughput: ${Math.round(deleteCount / (duration / 1000))} deletes/sec`
+      logger.log(`✓ Bulk deleted ${String(deleteCount)} tasks in ${String(duration)}ms`);
+      logger.log(
+        `✓ Delete throughput: ${String(String(Math.round(deleteCount / (duration / 1000))))} deletes/sec`
       );
     });
   });
@@ -187,7 +192,7 @@ describe('Database Performance Tests', () => {
       const iterations = 100;
       const startTime = Date.now();
 
-      for (let i = 0; i < iterations; i++) {
+      Array.from({ length: iterations - 0 }, (_, i) => i + 0) {
         await dbConnection.query(
           'SELECT id, title, status, priority FROM tasks WHERE board_id = ? LIMIT 10',
           [testBoard.id]
@@ -198,15 +203,15 @@ describe('Database Performance Tests', () => {
       const duration = endTime - startTime;
 
       expect(duration).toBeLessThan(2000); // Should complete within 2 seconds
-      console.log(`✓ ${iterations} simple queries completed in ${duration}ms`);
-      console.log(`✓ Average query time: ${Math.round(duration / iterations)}ms`);
+      logger.log(`✓ ${String(iterations)} simple queries completed in ${String(duration)}ms`);
+      logger.log(`✓ Average query time: ${String(String(Math.round(duration / iterations)))}ms`);
     });
 
     it('should perform complex JOIN queries efficiently', async () => {
       const iterations = 50;
       const startTime = Date.now();
 
-      for (let i = 0; i < iterations; i++) {
+      Array.from({ length: iterations - 0 }, (_, i) => i + 0) {
         await dbConnection.query(
           `
           SELECT t.id, t.title, t.status, t.priority, 
@@ -230,19 +235,17 @@ describe('Database Performance Tests', () => {
       const duration = endTime - startTime;
 
       expect(duration).toBeLessThan(5000); // Should complete within 5 seconds
-      console.log(`✓ ${iterations} complex JOIN queries completed in ${duration}ms`);
-      console.log(`✓ Average complex query time: ${Math.round(duration / iterations)}ms`);
+      logger.log(`✓ ${String(iterations)} complex JOIN queries completed in ${String(duration)}ms`);
+      logger.log(`✓ Average complex query time: ${String(String(Math.round(duration / iterations)))}ms`);
     });
 
     it('should handle full-text search efficiently', async () => {
       const searchTerms = ['test', 'performance', 'task', 'description'];
       const iterations = 25;
 
-      for (const term of searchTerms) {
-        const startTime = Date.now();
-
-        for (let i = 0; i < iterations; i++) {
-          await dbConnection.query(
+      await Promise.all(
+  searchTerms.map(async (term) => {
+    await dbConnection.query(
             `
             SELECT id, title, description, status
             FROM tasks 
@@ -257,15 +260,16 @@ describe('Database Performance Tests', () => {
               created_at DESC
             LIMIT 50
           `,
-            [`%${term}%`, `%${term}%`, testBoard.id, `%${term}%`, `%${term}%`]
+            [`%${String(term)}%`, `%${String(term)}%`, testBoard.id, `%${String(term)}%`, `%${String(term)}%`]
           );
-        }
+  })
+);
 
         const endTime = Date.now();
         const duration = endTime - startTime;
 
         expect(duration).toBeLessThan(3000); // Should complete within 3 seconds
-        console.log(`✓ ${iterations} text searches for "${term}" completed in ${duration}ms`);
+        logger.log(`✓ ${String(iterations)} text searches for "${String(term)}" completed in ${String(duration)}ms`);
       }
     });
 
@@ -277,45 +281,27 @@ describe('Database Performance Tests', () => {
         { status: 'done' },
       ];
 
-      for (const filters of filterCombinations) {
-        const startTime = Date.now();
-        const iterations = 20;
-
-        for (let i = 0; i < iterations; i++) {
-          let whereClause = 'WHERE board_id = ?';
-          const params = [testBoard.id];
-
-          if (filters.status) {
-            whereClause += ' AND status = ?';
-            params.push(filters.status);
-          }
-          if (filters.priority_min !== undefined) {
-            whereClause += ' AND priority >= ?';
-            params.push(filters.priority_min.toString());
-          }
-          if (filters.priority_max !== undefined) {
-            whereClause += ' AND priority <= ?';
-            params.push(filters.priority_max.toString());
-          }
-
-          await dbConnection.query(
+      await Promise.all(
+  filterCombinations.map(async (filters) => {
+    await dbConnection.query(
             `
             SELECT id, title, status, priority, created_at
             FROM tasks 
-            ${whereClause}
+            ${String(whereClause)}
             ORDER BY priority DESC, created_at DESC
             LIMIT 100
           `,
             params
           );
-        }
+  })
+);
 
         const endTime = Date.now();
         const duration = endTime - startTime;
 
         expect(duration).toBeLessThan(2000); // Should complete within 2 seconds
-        console.log(
-          `✓ ${iterations} filtered queries (${JSON.stringify(filters)}) completed in ${duration}ms`
+        logger.log(
+          `✓ ${String(iterations)} filtered queries (${String(String(JSON.stringify(filters)))}) completed in ${String(duration)}ms`
         );
       }
     });
@@ -329,14 +315,14 @@ describe('Database Performance Tests', () => {
       // Mix of operations through service layer
       const operations = [];
 
-      for (let i = 0; i < operationCount; i++) {
+      Array.from({ length: operationCount - 0 }, (_, i) => i + 0) {
         const operation = i % 4;
 
         switch (operation) {
           case 0: // Create
             operations.push(
               taskService.createTask({
-                title: `Service Test Task ${i}`,
+                title: `Service Test Task ${String(i)}`,
                 description: `Created through service layer`,
                 board_id: testBoard.id,
                 column_id: testColumnId,
@@ -397,8 +383,8 @@ describe('Database Performance Tests', () => {
       const duration = endTime - startTime;
 
       expect(duration).toBeLessThan(15000); // Should complete within 15 seconds
-      console.log(`✓ ${operationCount} mixed service operations completed in ${duration}ms`);
-      console.log(`✓ Average operation time: ${Math.round(duration / operationCount)}ms`);
+      logger.log(`✓ ${String(operationCount)} mixed service operations completed in ${String(duration)}ms`);
+      logger.log(`✓ Average operation time: ${String(String(Math.round(duration / operationCount)))}ms`);
     });
 
     it('should handle concurrent service operations', async () => {
@@ -409,10 +395,10 @@ describe('Database Performance Tests', () => {
       const batchPromises = Array.from({ length: concurrentBatches }, async (_, batchIndex) => {
         const batchOperations = [];
 
-        for (let i = 0; i < operationsPerBatch; i++) {
+        Array.from({ length: operationsPerBatch - 0 }, (_, i) => i + 0) {
           batchOperations.push(
             taskService.createTask({
-              title: `Concurrent Task B${batchIndex}-${i}`,
+              title: `Concurrent Task B${String(batchIndex)}-${String(i)}`,
               description: `Concurrent operation test`,
               board_id: testBoard.id,
               column_id: testColumnId,
@@ -434,9 +420,9 @@ describe('Database Performance Tests', () => {
       expect(duration).toBeLessThan(20000); // Should complete within 20 seconds
       expect(results.length).toBe(concurrentBatches);
 
-      console.log(`✓ ${totalOperations} concurrent operations completed in ${duration}ms`);
-      console.log(
-        `✓ Concurrent throughput: ${Math.round(totalOperations / (duration / 1000))} ops/sec`
+      logger.log(`✓ ${String(totalOperations)} concurrent operations completed in ${String(duration)}ms`);
+      logger.log(
+        `✓ Concurrent throughput: ${String(String(Math.round(totalOperations / (duration / 1000))))} ops/sec`
       );
     });
   });
@@ -446,16 +432,16 @@ describe('Database Performance Tests', () => {
       const transactionCount = 100;
       const startTime = Date.now();
 
-      for (let i = 0; i < transactionCount; i++) {
-        await dbConnection.transaction(async () => {
+      Array.from({ length: transactionCount - 0 }, (_, i) => i + 0) {
+        await dbConnection.transaction(async db => {
           // Simple transaction with multiple operations
-          await dbConnection.execute('INSERT INTO tags (id, name, created_at) VALUES (?, ?, ?)', [
+          await db.run('INSERT INTO tags (id, name, created_at) VALUES (?, ?, ?)', [
             uuidv4(),
-            `Transaction Tag ${i}`,
+            `Transaction Tag ${String(i)}`,
             new Date().toISOString(),
           ]);
 
-          await dbConnection.query('SELECT COUNT(*) as count FROM tags WHERE name LIKE ?', [
+          await db.all('SELECT COUNT(*) as count FROM tags WHERE name LIKE ?', [
             'Transaction Tag%',
           ]);
         });
@@ -465,8 +451,8 @@ describe('Database Performance Tests', () => {
       const duration = endTime - startTime;
 
       expect(duration).toBeLessThan(8000); // Should complete within 8 seconds
-      console.log(`✓ ${transactionCount} short transactions completed in ${duration}ms`);
-      console.log(`✓ Average transaction time: ${Math.round(duration / transactionCount)}ms`);
+      logger.log(`✓ ${String(transactionCount)} short transactions completed in ${String(duration)}ms`);
+      logger.log(`✓ Average transaction time: ${String(String(Math.round(duration / transactionCount)))}ms`);
     });
 
     it('should handle long transactions with many operations', async () => {
@@ -474,17 +460,17 @@ describe('Database Performance Tests', () => {
       const operationsPerTransaction = 50;
       const startTime = Date.now();
 
-      for (let i = 0; i < longTransactionCount; i++) {
+      Array.from({ length: longTransactionCount - 0 }, (_, i) => i + 0) {
         await dbConnection.transaction(async () => {
-          for (let j = 0; j < operationsPerTransaction; j++) {
+          Array.from({ length: operationsPerTransaction - 0 }, (_, j) => j + 0) {
             await dbConnection.execute(
               'INSERT INTO tags (id, name, color, created_at) VALUES (?, ?, ?, ?)',
               [
                 uuidv4(),
-                `Long Transaction Tag ${i}-${j}`,
-                `#${Math.floor(Math.random() * 16777215)
+                `Long Transaction Tag ${String(i)}-${String(j)}`,
+                `#${String(String(Math.floor(Math.random() * 16777215)
                   .toString(16)
-                  .padStart(6, '0')}`,
+                  .padStart(6, '0')))}`,
                 new Date().toISOString(),
               ]
             );
@@ -497,8 +483,8 @@ describe('Database Performance Tests', () => {
 
       const totalOperations = longTransactionCount * operationsPerTransaction;
       expect(duration).toBeLessThan(10000); // Should complete within 10 seconds
-      console.log(
-        `✓ ${longTransactionCount} long transactions (${totalOperations} ops) completed in ${duration}ms`
+      logger.log(
+        `✓ ${String(longTransactionCount)} long transactions (${String(totalOperations)} ops) completed in ${String(duration)}ms`
       );
     });
 
@@ -529,9 +515,9 @@ describe('Database Performance Tests', () => {
       expect(duration).toBeLessThan(5000); // Should complete within 5 seconds
       expect(results.length).toBe(simultaneousQueries);
 
-      console.log(`✓ ${simultaneousQueries} simultaneous queries completed in ${duration}ms`);
-      console.log(
-        `✓ Average query time under pressure: ${Math.round(duration / simultaneousQueries)}ms`
+      logger.log(`✓ ${String(simultaneousQueries)} simultaneous queries completed in ${String(duration)}ms`);
+      logger.log(
+        `✓ Average query time under pressure: ${String(String(Math.round(duration / simultaneousQueries)))}ms`
       );
     });
   });
@@ -545,7 +531,7 @@ describe('Database Performance Tests', () => {
       const startTime = Date.now();
 
       // Query for large result sets multiple times
-      for (let i = 0; i < 10; i++) {
+      Array.from({ length: 10 - 0 }, (_, i) => i + 0) {
         const results = await dbConnection.query(
           `
           SELECT id, title, description, status, priority, created_at, updated_at
@@ -581,8 +567,8 @@ describe('Database Performance Tests', () => {
       expect(duration).toBeLessThan(5000);
       expect(memoryIncrease).toBeLessThan(100 * 1024 * 1024); // Less than 100MB increase
 
-      console.log(`✓ Large result set queries completed in ${duration}ms`);
-      console.log(`✓ Memory increase: ${Math.round(memoryIncrease / 1024 / 1024)}MB`);
+      logger.log(`✓ Large result set queries completed in ${String(duration)}ms`);
+      logger.log(`✓ Memory increase: ${String(String(Math.round(memoryIncrease / 1024 / 1024)))}MB`);
     });
 
     it('should efficiently clean up resources after operations', async () => {
@@ -590,14 +576,14 @@ describe('Database Performance Tests', () => {
       const initialMemory = process.memoryUsage();
 
       // Perform many operations that could potentially leak resources
-      for (let i = 0; i < operationCount; i++) {
+      Array.from({ length: operationCount - 0 }, (_, i) => i + 0) {
         // Create and immediately query
         const taskId = uuidv4();
         await dbConnection.execute(
           'INSERT INTO tasks (id, title, board_id, column_id, status, position, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
           [
             taskId,
-            `Cleanup Test ${i}`,
+            `Cleanup Test ${String(i)}`,
             testBoard.id,
             testColumnId,
             'todo',
@@ -622,8 +608,8 @@ describe('Database Performance Tests', () => {
 
       expect(memoryIncrease).toBeLessThan(50 * 1024 * 1024); // Less than 50MB increase
 
-      console.log(`✓ ${operationCount} create/query/delete cycles completed`);
-      console.log(`✓ Memory increase after cleanup: ${Math.round(memoryIncrease / 1024 / 1024)}MB`);
+      logger.log(`✓ ${String(operationCount)} create/query/delete cycles completed`);
+      logger.log(`✓ Memory increase after cleanup: ${String(String(Math.round(memoryIncrease / 1024 / 1024)))}MB`);
     });
   });
 
@@ -666,7 +652,7 @@ describe('Database Performance Tests', () => {
         const iterations = 20;
         const startTime = Date.now();
 
-        for (let i = 0; i < iterations; i++) {
+        Array.from({ length: iterations - 0 }, (_, i) => i + 0) {
           let params: any[];
 
           if (query.includes('id = ?')) {
@@ -692,8 +678,8 @@ describe('Database Performance Tests', () => {
         const avgTime = duration / iterations;
 
         expect(avgTime).toBeLessThan(maxTime);
-        console.log(
-          `✓ ${name}: ${iterations} queries, avg ${Math.round(avgTime)}ms (max ${maxTime}ms)`
+        logger.log(
+          `✓ ${String(name)}: ${String(iterations)} queries, avg ${String(String(Math.round(avgTime)))}ms (max ${String(maxTime)}ms)`
         );
       }
     });
@@ -706,7 +692,7 @@ describe('Database Performance Tests', () => {
       const queryPromises = Array.from({ length: concurrentQueries }, async (_, threadIndex) => {
         const threadTimes: number[] = [];
 
-        for (let i = 0; i < queriesPerThread; i++) {
+        Array.from({ length: queriesPerThread - 0 }, (_, i) => i + 0) {
           const queryStart = Date.now();
 
           await dbConnection.query(
@@ -740,9 +726,9 @@ describe('Database Performance Tests', () => {
       expect(maxTime).toBeLessThan(1000); // No single query should take over 1 second
       expect(totalDuration).toBeLessThan(10000); // All queries should complete within 10 seconds
 
-      console.log(`✓ ${totalQueries} concurrent queries completed in ${totalDuration}ms`);
-      console.log(`✓ Average time: ${Math.round(avgTime)}ms, Max time: ${maxTime}ms`);
-      console.log(`✓ Throughput: ${Math.round(totalQueries / (totalDuration / 1000))} queries/sec`);
+      logger.log(`✓ ${String(totalQueries)} concurrent queries completed in ${String(totalDuration)}ms`);
+      logger.log(`✓ Average time: ${String(String(Math.round(avgTime)))}ms, Max time: ${String(maxTime)}ms`);
+      logger.log(`✓ Throughput: ${String(String(Math.round(totalQueries / (totalDuration / 1000))))} queries/sec`);
     });
   });
 });

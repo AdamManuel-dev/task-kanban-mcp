@@ -188,26 +188,26 @@ export async function createTaskPrompt(defaults?: Partial<TaskInput>): Promise<T
         choices: [
           {
             name:
-              suggestedSize === 'S' ? `S ⭐ (AI suggested - ${estimation?.avgHours ?? 1}h)` : 'S',
+              suggestedSize === 'S' ? `S ⭐ (AI suggested - ${estimation?.avgHours || 1}h)` : 'S',
             value: 'S',
             hint: 'Small - Less than 2 hours',
           },
           {
             name:
-              suggestedSize === 'M' ? `M ⭐ (AI suggested - ${estimation?.avgHours ?? 3}h)` : 'M',
+              suggestedSize === 'M' ? `M ⭐ (AI suggested - ${estimation?.avgHours || 3}h)` : 'M',
             value: 'M',
             hint: 'Medium - 2-4 hours',
           },
           {
             name:
-              suggestedSize === 'L' ? `L ⭐ (AI suggested - ${estimation?.avgHours ?? 6}h)` : 'L',
+              suggestedSize === 'L' ? `L ⭐ (AI suggested - ${estimation?.avgHours || 6}h)` : 'L',
             value: 'L',
             hint: 'Large - 4-8 hours',
           },
           {
             name:
               suggestedSize === 'XL'
-                ? `XL ⭐ (AI suggested - ${estimation?.avgHours ?? 12}h)`
+                ? `XL ⭐ (AI suggested - ${estimation?.avgHours || 12}h)`
                 : 'XL',
             value: 'XL',
             hint: 'Extra Large - More than 8 hours',
@@ -349,7 +349,7 @@ export async function moveTaskPrompt(
 
     if (response.position === 'specific') {
       const targetCol = availableColumns.find(c => c.id === response.targetColumn);
-      const maxPosition = targetCol?.taskCount ?? 0;
+      const maxPosition = targetCol?.taskCount || 0;
 
       const posResponse = await safePrompt<{ position: number }>({
         type: 'numeral',

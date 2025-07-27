@@ -196,7 +196,7 @@ export interface BoardWithStats extends Board {
  *   code = 'NOT_FOUND';
  *   statusCode = 404;
  *   constructor(resource: string, id: string) {
- *     super(`${resource} with ID ${id} not found`);
+ *     super(`${String(resource)} with ID ${String(id)} not found`);
  *   }
  * }
  * ```

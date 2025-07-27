@@ -1,3 +1,27 @@
+/**
+ * @module cli/commands/context
+ * @description AI context and insights commands for the CLI.
+ *
+ * Provides AI-powered analysis of work patterns, task relationships,
+ * and productivity insights. Helps users understand their current work
+ * context and get intelligent recommendations.
+ *
+ * @example
+ * ```bash
+ * # Show current work context
+ * kanban context show
+ *
+ * # Get detailed context with all information
+ * kanban context show --detailed
+ *
+ * # Get AI insights about work patterns
+ * kanban context insights --productivity
+ *
+ * # Get context for specific task
+ * kanban context task task123 --related
+ * ```
+ */
+
 import type { Command } from 'commander';
 
 import type { CliComponents, ContextData } from '../types';
@@ -18,12 +42,54 @@ interface SummaryContextOptions {
   format?: string;
 }
 
+/**
+ * Register all context-related commands with the CLI program.
+ *
+ * @param program - The commander program instance
+ *
+ * Available commands:
+ * - `show` - Display current work context and recommendations
+ * - `summary` (alias: `project`) - Get project-wide summary and metrics
+ * - `task <id>` - Get AI context for a specific task
+ * - `insights` - Analyze work patterns and identify bottlenecks
+ */
 export function registerContextCommands(program: Command): void {
   const contextCmd = program.command('context').alias('ctx').description('AI context and insights');
 
   // Get global components with proper typing
   const getComponents = (): CliComponents => global.cliComponents;
 
+  /**
+   * Show current work context with AI-generated insights.
+   *
+   * @command show
+   *
+   * @option -d, --detailed - Show detailed context information
+   * @option --format <type> - Output format: summary, detailed, raw (default: summary)
+   *
+   * @example
+   * ```bash
+   * # Show context summary
+   * kanban context show
+   *
+   * # Show detailed context
+   * kanban context show --detailed
+   *
+   * # Get raw JSON output
+   * kanban context show --format raw
+   * ```
+   *
+   * Summary format includes:
+   * - Current work summary
+   * - Key statistics
+   * - AI recommendations
+   *
+   * Detailed format includes:
+   * - Active tasks list
+   * - Blocked tasks with reasons
+   * - Upcoming deadlines
+   * - AI insights and patterns
+   */
   contextCmd
     .command('show')
     .description('Show current work context')
@@ -34,7 +100,8 @@ export function registerContextCommands(program: Command): void {
 
       try {
         formatter.info('Generating current work context...');
-        const context = (await apiClient.getContext()) as ContextData;
+        const response = await apiClient.getContext();
+        const context = 'data' in response ? (response.data as ContextData) : undefined;
 
         if (!context) {
           formatter.info('No context available');
@@ -74,7 +141,7 @@ export function registerContextCommands(program: Command): void {
           if (context.insights) {
             formatter.info('\n--- AI Insights ---');
             context.insights.forEach((insight: string) => {
-              formatter.info(`• ${insight}`);
+              formatter.info(`• ${String(insight)}`);
             });
           }
         } else {
@@ -88,25 +155,58 @@ export function registerContextCommands(program: Command): void {
           if (context.statistics) {
             formatter.info('\n📊 Statistics:');
             Object.entries(context.statistics).forEach(([key, value]) => {
-              formatter.info(`  ${key}: ${value}`);
+              formatter.info(`  ${String(key)}: ${String(value)}`);
             });
           }
 
           if (context.recommendations) {
             formatter.info('\n💡 Recommendations:');
             context.recommendations.forEach((rec: string) => {
-              formatter.info(`• ${rec}`);
+              formatter.info(`• ${String(rec)}`);
             });
           }
         }
       } catch (error) {
         formatter.error(
-          `Failed to get context: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to get context: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
     });
 
+  /**
+   * Get comprehensive project summary with analytics.
+   *
+   * @command summary
+   * @alias project
+   *
+   * @option --include-metrics - Include detailed performance metrics
+   * @option --timeframe <days> - Analysis timeframe in days (default: 30)
+   *
+   * @example
+   * ```bash
+   * # Get 30-day project summary
+   * kanban context summary
+   *
+   * # Get summary with performance metrics
+   * kanban context summary --include-metrics
+   *
+   * # Analyze last 7 days
+   * kanban context summary --timeframe 7
+   * ```
+   *
+   * Summary includes:
+   * - Project overview and status
+   * - Progress tracking
+   * - Recent activity timeline
+   * - Key insights and trends
+   *
+   * Performance metrics (when included):
+   * - Task completion rate
+   * - Average task duration
+   * - Team velocity
+   * - Bottleneck analysis
+   */
   contextCmd
     .command('summary')
     .alias('project')
@@ -118,7 +218,8 @@ export function registerContextCommands(program: Command): void {
 
       try {
         formatter.info('Generating project summary...');
-        const summary = (await apiClient.getProjectSummary()) as Record<string, unknown>;
+        const response = await apiClient.getProjectSummary();
+        const summary = 'data' in response ? (response.data as Record<string, unknown>) : undefined;
 
         if (!summary) {
           formatter.info('No project summary available');
@@ -135,7 +236,7 @@ export function registerContextCommands(program: Command): void {
         if (summary.progress) {
           formatter.info('📈 Progress Overview:');
           Object.entries(summary.progress as Record<string, unknown>).forEach(([key, value]) => {
-            formatter.info(`  ${key}: ${value}`);
+            formatter.info(`  ${String(key)}: ${String(value)}`);
           });
           formatter.info('');
         }
@@ -143,7 +244,9 @@ export function registerContextCommands(program: Command): void {
         if (summary.recentActivity) {
           formatter.info('🔄 Recent Activity:');
           summary.recentActivity.forEach((activity: any) => {
-            formatter.info(`• ${activity.description} (${activity.date})`);
+            formatter.info(
+              `• ${String(String(activity.description))} (${String(String(activity.date))})`
+            );
           });
           formatter.info('');
         }
@@ -155,18 +258,55 @@ export function registerContextCommands(program: Command): void {
 
         if (summary.keyInsights) {
           formatter.info('🔍 Key Insights:');
-          summary.keyInsights.forEach((insight: string) => {
-            formatter.info(`• ${insight}`);
+          (summary.keyInsights as string[]).forEach((insight: string) => {
+            formatter.info(`• ${String(insight)}`);
           });
         }
       } catch (error) {
         formatter.error(
-          `Failed to get project summary: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to get project summary: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
     });
 
+  /**
+   * Get AI-powered context and insights for a specific task.
+   *
+   * @command task <id>
+   *
+   * @param id - The task ID to analyze
+   * @option --related - Include similar and related tasks
+   * @option --history - Include task history and timeline
+   *
+   * @example
+   * ```bash
+   * # Get basic task context
+   * kanban context task task123
+   *
+   * # Include related tasks
+   * kanban context task task123 --related
+   *
+   * # Full analysis with history
+   * kanban context task task123 --related --history
+   * ```
+   *
+   * Context includes:
+   * - Task description and current state
+   * - Dependencies and blockers
+   * - AI-generated insights
+   * - Actionable suggestions
+   *
+   * Related tasks (when included):
+   * - Similar tasks by content
+   * - Tasks with shared tags
+   * - Dependency relationships
+   *
+   * History (when included):
+   * - Status changes
+   * - Assignment history
+   * - Time in each state
+   */
   contextCmd
     .command('task <id>')
     .description('Get AI context for a specific task')
@@ -176,15 +316,15 @@ export function registerContextCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        formatter.info(`Generating context for task ${id}...`);
+        formatter.info(`Generating context for task ${String(id)}...`);
         const taskContext = (await apiClient.getTaskContext(id)) as Record<string, unknown>;
 
         if (!taskContext) {
-          formatter.error(`No context available for task ${id}`);
+          formatter.error(`No context available for task ${String(id)}`);
           process.exit(1);
         }
 
-        formatter.info(`🎯 Task Context: ${(taskContext.title as string) || id}\n`);
+        formatter.info(`🎯 Task Context: ${String(String((taskContext.title as string) || id))}\n`);
 
         if (taskContext.description) {
           formatter.info(taskContext.description as string);
@@ -203,7 +343,7 @@ export function registerContextCommands(program: Command): void {
         if (taskContext.blockers && taskContext.blockers.length > 0) {
           formatter.info('🚫 Blockers:');
           taskContext.blockers.forEach((blocker: any) => {
-            formatter.warn(`• ${blocker.description}`);
+            formatter.warn(`• ${String(String(blocker.description))}`);
           });
           formatter.info('');
         }
@@ -220,7 +360,7 @@ export function registerContextCommands(program: Command): void {
         if (options.history && taskContext.history) {
           formatter.info('📜 Task History:');
           taskContext.history.forEach((event: any) => {
-            formatter.info(`• ${event.date}: ${event.description}`);
+            formatter.info(`• ${String(String(event.date))}: ${String(String(event.description))}`);
           });
           formatter.info('');
         }
@@ -228,24 +368,65 @@ export function registerContextCommands(program: Command): void {
         if (taskContext.aiInsights) {
           formatter.info('🤖 AI Insights:');
           taskContext.aiInsights.forEach((insight: string) => {
-            formatter.info(`• ${insight}`);
+            formatter.info(`• ${String(insight)}`);
           });
         }
 
         if (taskContext.suggestions) {
           formatter.info('\n💡 Suggestions:');
           taskContext.suggestions.forEach((suggestion: string) => {
-            formatter.success(`• ${suggestion}`);
+            formatter.success(`• ${String(suggestion)}`);
           });
         }
       } catch (error) {
         formatter.error(
-          `Failed to get task context: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to get task context: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
     });
 
+  /**
+   * Get AI insights about work patterns and productivity.
+   *
+   * @command insights
+   *
+   * @option --productivity - Focus on productivity patterns and recommendations
+   * @option --bottlenecks - Identify workflow bottlenecks and blockers
+   *
+   * @example
+   * ```bash
+   * # Get general work insights
+   * kanban context insights
+   *
+   * # Focus on productivity patterns
+   * kanban context insights --productivity
+   *
+   * # Identify bottlenecks
+   * kanban context insights --bottlenecks
+   *
+   * # Full analysis
+   * kanban context insights --productivity --bottlenecks
+   * ```
+   *
+   * General insights include:
+   * - Work pattern analysis
+   * - Task flow observations
+   * - Time management insights
+   * - Team collaboration patterns
+   *
+   * Productivity insights:
+   * - Peak productivity times
+   * - Task completion patterns
+   * - Focus time analysis
+   * - Efficiency recommendations
+   *
+   * Bottleneck analysis:
+   * - Blocked task patterns
+   * - Process inefficiencies
+   * - Resource constraints
+   * - Workflow optimization suggestions
+   */
   contextCmd
     .command('insights')
     .description('Get AI insights about work patterns')
@@ -268,7 +449,7 @@ export function registerContextCommands(program: Command): void {
         if (options.productivity && context.productivityInsights) {
           formatter.info('📈 Productivity Insights:');
           context.productivityInsights.forEach((insight: string) => {
-            formatter.success(`• ${insight}`);
+            formatter.success(`• ${String(insight)}`);
           });
           formatter.info('');
         }
@@ -276,25 +457,27 @@ export function registerContextCommands(program: Command): void {
         if (options.bottlenecks && context.bottlenecks) {
           formatter.info('🚧 Identified Bottlenecks:');
           context.bottlenecks.forEach((bottleneck: any) => {
-            formatter.warn(`• ${bottleneck.description} (Impact: ${bottleneck.impact})`);
+            formatter.warn(
+              `• ${String(String(bottleneck.description))} (Impact: ${String(String(bottleneck.impact))})`
+            );
           });
           formatter.info('');
         }
 
         formatter.info('💡 General Insights:');
         context.insights.forEach((insight: string) => {
-          formatter.info(`• ${insight}`);
+          formatter.info(`• ${String(insight)}`);
         });
 
         if (context.actionableRecommendations) {
           formatter.info('\n🎯 Actionable Recommendations:');
           context.actionableRecommendations.forEach((rec: string) => {
-            formatter.success(`• ${rec}`);
+            formatter.success(`• ${String(rec)}`);
           });
         }
       } catch (error) {
         formatter.error(
-          `Failed to get insights: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to get insights: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }

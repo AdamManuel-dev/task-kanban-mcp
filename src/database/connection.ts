@@ -68,7 +68,7 @@ export interface DatabaseConfig {
  *
  * // Check health
  * const health = await db.healthCheck();
- * console.log('Database healthy:', health.responsive);
+ * logger.log('Database healthy:', health.responsive);
  * ```
  */
 export class DatabaseConnection {
@@ -84,8 +84,9 @@ export class DatabaseConnection {
 
   private seedRunner: SeedRunner | null = null;
 
-  private constructor() {
-    this.config = {
+  private static constructor() {
+  // Static method implementation
+} = {
       path: config.database.path,
       walMode: config.database.walMode,
       memoryLimit: config.database.memoryLimit,
@@ -314,7 +315,7 @@ export class DatabaseConnection {
    * // Check existence
    * const exists = await db.queryOne<{count: number}>('SELECT COUNT(*) as count FROM tasks WHERE title = ?', ['My Task']);
    * if (exists?.count > 0) {
-   *   console.log('Task already exists');
+   *   logger.log('Task already exists');
    * }
    * ```
    */
@@ -346,19 +347,19 @@ export class DatabaseConnection {
    *   'INSERT INTO tasks (title, description) VALUES (?, ?)',
    *   ['New Task', 'Task description']
    * );
-   * console.log('New task ID:', result.lastID);
+   * logger.log('New task ID:', result.lastID);
    *
    * // Update with affected rows
    * const updateResult = await db.execute(
    *   'UPDATE tasks SET archived = ? WHERE created_at < ?',
    *   [true, new Date('2024-01-01')]
    * );
-   * console.log('Archived tasks:', updateResult.changes);
+   * logger.log('Archived tasks:', updateResult.changes);
    *
    * // Delete
    * const deleteResult = await db.execute('DELETE FROM tasks WHERE id = ?', ['task-123']);
    * if (deleteResult.changes === 0) {
-   *   console.log('Task not found');
+   *   logger.log('Task not found');
    * }
    * ```
    */
@@ -420,7 +421,7 @@ export class DatabaseConnection {
    *     }
    *   });
    * } catch (error) {
-   *   console.error('Transaction rolled back:', error);
+   *   logger.error('Transaction rolled back:', error);
    * }
    * ```
    */
@@ -457,9 +458,9 @@ export class DatabaseConnection {
    * @example
    * ```typescript
    * const stats = await db.getStats();
-   * console.log(`Database size: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
-   * console.log(`Tables: ${stats.tables}`);
-   * console.log(`WAL mode: ${stats.walMode ? 'enabled' : 'disabled'}`);
+   * logger.log(`Database size: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
+   * logger.log(`Tables: ${stats.tables}`);
+   * logger.log(`WAL mode: ${stats.walMode ? 'enabled' : 'disabled'}`);
    * ```
    */
   public async getStats(): Promise<{
@@ -509,11 +510,11 @@ export class DatabaseConnection {
    * const health = await db.healthCheck();
    *
    * if (!health.connected) {
-   *   console.error('Database disconnected:', health.error);
+   *   logger.error('Database disconnected:', health.error);
    * } else if (!health.responsive) {
-   *   console.warn('Database slow to respond');
+   *   logger.warn('Database slow to respond');
    * } else {
-   *   console.log('Database healthy, response time:', health.stats.responseTime, 'ms');
+   *   logger.log('Database healthy, response time:', health.stats.responseTime, 'ms');
    * }
    * ```
    */
@@ -602,13 +603,14 @@ export class DatabaseConnection {
       'PRAGMA auto_vacuum = INCREMENTAL',
     ];
 
-    for (const pragma of pragmas) {
-      try {
-        await this.db.exec(pragma);
-        logger.debug('Applied pragma', { pragma });
-      } catch (error) {
-        logger.warn('Failed to apply pragma', { pragma, error });
-      }
+    try {
+      await Promise.all(
+        pragmas.map(async pragma => {
+          this.db!.exec(pragma);
+        })
+      );
+    } catch (error) {
+      logger.warn('Failed to apply pragma', { error });
     }
   }
 
@@ -685,7 +687,7 @@ export class DatabaseConnection {
    * ```typescript
    * // Run all pending migrations
    * const count = await db.runMigrations();
-   * console.log(`Ran ${count} migrations`);
+   * logger.log(`Ran ${count} migrations`);
    *
    * // Run migrations up to specific target
    * await db.runMigrations('002_add_user_preferences');
@@ -724,7 +726,7 @@ export class DatabaseConnection {
    * @example
    * ```typescript
    * const status = await db.getMigrationStatus();
-   * console.log(`Applied: ${status.applied.length}, Pending: ${status.pending.length}`);
+   * logger.log(`Applied: ${status.applied.length}, Pending: ${status.pending.length}`);
    * ```
    */
   public async getMigrationStatus(): Promise<{
@@ -760,7 +762,7 @@ export class DatabaseConnection {
    * ```typescript
    * // Run all pending seeds
    * const count = await db.runSeeds();
-   * console.log(`Ran ${count} seeds`);
+   * logger.log(`Ran ${count} seeds`);
    *
    * // Force re-run all seeds
    * await db.runSeeds({ force: true });
@@ -779,7 +781,7 @@ export class DatabaseConnection {
    * @example
    * ```typescript
    * const status = await db.getSeedStatus();
-   * console.log(`Applied: ${status.applied.length}, Pending: ${status.pending.length}`);
+   * logger.log(`Applied: ${status.applied.length}, Pending: ${status.pending.length}`);
    * ```
    */
   public async getSeedStatus(): Promise<{

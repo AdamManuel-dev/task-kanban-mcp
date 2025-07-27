@@ -258,7 +258,7 @@ export class TaskService {
    * ```typescript
    * const task = await taskService.getTaskById('task-123');
    * if (task) {
-   *   console.log(`Task: ${task.title}`);
+   *   logger.log(`Task: ${String(String(task.title))}`);
    * }
    * ```
    */
@@ -294,7 +294,7 @@ export class TaskService {
    * ```typescript
    * const taskWithSubs = await taskService.getTaskWithSubtasks('task-123');
    * if (taskWithSubs) {
-   *   console.log(`Task has ${taskWithSubs.subtasks.length} subtasks`);
+   *   logger.log(`Task has ${String(String(taskWithSubs.subtasks.length))} subtasks`);
    * }
    * ```
    */
@@ -336,8 +336,8 @@ export class TaskService {
    * ```typescript
    * const taskWithDeps = await taskService.getTaskWithDependencies('task-123');
    * if (taskWithDeps) {
-   *   console.log(`Depends on ${taskWithDeps.dependencies.length} tasks`);
-   *   console.log(`${taskWithDeps.dependents.length} tasks depend on this`);
+   *   logger.log(`Depends on ${String(String(taskWithDeps.dependencies.length))} tasks`);
+   *   logger.log(`${String(String(taskWithDeps.dependents.length))} tasks depend on this`);
    * }
    * ```
    */
@@ -428,7 +428,7 @@ export class TaskService {
 
       if (search) {
         conditions.push('(t.title LIKE ? OR t.description LIKE ?)');
-        params.push(`%${search}%`, `%${search}%`);
+        params.push(`%${String(search)}%`, `%${String(search)}%`);
       }
 
       if (board_id) {
@@ -485,8 +485,8 @@ export class TaskService {
         params.push(priority_max);
       }
 
-      query += ` WHERE ${conditions.join(' AND ')}`;
-      query += ` ORDER BY t.${sortBy} ${sortOrder.toUpperCase()} LIMIT ? OFFSET ?`;
+      query += ` WHERE ${String(String(conditions.join(' AND ')))}`;
+      query += ` ORDER BY t.${String(sortBy)} ${String(String(sortOrder.toUpperCase()))} LIMIT ? OFFSET ?`;
       params.push(limit, offset);
 
       const tasks = await this.db.query<Task>(query, params);
@@ -617,7 +617,7 @@ export class TaskService {
           await db.run(
             `
             UPDATE tasks 
-            SET ${updates.join(', ')}
+            SET ${String(String(updates.join(', ')))}
             WHERE id = ?
           `,
             params
@@ -1028,59 +1028,26 @@ export class TaskService {
         [currentTaskId]
       );
 
-      for (const dep of dependencies) {
-        stack.push(dep.depends_on_task_id);
-      }
+      await Promise.all(
+        dependencies.map(async dep => {
+          await this.getSubtasks(dep.depends_on_task_id);
+        })
+      );
     }
-
     return false;
   }
 
   /**
-   * Converts string date fields to Date objects for a task
-   *
-   * @private
-   * @param task Task object with potentially string-based dates
-   *
-   * @description SQLite stores dates as strings, so this method ensures
-   * proper Date object conversion for JavaScript usage.
-   */
-  private convertTaskDates(task: Task): void {
-    task.created_at = new Date(task.created_at);
-    task.updated_at = new Date(task.updated_at);
-    if (task.due_date) task.due_date = new Date(task.due_date);
-    if (task.completed_at) task.completed_at = new Date(task.completed_at);
-  }
-
-  /**
-   * Creates a standardized service error with proper error codes and status codes
-   *
-   * @private
-   * @param code Error code identifier for categorization
-   * @param message Human-readable error message
-   * @param originalError Optional original error for debugging context
-   * @returns Standardized ServiceError with status code and details
-   */
-  private createError(code: string, message: string, originalError?: any): ServiceError {
-    const error = new Error(message) as ServiceError;
-    error.code = code;
-    error.statusCode = this.getStatusCodeForError(code);
-    error.details = originalError;
-    return error;
-  }
-
-  /**
-   * Gets all subtasks for a given parent task
+   * Retrieves all subtasks of a given parent task
    *
    * @param parentTaskId ID of the parent task
-   * @returns Promise resolving to array of child tasks
+   * @returns Promise resolving to array of subtasks
    *
-   * @throws {ServiceError} TASKS_FETCH_FAILED - When fetching subtasks fails
+   * @throws {ServiceError} TASKS_FETCH_FAILED - When query fails
    *
    * @example
    * ```typescript
    * const subtasks = await taskService.getSubtasks('parent-task-123');
-   * console.log(`Found ${subtasks.length} subtasks`);
    * ```
    */
   async getSubtasks(parentTaskId: string): Promise<Task[]> {
@@ -1229,7 +1196,7 @@ export class TaskService {
    * @example
    * ```typescript
    * const dependencies = await taskService.getTaskDependencies('task-123');
-   * console.log(`Task depends on ${dependencies.length} other tasks`);
+   * logger.log(`Task depends on ${String(String(dependencies.length))} other tasks`);
    * ```
    */
   async getTaskDependencies(taskId: string): Promise<TaskDependency[]> {
@@ -1332,7 +1299,7 @@ export class TaskService {
    * @param code Error code identifier
    * @returns HTTP status code (404 for not found, 500 for server errors)
    */
-  private getStatusCodeForError(code: string): number {
+  private static getStatusCodeForError(code: string): number {
     switch (code) {
       case 'TASK_NOT_FOUND':
       case 'DEPENDENCY_NOT_FOUND':

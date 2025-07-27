@@ -10,7 +10,7 @@ import { globalErrorHandler } from '@/utils/errors';
 import { createApiMiddleware } from '@/middleware';
 import { webSocketManager } from '@/websocket';
 
-export async function createServer() {
+export async function createServer(): Promise<express.Application> {
   const app = express();
 
   // Trust proxy for rate limiting and IP detection
@@ -136,7 +136,7 @@ export async function createServer() {
       health: '/health',
       endpoints: {
         api: '/api/v1',
-        websocket: `ws://localhost:${config.websocket.port}${config.websocket.path}`,
+        websocket: `ws://localhost:${String(String(config.websocket.port))}${String(String(config.websocket.path))}`,
       },
     });
   });
@@ -146,7 +146,7 @@ export async function createServer() {
     res.status(404).json({
       error: 'Not Found',
       code: 'NOT_FOUND',
-      message: `The requested resource ${req.originalUrl} was not found`,
+      message: `The requested resource ${String(String(req.originalUrl))} was not found`,
       timestamp: new Date().toISOString(),
     });
   });
@@ -189,7 +189,11 @@ export async function createServer() {
   return app;
 }
 
-export async function startServer() {
+export async function startServer(): Promise<{
+  app: express.Application;
+  server: any;
+  webSocketManager: any;
+}> {
   try {
     // Initialize database
     logger.info('Initializing database connection...');
@@ -219,8 +223,8 @@ export async function startServer() {
     });
 
     // Graceful shutdown
-    const gracefulShutdown = async (signal: string) => {
-      logger.info(`Received ${signal}, starting graceful shutdown...`);
+    const gracefulShutdown = (signal: string): void => {
+      logger.info(`Received ${String(signal)}, starting graceful shutdown...`);
 
       server.close(async () => {
         logger.info('HTTP server closed');
@@ -279,7 +283,7 @@ export async function startServer() {
 // Start server if this file is run directly
 if (require.main === module) {
   startServer().catch(error => {
-    console.error('Failed to start server:', error);
+    logger.error('Failed to start server:', error);
     process.exit(1);
   });
 }

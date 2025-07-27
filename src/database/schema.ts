@@ -19,7 +19,7 @@
  * // Validate schema
  * const validation = await schemaManager.validateSchema();
  * if (!validation.isValid) {
- *   console.error('Schema issues:', validation.errors);
+ *   logger.error('Schema issues:', validation.errors);
  * }
  * ```
  */
@@ -83,7 +83,7 @@ export interface SchemaValidationResult {
  *
  * // Get schema information
  * const info = await manager.getSchemaInfo();
- * console.log('Tables:', info.tables.join(', '));
+ * logger.log('Tables:', info.tables.join(', '));
  * ```
  */
 export class SchemaManager {
@@ -106,7 +106,7 @@ export class SchemaManager {
    * @example
    * ```typescript
    * await schemaManager.createSchema();
-   * console.log('Schema created successfully');
+   * logger.log('Schema created successfully');
    * ```
    */
   async createSchema(): Promise<void> {
@@ -117,10 +117,11 @@ export class SchemaManager {
       const statements = this.parseSchemaStatements(schemaSQL);
 
       await this.db.transaction(async database => {
-        for (const statement of statements) {
-          if (statement.trim()) {
-            await database.run(statement);
-          }
+        await Promise.all(
+  statements.map(async (statement) => {
+    await database.run(statement);
+  })
+);
         }
 
         // Create schema info record
@@ -132,7 +133,7 @@ export class SchemaManager {
     } catch (error) {
       logger.error('Failed to create database schema:', error);
       throw new Error(
-        `Schema creation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Schema creation failed: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
       );
     }
   }
@@ -146,8 +147,8 @@ export class SchemaManager {
    * ```typescript
    * const result = await schemaManager.validateSchema();
    * if (!result.isValid) {
-   *   console.error('Missing tables:', result.missingTables);
-   *   console.error('Missing indexes:', result.missingIndexes);
+   *   logger.error('Missing tables:', result.missingTables);
+   *   logger.error('Missing indexes:', result.missingIndexes);
    * }
    * ```
    */
@@ -194,12 +195,12 @@ export class SchemaManager {
       const currentVersion = await this.getCurrentSchemaVersion();
       if (currentVersion !== SchemaManager.SCHEMA_VERSION) {
         result.errors.push(
-          `Schema version mismatch: expected ${SchemaManager.SCHEMA_VERSION}, got ${currentVersion}`
+          `Schema version mismatch: expected ${String(String(SchemaManager.SCHEMA_VERSION))}, got ${String(currentVersion)}`
         );
         result.isValid = false;
       }
 
-      logger.info(`Schema validation completed. Valid: ${result.isValid}`);
+      logger.info(`Schema validation completed. Valid: ${String(String(result.isValid))}`);
       return result;
     } catch (error) {
       logger.error('Schema validation failed:', error);
@@ -275,35 +276,43 @@ export class SchemaManager {
         const triggers = await database.all(`
           SELECT name FROM sqlite_master WHERE type='trigger'
         `);
-        for (const trigger of triggers) {
-          await database.run(`DROP TRIGGER IF EXISTS "${trigger.name}"`);
-        }
+        await Promise.all(
+  triggers.map(async (trigger) => {
+    await database.run(`DROP TRIGGER IF EXISTS "${String(String(trigger.name))}"`);
+  })
+);
 
         // Drop all indexes
         const indexes = await database.all(`
           SELECT name FROM sqlite_master 
           WHERE type='index' AND name NOT LIKE 'sqlite_%'
         `);
-        for (const index of indexes) {
-          await database.run(`DROP INDEX IF EXISTS "${index.name}"`);
-        }
+        await Promise.all(
+  indexes.map(async (index) => {
+    await database.run(`DROP INDEX IF EXISTS "${String(String(index.name))}"`);
+  })
+);
 
         // Drop all views
         const views = await database.all(`
           SELECT name FROM sqlite_master WHERE type='view'
         `);
-        for (const view of views) {
-          await database.run(`DROP VIEW IF EXISTS "${view.name}"`);
-        }
+        await Promise.all(
+  views.map(async (view) => {
+    await database.run(`DROP VIEW IF EXISTS "${String(String(view.name))}"`);
+  })
+);
 
         // Drop FTS virtual tables first
         const ftsTables = await database.all(`
           SELECT name FROM sqlite_master 
           WHERE type='table' AND name LIKE '%_fts' AND name NOT LIKE '%_fts_%'
         `);
-        for (const ftsTable of ftsTables) {
-          await database.run(`DROP TABLE IF EXISTS "${ftsTable.name}"`);
-        }
+        await Promise.all(
+  ftsTables.map(async (ftsTable) => {
+    await database.run(`DROP TABLE IF EXISTS "${String(String(ftsTable.name))}"`);
+  })
+);
 
         // Get tables in dependency order (reverse of creation order)
         const tableOrder = [
@@ -322,11 +331,12 @@ export class SchemaManager {
         ];
 
         // Drop tables in specific order
-        for (const tableName of tableOrder) {
-          try {
-            await database.run(`DROP TABLE IF EXISTS "${tableName}"`);
-          } catch (e) {
-            logger.debug(`Failed to drop table ${tableName}:`, e);
+        await Promise.all(
+  tableOrder.map(async (tableName) => {
+    await database.run(`DROP TABLE IF EXISTS "${String(tableName)}"`);
+  })
+); catch (e) {
+            logger.debug(`Failed to drop table ${String(tableName)}:`, e);
           }
         }
 
@@ -338,11 +348,12 @@ export class SchemaManager {
           AND name NOT LIKE '%_fts%'
         `);
 
-        for (const table of remainingTables) {
-          try {
-            await database.run(`DROP TABLE IF EXISTS "${table.name}"`);
-          } catch (e) {
-            logger.debug(`Failed to drop remaining table ${table.name}:`, e);
+        await Promise.all(
+  remainingTables.map(async (table) => {
+    await database.run(`DROP TABLE IF EXISTS "${String(String(table.name))}"`);
+  })
+); catch (e) {
+            logger.debug(`Failed to drop remaining table ${String(String(table.name))}:`, e);
           }
         }
 
@@ -354,7 +365,7 @@ export class SchemaManager {
     } catch (error) {
       logger.error('Failed to drop database schema:', error);
       throw new Error(
-        `Schema drop failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Schema drop failed: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
       );
     }
   }
@@ -374,10 +385,11 @@ export class SchemaManager {
       `);
 
       const tableCounts: Record<string, number> = {};
-      for (const table of tables) {
-        const result = await this.db.queryOne(`SELECT COUNT(*) as count FROM ${table.name}`);
-        tableCounts[table.name] = result?.count || 0;
-      }
+      await Promise.all(
+  tables.map(async (table) => {
+    await this.db.queryOne(`SELECT COUNT(*) as count FROM ${String(String(table.name))}`);
+  })
+);
 
       return {
         ...stats,
@@ -392,17 +404,17 @@ export class SchemaManager {
 
   // Private helper methods
 
-  private readSchemaFile(): string {
+  private static readSchemaFile(): string {
     try {
       return readFileSync(SchemaManager.SCHEMA_FILE, 'utf-8');
     } catch (error) {
       throw new Error(
-        `Failed to read schema file: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to read schema file: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
       );
     }
   }
 
-  private parseSchemaStatements(schemaSQL: string): string[] {
+  private static parseSchemaStatements(schemaSQL: string): string[] {
     // Remove comments but preserve line structure for better debugging
     const cleanSQL = schemaSQL
       .replace(/--.*$/gm, '') // Remove line comments
@@ -417,54 +429,8 @@ export class SchemaManager {
 
     const lines = cleanSQL.split('\n');
 
-    for (const line of lines) {
-      const trimmedLine = line.trim();
-
-      // Check if we're starting a trigger
-      if (trimmedLine.toUpperCase().startsWith('CREATE TRIGGER')) {
-        inTrigger = true;
-      }
-
-      // Add line to current statement
-      if (currentStatement && trimmedLine) {
-        currentStatement += `\n${line}`;
-      } else if (trimmedLine) {
-        currentStatement = line;
-      }
-
-      // Check for string literals
-      for (let i = 0; i < line.length; i++) {
-        const char = line[i];
-        if ((char === '"' || char === "'") && !inQuotes) {
-          inQuotes = true;
-          quoteChar = char;
-        } else if (char === quoteChar && inQuotes) {
-          inQuotes = false;
-          quoteChar = '';
-        }
-      }
-
-      // If we're in a trigger, only end on "END;" as a complete line
-      if (inTrigger && trimmedLine.toUpperCase() === 'END;') {
-        statements.push(currentStatement.trim());
-        currentStatement = '';
-        inTrigger = false;
-      } else if (!inTrigger && trimmedLine.endsWith(';') && !inQuotes) {
-        // Normal statement ending
-        statements.push(currentStatement.trim());
-        currentStatement = '';
-      }
-    }
-
-    // Add any remaining statement
-    if (currentStatement.trim()) {
-      statements.push(currentStatement.trim());
-    }
-
-    return statements.filter(stmt => stmt.length > 0);
-  }
-
-  private async createSchemaInfoTable(): Promise<void> {
+    await Promise.all(
+  lines.map(async (line) => {
     await this.db.execute(`
       CREATE TABLE IF NOT EXISTS schema_info (
         key TEXT PRIMARY KEY,
@@ -473,7 +439,8 @@ export class SchemaManager {
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
-  }
+  })
+);
 
   private async recordSchemaVersion(): Promise<void> {
     await this.db.execute(
@@ -550,9 +517,9 @@ export class SchemaManager {
     return schema;
   }
 
-  private extractObjectNames(sql: string, createStatement: string): string[] {
+  private static extractObjectNames(sql: string, createStatement: string): string[] {
     const regex = new RegExp(
-      `${createStatement}\\s+(?:IF NOT EXISTS\\s+)?(?:\\w+\\.)?([\\w_]+)`,
+      `${String(createStatement)}\\s+(?:IF NOT EXISTS\\s+)?(?:\\w+\\.)?([\\w_]+)`,
       'gi'
     );
     const matches: string[] = [];

@@ -65,13 +65,12 @@ describe('API Load Tests', () => {
   });
 
   async function seedTestData(count: number): Promise<void> {
-    const tasks = [];
-    for (let i = 0; i < count; i++) {
+    const tasks = Array.from({ length: count }, (_, i) => {
       const taskId = uuidv4();
-      const task = {
+      return {
         id: taskId,
-        title: `Load Test Task ${i + 1}`,
-        description: `Description for load test task ${i + 1}`,
+        title: `Load Test Task ${String(i + 1)}`,
+        description: `Description for load test task ${String(i + 1)}`,
         board_id: testBoard.id,
         column_id: global.testColumnId,
         status: ['todo', 'in_progress', 'done'][Math.floor(Math.random() * 3)],
@@ -79,28 +78,29 @@ describe('API Load Tests', () => {
         position: i,
         created_at: new Date().toISOString(),
       };
-      tasks.push(task);
-    }
+    });
 
     // Bulk insert for performance
     await dbConnection.transaction(async () => {
-      for (const task of tasks) {
-        await dbConnection.execute(
-          `INSERT INTO tasks (id, title, description, board_id, column_id, status, priority, position, created_at) 
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            task.id,
-            task.title,
-            task.description,
-            task.board_id,
-            task.column_id,
-            task.status,
-            task.priority,
-            task.position,
-            task.created_at,
-          ]
-        );
-      }
+      await Promise.all(
+        tasks.map(async task => {
+          await dbConnection.execute(
+            `INSERT INTO tasks (id, title, description, board_id, column_id, status, priority, position, created_at) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              task.id,
+              task.title,
+              task.description,
+              task.board_id,
+              task.column_id,
+              task.status,
+              task.priority,
+              task.position,
+              task.created_at,
+            ]
+          );
+        })
+      );
     });
   }
 
@@ -142,7 +142,7 @@ describe('API Load Tests', () => {
           .post('/api/v1/tasks')
           .set('X-API-Key', apiKey)
           .send({
-            title: `Concurrent Task ${i + 1}`,
+            title: `Concurrent Task ${String(i + 1)}`,
             description: `Created during load test`,
             board_id: testBoard.id,
             column_id: global.testColumnId,
@@ -165,8 +165,8 @@ describe('API Load Tests', () => {
         expect(response.body.data.id).toBeDefined();
       });
 
-      console.log(`✓ 50 concurrent POST requests completed in ${duration}ms`);
-      console.log(`✓ Average creation time: ${duration / concurrentRequests}ms per task`);
+      logger.log(`✓ 50 concurrent POST requests completed in ${String(duration)}ms`);
+      logger.log(`✓ Average creation time: ${String(duration / concurrentRequests)}ms per task`);
     }, 15000);
 
     it('should maintain performance with large result sets', async () => {
@@ -191,7 +191,7 @@ describe('API Load Tests', () => {
       // Should handle large queries efficiently
       expect(duration).toBeLessThan(3000); // Within 3 seconds
 
-      console.log(`✓ Large query (500+ tasks) completed in ${duration}ms`);
+      logger.log(`✓ Large query (500+ tasks) completed in ${String(duration)}ms`);
     });
 
     it('should handle rapid sequential updates', async () => {
@@ -212,12 +212,12 @@ describe('API Load Tests', () => {
       const startTime = Date.now();
 
       // Perform rapid sequential updates
-      for (let i = 0; i < updateCount; i++) {
+      Array.from({ length: updateCount - 0 }, (_, i) => i + 0) {
         const response = await request(app)
-          .patch(`/api/v1/tasks/${taskId}`)
+          .patch(`/api/v1/tasks/${String(taskId)}`)
           .set('X-API-Key', apiKey)
           .send({
-            title: `Updated Task ${i + 1}`,
+            title: `Updated Task ${String(i + 1)}`,
             priority: (i % 10) + 1,
           });
 
@@ -231,8 +231,8 @@ describe('API Load Tests', () => {
       // Should handle rapid updates efficiently
       expect(duration).toBeLessThan(5000); // Within 5 seconds
 
-      console.log(`✓ ${updateCount} sequential updates completed in ${duration}ms`);
-      console.log(`✓ Average update time: ${duration / updateCount}ms per update`);
+      logger.log(`✓ ${String(updateCount)} sequential updates completed in ${String(duration)}ms`);
+      logger.log(`✓ Average update time: ${String(duration / updateCount)}ms per update`);
     });
   });
 
@@ -243,14 +243,14 @@ describe('API Load Tests', () => {
       const searchTerm = 'searchable';
 
       await dbConnection.transaction(async () => {
-        for (let i = 0; i < searchableCount; i++) {
+        Array.from({ length: searchableCount - 0 }, (_, i) => i + 0) {
           await dbConnection.execute(
             `INSERT INTO tasks (id, title, description, board_id, column_id, status, priority, position, created_at) 
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               uuidv4(),
-              `${searchTerm} Task ${i + 1}`,
-              `This is a ${searchTerm} description for testing search performance`,
+              `${String(searchTerm)} Task ${String(i + 1)}`,
+              `This is a ${String(searchTerm)} description for testing search performance`,
               testBoard.id,
               global.testColumnId,
               'todo',
@@ -279,8 +279,8 @@ describe('API Load Tests', () => {
       // Search should be fast even on large dataset
       expect(duration).toBeLessThan(2000); // Within 2 seconds
 
-      console.log(`✓ Text search on large dataset completed in ${duration}ms`);
-      console.log(`✓ Found ${response.body.data.length} matching tasks`);
+      logger.log(`✓ Text search on large dataset completed in ${String(duration)}ms`);
+      logger.log(`✓ Found ${String(String(response.body.data.length))} matching tasks`);
     });
 
     it('should handle complex filtering efficiently', async () => {
@@ -305,7 +305,7 @@ describe('API Load Tests', () => {
       // Complex filtering should be efficient
       expect(duration).toBeLessThan(1500); // Within 1.5 seconds
 
-      console.log(`✓ Complex filtering completed in ${duration}ms`);
+      logger.log(`✓ Complex filtering completed in ${String(duration)}ms`);
     });
   });
 
@@ -315,7 +315,7 @@ describe('API Load Tests', () => {
       const iterations = 100;
 
       // Perform sustained operations
-      for (let i = 0; i < iterations; i++) {
+      Array.from({ length: iterations - 0 }, (_, i) => i + 0) {
         await request(app).get('/api/v1/tasks').set('X-API-Key', apiKey).query({ limit: 10 });
 
         // Create and delete task to test cleanup
@@ -323,7 +323,7 @@ describe('API Load Tests', () => {
           .post('/api/v1/tasks')
           .set('X-API-Key', apiKey)
           .send({
-            title: `Memory Test Task ${i}`,
+            title: `Memory Test Task ${String(i)}`,
             board_id: testBoard.id,
             column_id: global.testColumnId,
             status: 'todo',
@@ -331,7 +331,7 @@ describe('API Load Tests', () => {
           });
 
         await request(app)
-          .delete(`/api/v1/tasks/${createResp.body.data.id}`)
+          .delete(`/api/v1/tasks/${String(String(createResp.body.data.id))}`)
           .set('X-API-Key', apiKey);
       }
 
@@ -346,10 +346,10 @@ describe('API Load Tests', () => {
       // Memory increase should be reasonable (less than 50MB for this test)
       expect(memoryIncrease).toBeLessThan(50 * 1024 * 1024);
 
-      console.log(`✓ Memory usage after ${iterations} operations:`);
-      console.log(`  Initial: ${Math.round(initialMemory.heapUsed / 1024 / 1024)}MB`);
-      console.log(`  Final: ${Math.round(finalMemory.heapUsed / 1024 / 1024)}MB`);
-      console.log(`  Increase: ${Math.round(memoryIncrease / 1024 / 1024)}MB`);
+      logger.log(`✓ Memory usage after ${String(iterations)} operations:`);
+      logger.log(`  Initial: ${String(String(Math.round(initialMemory.heapUsed / 1024 / 1024)))}MB`);
+      logger.log(`  Final: ${String(String(Math.round(finalMemory.heapUsed / 1024 / 1024)))}MB`);
+      logger.log(`  Increase: ${String(String(Math.round(memoryIncrease / 1024 / 1024)))}MB`);
     }, 30000);
   });
 
@@ -362,80 +362,84 @@ describe('API Load Tests', () => {
     };
 
     Object.entries(benchmarks).forEach(([endpoint, { maxTime, samples }]) => {
-      it(`should respond within ${maxTime}ms for ${endpoint}`, async () => {
+      it(`should respond within ${String(maxTime)}ms for ${String(endpoint)}`, async () => {
         const times: number[] = [];
 
-        for (let i = 0; i < samples; i++) {
-          let startTime: number;
-          let response: any;
+        await Promise.all(
+          Array.from({ length: samples }, async (_, i) => {
+            let startTime: number;
+            let response: any;
 
-          if (endpoint.includes('GET /api/v1/tasks (10 items)')) {
-            startTime = Date.now();
-            response = await request(app)
-              .get('/api/v1/tasks')
-              .set('X-API-Key', apiKey)
-              .query({ limit: 10 });
-          } else if (endpoint.includes('POST /api/v1/tasks')) {
-            startTime = Date.now();
-            response = await request(app)
-              .post('/api/v1/tasks')
-              .set('X-API-Key', apiKey)
-              .send({
-                title: `Benchmark Task ${i}`,
-                board_id: testBoard.id,
-                column_id: global.testColumnId,
-                status: 'todo',
-                priority: 5,
-              });
-          } else if (endpoint.includes('PATCH /api/v1/tasks/:id')) {
-            // Create task first
-            const createResp = await request(app)
-              .post('/api/v1/tasks')
-              .set('X-API-Key', apiKey)
-              .send({
-                title: `Update Benchmark Task ${i}`,
-                board_id: testBoard.id,
-                column_id: global.testColumnId,
-                status: 'todo',
-                priority: 5,
-              });
+            if (endpoint.includes('GET /api/v1/tasks (10 items)')) {
+              startTime = Date.now();
+              response = await request(app)
+                .get('/api/v1/tasks')
+                .set('X-API-Key', apiKey)
+                .query({ limit: 10 });
+            } else if (endpoint.includes('POST /api/v1/tasks')) {
+              startTime = Date.now();
+              response = await request(app)
+                .post('/api/v1/tasks')
+                .set('X-API-Key', apiKey)
+                .send({
+                  title: `Benchmark Task ${String(i)}`,
+                  board_id: testBoard.id,
+                  column_id: global.testColumnId,
+                  status: 'todo',
+                  priority: 5,
+                });
+            } else if (endpoint.includes('PATCH /api/v1/tasks/:id')) {
+              // Create task first
+              const createResp = await request(app)
+                .post('/api/v1/tasks')
+                .set('X-API-Key', apiKey)
+                .send({
+                  title: `Update Benchmark Task ${String(i)}`,
+                  board_id: testBoard.id,
+                  column_id: global.testColumnId,
+                  status: 'todo',
+                  priority: 5,
+                });
 
-            startTime = Date.now();
-            response = await request(app)
-              .patch(`/api/v1/tasks/${createResp.body.data.id}`)
-              .set('X-API-Key', apiKey)
-              .send({ title: `Updated Benchmark Task ${i}` });
-          } else if (endpoint.includes('GET /api/v1/tasks/:id')) {
-            // Create task first
-            const createResp = await request(app)
-              .post('/api/v1/tasks')
-              .set('X-API-Key', apiKey)
-              .send({
-                title: `Get Benchmark Task ${i}`,
-                board_id: testBoard.id,
-                column_id: global.testColumnId,
-                status: 'todo',
-                priority: 5,
-              });
+              startTime = Date.now();
+              response = await request(app)
+                .patch(`/api/v1/tasks/${String(String(createResp.body.data.id))}`)
+                .set('X-API-Key', apiKey)
+                .send({ title: `Updated Benchmark Task ${String(i)}` });
+            } else if (endpoint.includes('GET /api/v1/tasks/:id')) {
+              // Create task first
+              const createResp = await request(app)
+                .post('/api/v1/tasks')
+                .set('X-API-Key', apiKey)
+                .send({
+                  title: `Get Benchmark Task ${String(i)}`,
+                  board_id: testBoard.id,
+                  column_id: global.testColumnId,
+                  status: 'todo',
+                  priority: 5,
+                });
 
-            startTime = Date.now();
-            response = await request(app)
-              .get(`/api/v1/tasks/${createResp.body.data.id}`)
-              .set('X-API-Key', apiKey);
-          }
+              startTime = Date.now();
+              response = await request(app)
+                .get(`/api/v1/tasks/${String(String(createResp.body.data.id))}`)
+                .set('X-API-Key', apiKey);
+            } else {
+              throw new Error(`Unknown endpoint: ${String(endpoint)}`);
+            }
 
-          const duration = Date.now() - startTime;
-          times.push(duration);
+            const duration = Date.now() - startTime;
+            times.push(duration);
 
-          expect(response.status).toBeGreaterThanOrEqual(200);
-          expect(response.status).toBeLessThan(300);
-        }
+            expect(response.status).toBeGreaterThanOrEqual(200);
+            expect(response.status).toBeLessThan(300);
+          })
+        );
 
         const avgTime = times.reduce((a, b) => a + b, 0) / times.length;
         const maxTimeObserved = Math.max(...times);
 
         expect(avgTime).toBeLessThan(maxTime);
-        console.log(`✓ ${endpoint}: avg ${Math.round(avgTime)}ms, max ${maxTimeObserved}ms`);
+        logger.log(`✓ ${String(endpoint)}: avg ${String(String(Math.round(avgTime)))}ms, max ${String(maxTimeObserved)}ms`);
       });
     });
   });

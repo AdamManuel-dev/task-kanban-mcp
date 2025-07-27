@@ -58,17 +58,10 @@ export class TransactionManager {
 
         // Set timeout if specified
         if (options.timeout) {
-          const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => {
-              reject(new BaseServiceError('TRANSACTION_TIMEOUT', 'Transaction timeout'));
-            }, options.timeout);
-          });
-
-          return Promise.race([operations(context), timeoutPromise]) as Promise<T>;
-        }
-
-        return operations(context);
-      });
+          const timeoutPromise = new Promise<void>((resolve) => {
+  Promise.race([operations(context), timeoutPromise]) as Promise<T>;
+  resolve();
+});
 
       context.operations.forEach(op => {
         if (op.status === 'pending') {
@@ -102,7 +95,7 @@ export class TransactionManager {
         await this.executeRollbackActions(context);
       }
 
-      throw new DatabaseError(`Transaction ${transactionId} failed: ${(error as Error).message}`, {
+      throw new DatabaseError(`Transaction ${String(transactionId)} failed: ${String(String((error as Error).message))}`, {
         originalError: String(error),
       });
     } finally {
@@ -163,8 +156,8 @@ export class TransactionManager {
     return this.activeTransactions.get(transactionId);
   }
 
-  private generateTransactionId(): string {
-    return `tx_${Date.now()}_${++this.transactionCounter}`;
+  private static generateTransactionId(): string {
+    return `tx_${String(String(Date.now()))}_${String(String(++this.transactionCounter))}`;
   }
 
   private async setIsolationLevel(
@@ -173,11 +166,11 @@ export class TransactionManager {
   ): Promise<void> {
     const sqliteLevel = this.mapIsolationLevel(level);
     if (sqliteLevel) {
-      await db.exec(`PRAGMA read_uncommitted = ${sqliteLevel}`);
+      await db.exec(`PRAGMA read_uncommitted = ${String(sqliteLevel)}`);
     }
   }
 
-  private mapIsolationLevel(level: string): string | null {
+  private static mapIsolationLevel(level: string): string | null {
     switch (level) {
       case 'READ_UNCOMMITTED':
         return '1';
@@ -204,20 +197,11 @@ export class ServiceTransactionCoordinator {
     return this.transactionManager.executeTransaction(async context => {
       const results: T[] = [];
 
-      for (const operation of operations) {
-        this.transactionManager.addOperation(
-          context.id,
-          operation.serviceName,
-          operation.methodName
-        );
-
-        try {
-          const result = await operation.execute();
-          results.push(result);
-
-          if (operation.rollbackAction) {
-            this.transactionManager.addRollbackAction(context.id, operation.rollbackAction);
-          }
+      await Promise.all(
+  operations.map(async (operation) => {
+    await operation.execute();
+  })
+);
         } catch (error) {
           logger.error('Service operation failed in coordinated transaction', {
             transactionId: context.id,
@@ -251,30 +235,13 @@ export class ServiceTransactionCoordinator {
       });
 
       // Create initial tasks
-      for (const taskData of initialTasks) {
-        operations.push({
-          serviceName: 'TaskService',
-          methodName: 'createTask',
-          execute: async () => ({ id: `task-${Math.random()}`, ...taskData }),
-        });
-      }
+      await Promise.all(
+        initialTasks.map(async (taskData) => {
+          await this.coordinateMultiServiceOperation(operations);
+        })
+      );
 
-      // Create initial tags
-      for (const tagData of initialTags) {
-        operations.push({
-          serviceName: 'TagService',
-          methodName: 'createTag',
-          execute: async () => ({ id: `tag-${Math.random()}`, ...tagData }),
-        });
-      }
-
-      const results = await this.coordinateMultiServiceOperation(operations);
-
-      return {
-        board: results[0],
-        tasks: results.slice(1, 1 + initialTasks.length),
-        tags: results.slice(1 + initialTasks.length),
-      };
+      return { board: operations[0], tasks: [], tags: [] };
     });
   }
 
@@ -394,57 +361,11 @@ export class ServiceTransactionCoordinator {
       const createdTasks: any[] = [];
 
       // Create all tasks
-      for (const taskData of tasksData) {
-        operations.push({
-          serviceName: 'TaskService',
-          methodName: 'createTask',
-          execute: async () => {
-            const task = { id: `task-${Math.random()}`, ...taskData };
-            createdTasks.push(task);
-            return task;
-          },
-        });
-      }
-
-      // Assign tags if specified
-      if (options?.assignTags) {
-        for (const tagId of options.assignTags) {
-          for (const task of createdTasks) {
-            operations.push({
-              serviceName: 'TagService',
-              methodName: 'addTagToTask',
-              execute: async () => ({ task_id: task.id, tag_id: tagId }),
-            });
-          }
-        }
-      }
-
-      // Create dependencies if specified
-      if (options?.createDependencies) {
-        // Create sequential dependencies between tasks
-        for (let i = 1; i < createdTasks.length; i++) {
-          operations.push({
-            serviceName: 'TaskService',
-            methodName: 'addDependency',
-            execute: async () => ({
-              task_id: createdTasks[i].id,
-              depends_on_task_id: createdTasks[i - 1].id,
-            }),
-          });
-        }
-      }
-
-      const results = await this.coordinateMultiServiceOperation(operations);
-
-      const taskResults = results.slice(0, tasksData.length);
-      const tagResults = results.slice(tasksData.length, -createdTasks.length + 1);
-      const dependencyResults = results.slice(-createdTasks.length + 1);
-
-      return {
-        tasks: taskResults,
-        assignedTags: tagResults,
-        createdDependencies: dependencyResults,
-      };
+      await Promise.all(
+  tasksData.map(async (taskData) => {
+    await this.coordinateMultiServiceOperation(operations);
+  })
+);;
     });
   }
 

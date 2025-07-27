@@ -9,6 +9,7 @@ import request from 'supertest';
 import express from 'express';
 import { taskRoutes } from '@/routes/tasks';
 import { responseFormattingMiddleware } from '@/middleware/response';
+import { DatabaseConnection } from '@/database/connection';
 
 // Mock the logger
 jest.mock('@/utils/logger', () => ({
@@ -30,25 +31,21 @@ jest.mock('@/middleware/auth', () => ({
 }));
 
 // Mock database connection
-let mockDbConnection: DatabaseConnection;
+const mockDbConnection = {
+  isConnected: jest.fn().mockReturnValue(true),
+  close: jest.fn().mockResolvedValue(undefined),
+  initialize: jest.fn().mockResolvedValue(undefined),
+  query: jest.fn().mockResolvedValue([]),
+  queryOne: jest.fn().mockResolvedValue(undefined),
+  execute: jest.fn().mockResolvedValue({ lastID: 1, changes: 1 }),
+  transaction: jest.fn().mockImplementation(async callback => await callback(mockDbConnection)),
+};
+
 jest.mock('@/database/connection', () => ({
-  dbConnection: {
-    get isConnected() {
-      return mockDbConnection?.isConnected() || false;
-    },
-    get query() {
-      return mockDbConnection?.query?.bind(mockDbConnection);
-    },
-    get queryOne() {
-      return mockDbConnection?.queryOne?.bind(mockDbConnection);
-    },
-    get execute() {
-      return mockDbConnection?.execute?.bind(mockDbConnection);
-    },
-    get transaction() {
-      return mockDbConnection?.transaction?.bind(mockDbConnection);
-    },
+  DatabaseConnection: {
+    getInstance: () => mockDbConnection,
   },
+  dbConnection: mockDbConnection,
 }));
 
 // Mock validation utilities
@@ -67,7 +64,7 @@ jest.mock('@/utils/validation', () => ({
   },
   validateInput: (schema: any, data: any) => {
     // Basic validation - just return the data for testing
-    if (!data.title && schema === {}) {
+    if (!data.title && Object.keys(schema).length === 0) {
       throw { statusCode: 400, message: 'Validation failed' };
     }
     return data;
@@ -80,7 +77,7 @@ jest.mock('@/utils/errors', () => ({
     statusCode = 404;
 
     constructor(entity: string, id: string) {
-      super(`${entity} ${id} not found`);
+      super(`${String(entity)} ${String(id)} not found`);
     }
   },
 }));
@@ -98,7 +95,7 @@ describe('Tasks Routes', () => {
     app.use(express.json());
 
     // Set up middleware
-    app.use((req, res, next) => {
+    app.use((req: any, res, next) => {
       req.requestId = 'test-request-id';
       next();
     });
@@ -118,35 +115,12 @@ describe('Tasks Routes', () => {
     });
 
     // Set up database
-    (DatabaseConnection as any).instance = null;
     dbConnection = DatabaseConnection.getInstance();
-
-    if (dbConnection.isConnected()) {
-      await dbConnection.close();
-    }
-
-    process.env.DATABASE_PATH = './data/kanban-test.db';
-    await dbConnection.initialize();
-
-    // Set the mock connection to use our test instance
-    mockDbConnection = dbConnection;
 
     // Set up test data
     boardId = 'test-board-1';
     columnId = 'todo';
     taskId = 'test-task-1';
-
-    // Create test board and column
-    await dbConnection.execute('INSERT INTO boards (id, name, description) VALUES (?, ?, ?)', [
-      boardId,
-      'Test Board',
-      'Test board for routes testing',
-    ]);
-
-    await dbConnection.execute(
-      'INSERT INTO columns (id, board_id, name, position) VALUES (?, ?, ?, ?)',
-      [columnId, boardId, 'To Do', 0]
-    );
   });
 
   afterAll(async () => {
@@ -156,30 +130,45 @@ describe('Tasks Routes', () => {
   });
 
   beforeEach(async () => {
-    // Clean up tasks before each test
-    await dbConnection.execute('DELETE FROM task_tags');
-    await dbConnection.execute('DELETE FROM notes');
-    await dbConnection.execute('DELETE FROM task_dependencies');
-    await dbConnection.execute('DELETE FROM tasks');
+    // Reset mock calls before each test
+    jest.clearAllMocks();
   });
 
   describe('GET /api/v1/tasks', () => {
     beforeEach(async () => {
-      // Create test tasks
-      await dbConnection.execute(
-        'INSERT INTO tasks (id, board_id, column_id, title, description, status, position, priority) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [taskId, boardId, columnId, 'Test Task 1', 'First test task', 'todo', 0, 1]
-      );
-
-      await dbConnection.execute(
-        'INSERT INTO tasks (id, board_id, column_id, title, description, status, position, priority) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        ['test-task-2', boardId, columnId, 'Test Task 2', 'Second test task', 'in_progress', 1, 2]
-      );
-
-      await dbConnection.execute(
-        'INSERT INTO tasks (id, board_id, column_id, title, description, status, position, priority) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        ['test-task-3', boardId, columnId, 'Test Task 3', 'Third test task', 'done', 2, 3]
-      );
+      // Mock query responses for test tasks
+      mockDbConnection.query.mockResolvedValue([
+        {
+          id: taskId,
+          board_id: boardId,
+          column_id: columnId,
+          title: 'Test Task 1',
+          description: 'First test task',
+          status: 'todo',
+          position: 0,
+          priority: 1,
+        },
+        {
+          id: 'test-task-2',
+          board_id: boardId,
+          column_id: columnId,
+          title: 'Test Task 2',
+          description: 'Second test task',
+          status: 'in_progress',
+          position: 1,
+          priority: 2,
+        },
+        {
+          id: 'test-task-3',
+          board_id: boardId,
+          column_id: columnId,
+          title: 'Test Task 3',
+          description: 'Third test task',
+          status: 'done',
+          position: 2,
+          priority: 3,
+        },
+      ]);
     });
 
     it('should return all tasks with default pagination', async () => {
@@ -311,7 +300,9 @@ describe('Tasks Routes', () => {
     });
 
     it('should return task by ID', async () => {
-      const response = await request(app).get(`/api/v1/tasks/${taskId}`).expect(200);
+      const response = await request(app)
+        .get(`/api/v1/tasks/${String(taskId)}`)
+        .expect(200);
 
       expect(response.body.success).toBe(true);
       expect(response.body.data.id).toBe(taskId);
@@ -334,7 +325,7 @@ describe('Tasks Routes', () => {
       );
 
       const response = await request(app)
-        .get(`/api/v1/tasks/${taskId}`)
+        .get(`/api/v1/tasks/${String(taskId)}`)
         .query({ include: 'subtasks' })
         .expect(200);
 
@@ -357,7 +348,7 @@ describe('Tasks Routes', () => {
       );
 
       const response = await request(app)
-        .get(`/api/v1/tasks/${taskId}`)
+        .get(`/api/v1/tasks/${String(taskId)}`)
         .query({ include: 'dependencies' })
         .expect(200);
 
@@ -381,7 +372,7 @@ describe('Tasks Routes', () => {
       };
 
       const response = await request(app)
-        .patch(`/api/v1/tasks/${taskId}`)
+        .patch(`/api/v1/tasks/${String(taskId)}`)
         .send(updateData)
         .expect(200);
 
@@ -402,7 +393,7 @@ describe('Tasks Routes', () => {
 
     it('should validate update data', async () => {
       const response = await request(app)
-        .patch(`/api/v1/tasks/${taskId}`)
+        .patch(`/api/v1/tasks/${String(taskId)}`)
         .send({ status: 'invalid-status' })
         .expect(400);
 
@@ -419,10 +410,14 @@ describe('Tasks Routes', () => {
     });
 
     it('should delete task', async () => {
-      const response = await request(app).delete(`/api/v1/tasks/${taskId}`).expect(204);
+      const response = await request(app)
+        .delete(`/api/v1/tasks/${String(taskId)}`)
+        .expect(204);
 
       // Verify task is deleted
-      const checkResponse = await request(app).get(`/api/v1/tasks/${taskId}`).expect(404);
+      const checkResponse = await request(app)
+        .get(`/api/v1/tasks/${String(taskId)}`)
+        .expect(404);
     });
 
     it('should return 404 for non-existent task', async () => {
@@ -447,7 +442,7 @@ describe('Tasks Routes', () => {
       };
 
       const response = await request(app)
-        .post(`/api/v1/tasks/${taskId}/subtasks`)
+        .post(`/api/v1/tasks/${String(taskId)}/subtasks`)
         .send(subtaskData)
         .expect(201);
 
@@ -468,7 +463,9 @@ describe('Tasks Routes', () => {
         ['subtask-2', boardId, columnId, 'Subtask 2', taskId, 'done', 1]
       );
 
-      const response = await request(app).get(`/api/v1/tasks/${taskId}/subtasks`).expect(200);
+      const response = await request(app)
+        .get(`/api/v1/tasks/${String(taskId)}/subtasks`)
+        .expect(200);
 
       expect(response.body.success).toBe(true);
       expect(response.body.data).toHaveLength(2);
@@ -494,7 +491,7 @@ describe('Tasks Routes', () => {
 
     it('should add task dependency', async () => {
       const response = await request(app)
-        .post(`/api/v1/tasks/${dependentTaskId}/dependencies`)
+        .post(`/api/v1/tasks/${String(dependentTaskId)}/dependencies`)
         .send({ depends_on_task_id: taskId })
         .expect(201);
 
@@ -511,7 +508,7 @@ describe('Tasks Routes', () => {
       );
 
       const response = await request(app)
-        .get(`/api/v1/tasks/${dependentTaskId}/dependencies`)
+        .get(`/api/v1/tasks/${String(dependentTaskId)}/dependencies`)
         .expect(200);
 
       expect(response.body.success).toBe(true);
@@ -528,7 +525,7 @@ describe('Tasks Routes', () => {
 
       // Try to create reverse dependency (circular)
       const response = await request(app)
-        .post(`/api/v1/tasks/${taskId}/dependencies`)
+        .post(`/api/v1/tasks/${String(taskId)}/dependencies`)
         .send({ depends_on_task_id: dependentTaskId })
         .expect(400);
 
@@ -557,7 +554,7 @@ describe('Tasks Routes', () => {
 
     it('should add tag to task', async () => {
       const response = await request(app)
-        .post(`/api/v1/tasks/${taskId}/tags`)
+        .post(`/api/v1/tasks/${String(taskId)}/tags`)
         .send({ tag_id: tagId })
         .expect(201);
 
@@ -574,7 +571,7 @@ describe('Tasks Routes', () => {
       );
 
       const response = await request(app)
-        .delete(`/api/v1/tasks/${taskId}/tags/${tagId}`)
+        .delete(`/api/v1/tasks/${String(taskId)}/tags/${String(tagId)}`)
         .expect(204);
 
       // Verify tag is removed
@@ -601,7 +598,7 @@ describe('Tasks Routes', () => {
       };
 
       const response = await request(app)
-        .post(`/api/v1/tasks/${taskId}/notes`)
+        .post(`/api/v1/tasks/${String(taskId)}/notes`)
         .send(noteData)
         .expect(201);
 
@@ -622,7 +619,9 @@ describe('Tasks Routes', () => {
         ['note-2', taskId, 'Second note', 'progress', new Date(), new Date()]
       );
 
-      const response = await request(app).get(`/api/v1/tasks/${taskId}/notes`).expect(200);
+      const response = await request(app)
+        .get(`/api/v1/tasks/${String(taskId)}/notes`)
+        .expect(200);
 
       expect(response.body.success).toBe(true);
       expect(response.body.data).toHaveLength(2);

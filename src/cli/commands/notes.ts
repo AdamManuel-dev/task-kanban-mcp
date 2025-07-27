@@ -45,7 +45,7 @@ export function registerNoteCommands(program: Command): void {
         });
       } catch (error) {
         formatter.error(
-          `Failed to list notes: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to list notes: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -61,14 +61,14 @@ export function registerNoteCommands(program: Command): void {
         const note = (await apiClient.getNote(id)) as any;
 
         if (!note) {
-          formatter.error(`Note ${id} not found`);
+          formatter.error(`Note ${String(id)} not found`);
           process.exit(1);
         }
 
         formatter.output(note);
       } catch (error) {
         formatter.error(
-          `Failed to get note: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to get note: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -149,11 +149,11 @@ export function registerNoteCommands(program: Command): void {
 
       try {
         const note = (await apiClient.createNote(noteData)) as any;
-        formatter.success(`Note created successfully: ${note.id}`);
+        formatter.success(`Note created successfully: ${String(String(note.id))}`);
         formatter.output(note);
       } catch (error) {
         formatter.error(
-          `Failed to create note: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to create note: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -176,7 +176,7 @@ export function registerNoteCommands(program: Command): void {
         // Get current note data
         const currentNote = (await apiClient.getNote(id)) as any;
         if (!currentNote) {
-          formatter.error(`Note ${id} not found`);
+          formatter.error(`Note ${String(id)} not found`);
           process.exit(1);
         }
 
@@ -231,7 +231,7 @@ export function registerNoteCommands(program: Command): void {
         formatter.output(updatedNote);
       } catch (error) {
         formatter.error(
-          `Failed to update note: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to update note: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -249,7 +249,7 @@ export function registerNoteCommands(program: Command): void {
         if (!options.force) {
           const note = (await apiClient.getNote(id)) as any;
           if (!note) {
-            formatter.error(`Note ${id} not found`);
+            formatter.error(`Note ${String(id)} not found`);
             process.exit(1);
           }
 
@@ -257,7 +257,7 @@ export function registerNoteCommands(program: Command): void {
             {
               type: 'confirm',
               name: 'confirm',
-              message: `Delete note "${note.title}"?`,
+              message: `Delete note "${String(String(note.title))}"?`,
               default: false,
             },
           ]);
@@ -269,10 +269,10 @@ export function registerNoteCommands(program: Command): void {
         }
 
         await apiClient.deleteNote(id);
-        formatter.success(`Note ${id} deleted successfully`);
+        formatter.success(`Note ${String(id)} deleted successfully`);
       } catch (error) {
         formatter.error(
-          `Failed to delete note: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to delete note: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -295,7 +295,7 @@ export function registerNoteCommands(program: Command): void {
         const notes = (await apiClient.searchNotes(query)) as any;
 
         if (!notes || notes.length === 0) {
-          formatter.info(`No notes found matching "${query}"`);
+          formatter.info(`No notes found matching "${String(query)}"`);
           return;
         }
 
@@ -305,7 +305,7 @@ export function registerNoteCommands(program: Command): void {
         });
       } catch (error) {
         formatter.error(
-          `Failed to search notes: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to search notes: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -319,10 +319,10 @@ export function registerNoteCommands(program: Command): void {
 
       try {
         await apiClient.updateNote(id, { pinned: true });
-        formatter.success(`Note ${id} pinned successfully`);
+        formatter.success(`Note ${String(id)} pinned successfully`);
       } catch (error) {
         formatter.error(
-          `Failed to pin note: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to pin note: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -336,10 +336,10 @@ export function registerNoteCommands(program: Command): void {
 
       try {
         await apiClient.updateNote(id, { pinned: false });
-        formatter.success(`Note ${id} unpinned successfully`);
+        formatter.success(`Note ${String(id)} unpinned successfully`);
       } catch (error) {
         formatter.error(
-          `Failed to unpin note: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to unpin note: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }

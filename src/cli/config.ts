@@ -61,7 +61,7 @@ export class ConfigManager {
   /**
    * Load configuration from file or return defaults
    */
-  private load(): ConfigData {
+  private static load(): ConfigData {
     if (!this.exists()) {
       return { ...DEFAULT_CONFIG };
     }
@@ -78,7 +78,7 @@ export class ConfigManager {
         git: { ...DEFAULT_CONFIG.git, ...loaded.git },
       };
     } catch (error) {
-      console.error(chalk.yellow('Warning: Invalid config file, using defaults'));
+      logger.error(chalk.yellow('Warning: Invalid config file, using defaults'));
       return { ...DEFAULT_CONFIG };
     }
   }
@@ -96,7 +96,7 @@ export class ConfigManager {
       writeFileSync(this.configPath, JSON.stringify(this.config, null, 2));
     } catch (error) {
       throw new Error(
-        `Failed to save config: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to save config: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
       );
     }
   }
@@ -125,9 +125,12 @@ export class ConfigManager {
     const parts = path.split('.');
     let current: any = this.config;
 
-    for (let i = 0; i < parts.length - 1; i++) {
+    for (let i = 0; i < parts.length - 1; i += 1) {
       const part = parts[i];
-      if (!part) continue;
+      if (!part) {
+        // eslint-disable-next-line no-continue
+        continue;
+      }
       if (!(part in current) || typeof current[part] !== 'object') {
         current[part] = {};
       }
@@ -209,6 +212,7 @@ export class ConfigManager {
     }
 
     try {
+      // eslint-disable-next-line no-new
       new URL(this.getServerUrl());
     } catch {
       errors.push('Server URL must be a valid URL');

@@ -9,7 +9,7 @@ import { requirePermission } from '@/middleware/auth';
 // import { validateInput } from '@/utils/validation'; // Unused
 import { NotFoundError } from '@/utils/errors';
 
-export async function contextRoutes(): Promise<Router> {
+export async function contextRoutes(): Promise<void>(): Promise<Router> {
   const router = Router();
 
   const boardService = new BoardService(dbConnection);
@@ -197,7 +197,7 @@ export async function contextRoutes(): Promise<Router> {
 
       res.set({
         'Content-Type': 'application/json',
-        'Content-Disposition': `attachment; filename="context-export-${Date.now()}.json"`,
+        'Content-Disposition': `attachment; filename="context-export-${String(String(Date.now()))}.json"`,
       });
 
       return res.apiSuccess(exportResult);

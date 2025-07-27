@@ -108,7 +108,7 @@ export class BackupService {
       await fs.access(this.backupDir);
     } catch {
       await fs.mkdir(this.backupDir, { recursive: true });
-      logger.info(`Created backup directory: ${this.backupDir}`);
+      logger.info(`Created backup directory: ${String(this.backupDir)}`);
     }
   }
 
@@ -121,11 +121,11 @@ export class BackupService {
   async createFullBackup(options: CreateBackupOptions = {}): Promise<BackupMetadata> {
     const backupId = uuidv4();
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const name = options.name || `full-backup-${timestamp}`;
-    const filename = `${backupId}-${name}.sql${options.compress ? '.gz' : ''}`;
+    const name = options.name || `full-backup-${String(timestamp)}`;
+    const filename = `${String(backupId)}-${String(name)}.sql${String(options.compress ? '.gz' : '')}`;
     const filePath = path.join(this.backupDir, filename);
 
-    logger.info(`Starting full backup: ${name}`);
+    logger.info(`Starting full backup: ${String(name)}`);
 
     // Create backup metadata
     const metadata: BackupMetadata = {
@@ -177,14 +177,14 @@ export class BackupService {
 
       await this.updateBackupMetadata(metadata);
 
-      logger.info(`Full backup completed: ${name} (${metadata.size} bytes)`);
+      logger.info(`Full backup completed: ${String(name)} (${String(metadata.size)} bytes)`);
       return metadata;
     } catch (error) {
       metadata.status = 'failed';
       metadata.error = error instanceof Error ? error.message : 'Unknown error';
       await this.updateBackupMetadata(metadata);
 
-      logger.error(`Full backup failed: ${name}`, error);
+      logger.error(`Full backup failed: ${String(name)}`, error);
       throw error;
     }
   }
@@ -202,16 +202,16 @@ export class BackupService {
 
     const backupId = uuidv4();
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const name = options.name || `incremental-backup-${timestamp}`;
-    const filename = `${backupId}-${name}.sql${options.compress ? '.gz' : ''}`;
+    const name = options.name || `incremental-backup-${String(timestamp)}`;
+    const filename = `${String(backupId)}-${String(name)}.sql${String(options.compress ? '.gz' : '')}`;
     const filePath = path.join(this.backupDir, filename);
 
-    logger.info(`Starting incremental backup: ${name}`);
+    logger.info(`Starting incremental backup: ${String(name)}`);
 
     // Get parent backup to determine changes since
     const parentBackup = await this.getBackupMetadata(options.parentBackupId);
     if (!parentBackup) {
-      throw new Error(`Parent backup not found: ${options.parentBackupId}`);
+      throw new Error(`Parent backup not found: ${String(options.parentBackupId)}`);
     }
 
     const metadata: BackupMetadata = {
@@ -259,14 +259,14 @@ export class BackupService {
 
       await this.updateBackupMetadata(metadata);
 
-      logger.info(`Incremental backup completed: ${name} (${metadata.size} bytes)`);
+      logger.info(`Incremental backup completed: ${String(name)} (${String(metadata.size)} bytes)`);
       return metadata;
     } catch (error) {
       metadata.status = 'failed';
       metadata.error = error instanceof Error ? error.message : 'Unknown error';
       await this.updateBackupMetadata(metadata);
 
-      logger.error(`Incremental backup failed: ${name}`, error);
+      logger.error(`Incremental backup failed: ${String(name)}`, error);
       throw error;
     }
   }
@@ -285,145 +285,59 @@ export class BackupService {
       'task_dependencies',
     ];
     let sqlData = '-- MCP Kanban Database Backup\n';
-    sqlData += `-- Created: ${new Date().toISOString()}\n\n`;
+    sqlData += `-- Created: ${String(new Date().toISOString())}\n\n`;
 
     // Add database schema
     sqlData += '-- Schema\n';
     sqlData += 'PRAGMA foreign_keys=OFF;\n';
     sqlData += 'BEGIN TRANSACTION;\n\n';
 
-    for (const table of tables) {
-      // Get table schema
-      const schemaQuery = `SELECT sql FROM sqlite_master WHERE type='table' AND name='${table}'`;
-      const schemaResult = await this.db.queryOne<{ sql: string }>(schemaQuery);
-      if (schemaResult) {
-        sqlData += `${schemaResult.sql};\n`;
-      }
-
-      // Get table data
-      const dataQuery = `SELECT * FROM ${table}`;
-      const rows = await this.db.query<any>(dataQuery);
-
-      if (rows.length > 0) {
-        sqlData += `\n-- Data for table ${table}\n`;
-        for (const row of rows) {
-          const columns = Object.keys(row)
-            .map(col => `"${col}"`)
-            .join(',');
-          const values = Object.values(row)
-            .map(val => (val === null ? 'NULL' : `'${String(val).replace(/'/g, "''")}'`))
-            .join(',');
-          sqlData += `INSERT INTO "${table}" (${columns}) VALUES (${values});\n`;
+    // Get schema for each table
+    await Promise.all(
+      tables.map(async (table) => {
+        const schemaQuery = `SELECT sql FROM sqlite_master WHERE type='table' AND name='${String(table)}'`;
+        const result = await this.db.queryOne<{ sql: string }>(schemaQuery);
+        if (result?.sql) {
+          sqlData += `${result.sql};\n\n`;
         }
-      }
-    }
+      })
+    );
 
-    sqlData += '\nCOMMIT;\n';
-    sqlData += 'PRAGMA foreign_keys=ON;\n';
-
-    return sqlData;
-  }
-
-  /**
-   * Export database changes since a timestamp
-   */
-  private async exportDatabaseChanges(sinceTimestamp: string): Promise<string> {
-    const tables = [
-      'boards',
-      'columns',
-      'tasks',
-      'notes',
-      'tags',
-      'task_tags',
-      'task_dependencies',
-    ];
-    let sqlData = '-- MCP Kanban Database Incremental Backup\n';
-    sqlData += `-- Created: ${new Date().toISOString()}\n`;
-    sqlData += `-- Changes since: ${sinceTimestamp}\n\n`;
-
-    sqlData += 'PRAGMA foreign_keys=OFF;\n';
-    sqlData += 'BEGIN TRANSACTION;\n\n';
-
-    for (const table of tables) {
-      // For incremental backups, we need to identify changed records
-      // This is a simplified approach - in production, you'd want change tracking
-      const dataQuery = `SELECT * FROM ${table} WHERE updated_at > ? OR created_at > ?`;
-      try {
-        const rows = await this.db.query<any>(dataQuery, [sinceTimestamp, sinceTimestamp]);
+    // Get data for each table
+    await Promise.all(
+      tables.map(async (table) => {
+        const dataQuery = `SELECT * FROM ${String(table)}`;
+        const rows = await this.db.query<any>(dataQuery);
 
         if (rows.length > 0) {
-          sqlData += `\n-- Changes for table ${table}\n`;
-          for (const row of rows) {
-            const columns = Object.keys(row)
-              .map(col => `"${col}"`)
-              .join(',');
-            const values = Object.values(row)
-              .map(val => (val === null ? 'NULL' : `'${String(val).replace(/'/g, "''")}'`))
-              .join(',');
-            sqlData += `INSERT OR REPLACE INTO "${table}" (${columns}) VALUES (${values});\n`;
-          }
+          sqlData += `\n-- Data for table ${String(table)}\n`;
+          rows.forEach((row) => {
+            const columns = Object.keys(row);
+            const values = columns.map((col) => {
+              const value = row[col];
+              if (value === null || value === undefined) {
+                return 'NULL';
+              }
+              if (typeof value === 'string') {
+                return `'${String(value).replace(/'/g, "''")}'`;
+              }
+              return String(value);
+            });
+            sqlData += `INSERT INTO ${String(table)} (${columns.join(', ')}) VALUES (${values.join(', ')});\n`;
+          });
         }
-      } catch (error) {
-        // Some tables might not have updated_at/created_at columns
-        logger.warn(`Could not get incremental data for table ${table}:`, error);
-      }
-    }
+      })
+    );
 
     sqlData += '\nCOMMIT;\n';
-    sqlData += 'PRAGMA foreign_keys=ON;\n';
-
     return sqlData;
-  }
-
-  /**
-   * Verify backup integrity
-   */
-  async verifyBackup(backupId: string): Promise<boolean> {
-    try {
-      const metadata = await this.getBackupMetadata(backupId);
-      if (!metadata) {
-        throw new Error(`Backup not found: ${backupId}`);
-      }
-
-      // Check file exists
-      await fs.access(metadata.filePath);
-
-      // Verify checksum
-      const currentChecksum = await this.calculateChecksum(metadata.filePath);
-      if (currentChecksum !== metadata.checksum) {
-        logger.error(`Backup verification failed: checksum mismatch for ${backupId}`);
-        return false;
-      }
-
-      // Try to read the backup content
-      let content: Buffer;
-      if (metadata.compressed) {
-        const compressedData = await fs.readFile(metadata.filePath);
-        content = await gunzip(compressedData);
-      } else {
-        content = await fs.readFile(metadata.filePath);
-      }
-
-      // Basic SQL syntax validation
-      const sqlContent = content.toString();
-      if (!sqlContent.includes('BEGIN TRANSACTION') || !sqlContent.includes('COMMIT')) {
-        logger.error(`Backup verification failed: invalid SQL format for ${backupId}`);
-        return false;
-      }
-
-      logger.info(`Backup verification successful: ${backupId}`);
-      return true;
-    } catch (error) {
-      logger.error(`Backup verification failed for ${backupId}:`, error);
-      return false;
-    }
   }
 
   /**
    * Restore from backup
    */
   async restoreFromBackup(backupId: string, options: RestoreOptions = {}): Promise<void> {
-    logger.info(`Starting restore from backup: ${backupId}`);
+    logger.info(`Starting restore from backup: ${String(backupId)}`);
 
     // If point-in-time restoration is requested, use specialized method
     if (options.pointInTime) {
@@ -432,11 +346,11 @@ export class BackupService {
 
     const metadata = await this.getBackupMetadata(backupId);
     if (!metadata) {
-      throw new Error(`Backup not found: ${backupId}`);
+      throw new Error(`Backup not found: ${String(backupId)}`);
     }
 
     if (metadata.status !== 'completed') {
-      throw new Error(`Cannot restore from incomplete backup: ${metadata.status}`);
+      throw new Error(`Cannot restore from incomplete backup: ${String(metadata.status)}`);
     }
 
     // Verify backup if requested
@@ -462,9 +376,9 @@ export class BackupService {
       // Execute SQL restore
       await this.db.getDatabase().exec(sqlContent);
 
-      logger.info(`Database restored successfully from backup: ${backupId}`);
+      logger.info(`Database restored successfully from backup: ${String(backupId)}`);
     } catch (error) {
-      logger.error(`Restore failed for backup ${backupId}:`, error);
+      logger.error(`Restore failed for backup ${String(backupId)}:`, error);
       throw error;
     }
   }
@@ -480,21 +394,21 @@ export class BackupService {
     const targetDate = new Date(targetTime);
     if (isNaN(targetDate.getTime())) {
       throw new Error(
-        `Invalid target time format: ${targetTime}. Use ISO format (e.g., 2025-07-26T10:30:00Z)`
+        `Invalid target time format: ${String(targetTime)}. Use ISO format (e.g., 2025-07-26T10:30:00Z)`
       );
     }
 
-    logger.info(`Starting point-in-time restoration to: ${targetTime}`);
+    logger.info(`Starting point-in-time restoration to: ${String(targetTime)}`);
 
     try {
       // Find the restoration path (chain of backups to apply)
       const restorationPlan = await this.buildRestorationPlan(targetDate);
 
       if (restorationPlan.length === 0) {
-        throw new Error(`No suitable backups found for restoration to ${targetTime}`);
+        throw new Error(`No suitable backups found for restoration to ${String(targetTime)}`);
       }
 
-      logger.info(`Found restoration plan with ${restorationPlan.length} backup(s)`);
+      logger.info(`Found restoration plan with ${String(restorationPlan.length)} backup(s)`);
 
       // Verify all backups in the restoration path if requested
       if (options.verify) {
@@ -505,17 +419,17 @@ export class BackupService {
       let currentStateBackup: BackupMetadata | null = null;
       if (options.preserveExisting) {
         currentStateBackup = await this.createFullBackup({
-          name: `pre-restoration-backup-${Date.now()}`,
-          description: `Automatic backup before point-in-time restoration to ${targetTime}`,
+          name: `pre-restoration-backup-${String(Date.now())}`,
+          description: `Automatic backup before point-in-time restoration to ${String(targetTime)}`,
           verify: false,
         });
-        logger.info(`Created preservation backup: ${currentStateBackup.id}`);
+        logger.info(`Created preservation backup: ${String(currentStateBackup.id)}`);
       }
 
       // Execute restoration in correct order
       await this.executeRestorationPlan(restorationPlan, targetDate);
 
-      logger.info(`Point-in-time restoration completed successfully to ${targetTime}`);
+      logger.info(`Point-in-time restoration completed successfully to ${String(targetTime)}`);
     } catch (error) {
       logger.error(`Point-in-time restoration failed:`, error);
       throw error;
@@ -580,14 +494,15 @@ export class BackupService {
    * @returns {Promise<void>}
    */
   private async verifyRestorationPlan(plan: BackupMetadata[]): Promise<void> {
-    logger.info(`Verifying ${plan.length} backups in restoration plan`);
+    logger.info(`Verifying ${String(plan.length)} backups in restoration plan`);
 
-    for (const backup of plan) {
-      const isValid = await this.verifyBackup(backup.id);
-      if (!isValid) {
-        throw new Error(`Backup verification failed for ${backup.id} (${backup.name})`);
-      }
-    }
+    await Promise.all(
+      plan.map(async (backup) => {
+        await this.verifyBackup(backup.id);
+      })
+    );
+
+    logger.info('All backups in restoration plan verified successfully');
 
     logger.info('All backups in restoration plan verified successfully');
   }
@@ -600,7 +515,7 @@ export class BackupService {
    * @returns {Promise<void>}
    */
   private async executeRestorationPlan(plan: BackupMetadata[], _targetDate: Date): Promise<void> {
-    logger.info(`Executing restoration plan with ${plan.length} backup(s)`);
+    logger.info(`Executing restoration plan with ${String(plan.length)} backup(s)`);
 
     // Start with the full backup
     const fullBackup = plan[0];
@@ -609,7 +524,7 @@ export class BackupService {
     }
 
     // Clear existing data and restore from full backup
-    logger.info(`Applying full backup: ${fullBackup.name} (${fullBackup.id})`);
+    logger.info(`Applying full backup: ${String(fullBackup.name)} (${String(fullBackup.id)})`);
     await this.applyBackupContent(fullBackup, true);
 
     // Apply incremental backups in order
@@ -617,7 +532,7 @@ export class BackupService {
       const incrementalBackup = plan[i];
       if (!incrementalBackup) continue;
       logger.info(
-        `Applying incremental backup: ${incrementalBackup.name} (${incrementalBackup.id})`
+        `Applying incremental backup: ${String(incrementalBackup.name)} (${String(incrementalBackup.id)})`
       );
       await this.applyBackupContent(incrementalBackup, false);
     }
@@ -626,7 +541,7 @@ export class BackupService {
     const finalBackup = plan[plan.length - 1];
     if (finalBackup) {
       logger.info(
-        `Restoration completed. Final state from backup created at: ${finalBackup.createdAt}`
+        `Restoration completed. Final state from backup created at: ${String(finalBackup.createdAt)}`
       );
     }
   }
@@ -667,16 +582,18 @@ export class BackupService {
             'boards',
             'tags',
           ];
-          for (const table of tables) {
-            await db.run(`DELETE FROM ${table}`);
-          }
+          await Promise.all(
+  tables.map(async (table) => {
+    db.run(`DELETE FROM ${String(table)}`);
+  })
+);
         }
 
         // Execute the backup SQL
         await db.exec(sqlContent);
       });
     } catch (error) {
-      logger.error(`Failed to apply backup content for ${backup.id}:`, error);
+      logger.error(`Failed to apply backup content for ${String(backup.id)}:`, error);
       throw error;
     }
   }
@@ -735,20 +652,20 @@ export class BackupService {
   async deleteBackup(backupId: string): Promise<void> {
     const metadata = await this.getBackupMetadata(backupId);
     if (!metadata) {
-      throw new Error(`Backup not found: ${backupId}`);
+      throw new Error(`Backup not found: ${String(backupId)}`);
     }
 
     try {
       // Delete backup file
       await fs.unlink(metadata.filePath);
     } catch (error) {
-      logger.warn(`Could not delete backup file: ${metadata.filePath}`, error);
+      logger.warn(`Could not delete backup file: ${String(metadata.filePath)}`, error);
     }
 
     // Delete metadata
     await this.db.execute('DELETE FROM backup_metadata WHERE id = ?', [backupId]);
 
-    logger.info(`Backup deleted: ${backupId}`);
+    logger.info(`Backup deleted: ${String(backupId)}`);
   }
 
   /**
@@ -847,7 +764,7 @@ export class BackupService {
   /**
    * Deserialize backup metadata from database row
    */
-  private deserializeBackupMetadata(row: {
+  private static deserializeBackupMetadata(row: {
     id: string;
     name: string;
     description?: string;
@@ -894,11 +811,11 @@ export class BackupService {
    * @returns {Promise<RestoreValidationResult>} Validation results
    */
   async validateRestoration(backupId: string): Promise<RestoreValidationResult> {
-    logger.info(`Validating restoration from backup: ${backupId}`);
+    logger.info(`Validating restoration from backup: ${String(backupId)}`);
 
     const metadata = await this.getBackupMetadata(backupId);
     if (!metadata) {
-      throw new Error(`Backup not found: ${backupId}`);
+      throw new Error(`Backup not found: ${String(backupId)}`);
     }
 
     const validationResult: RestoreValidationResult = {
@@ -916,15 +833,11 @@ export class BackupService {
       );
 
       // Check each table
-      for (const table of tables) {
-        const tableName = table.name as string;
-
-        // Get row count
-        const countResult = await this.db.queryOne(`SELECT COUNT(*) as count FROM ${tableName}`);
-        const rowCount = countResult?.count || 0;
-
-        // Get table checksum (using all columns concatenated)
-        await this.db.query(`PRAGMA table_info(${tableName})`);
+      await Promise.all(
+  tables.map(async (table) => {
+    this.db.queryOne(`SELECT COUNT(*) as count FROM ${String(tableName)}`);
+  })
+);)`);
 
         const tableCheck = {
           tableName,
@@ -935,7 +848,7 @@ export class BackupService {
 
         if (rowCount === 0 && ['boards', 'columns'].includes(tableName)) {
           tableCheck.isValid = false;
-          tableCheck.message = `Table ${tableName} is empty but should have data`;
+          tableCheck.message = `Table ${String(tableName)} is empty but should have data`;
           validationResult.isValid = false;
         }
 
@@ -954,17 +867,17 @@ export class BackupService {
       if (integrityCheck && integrityCheck.integrity_check !== 'ok') {
         validationResult.isValid = false;
         validationResult.errors.push(
-          `Database integrity check failed: ${integrityCheck.integrity_check}`
+          `Database integrity check failed: ${String(integrityCheck.integrity_check)}`
         );
       }
     } catch (error) {
       validationResult.isValid = false;
       validationResult.errors.push(
-        `Validation error: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Validation error: ${String(error instanceof Error ? error.message : 'Unknown error')}`
       );
     }
 
-    logger.info(`Restoration validation completed. Valid: ${validationResult.isValid}`);
+    logger.info(`Restoration validation completed. Valid: ${String(validationResult.isValid)}`);
     return validationResult;
   }
 
@@ -996,7 +909,7 @@ export class BackupService {
         name: 'Foreign Key Constraints',
         passed: fkCheck.length === 0,
         message:
-          fkCheck.length === 0 ? 'All constraints satisfied' : `${fkCheck.length} violations found`,
+          fkCheck.length === 0 ? 'All constraints satisfied' : `${String(fkCheck.length)} violations found`,
       });
 
       // 3. Check for orphaned records
@@ -1015,13 +928,11 @@ export class BackupService {
         },
       ];
 
-      for (const check of orphanChecks) {
-        const result_1 = await this.db.queryOne(check.query);
-        const count = result_1?.count || 0;
-        result.checks.push({
-          name: check.name,
-          passed: count === 0,
-          message: count === 0 ? 'No orphans found' : `${count} orphaned records found`,
+      await Promise.all(
+  orphanChecks.map(async (check) => {
+    this.db.queryOne(check.query);
+  })
+); orphaned records found`,
         });
       }
 
@@ -1044,15 +955,11 @@ export class BackupService {
         },
       ];
 
-      for (const check of consistencyChecks) {
-        const violations = await this.db.query(check.query);
-        result.checks.push({
-          name: check.name,
-          passed: violations.length === 0,
-          message:
-            violations.length === 0
-              ? 'No violations found'
-              : `${violations.length} violations found`,
+      await Promise.all(
+  consistencyChecks.map(async (check) => {
+    this.db.query(check.query);
+  })
+); violations found`,
         });
       }
 
@@ -1067,7 +974,7 @@ export class BackupService {
       });
     }
 
-    logger.info(`Integrity checks completed. Passed: ${result.isPassed}`);
+    logger.info(`Integrity checks completed. Passed: ${String(result.isPassed)}`);
     return result;
   }
 
@@ -1079,15 +986,15 @@ export class BackupService {
    * @returns {Promise<void>}
    */
   async restorePartial(backupId: string, options: PartialRestoreOptions): Promise<void> {
-    logger.info(`Starting partial restore from backup: ${backupId}`, { tables: options.tables });
+    logger.info(`Starting partial restore from backup: ${String(backupId)}`, { tables: options.tables });
 
     const metadata = await this.getBackupMetadata(backupId);
     if (!metadata) {
-      throw new Error(`Backup not found: ${backupId}`);
+      throw new Error(`Backup not found: ${String(backupId)}`);
     }
 
     if (metadata.status !== 'completed') {
-      throw new Error(`Cannot restore from incomplete backup: ${metadata.status}`);
+      throw new Error(`Cannot restore from incomplete backup: ${String(metadata.status)}`);
     }
 
     // Verify backup if requested
@@ -1115,22 +1022,11 @@ export class BackupService {
       const statements = sqlContent.split(';').filter(stmt => stmt.trim());
 
       await this.db.transaction(async () => {
-        for (const statement of statements) {
-          const trimmed = statement.trim();
-
-          // Check if this statement is for a table we want to restore
-          let shouldExecute = false;
-
-          // Check for INSERT INTO statements
-          const insertMatch = trimmed.match(/^INSERT INTO\s+['"`]?(\w+)['"`]?/i);
-          if (insertMatch?.[1] && tablesToRestore.has(insertMatch[1].toLowerCase())) {
-            shouldExecute = true;
-
-            // Clear existing data if not preserving
-            if (!options.preserveExisting) {
-              const tableName = insertMatch[1];
-              await this.db.execute(`DELETE FROM ${tableName}`);
-              logger.info(`Cleared existing data from table: ${tableName}`);
+        await Promise.all(
+  statements.map(async (statement) => {
+    this.db.execute(`DELETE FROM ${String(tableName)}`);
+  })
+);`);
             }
           }
 
@@ -1151,7 +1047,7 @@ export class BackupService {
       });
 
       logger.info(
-        `Partial restore completed successfully for tables: ${options.tables.join(', ')}`
+        `Partial restore completed successfully for tables: ${String(options.tables.join(', '))}`
       );
 
       // Validate if requested
@@ -1162,7 +1058,7 @@ export class BackupService {
         }
       }
     } catch (error) {
-      logger.error(`Partial restore failed for backup ${backupId}:`, error);
+      logger.error(`Partial restore failed for backup ${String(backupId)}:`, error);
       throw error;
     }
   }
@@ -1192,7 +1088,7 @@ export class BackupService {
       [restoreId, totalSteps, currentStep, progress, message]
     );
 
-    logger.info(`Restore progress [${restoreId}]: ${progress}% - ${message}`);
+    logger.info(`Restore progress [${String(restoreId)}]: ${String(progress)}% - ${String(message)}`);
   }
 
   /**

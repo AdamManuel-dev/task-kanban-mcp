@@ -61,8 +61,8 @@ export class ValidationError extends BaseServiceError {
 export class NotFoundError extends BaseServiceError {
   constructor(resource: string, identifier?: string, context?: ErrorContext) {
     const message = identifier
-      ? `${resource} with identifier '${identifier}' not found`
-      : `${resource} not found`;
+      ? `${String(resource)} with identifier '${String(identifier)}' not found`
+      : `${String(resource)} not found`;
     super('NOT_FOUND', message, 404, { resource, identifier }, context);
   }
 }
@@ -99,7 +99,7 @@ export class DatabaseError extends BaseServiceError {
 
 export class ExternalServiceError extends BaseServiceError {
   constructor(service: string, message: string, details?: any, context?: ErrorContext) {
-    super('EXTERNAL_SERVICE_ERROR', `${service}: ${message}`, 502, details, context);
+    super('EXTERNAL_SERVICE_ERROR', `${String(service)}: ${String(message)}`, 502, details, context);
   }
 }
 
@@ -127,7 +127,7 @@ export class ErrorHandlerManager {
     return this.handleGenericError(error, context);
   }
 
-  private handleGenericError(error: Error, context?: ErrorContext): ServiceError {
+  private static handleGenericError(error: Error, context?: ErrorContext): ServiceError {
     if (error.message.includes('UNIQUE constraint failed')) {
       return new ConflictError(
         'Resource already exists',
@@ -189,10 +189,10 @@ export class ErrorHandlerManager {
 export const globalErrorHandler = new ErrorHandlerManager();
 
 globalErrorHandler.registerHandler('ZodError', (error: any, context?: ErrorContext) => {
-  const messages = error.errors?.map((err: any) => `${err.path.join('.')}: ${err.message}`) || [
+  const messages = error.errors?.map((err: any) => `${String(String(err.path.join('.')))}: ${String(String(err.message))}`) || [
     error.message,
   ];
-  return new ValidationError(`Validation failed: ${messages.join(', ')}`, error.errors, context);
+  return new ValidationError(`Validation failed: ${String(String(messages.join(', ')))}`, error.errors, context);
 });
 
 globalErrorHandler.registerHandler('TypeError', (error: Error, context?: ErrorContext) => {
@@ -393,7 +393,9 @@ export async function withRetry<T>(
         context,
       });
 
-      await new Promise(resolve => setTimeout(resolve, finalDelay));
+      await new Promise<void>(resolve => {
+    setTimeout(resolve, finalDelay
+  }));
     }
   }
 
@@ -432,7 +434,7 @@ export function createCircuitBreaker(
         state = 'HALF_OPEN';
         logger.info('Circuit breaker half-open', { name });
       } else {
-        throw new BaseServiceError('CIRCUIT_BREAKER_OPEN', `Circuit breaker ${name} is open`, 503);
+        throw new BaseServiceError('CIRCUIT_BREAKER_OPEN', `Circuit breaker ${String(name)} is open`, 503);
       }
     }
 

@@ -61,7 +61,7 @@ export class OutputFormatter {
    */
   success(message: string): void {
     if (!this.options.quiet) {
-      console.log(this.colorize(message, 'green'));
+      logger.log(this.colorize(message, 'green'));
     }
   }
 
@@ -69,7 +69,7 @@ export class OutputFormatter {
    * Output error message
    */
   error(message: string): void {
-    console.error(this.colorize(`Error: ${message}`, 'red'));
+    logger.error(this.colorize(`Error: ${String(message)}`, 'red'));
   }
 
   /**
@@ -77,7 +77,7 @@ export class OutputFormatter {
    */
   warn(message: string): void {
     if (!this.options.quiet) {
-      console.warn(this.colorize(`Warning: ${message}`, 'yellow'));
+      logger.warn(this.colorize(`Warning: ${String(message)}`, 'yellow'));
     }
   }
 
@@ -86,7 +86,7 @@ export class OutputFormatter {
    */
   info(message: string): void {
     if (this.options.verbose && !this.options.quiet) {
-      console.log(this.colorize(message, 'cyan'));
+      logger.log(this.colorize(message, 'cyan'));
     }
   }
 
@@ -95,7 +95,7 @@ export class OutputFormatter {
    */
   debug(message: string): void {
     if (this.options.verbose && !this.options.quiet) {
-      console.log(this.colorize(`Debug: ${message}`, 'gray'));
+      logger.log(this.colorize(`Debug: ${String(message)}`, 'gray'));
     }
   }
 
@@ -103,7 +103,7 @@ export class OutputFormatter {
    * Output JSON format
    */
   private outputJson<T>(data: T): void {
-    console.log(JSON.stringify(data, null, 2));
+    logger.log(JSON.stringify(data, null, 2));
   }
 
   /**
@@ -123,7 +123,7 @@ export class OutputFormatter {
     const headers = options?.headers || fields;
 
     // Output headers
-    console.log(headers.join(','));
+    logger.log(headers.join(','));
 
     // Output rows
     items.forEach((item): void => {
@@ -131,9 +131,9 @@ export class OutputFormatter {
         const value = this.getNestedValue(item, field);
         const stringValue = this.formatValue(value);
         // Escape commas and quotes in CSV
-        return `"${stringValue.replace(/"/g, '""')}"`;
+        return `"${String(String(stringValue.replace(/"/g, '""')))}"`;
       });
-      console.log(values.join(','));
+      logger.log(values.join(','));
     });
   }
 
@@ -149,7 +149,7 @@ export class OutputFormatter {
 
     const items = Array.isArray(data) ? data : [data];
     if (items.length === 0) {
-      console.log(this.colorize('No items found', 'gray'));
+      logger.log(this.colorize('No items found', 'gray'));
       return;
     }
 
@@ -173,7 +173,7 @@ export class OutputFormatter {
       table.push(row);
     });
 
-    console.log(table.toString());
+    logger.log(table.toString());
   }
 
   /**
@@ -194,13 +194,13 @@ export class OutputFormatter {
       ]);
     });
 
-    console.log(table.toString());
+    logger.log(table.toString());
   }
 
   /**
    * Get nested value from object using dot notation
    */
-  private getNestedValue(obj: unknown, path: string): unknown {
+  private static getNestedValue(obj: unknown, path: string): unknown {
     return path
       .split('.')
       .reduce(
@@ -212,7 +212,7 @@ export class OutputFormatter {
   /**
    * Format value for display
    */
-  private formatValue(value: unknown): string {
+  private static formatValue(value: unknown): string {
     if (value === null || value === undefined) {
       return '';
     }
@@ -235,7 +235,7 @@ export class OutputFormatter {
   /**
    * Format value for table display with colors
    */
-  private formatTableValue(value: unknown, field: string): string {
+  private static formatTableValue(value: unknown, field: string): string {
     const formatted = this.formatValue(value);
 
     if (!this.options.color) {
@@ -256,7 +256,7 @@ export class OutputFormatter {
     }
 
     if (field.includes('priority')) {
-      const num = parseInt(formatted);
+      const num = parseInt(formatted, 10);
       if (num >= 8) return chalk.red(formatted);
       if (num >= 5) return chalk.yellow(formatted);
       if (num >= 1) return chalk.green(formatted);
@@ -272,7 +272,7 @@ export class OutputFormatter {
   /**
    * Format header text
    */
-  private formatHeader(field: string): string {
+  private static formatHeader(field: string): string {
     return field
       .replace(/([A-Z])/g, ' $1')
       .replace(/^./, (str): string => str.toUpperCase())
@@ -282,7 +282,7 @@ export class OutputFormatter {
   /**
    * Get appropriate fields for table display
    */
-  private getTableFields(obj: Record<string, unknown>): string[] {
+  private static getTableFields(obj: Record<string, unknown>): string[] {
     const allFields = Object.keys(obj);
 
     // Define field priority for common objects
@@ -313,7 +313,7 @@ export class OutputFormatter {
   /**
    * Apply color if color is enabled
    */
-  private colorize(text: string, color: string): string {
+  private static colorize(text: string, color: string): string {
     if (!this.options.color) {
       return text;
     }
@@ -345,7 +345,7 @@ export class OutputFormatter {
     const empty = width - filled;
 
     const bar = '█'.repeat(filled) + '░'.repeat(empty);
-    const text = `${bar} ${percentage}% (${current}/${total})`;
+    const text = `${String(bar)} ${String(percentage)}% (${String(current)}/${String(total)})`;
 
     return this.options.color ? chalk.cyan(text) : text;
   }
@@ -360,10 +360,10 @@ export class OutputFormatter {
 
     while (size >= 1024 && unitIndex < units.length - 1) {
       size /= 1024;
-      unitIndex++;
+      unitIndex += 1;
     }
 
-    return `${size.toFixed(1)} ${units[unitIndex]}`;
+    return `${String(String(size.toFixed(1)))} ${String(units[unitIndex])}`;
   }
 
   /**
@@ -375,10 +375,10 @@ export class OutputFormatter {
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
 
-    if (days > 0) return `${days}d ${hours % 24}h`;
-    if (hours > 0) return `${hours}h ${minutes % 60}m`;
-    if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
-    return `${seconds}s`;
+    if (days > 0) return `${String(days)}d ${String(hours % 24)}h`;
+    if (hours > 0) return `${String(hours)}h ${String(minutes % 60)}m`;
+    if (minutes > 0) return `${String(minutes)}m ${String(seconds % 60)}s`;
+    return `${String(seconds)}s`;
   }
 
   /**
@@ -388,53 +388,61 @@ export class OutputFormatter {
     const lines: string[] = [];
 
     // Header
-    lines.push(this.formatHeader(`Schedule: ${schedule.name}`));
+    lines.push(this.formatHeader(`Schedule: ${String(String(schedule.name))}`));
     lines.push('');
 
     // Basic info
-    lines.push(`ID: ${schedule.id}`);
-    lines.push(`Type: ${schedule.backupType?.toUpperCase() || 'N/A'}`);
-    lines.push(`Status: ${schedule.enabled ? chalk.green('ENABLED') : chalk.red('DISABLED')}`);
-    lines.push(`Cron: ${schedule.cronExpression || schedule.cron || 'N/A'}`);
+    lines.push(`ID: ${String(String(schedule.id))}`);
+    lines.push(`Type: ${String(String(schedule.backupType?.toUpperCase() || 'N/A'))}`);
+    lines.push(
+      `Status: ${String(String(schedule.enabled ? chalk.green('ENABLED') : chalk.red('DISABLED')))}`
+    );
+    lines.push(`Cron: ${String(String(schedule.cronExpression || schedule.cron || 'N/A'))}`);
 
     if (schedule.description) {
-      lines.push(`Description: ${schedule.description}`);
+      lines.push(`Description: ${String(String(schedule.description))}`);
     }
 
     // Timing info
     lines.push('');
     lines.push(this.formatHeader('Timing:'));
-    lines.push(`Created: ${new Date(schedule.createdAt).toLocaleString()}`);
-    lines.push(`Updated: ${new Date(schedule.updatedAt).toLocaleString()}`);
+    lines.push(`Created: ${String(String(new Date(schedule.createdAt).toLocaleString()))}`);
+    lines.push(`Updated: ${String(String(new Date(schedule.updatedAt).toLocaleString()))}`);
 
     if (schedule.lastRunAt) {
-      lines.push(`Last Run: ${new Date(schedule.lastRunAt).toLocaleString()}`);
+      lines.push(`Last Run: ${String(String(new Date(schedule.lastRunAt).toLocaleString()))}`);
     }
 
     if (schedule.nextRunAt || schedule.next_run) {
-      lines.push(`Next Run: ${new Date(schedule.nextRunAt || schedule.next_run).toLocaleString()}`);
+      lines.push(
+        `Next Run: ${String(String(new Date(schedule.nextRunAt || schedule.next_run).toLocaleString()))}`
+      );
     }
 
     // Statistics
     lines.push('');
     lines.push(this.formatHeader('Statistics:'));
-    lines.push(`Total Runs: ${schedule.runCount || 0}`);
-    lines.push(`Failures: ${schedule.failureCount || 0}`);
+    lines.push(`Total Runs: ${String(String(schedule.runCount || 0))}`);
+    lines.push(`Failures: ${String(String(schedule.failureCount || 0))}`);
 
     if (schedule.runCount > 0) {
       const successRate = (
         ((schedule.runCount - (schedule.failureCount || 0)) / schedule.runCount) *
         100
       ).toFixed(1);
-      lines.push(`Success Rate: ${successRate}%`);
+      lines.push(`Success Rate: ${String(successRate)}%`);
     }
 
     // Configuration
     lines.push('');
     lines.push(this.formatHeader('Configuration:'));
-    lines.push(`Retention: ${schedule.retentionDays || 30} days`);
-    lines.push(`Compression: ${schedule.compressionEnabled ? 'Enabled' : 'Disabled'}`);
-    lines.push(`Verification: ${schedule.verificationEnabled ? 'Enabled' : 'Disabled'}`);
+    lines.push(`Retention: ${String(String(schedule.retentionDays || 30))} days`);
+    lines.push(
+      `Compression: ${String(String(schedule.compressionEnabled ? 'Enabled' : 'Disabled'))}`
+    );
+    lines.push(
+      `Verification: ${String(String(schedule.verificationEnabled ? 'Enabled' : 'Disabled'))}`
+    );
 
     return lines.join('\n');
   }

@@ -3,7 +3,6 @@ import type { Database as SQLiteDB } from 'sqlite3';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { SeedRunner } from '../../../src/database/seeds/SeedRunner';
-import { Seed } from '../../../src/database/seeds/types';
 
 describe('SeedRunner', () => {
   let db: Database<SQLiteDB>;
@@ -33,11 +32,11 @@ describe('SeedRunner', () => {
 
     // Clean up temp directory
     const files = await fs.readdir(tempDir);
-    for (const file of files) {
-      if (file.endsWith('.ts')) {
+    await Promise.all(
+      files.map(async file => {
         await fs.unlink(path.join(tempDir, file));
-      }
-    }
+      })
+    );
   });
 
   afterEach(async () => {
@@ -77,7 +76,7 @@ describe('SeedRunner', () => {
 export const name = 'Test Seed';
 export const description = 'A test seed';
 
-export async function run(db) {
+export async function run(): Promise<void>(db) {
   // Test seed logic
 }
         `
@@ -89,7 +88,7 @@ export async function run(db) {
 export const name = 'Another Seed';
 export const description = 'Another test seed';
 
-export async function run(db) {
+export async function run(): Promise<void>(db) {
   // Another seed logic
 }
         `
@@ -126,7 +125,7 @@ export async function run(db) {
 export const name = 'Test Data';
 export const description = 'Insert test data';
 
-export async function run(db) {
+export async function run(): Promise<void>(db) {
   await db.run('INSERT INTO test_table (name) VALUES (?)', ['test-record']);
 }
         `
@@ -159,7 +158,7 @@ export async function run(db) {
 export const name = 'Test Data';
 export const description = 'Insert test data';
 
-export async function run(db) {
+export async function run(): Promise<void>(db) {
   await db.run('INSERT INTO test_table (name) VALUES (?)', ['test-record']);
 }
         `
@@ -194,7 +193,7 @@ export async function run(db) {
 export const name = 'Test Data';
 export const description = 'Insert test data';
 
-export async function run(db) {
+export async function run(): Promise<void>(db) {
   await db.run('INSERT INTO test_table (name) VALUES (?)', ['test-record']);
 }
         `
@@ -221,7 +220,7 @@ export async function run(db) {
 export const name = 'Failing Seed';
 export const description = 'A seed that fails';
 
-export async function run(db) {
+export async function run(): Promise<void>(db) {
   // This will fail - table doesn't exist
   await db.run('INSERT INTO nonexistent_table (name) VALUES (?)', ['test']);
 }
@@ -248,7 +247,7 @@ export async function run(db) {
         path.join(tempDir, '001_first_seed.ts'),
         `
 export const name = 'First Seed';
-export async function run(db) {
+export async function run(): Promise<void>(db) {
   await db.run('INSERT INTO test_table (name) VALUES (?)', ['first']);
 }
         `
@@ -258,7 +257,7 @@ export async function run(db) {
         path.join(tempDir, '002_second_seed.ts'),
         `
 export const name = 'Second Seed';
-export async function run(db) {
+export async function run(): Promise<void>(db) {
   await db.run('INSERT INTO test_table (name) VALUES (?)', ['second']);
 }
         `
@@ -292,7 +291,7 @@ export async function run(db) {
         path.join(tempDir, '001_test_seed.ts'),
         `
 export const name = 'Test Seed';
-export async function run(db) {
+export async function run(): Promise<void>(db) {
   await db.run('INSERT INTO test_table (name) VALUES (?)', ['test']);
 }
         `
@@ -329,7 +328,9 @@ export async function run(db) {
 
       expect(content).toContain("export const name = 'test seed'");
       expect(content).toContain("export const description = 'Test description'");
-      expect(content).toContain('export async function run(db: Database<SQLiteDB>)');
+      expect(content).toContain(
+        'export async function run(): Promise<void>(db: Database<SQLiteDB>)'
+      );
       expect(content).toContain("import { Database } from 'sqlite'");
     });
   });

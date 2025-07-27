@@ -44,17 +44,19 @@ const InteractiveView: React.FC<InteractiveViewProps> = ({ mode, data }) => {
   });
 
   const handleTaskSelect = (task: Task) => {
-    setStatusMessage(`Selected task: ${task.title}`);
+    setStatusMessage(`Selected task: ${String(String(task.title))}`);
     setStatusType('success');
   };
 
   const handleBoardTaskSelect = (task: Task, columnId: string) => {
-    setStatusMessage(`Selected task: ${task.title} in column ${columnId}`);
+    setStatusMessage(`Selected task: ${String(String(task.title))} in column ${String(columnId)}`);
     setStatusType('success');
   };
 
   const handleColumnSelect = (column: Column) => {
-    setStatusMessage(`Selected column: ${column.name} (${column.tasks.length} tasks)`);
+    setStatusMessage(
+      `Selected column: ${String(String(column.name))} (${String(String(column.tasks.length))} tasks)`
+    );
     setStatusType('info');
   };
 
@@ -145,7 +147,11 @@ const InteractiveView: React.FC<InteractiveViewProps> = ({ mode, data }) => {
       {/* Header */}
       <div style={{ marginBottom: 1 }}>
         <h1>{chalk.bold.cyan('🚀 Kanban CLI Interactive Mode')}</h1>
-        <p>{chalk.gray(`Current view: ${currentView} | Press 'h' for help | Press 'q' to quit`)}</p>
+        <p>
+          {chalk.gray(
+            `Current view: ${String(currentView)} | Press 'h' for help | Press 'q' to quit`
+          )}
+        </p>
       </div>
 
       {/* Status message */}
@@ -262,16 +268,16 @@ export const interactiveViewCommand = new Command('interactive')
       const data = options.sampleData ? generateSampleData() : await fetchRealData();
 
       if (options.mode !== 'tasks' && options.mode !== 'board') {
-        console.error(chalk.red('Error: Mode must be either "tasks" or "board"'));
+        logger.error(chalk.red('Error: Mode must be either "tasks" or "board"'));
         process.exit(1);
       }
 
-      console.log(chalk.cyan('\n🚀 Starting interactive mode...\n'));
-      console.log(chalk.gray('Press h for help, q to quit\n'));
+      logger.log(chalk.cyan('\n🚀 Starting interactive mode...\n'));
+      logger.log(chalk.gray('Press h for help, q to quit\n'));
 
       render(<InteractiveView mode={options.mode as 'tasks' | 'board'} data={data} />);
     } catch (error) {
-      console.error(chalk.red('Error starting interactive mode:'), error);
+      logger.error(chalk.red('Error starting interactive mode:'), error);
       process.exit(1);
     }
   });

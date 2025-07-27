@@ -38,12 +38,12 @@ const sqliteDateOptional = z.union([z.string(), z.date(), z.null()]).transform(v
  * Board schema for database results
  */
 export const BoardSchema = z.object({
-  id: z.union([z.string(), z.number()]).transform(String),
+  id: z.string(),
   name: z.string(),
   description: z
     .string()
     .nullable()
-    .transform(val => val ?? undefined),
+    .transform(val => val || undefined),
   color: z.string(),
   created_at: sqliteDate,
   updated_at: sqliteDate,
@@ -54,14 +54,14 @@ export const BoardSchema = z.object({
  * Column schema for database results
  */
 export const ColumnSchema = z.object({
-  id: z.union([z.string(), z.number()]).transform(String),
-  board_id: z.union([z.string(), z.number()]).transform(String),
+  id: z.string(),
+  board_id: z.string(),
   name: z.string(),
   position: z.number(),
   wip_limit: z
     .number()
     .nullable()
-    .transform(val => val ?? undefined),
+    .transform(val => val || undefined),
   created_at: sqliteDate,
   updated_at: sqliteDate,
 });
@@ -75,34 +75,34 @@ const TaskStatusSchema = z.enum(['todo', 'in_progress', 'done', 'blocked', 'arch
  * Task schema for database results
  */
 export const TaskSchema = z.object({
-  id: z.union([z.string(), z.number()]).transform(String),
+  id: z.string(),
   title: z.string(),
   description: z
     .string()
     .nullable()
-    .transform(val => val ?? undefined),
-  board_id: z.union([z.string(), z.number()]).transform(String),
-  column_id: z.union([z.string(), z.number()]).transform(String),
+    .transform(val => val || undefined),
+  board_id: z.string(),
+  column_id: z.string(),
   position: z.number(),
   priority: z.number(),
   status: TaskStatusSchema,
   assignee: z
     .string()
     .nullable()
-    .transform(val => val ?? undefined),
+    .transform(val => val || undefined),
   due_date: sqliteDateOptional,
   estimated_hours: z
     .number()
     .nullable()
-    .transform(val => val ?? undefined),
+    .transform(val => val || undefined),
   actual_hours: z
     .number()
     .nullable()
-    .transform(val => val ?? undefined),
+    .transform(val => val || undefined),
   parent_task_id: z
-    .union([z.string(), z.number()])
+    .string()
     .nullable()
-    .transform(val => (val ? String(val) : undefined)),
+    .transform(val => val || undefined),
   created_at: sqliteDate,
   updated_at: sqliteDate,
   completed_at: sqliteDateOptional,
@@ -110,7 +110,7 @@ export const TaskSchema = z.object({
   metadata: z
     .string()
     .nullable()
-    .transform(val => val ?? undefined),
+    .transform(val => val || undefined),
 });
 
 /**
@@ -122,9 +122,9 @@ const DependencyTypeSchema = z.enum(['blocks', 'relates_to', 'duplicates']);
  * Task dependency schema
  */
 export const TaskDependencySchema = z.object({
-  id: z.union([z.string(), z.number()]).transform(String),
-  task_id: z.union([z.string(), z.number()]).transform(String),
-  depends_on_task_id: z.union([z.string(), z.number()]).transform(String),
+  id: z.string(),
+  task_id: z.string(),
+  depends_on_task_id: z.string(),
   dependency_type: DependencyTypeSchema,
   created_at: sqliteDate,
 });
@@ -138,8 +138,8 @@ const NoteCategorySchema = z.enum(['general', 'progress', 'blocker', 'decision',
  * Note schema
  */
 export const NoteSchema = z.object({
-  id: z.union([z.string(), z.number()]).transform(String),
-  task_id: z.union([z.string(), z.number()]).transform(String),
+  id: z.string(),
+  task_id: z.string(),
   content: z.string(),
   category: NoteCategorySchema,
   pinned: sqliteBoolean,
@@ -151,17 +151,17 @@ export const NoteSchema = z.object({
  * Tag schema
  */
 export const TagSchema = z.object({
-  id: z.union([z.string(), z.number()]).transform(String),
+  id: z.string(),
   name: z.string(),
   color: z.string(),
   description: z
     .string()
     .nullable()
-    .transform(val => val ?? undefined),
+    .transform(val => val || undefined),
   parent_tag_id: z
-    .union([z.string(), z.number()])
+    .string()
     .nullable()
-    .transform(val => (val ? String(val) : undefined)),
+    .transform(val => val || undefined),
   created_at: sqliteDate,
 });
 
@@ -169,9 +169,9 @@ export const TagSchema = z.object({
  * Task-Tag relationship schema
  */
 export const TaskTagSchema = z.object({
-  id: z.union([z.string(), z.number()]).transform(String),
-  task_id: z.union([z.string(), z.number()]).transform(String),
-  tag_id: z.union([z.string(), z.number()]).transform(String),
+  id: z.string(),
+  task_id: z.string(),
+  tag_id: z.string(),
   created_at: sqliteDate,
 });
 
@@ -208,8 +208,10 @@ export function validateRow<TOutput, TInput = TOutput>(
     return schema.parse(row);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const details = error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
-      throw new Error(`Database validation error${context ? ` in ${context}` : ''}: ${details}`);
+      const details = error.errors
+        .map(e => `${String(String(e.path.join('.')))}: ${String(String(e.message))}`)
+        .join(', ');
+      throw new Error(`Database validation error${String(context ? ` in ${context)}` : ''}: ${String(details)}`);
     }
     throw error;
   }
@@ -224,7 +226,7 @@ export function validateRows<TOutput, TInput = TOutput>(
   context?: string
 ): TOutput[] {
   return rows.map((row, index) =>
-    validateRow(row, schema, `${context || 'row'} at index ${index}`)
+    validateRow(row, schema, `${String(context || 'row')} at index ${String(index)}`)
   );
 }
 

@@ -79,7 +79,7 @@ export class InputSanitizer {
     // 2. Length validation
     if (sanitized.length > maxLength) {
       sanitized = sanitized.substring(0, maxLength);
-      warnings.push(`Input truncated to ${maxLength} characters`);
+      warnings.push(`Input truncated to ${String(maxLength)} characters`);
     }
 
     // 3. Strip control characters (except common whitespace)
@@ -94,7 +94,7 @@ export class InputSanitizer {
 
     // 4. Command injection prevention
     if (preventInjection) {
-      sanitized = this.preventCommandInjection(sanitized, warnings);
+      sanitized = InputSanitizer.preventCommandInjection(sanitized, warnings);
     }
 
     // 5. HTML sanitization
@@ -106,7 +106,7 @@ export class InputSanitizer {
 
     // 6. Escape special characters for CLI safety
     if (escapeSpecialChars) {
-      sanitized = this.escapeCliSpecialChars(sanitized, warnings);
+      sanitized = InputSanitizer.escapeCliSpecialChars(sanitized, warnings);
     }
 
     // 7. Normalize whitespace
@@ -124,7 +124,10 @@ export class InputSanitizer {
     // 8. Additional character restrictions
     if (options.allowedCharacters) {
       const beforeFilter = sanitized;
-      sanitized = sanitized.replace(new RegExp(`[^${options.allowedCharacters.source}]`, 'g'), '');
+      sanitized = sanitized.replace(
+        new RegExp(`[^${String(String(options.allowedCharacters.source))}]`, 'g'),
+        ''
+      );
       if (beforeFilter !== sanitized) {
         warnings.push('Invalid characters removed');
       }
@@ -142,12 +145,12 @@ export class InputSanitizer {
   /**
    * Prevent command injection attacks
    */
-  private preventCommandInjection(input: string, warnings: string[]): string {
+  private static preventCommandInjection(input: string, warnings: string[]): string {
     const dangerousPatterns = [
       // Shell injection patterns
       /[;&|`$(){}[\]\\]/g,
       // Path traversal
-      /\.\.[\/\\]/g,
+      /\.\.[/\\]/g,
       // Null bytes
       /\x00/g,
       // Process substitution
@@ -179,7 +182,7 @@ export class InputSanitizer {
   /**
    * Escape CLI special characters
    */
-  private escapeCliSpecialChars(input: string, warnings: string[]): string {
+  private static escapeCliSpecialChars(input: string, warnings: string[]): string {
     const beforeEscape = input;
 
     // Escape common shell metacharacters that are safe to keep but should be escaped
@@ -191,7 +194,7 @@ export class InputSanitizer {
 
     let escaped = input;
     Object.entries(escapeMap).forEach(([char, replacement]) => {
-      escaped = escaped.replace(new RegExp(`\\${char}`, 'g'), replacement);
+      escaped = escaped.replace(new RegExp(`\\${String(char)}`, 'g'), replacement);
     });
 
     if (beforeEscape !== escaped) {
@@ -212,7 +215,7 @@ export class InputSanitizer {
       normalizeWhitespace: true,
       preventInjection: true,
       escapeSpecialChars: false, // File paths may need some special chars
-      allowedCharacters: /[\w\-.\s\/\\:]/,
+      allowedCharacters: /[\w\-.\s/\\:]/,
     });
   }
 
@@ -402,7 +405,9 @@ export class InputSanitizer {
     // Check for suspicious patterns
     const suspiciousCheck = this.detectSuspiciousPatterns(input);
     if (suspiciousCheck.suspicious) {
-      issues.push(`Suspicious patterns detected: ${suspiciousCheck.patterns.join(', ')}`);
+      issues.push(
+        `Suspicious patterns detected: ${String(String(suspiciousCheck.patterns.join(', ')))}`
+      );
       recommendations.push('Remove or escape suspicious content');
       score -= 30;
     }
@@ -415,7 +420,7 @@ export class InputSanitizer {
     }
 
     // Check for excessive special characters
-    const specialCharCount = (input.match(/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/g) || []).length;
+    const specialCharCount = (input.match(/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?]/g) || []).length;
     const specialCharRatio = specialCharCount / input.length;
     if (specialCharRatio > 0.3) {
       issues.push('High ratio of special characters');
@@ -436,15 +441,20 @@ export class InputSanitizer {
 export const inputSanitizer = InputSanitizer.getInstance();
 
 // Utility functions for quick access
-export const sanitizeTaskTitle = (input: string) => inputSanitizer.sanitizeTaskTitle(input);
-export const sanitizeDescription = (input: string) => inputSanitizer.sanitizeDescription(input);
-export const sanitizeName = (input: string, maxLength?: number) =>
+export const sanitizeTaskTitle = (input: string): SanitizationResult =>
+  inputSanitizer.sanitizeTaskTitle(input);
+export const sanitizeDescription = (input: string): SanitizationResult =>
+  inputSanitizer.sanitizeDescription(input);
+export const sanitizeName = (input: string, maxLength?: number): SanitizationResult =>
   inputSanitizer.sanitizeName(input, maxLength);
-export const sanitizeTag = (input: string) => inputSanitizer.sanitizeTag(input);
-export const sanitizeEmail = (input: string) => inputSanitizer.sanitizeEmail(input);
-export const sanitizeUrl = (input: string) => inputSanitizer.sanitizeUrl(input);
-export const sanitizeFilePath = (input: string) => inputSanitizer.sanitizeFilePath(input);
-export const detectSuspicious = (input: string) => inputSanitizer.detectSuspiciousPatterns(input);
+export const sanitizeTag = (input: string): SanitizationResult => inputSanitizer.sanitizeTag(input);
+export const sanitizeEmail = (input: string): SanitizationResult =>
+  inputSanitizer.sanitizeEmail(input);
+export const sanitizeUrl = (input: string): SanitizationResult => inputSanitizer.sanitizeUrl(input);
+export const sanitizeFilePath = (input: string): SanitizationResult =>
+  inputSanitizer.sanitizeFilePath(input);
+export const detectSuspicious = (input: string): { suspicious: boolean; patterns: string[] } =>
+  inputSanitizer.detectSuspiciousPatterns(input);
 
 /**
  * Safe prompt wrapper that automatically sanitizes input
@@ -459,13 +469,13 @@ export function createSafePromptValidator(
 
     // Check if input was modified significantly
     if (sanitized.modified && sanitized.warnings.length > 0) {
-      return `Input modified during sanitization: ${sanitized.warnings.join(', ')}. Please try again.`;
+      return `Input modified during sanitization: ${String(String(sanitized.warnings.join(', ')))}. Please try again.`;
     }
 
     // Check security score
     const securityReport = inputSanitizer.generateSecurityReport(input);
     if (!securityReport.safe) {
-      return `Security issues detected: ${securityReport.issues.join(', ')}`;
+      return `Security issues detected: ${String(String(securityReport.issues.join(', ')))}`;
     }
 
     // Run additional validation if provided

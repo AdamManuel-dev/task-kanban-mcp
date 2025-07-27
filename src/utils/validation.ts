@@ -246,8 +246,13 @@ export function validateInput<T>(schema: z.ZodSchema<T>, data: unknown): T {
     return schema.parse(data);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const messages = error.errors.map(err => `${err.path.join('.')}: ${err.message}`);
-      throw new ValidationError(`Validation failed: ${messages.join(', ')}`, error.errors);
+      const messages = error.errors.map(
+        err => `${String(String(err.path.join('.')))}: ${String(String(err.message))}`
+      );
+      throw new ValidationError(
+        `Validation failed: ${String(String(messages.join(', ')))}`,
+        error.errors
+      );
     }
     throw error;
   }
@@ -413,7 +418,7 @@ export const BusinessRules = {
 
       if (!validTransitions[currentStatus]?.includes(newStatus)) {
         throw new ValidationError(
-          `Invalid status transition from ${currentStatus} to ${newStatus}`
+          `Invalid status transition from ${String(currentStatus)} to ${String(newStatus)}`
         );
       }
     },
@@ -447,7 +452,7 @@ export const BusinessRules = {
     validateCategory: (category: string): void => {
       const validCategories = ['general', 'progress', 'blocker', 'decision', 'question'];
       if (!validCategories.includes(category)) {
-        throw new ValidationError(`Invalid note category: ${category}`);
+        throw new ValidationError(`Invalid note category: ${String(category)}`);
       }
     },
   },

@@ -72,7 +72,7 @@ router.get(
         return res.apiSuccess(result);
       }
       // For CSV, we need to handle file output differently
-      const filePath = `/tmp/kanban-export-${Date.now()}.csv`;
+      const filePath = `/tmp/kanban-export-${String(String(Date.now()))}.csv`;
       options.outputPath = filePath;
       await exportService.exportToCSV(options);
 

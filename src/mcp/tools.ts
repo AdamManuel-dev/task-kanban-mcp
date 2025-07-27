@@ -478,7 +478,7 @@ export class MCPToolRegistry {
         case 'get_overdue_tasks':
           return await this.getOverdueTasks(args as GetOverdueTasksArgs);
         default:
-          throw new Error(`Unknown tool: ${name}`);
+          throw new Error(`Unknown tool: ${String(name)}`);
       }
     } catch (error) {
       logger.error('Tool execution error', { toolName: name, args, error });
@@ -487,22 +487,22 @@ export class MCPToolRegistry {
   }
 
   // Tool implementations
-  private async createTask(args: CreateTaskArgs): Promise<TaskResponse> {
-    // If column_id is not provided, get the first column of the board
-    let { column_id } = args;
-    if (!column_id) {
-      const boards = await this.services.boardService.getBoards();
-      const board = boards.find(b => b.id === args.board_id);
-      if (!board) {
-        throw new Error('Board not found');
-      }
+  private async createTask(args: any): Promise<TaskResponse> {
+    // Handle both naming conventions: board_id/boardId, column_id/columnId
+    const board_id = args.board_id || args.boardId;
+    const column_id = args.column_id || args.columnId || 'todo';
 
-      // For now, use a default column ID - in a real implementation,
-      // you'd fetch columns from the database
-      column_id = 'todo'; // Default to 'todo' column
+    if (!board_id) {
+      throw new Error('board_id (or boardId) is required');
     }
 
-    const { due_date, ...restArgs } = args;
+    // Validate board exists
+    const boards = await this.services.boardService.getBoards();
+    const board = boards.find(b => b.id === board_id);
+    if (!board) {
+      throw new Error('Board not found');
+    }
+
     interface CreateTaskData {
       title: string;
       description?: string;
@@ -514,22 +514,34 @@ export class MCPToolRegistry {
       due_date?: Date;
       tags?: string[];
     }
+
     const createData: CreateTaskData = {
-      ...(restArgs as Omit<CreateTaskArgs, 'due_date'>),
+      title: args.title,
+      description: args.description,
+      board_id,
       column_id,
+      priority: args.priority,
+      status: args.status || 'todo',
+      assignee: args.assignee,
+      tags: args.tags,
     };
 
     // Convert due_date string to Date if provided
-    if (due_date) {
-      createData.due_date = new Date(due_date);
+    if (args.due_date) {
+      createData.due_date = new Date(args.due_date);
     }
 
     const task = await this.services.taskService.createTask(createData);
     return { success: true, task };
   }
 
-  private async updateTask(args: UpdateTaskArgs): Promise<TaskResponse> {
-    const { task_id, due_date, ...updates } = args;
+  private async updateTask(args: any): Promise<TaskResponse> {
+    const task_id = args.task_id || args.id;
+    const { due_date, ...updates } = args;
+
+    if (!task_id) {
+      throw new Error('task_id (or id) is required');
+    }
     interface UpdateTaskData {
       title?: string;
       description?: string;
@@ -547,8 +559,13 @@ export class MCPToolRegistry {
     return { success: true, task };
   }
 
-  private async getTask(args: GetTaskArgs): Promise<GetTaskDetailedResponse> {
-    const { task_id, include_subtasks, include_dependencies, include_notes, include_tags } = args;
+  private async getTask(args: any): Promise<GetTaskDetailedResponse> {
+    const task_id = args.task_id || args.id;
+    const { include_subtasks, include_dependencies, include_notes, include_tags } = args;
+
+    if (!task_id) {
+      throw new Error('task_id (or id) is required');
+    }
 
     let task;
     if (include_subtasks) {
@@ -560,7 +577,7 @@ export class MCPToolRegistry {
     }
 
     if (!task) {
-      throw new Error(`Task not found: ${task_id}`);
+      throw new Error(`Task not found: ${String(task_id)}`);
     }
 
     // Add additional data if requested
@@ -600,7 +617,9 @@ export class MCPToolRegistry {
     if (status) {
       const validStatuses = ['todo', 'in_progress', 'done', 'blocked', 'archived'];
       if (!validStatuses.includes(status)) {
-        throw new Error(`Invalid status: ${status}. Must be one of: ${validStatuses.join(', ')}`);
+        throw new Error(
+          `Invalid status: ${String(status)}. Must be one of: ${String(String(validStatuses.join(', ')))}`
+        );
       }
       filters.status = status as Task['status'];
     }
@@ -633,19 +652,21 @@ export class MCPToolRegistry {
     if (status) {
       const validStatuses = ['todo', 'in_progress', 'done', 'blocked', 'archived'];
       if (!validStatuses.includes(status)) {
-        throw new Error(`Invalid status: ${status}. Must be one of: ${validStatuses.join(', ')}`);
+        throw new Error(
+          `Invalid status: ${String(status)}. Must be one of: ${String(String(validStatuses.join(', ')))}`
+        );
       }
       filters.status = status as Task['status'];
     }
 
     const tasks = await this.services.taskService.getTasks(filters);
-    return { success: true, tasks, count: tasks.length };
+    return { success: true, data: tasks, tasks, count: tasks.length };
   }
 
   private async deleteTask(args: DeleteTaskArgs): Promise<{ success: boolean; message: string }> {
     const { task_id } = args;
     await this.services.taskService.deleteTask(task_id);
-    return { success: true, message: `Task ${task_id} deleted` };
+    return { success: true, message: `Task ${String(task_id)} deleted` };
   }
 
   private async createBoard(args: CreateBoardArgs): Promise<BoardResponse> {
@@ -664,7 +685,7 @@ export class MCPToolRegistry {
     }
 
     if (!board) {
-      throw new Error(`Board not found: ${board_id}`);
+      throw new Error(`Board not found: ${String(board_id)}`);
     }
 
     const result: BoardResponse = { success: true, board };
@@ -751,7 +772,7 @@ export class MCPToolRegistry {
       const validCategories = ['general', 'progress', 'blocker', 'decision', 'question'];
       if (!validCategories.includes(category)) {
         throw new Error(
-          `Invalid category: ${category}. Must be one of: ${validCategories.join(', ')}`
+          `Invalid category: ${String(category)}. Must be one of: ${String(String(validCategories.join(', ')))}`
         );
       }
       searchOptions.category = category as
@@ -788,7 +809,7 @@ export class MCPToolRegistry {
     }
     const options: ProjectContextOptions = {
       days_back: 30, // Default to 30 days
-      include_metrics: args.include_metrics ?? false,
+      include_metrics: args.include_metrics || false,
       detail_level: 'comprehensive',
     };
 
@@ -805,7 +826,9 @@ export class MCPToolRegistry {
     };
 
     if (args.include_recommendations) {
-      result.recommendations = context.priorities.map(p => `Priority: ${p.task.title}`);
+      result.recommendations = context.priorities.map(
+        p => `Priority: ${String(String(p.task.title))}`
+      );
     }
 
     return { success: true, context: result };
@@ -890,8 +913,12 @@ export class MCPToolRegistry {
       analysis: {
         board: board!,
         metrics: analysis.key_metrics as unknown as Record<string, unknown>,
-        insights: analysis.priorities.map(p => `Task "${p.task.title}" is high priority`),
-        recommendations: analysis.priorities.slice(0, 3).map(p => `Focus on: ${p.task.title}`),
+        insights: analysis.priorities.map(
+          p => `Task "${String(String(p.task.title))}" is high priority`
+        ),
+        recommendations: analysis.priorities
+          .slice(0, 3)
+          .map(p => `Focus on: ${String(String(p.task.title))}`),
       },
     };
   }

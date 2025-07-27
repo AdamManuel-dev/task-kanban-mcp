@@ -2,7 +2,6 @@ import { Database } from 'sqlite3';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { MigrationRunner } from '../../../src/database/migrations/MigrationRunner';
-import { Migration } from '../../../src/database/migrations/types';
 
 describe('MigrationRunner', () => {
   let db: Database;
@@ -26,11 +25,11 @@ describe('MigrationRunner', () => {
 
     // Clean up temp directory
     const files = await fs.readdir(tempDir);
-    for (const file of files) {
-      if (file.endsWith('.ts')) {
+    await Promise.all(
+      files.map(async file => {
         await fs.unlink(path.join(tempDir, file));
-      }
-    }
+      })
+    );
   });
 
   afterEach(done => {
@@ -73,11 +72,11 @@ describe('MigrationRunner', () => {
       await fs.writeFile(
         path.join(tempDir, '001_create_users.ts'),
         `
-export async function up(db) {
+export async function up(): Promise<void>(db) {
   // Create users table
 }
 
-export async function down(db) {
+export async function down(): Promise<void>(db) {
   // Drop users table
 }
         `
@@ -86,11 +85,11 @@ export async function down(db) {
       await fs.writeFile(
         path.join(tempDir, '002_add_indexes.ts'),
         `
-export async function up(db) {
+export async function up(): Promise<void>(db) {
   // Add indexes
 }
 
-export async function down(db) {
+export async function down(): Promise<void>(db) {
   // Remove indexes
 }
         `
@@ -126,12 +125,12 @@ export async function down(db) {
         `
 import { promisify } from 'util';
 
-export async function up(db) {
+export async function up(): Promise<void>(db) {
   const run = promisify(db.run.bind(db));
   await run('CREATE TABLE test_table (id INTEGER PRIMARY KEY, name TEXT)');
 }
 
-export async function down(db) {
+export async function down(): Promise<void>(db) {
   const run = promisify(db.run.bind(db));
   await run('DROP TABLE IF EXISTS test_table');
 }
@@ -169,12 +168,12 @@ export async function down(db) {
         `
 import { promisify } from 'util';
 
-export async function up(db) {
+export async function up(): Promise<void>(db) {
   const run = promisify(db.run.bind(db));
   await run('CREATE TABLE test_table (id INTEGER PRIMARY KEY, name TEXT)');
 }
 
-export async function down(db) {
+export async function down(): Promise<void>(db) {
   const run = promisify(db.run.bind(db));
   await run('DROP TABLE IF EXISTS test_table');
 }
@@ -213,12 +212,12 @@ export async function down(db) {
         `
 import { promisify } from 'util';
 
-export async function up(db) {
+export async function up(): Promise<void>(db) {
   const run = promisify(db.run.bind(db));
   await run('CREATE TABLE test_table (id INTEGER PRIMARY KEY, name TEXT)');
 }
 
-export async function down(db) {
+export async function down(): Promise<void>(db) {
   const run = promisify(db.run.bind(db));
   await run('DROP TABLE IF EXISTS test_table');
 }
@@ -246,12 +245,12 @@ export async function down(db) {
         `
 import { promisify } from 'util';
 
-export async function up(db) {
+export async function up(): Promise<void>(db) {
   const run = promisify(db.run.bind(db));
   await run('CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT)');
 }
 
-export async function down(db) {
+export async function down(): Promise<void>(db) {
   const run = promisify(db.run.bind(db));
   await run('DROP TABLE IF EXISTS users');
 }
@@ -263,12 +262,12 @@ export async function down(db) {
         `
 import { promisify } from 'util';
 
-export async function up(db) {
+export async function up(): Promise<void>(db) {
   const run = promisify(db.run.bind(db));
   await run('CREATE TABLE posts (id INTEGER PRIMARY KEY, title TEXT)');
 }
 
-export async function down(db) {
+export async function down(): Promise<void>(db) {
   const run = promisify(db.run.bind(db));
   await run('DROP TABLE IF EXISTS posts');
 }
@@ -293,16 +292,16 @@ export async function down(db) {
       await fs.writeFile(
         path.join(tempDir, '001_create_users.ts'),
         `
-export async function up(db) {}
-export async function down(db) {}
+export async function up(): Promise<void>(db) {}
+export async function down(): Promise<void>(db) {}
         `
       );
 
       await fs.writeFile(
         path.join(tempDir, '002_create_posts.ts'),
         `
-export async function up(db) {}
-export async function down(db) {}
+export async function up(): Promise<void>(db) {}
+export async function down(): Promise<void>(db) {}
         `
       );
 
@@ -333,14 +332,14 @@ export async function down(db) {}
       await fs.writeFile(
         path.join(tempDir, '001_failing_migration.ts'),
         `
-export async function up(db) {
+export async function up(): Promise<void>(db) {
   const run = require('util').promisify(db.run.bind(db));
   await run('CREATE TABLE test (id INTEGER)');
   // This will fail - duplicate table name
   await run('CREATE TABLE test (id INTEGER)');
 }
 
-export async function down(db) {
+export async function down(): Promise<void>(db) {
   const run = require('util').promisify(db.run.bind(db));
   await run('DROP TABLE IF EXISTS test');
 }
@@ -376,8 +375,8 @@ export async function down(db) {
       const filePath = path.join(tempDir, filename);
       const content = await fs.readFile(filePath, 'utf-8');
 
-      expect(content).toContain('export async function up(db: Database)');
-      expect(content).toContain('export async function down(db: Database)');
+      expect(content).toContain('export async function up(): Promise<void>(db: Database)');
+      expect(content).toContain('export async function down(): Promise<void>(db: Database)');
       expect(content).toContain("import { Database } from 'sqlite3'");
     });
   });

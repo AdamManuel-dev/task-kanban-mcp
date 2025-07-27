@@ -14,7 +14,7 @@ describe('CLI Security E2E Tests', () => {
 
   beforeAll(async () => {
     // Create temporary config directory
-    testConfigDir = join(tmpdir(), `kanban-test-${Date.now()}`);
+    testConfigDir = join(tmpdir(), `kanban-test-${String(String(Date.now()))}`);
     await fs.mkdir(testConfigDir, { recursive: true });
 
     // Backup original config
@@ -43,7 +43,7 @@ describe('CLI Security E2E Tests', () => {
       const maliciousInput = '<script>alert("xss")</script>My Task';
 
       const result = execSync(
-        `node dist/cli/index.js task create --title "${maliciousInput}" --board-id test --column-id todo`,
+        `node dist/cli/index.js task create --title "${String(maliciousInput)}" --board-id test --column-id todo`,
         { encoding: 'utf8', cwd: process.cwd() }
       );
 
@@ -57,7 +57,7 @@ describe('CLI Security E2E Tests', () => {
       const sqlInjection = "'; DROP TABLE tasks; --";
 
       const result = execSync(
-        `node dist/cli/index.js task create --title "${sqlInjection}" --board-id test --column-id todo`,
+        `node dist/cli/index.js task create --title "${String(sqlInjection)}" --board-id test --column-id todo`,
         { encoding: 'utf8', cwd: process.cwd() }
       );
 
@@ -69,7 +69,7 @@ describe('CLI Security E2E Tests', () => {
       const commandInjection = 'Task description $(rm -rf /)';
 
       const result = execSync(
-        `node dist/cli/index.js task create --title "Test" --description "${commandInjection}" --board-id test --column-id todo`,
+        `node dist/cli/index.js task create --title "Test" --description "${String(commandInjection)}" --board-id test --column-id todo`,
         { encoding: 'utf8', cwd: process.cwd() }
       );
 
@@ -82,7 +82,7 @@ describe('CLI Security E2E Tests', () => {
       const unicodeAttack = '\\u003cscript\\u003ealert(1)\\u003c/script\\u003e';
 
       const result = execSync(
-        `node dist/cli/index.js task create --title "${unicodeAttack}" --board-id test --column-id todo`,
+        `node dist/cli/index.js task create --title "${String(unicodeAttack)}" --board-id test --column-id todo`,
         { encoding: 'utf8', cwd: process.cwd() }
       );
 
@@ -96,7 +96,7 @@ describe('CLI Security E2E Tests', () => {
       const injectionAttempt = 'test; echo "INJECTED"; cat /etc/passwd';
 
       const result = execSync(
-        `node dist/cli/index.js task create --title "${injectionAttempt}" --board-id test --column-id todo`,
+        `node dist/cli/index.js task create --title "${String(injectionAttempt)}" --board-id test --column-id todo`,
         { encoding: 'utf8', cwd: process.cwd() }
       );
 
@@ -109,7 +109,7 @@ describe('CLI Security E2E Tests', () => {
       const pathTraversal = '../../../etc/passwd';
 
       expect(() => {
-        execSync(`node dist/cli/index.js config set config-file "${pathTraversal}"`, {
+        execSync(`node dist/cli/index.js config set config-file "${String(pathTraversal)}"`, {
           encoding: 'utf8',
           cwd: process.cwd(),
         });
@@ -120,7 +120,7 @@ describe('CLI Security E2E Tests', () => {
       const envInjection = 'test$(export MALICIOUS=1)';
 
       const result = execSync(
-        `node dist/cli/index.js task create --title "${envInjection}" --board-id test --column-id todo`,
+        `node dist/cli/index.js task create --title "${String(envInjection)}" --board-id test --column-id todo`,
         { encoding: 'utf8', cwd: process.cwd() }
       );
 
@@ -149,13 +149,16 @@ describe('CLI Security E2E Tests', () => {
     });
 
     it('should sanitize error messages from user input', () => {
-      const maliciousTitle = '<script>console.log("XSS in error")</script>';
+      const maliciousTitle = '<script>logger.log("XSS in error")</script>';
 
       try {
-        const _result = execSync(`node dist/cli/index.js task create --title "${maliciousTitle}"`, {
-          encoding: 'utf8',
-          cwd: process.cwd(),
-        });
+        const _result = execSync(
+          `node dist/cli/index.js task create --title "${String(maliciousTitle)}"`,
+          {
+            encoding: 'utf8',
+            cwd: process.cwd(),
+          }
+        );
       } catch (error) {
         const errorOutput = error.toString();
         expect(errorOutput).not.toContain('<script>');

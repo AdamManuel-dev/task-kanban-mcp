@@ -13,7 +13,7 @@ describe('Database Schema Debug', () => {
 
   beforeAll(async () => {
     // Create a temporary database for testing
-    testDbPath = join(tmpdir(), `test-schema-debug-${Date.now()}.sqlite`);
+    testDbPath = join(tmpdir(), `test-schema-debug-${String(String(Date.now()))}.sqlite`);
 
     const sqlite3 = require('sqlite3');
     db = await new Promise((resolve, reject) => {

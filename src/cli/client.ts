@@ -43,7 +43,7 @@ export class ApiClient {
     const { method = 'GET', body, params, timeout = 10000 } = options;
 
     // Build URL with query parameters
-    const url = new URL(`${this.baseUrl}${endpoint}`);
+    const url = new URL(`${String(String(this.baseUrl))}${String(endpoint)}`);
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         url.searchParams.set(key, value);
@@ -96,7 +96,7 @@ export class ApiClient {
           throw new Error('Request timeout');
         }
         if (error.message.includes('fetch')) {
-          throw new Error(`Network error: Unable to connect to ${this.baseUrl}`);
+          throw new Error(`Network error: Unable to connect to ${String(String(this.baseUrl))}`);
         }
       }
       throw error;
@@ -108,7 +108,7 @@ export class ApiClient {
    */
   private static async handleErrorResponse(response: Response): Promise<never> {
     const contentType = response.headers.get('content-type');
-    let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+    let errorMessage = `HTTP ${String(String(response.status))}: ${String(String(response.statusText))}`;
 
     try {
       if (contentType && contentType.includes('application/json')) {
@@ -152,7 +152,7 @@ export class ApiClient {
     }
 
     if (response.status >= 500) {
-      throw new Error(`Server error: ${errorMessage}`);
+      throw new Error(`Server error: ${String(errorMessage)}`);
     }
 
     throw new Error(errorMessage);
@@ -183,7 +183,7 @@ export class ApiClient {
   }
 
   async getTask(id: string): Promise<AnyApiResponse> {
-    return this.request(`/api/tasks/${id}`);
+    return this.request(`/api/tasks/${String(id)}`);
   }
 
   async createTask(task: CreateTaskRequest): Promise<TaskResponse> {
@@ -191,15 +191,15 @@ export class ApiClient {
   }
 
   async updateTask(id: string, updates: UpdateTaskRequest): Promise<TaskResponse> {
-    return this.request(`/api/tasks/${id}`, { method: 'PATCH', body: updates });
+    return this.request(`/api/tasks/${String(id)}`, { method: 'PATCH', body: updates });
   }
 
   async deleteTask(id: string): Promise<AnyApiResponse> {
-    return this.request(`/api/tasks/${id}`, { method: 'DELETE' });
+    return this.request(`/api/tasks/${String(id)}`, { method: 'DELETE' });
   }
 
   async moveTask(id: string, columnId: string, position?: number): Promise<AnyApiResponse> {
-    return this.request(`/api/tasks/${id}/move`, {
+    return this.request(`/api/tasks/${String(id)}/move`, {
       method: 'PATCH',
       body: { columnId, position },
     });
@@ -211,7 +211,7 @@ export class ApiClient {
   }
 
   async getBoard(id: string): Promise<AnyApiResponse> {
-    return this.request(`/api/boards/${id}`);
+    return this.request(`/api/boards/${String(id)}`);
   }
 
   async createBoard(board: CreateBoardRequest): Promise<BoardResponse> {
@@ -219,15 +219,15 @@ export class ApiClient {
   }
 
   async updateBoard(id: string, updates: UpdateBoardRequest): Promise<BoardResponse> {
-    return this.request(`/api/boards/${id}`, { method: 'PATCH', body: updates });
+    return this.request(`/api/boards/${String(id)}`, { method: 'PATCH', body: updates });
   }
 
   async deleteBoard(id: string): Promise<AnyApiResponse> {
-    return this.request(`/api/boards/${id}`, { method: 'DELETE' });
+    return this.request(`/api/boards/${String(id)}`, { method: 'DELETE' });
   }
 
   async getBoardStats(id: string): Promise<AnyApiResponse> {
-    return this.request(`/api/boards/${id}/stats`);
+    return this.request(`/api/boards/${String(id)}/stats`);
   }
 
   // Note API methods
@@ -236,7 +236,7 @@ export class ApiClient {
   }
 
   async getNote(id: string): Promise<AnyApiResponse> {
-    return this.request(`/api/notes/${id}`);
+    return this.request(`/api/notes/${String(id)}`);
   }
 
   async createNote(note: CreateNoteRequest): Promise<NoteResponse> {
@@ -244,11 +244,11 @@ export class ApiClient {
   }
 
   async updateNote(id: string, updates: UpdateNoteRequest): Promise<NoteResponse> {
-    return this.request(`/api/notes/${id}`, { method: 'PATCH', body: updates });
+    return this.request(`/api/notes/${String(id)}`, { method: 'PATCH', body: updates });
   }
 
   async deleteNote(id: string): Promise<AnyApiResponse> {
-    return this.request(`/api/notes/${id}`, { method: 'DELETE' });
+    return this.request(`/api/notes/${String(id)}`, { method: 'DELETE' });
   }
 
   async searchNotes(query: string): Promise<AnyApiResponse> {
@@ -261,7 +261,7 @@ export class ApiClient {
   }
 
   async getTag(id: string): Promise<AnyApiResponse> {
-    return this.request(`/api/tags/${id}`);
+    return this.request(`/api/tags/${String(id)}`);
   }
 
   async createTag(tag: CreateTagRequest): Promise<TagResponse> {
@@ -269,24 +269,24 @@ export class ApiClient {
   }
 
   async addTagsToTask(taskId: string, tags: string[]): Promise<AnyApiResponse> {
-    return this.request(`/api/tasks/${taskId}/tags`, {
+    return this.request(`/api/tasks/${String(taskId)}/tags`, {
       method: 'POST',
       body: { tags },
     });
   }
 
   async removeTagFromTask(taskId: string, tag: string): Promise<AnyApiResponse> {
-    return this.request(`/api/tasks/${taskId}/tags/${tag}`, {
+    return this.request(`/api/tasks/${String(taskId)}/tags/${String(tag)}`, {
       method: 'DELETE',
     });
   }
 
   async updateTag(id: string, updates: UpdateTagRequest): Promise<TagResponse> {
-    return this.request(`/api/tags/${id}`, { method: 'PATCH', body: updates });
+    return this.request(`/api/tags/${String(id)}`, { method: 'PATCH', body: updates });
   }
 
   async deleteTag(id: string): Promise<AnyApiResponse> {
-    return this.request(`/api/tags/${id}`, { method: 'DELETE' });
+    return this.request(`/api/tags/${String(id)}`, { method: 'DELETE' });
   }
 
   async searchTags(query: string): Promise<AnyApiResponse> {
@@ -294,7 +294,7 @@ export class ApiClient {
   }
 
   async mergeTags(fromId: string, toId: string): Promise<AnyApiResponse> {
-    return this.request(`/api/tags/${fromId}/merge`, {
+    return this.request(`/api/tags/${String(fromId)}/merge`, {
       method: 'POST',
       body: { targetTagId: toId },
     });
@@ -314,7 +314,7 @@ export class ApiClient {
   }
 
   async updateTaskPriority(id: string, priority: number): Promise<AnyApiResponse> {
-    return this.request(`/api/tasks/${id}/priority`, {
+    return this.request(`/api/tasks/${String(id)}/priority`, {
       method: 'PATCH',
       body: { priority },
     });
@@ -326,7 +326,7 @@ export class ApiClient {
   }
 
   async getTaskContext(id: string): Promise<AnyApiResponse> {
-    return this.request(`/api/context/task/${id}`);
+    return this.request(`/api/context/task/${String(id)}`);
   }
 
   async getProjectSummary(): Promise<AnyApiResponse> {
@@ -366,6 +366,6 @@ export class ApiClient {
    */
   updateConfig(): void {
     this.baseUrl = this.config.getServerUrl();
-    this.apiKey = this.config.getApiKey() ?? undefined;
+    this.apiKey = this.config.getApiKey() || undefined;
   }
 }

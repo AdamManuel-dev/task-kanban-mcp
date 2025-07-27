@@ -42,12 +42,12 @@ export class TaskRunner {
       title: task.title,
       task: task.action,
       ...(task.skip && { skip: task.skip }),
-      enabled: task.enabled ?? true,
+      enabled: task.enabled || true,
     }));
 
     const listr = new Listr(listrTasks, {
-      concurrent: options?.concurrent ?? false,
-      exitOnError: options?.exitOnError ?? true,
+      concurrent: options?.concurrent || false,
+      exitOnError: options?.exitOnError || true,
       renderer: this.renderer,
       rendererOptions: {
         showSubtasks: true,
@@ -58,7 +58,7 @@ export class TaskRunner {
     try {
       await listr.run();
     } catch (error) {
-      console.error(chalk.red('Task execution failed:'), error);
+      logger.error(chalk.red('Task execution failed:'), error);
       throw error;
     }
   }
@@ -74,24 +74,24 @@ export class TaskRunner {
   ): Promise<void> {
     const mainTasks: ListrTask[] = groups.map(group => ({
       title: group.title,
-      task: (_ctx, task) => {
+      task: (_ctx, task): any => {
         const subtasks: ListrTask[] = group.tasks.map(item => ({
           title: item.title,
           task: item.action,
           ...(item.skip && { skip: item.skip }),
-          enabled: item.enabled ?? true,
+          enabled: item.enabled || true,
         }));
 
         return task.newListr(subtasks, {
-          concurrent: group.concurrent ?? false,
-          exitOnError: options?.exitOnError ?? true,
+          concurrent: group.concurrent || false,
+          exitOnError: options?.exitOnError || true,
         });
       },
     }));
 
     const listr = new Listr(mainTasks, {
       concurrent: false,
-      exitOnError: options?.exitOnError ?? true,
+      exitOnError: options?.exitOnError || true,
       renderer: this.renderer,
       rendererOptions: {
         showSubtasks: true,
@@ -102,7 +102,7 @@ export class TaskRunner {
     try {
       await listr.run();
     } catch (error) {
-      console.error(chalk.red('Task group execution failed:'), error);
+      logger.error(chalk.red('Task group execution failed:'), error);
       throw error;
     }
   }
@@ -125,11 +125,11 @@ export class TaskRunner {
     const listr = new Listr(
       [
         {
-          title: `${title} (0/${total})`,
+          title: `${String(title)} (0/${String(total)})`,
           task: async (_ctx, task) => {
-            const updateProgress = () => {
-              completed++;
-              task.title = `${title} (${completed}/${total})`;
+            const updateProgress = (): void => {
+              completed += 1;
+              task.title = `${String(title)} (${String(completed)}/${String(total)})`;
             };
 
             if (options?.concurrent) {
@@ -140,19 +140,21 @@ export class TaskRunner {
                 chunks.push(items.slice(i, i + concurrency));
               }
 
-              for (const chunk of chunks) {
-                await Promise.all(
-                  chunk.map(async item => {
-                    await processor(item, task);
-                    updateProgress();
-                  })
-                );
-              }
+              await Promise.all(
+                chunks.map(async chunk => {
+                  await Promise.all(
+                    chunk.map(async item => {
+                      await processor(item, task);
+                    })
+                  );
+                })
+              );
             } else {
-              for (const item of items) {
-                await processor(item, task);
-                updateProgress();
-              }
+              await Promise.all(
+                items.map(async item => {
+                  await processor(item, task);
+                })
+              );
             }
           },
         },
@@ -180,28 +182,30 @@ export class TaskRunner {
       retryDelay?: number;
     }
   ): TaskItem {
-    const maxRetries = options?.retries ?? 3;
-    const retryDelay = options?.retryDelay ?? 1000;
+    const maxRetries = options?.retries || 3;
+    const retryDelay = options?.retryDelay || 1000;
 
     return {
-      id: `retry-${Date.now()}`,
+      id: `retry-${String(String(Date.now()))}`,
       title,
       action: async () => {
         let lastError: any;
 
-        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        for (let attempt = 1; attempt <= maxRetries; attempt += 1) {
           try {
             return await action();
           } catch (error) {
             lastError = error;
             if (attempt < maxRetries) {
-              await new Promise(resolve => setTimeout(resolve, retryDelay));
+              await new Promise<void>(resolve => {
+                setTimeout(resolve, retryDelay);
+              });
             }
           }
         }
 
         throw new Error(
-          `Failed after ${maxRetries} attempts: ${lastError?.message || 'Unknown error'}`
+          `Failed after ${String(maxRetries)} attempts: ${String(String(lastError?.message || 'Unknown error'))}`
         );
       },
     };
@@ -244,7 +248,7 @@ export class TaskRunner {
 
       if (ready.length > 0) {
         groups.push({
-          title: `Running ${ready.length} task(s)`,
+          title: `Running ${String(String(ready.length))} task(s)`,
           tasks: ready.map(t => ({
             ...t,
             action: () => runTask(t),

@@ -1,18 +1,39 @@
+/**
+ * @module cli/commands/tasks
+ * @description Task management commands for the CLI.
+ *
+ * Provides comprehensive task operations including creating, updating, listing,
+ * moving, and deleting tasks. Supports both command-line options and interactive
+ * mode for user-friendly task management.
+ *
+ * @example
+ * ```bash
+ * # List all tasks
+ * kanban task list
+ *
+ * # List tasks with filters
+ * kanban task list --board abc123 --status in_progress --limit 10
+ *
+ * # Create a task interactively
+ * kanban task create --interactive
+ *
+ * # Create a task with options
+ * kanban task create --title "Fix bug" --priority 8 --tags "bug,urgent"
+ *
+ * # Update task status
+ * kanban task update task123 --status completed
+ *
+ * # Interactive task selection
+ * kanban task select --status todo
+ * ```
+ */
+
 import type { Command } from 'commander';
 import inquirer from 'inquirer';
 
 import type { CliComponents } from '../types';
 import { createTaskPrompt, PromptCancelledError } from '../prompts/task-prompts';
 import { spinner } from '../utils/spinner';
-
-interface ListTaskOptions {
-  board?: string;
-  status?: string;
-  tags?: string;
-  limit?: string;
-  sort?: string;
-  order?: string;
-}
 
 interface ShowTaskOptions {
   context?: boolean;
@@ -43,22 +64,6 @@ interface UpdateTaskOptions {
 interface MoveTaskOptions {
   column?: string;
   position?: string;
-  interactive?: boolean;
-}
-
-interface BulkTaskOptions {
-  ids?: string;
-  action?: string;
-  interactive?: boolean;
-}
-
-interface TaskFilterOptions {
-  status?: string;
-  priority?: string;
-  assignee?: string;
-  tags?: string;
-  board?: string;
-  due?: string;
   interactive?: boolean;
 }
 
@@ -95,12 +100,51 @@ interface TaskListResponse {
   limit?: number;
 }
 
+/**
+ * Register all task-related commands with the CLI program.
+ *
+ * @param program - The commander program instance
+ *
+ * Available commands:
+ * - `list` (alias: `ls`) - List tasks with filtering and sorting
+ * - `show <id>` - Display detailed task information
+ * - `create` (alias: `new`) - Create a new task
+ * - `update <id>` - Update task properties
+ * - `delete <id>` (alias: `rm`) - Delete a task
+ * - `move <id> <column>` - Move task to different column
+ * - `select` (alias: `choose`) - Interactive task selection
+ */
 export function registerTaskCommands(program: Command): void {
   const taskCmd = program.command('task').alias('t').description('Manage tasks');
 
   // Get global components with proper typing
   const getComponents = (): CliComponents => global.cliComponents;
 
+  /**
+   * List tasks with optional filters and sorting.
+   *
+   * @command list
+   * @alias ls
+   *
+   * @option -b, --board <id> - Filter by board ID
+   * @option -s, --status <status> - Filter by status (todo, in_progress, completed, blocked)
+   * @option -t, --tags <tags> - Filter by tags (comma-separated)
+   * @option -l, --limit <number> - Limit number of results (default: 20)
+   * @option --sort <field> - Sort by field: priority, created_at, updated_at, due_date (default: priority)
+   * @option --order <direction> - Sort order: asc or desc (default: desc)
+   *
+   * @example
+   * ```bash
+   * # List all tasks in default board
+   * kanban task list
+   *
+   * # List in-progress tasks with high priority
+   * kanban task list --status in_progress --sort priority --order desc
+   *
+   * # List tasks with specific tags
+   * kanban task list --tags "bug,urgent" --limit 50
+   * ```
+   */
   taskCmd
     .command('list')
     .alias('ls')
@@ -132,7 +176,12 @@ export function registerTaskCommands(program: Command): void {
 
         const tasks = await apiClient.getTasks(params);
 
-        if (!tasks || tasks.length === 0) {
+        if (
+          !tasks ||
+          !('data' in tasks) ||
+          !tasks.data ||
+          (Array.isArray(tasks.data) && tasks.data.length === 0)
+        ) {
           formatter.info('No tasks found');
           return;
         }
@@ -143,12 +192,36 @@ export function registerTaskCommands(program: Command): void {
         });
       } catch (error) {
         formatter.error(
-          `Failed to list tasks: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to list tasks: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
     });
 
+  /**
+   * Show detailed information about a specific task.
+   *
+   * @command show <id>
+   *
+   * @param id - The task ID to display
+   * @option --context - Include AI-generated context and insights
+   *
+   * @example
+   * ```bash
+   * # Show basic task details
+   * kanban task show task123
+   *
+   * # Show task with AI context
+   * kanban task show task123 --context
+   * ```
+   *
+   * Output includes:
+   * - Task title, description, and status
+   * - Priority, assignee, and tags
+   * - Creation and update timestamps
+   * - Due date and completion status
+   * - AI context (if requested): related tasks, insights, suggestions
+   */
   taskCmd
     .command('show <id>')
     .description('Show task details')
@@ -160,7 +233,7 @@ export function registerTaskCommands(program: Command): void {
         const task = await apiClient.getTask(id);
 
         if (!task) {
-          formatter.error(`Task ${id} not found`);
+          formatter.error(`Task ${String(id)} not found`);
           process.exit(1);
         }
 
@@ -178,12 +251,45 @@ export function registerTaskCommands(program: Command): void {
         }
       } catch (error) {
         formatter.error(
-          `Failed to get task: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to get task: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
     });
 
+  /**
+   * Create a new task with optional AI-powered size estimation.
+   *
+   * @command create
+   * @alias new
+   *
+   * @option -t, --title <title> - Task title (required in non-interactive mode)
+   * @option -d, --description <desc> - Detailed task description
+   * @option -b, --board <id> - Board ID (uses default if not specified)
+   * @option -c, --column <id> - Column ID to place task in
+   * @option -p, --priority <number> - Priority level 1-10 (default: 5)
+   * @option --due <date> - Due date in YYYY-MM-DD format
+   * @option --tags <tags> - Comma-separated list of tags
+   * @option -i, --interactive - Use interactive prompts with AI assistance
+   *
+   * @example
+   * ```bash
+   * # Create task with command line options
+   * kanban task create --title "Implement login" --priority 8 --due 2024-12-31
+   *
+   * # Create task interactively (recommended)
+   * kanban task create --interactive
+   *
+   * # Create task with tags
+   * kanban task create -t "Fix memory leak" --tags "bug,performance,critical"
+   * ```
+   *
+   * Interactive mode features:
+   * - AI-powered task size estimation
+   * - Smart priority suggestions
+   * - Guided prompts for all fields
+   * - Input validation and defaults
+   */
   taskCmd
     .command('create')
     .alias('new')
@@ -244,14 +350,14 @@ export function registerTaskCommands(program: Command): void {
       taskData.description = options.description || taskData.description;
       taskData.boardId = options.board || taskData.board || config.getDefaultBoard();
       taskData.columnId = options.column || taskData.column;
-      taskData.priority = parseInt(options.priority || taskData.priority, 10);
+      taskData.priority = parseInt(options.priority || String(taskData.priority || ''), 10);
 
       if (options.due || taskData.dueDate) {
         taskData.dueDate = options.due || taskData.dueDate;
       }
 
       if (options.tags || taskData.tags) {
-        const tagsStr = options.tags || taskData.tags;
+        const tagsStr = options.tags || String(taskData.tags || '');
         taskData.tags = tagsStr.split(',').map((tag: string) => tag.trim());
       }
 
@@ -264,7 +370,7 @@ export function registerTaskCommands(program: Command): void {
         }
 
         const task = await spinner.withSpinner(
-          `Creating task: ${taskData.title}`,
+          `Creating task: ${String(taskData.title)}`,
           apiClient.createTask(taskData),
           {
             successText: `✅ Task created successfully`,
@@ -272,21 +378,46 @@ export function registerTaskCommands(program: Command): void {
           }
         );
 
-        formatter.success(`Task ID: ${task.id || 'Unknown'}`);
+        formatter.success(`Task ID: ${String(String(task.id || 'Unknown'))}`);
         if (taskData.size) {
           formatter.info(
-            `Estimated size: ${taskData.size} (${taskData.estimatedHours || 'Unknown'} hours)`
+            `Estimated size: ${String(taskData.size)} (${String(taskData.estimatedHours || 'Unknown')} hours)`
           );
         }
         formatter.output(task);
       } catch (error) {
         formatter.error(
-          `Failed to create task: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to create task: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
     });
 
+  /**
+   * Update properties of an existing task.
+   *
+   * @command update <id>
+   *
+   * @param id - The task ID to update
+   * @option -t, --title <title> - New task title
+   * @option -d, --description <desc> - New task description
+   * @option -s, --status <status> - New status (todo, in_progress, completed, blocked)
+   * @option -p, --priority <number> - New priority (1-10)
+   * @option --due <date> - New due date (YYYY-MM-DD)
+   * @option -i, --interactive - Use interactive mode to update multiple fields
+   *
+   * @example
+   * ```bash
+   * # Update task status
+   * kanban task update task123 --status completed
+   *
+   * # Update multiple properties
+   * kanban task update task123 --title "Updated title" --priority 9
+   *
+   * # Interactive update (shows current values)
+   * kanban task update task123 --interactive
+   * ```
+   */
   taskCmd
     .command('update <id>')
     .description('Update a task')
@@ -301,11 +432,13 @@ export function registerTaskCommands(program: Command): void {
 
       try {
         // Get current task data
-        const currentTask = await apiClient.getTask(id);
-        if (!currentTask) {
-          formatter.error(`Task ${id} not found`);
+        const currentTaskResponse = await apiClient.getTask(id);
+        if (!currentTaskResponse || !('data' in currentTaskResponse) || !currentTaskResponse.data) {
+          formatter.error(`Task ${String(id)} not found`);
           process.exit(1);
         }
+
+        const currentTask = currentTaskResponse.data as Task;
 
         let updates: Record<string, unknown> = {};
 
@@ -359,12 +492,33 @@ export function registerTaskCommands(program: Command): void {
         formatter.output(updatedTask);
       } catch (error) {
         formatter.error(
-          `Failed to update task: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to update task: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
     });
 
+  /**
+   * Delete a task permanently.
+   *
+   * @command delete <id>
+   * @alias rm
+   *
+   * @param id - The task ID to delete
+   * @option -f, --force - Skip confirmation prompt
+   *
+   * @example
+   * ```bash
+   * # Delete with confirmation
+   * kanban task delete task123
+   *
+   * # Delete without confirmation
+   * kanban task delete task123 --force
+   * ```
+   *
+   * @warning This action cannot be undone. The task and all its associated
+   * data (notes, tags, dependencies) will be permanently removed.
+   */
   taskCmd
     .command('delete <id>')
     .alias('rm')
@@ -377,7 +531,7 @@ export function registerTaskCommands(program: Command): void {
         if (!options.force) {
           const task = await apiClient.getTask(id);
           if (!task) {
-            formatter.error(`Task ${id} not found`);
+            formatter.error(`Task ${String(id)} not found`);
             process.exit(1);
           }
 
@@ -385,7 +539,7 @@ export function registerTaskCommands(program: Command): void {
             {
               type: 'confirm',
               name: 'confirm',
-              message: `Delete task "${task.title}"?`,
+              message: `Delete task "${String(String(task.title))}"?`,
               default: false,
             },
           ]);
@@ -397,15 +551,33 @@ export function registerTaskCommands(program: Command): void {
         }
 
         await apiClient.deleteTask(id);
-        formatter.success(`Task ${id} deleted successfully`);
+        formatter.success(`Task ${String(id)} deleted successfully`);
       } catch (error) {
         formatter.error(
-          `Failed to delete task: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to delete task: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
     });
 
+  /**
+   * Move a task to a different column within the board.
+   *
+   * @command move <id> <column>
+   *
+   * @param id - The task ID to move
+   * @param column - The target column ID
+   * @option -p, --position <number> - Position within the column (0-based index)
+   *
+   * @example
+   * ```bash
+   * # Move task to "In Progress" column
+   * kanban task move task123 column456
+   *
+   * # Move task to specific position in column
+   * kanban task move task123 column456 --position 0
+   * ```
+   */
   taskCmd
     .command('move <id> <column>')
     .description('Move task to different column')
@@ -416,15 +588,53 @@ export function registerTaskCommands(program: Command): void {
       try {
         const position = options.position ? parseInt(options.position, 10) : undefined;
         await apiClient.moveTask(id, columnId, position);
-        formatter.success(`Task ${id} moved to column ${columnId}`);
+        formatter.success(`Task ${String(id)} moved to column ${String(columnId)}`);
       } catch (error) {
         formatter.error(
-          `Failed to move task: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to move task: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
     });
 
+  /**
+   * Interactive task selection with keyboard navigation.
+   *
+   * @command select
+   * @alias choose
+   *
+   * @option -b, --board <id> - Filter by board ID
+   * @option -s, --status <status> - Filter by status
+   * @option -t, --tags <tags> - Filter by tags (comma-separated)
+   * @option --limit <number> - Maximum tasks to display (default: 50)
+   * @option --sort <field> - Sort field (default: priority)
+   * @option --order <direction> - Sort order: asc/desc (default: desc)
+   *
+   * @example
+   * ```bash
+   * # Select from all tasks
+   * kanban task select
+   *
+   * # Select from filtered tasks
+   * kanban task select --status todo --tags urgent
+   * ```
+   *
+   * Keyboard shortcuts:
+   * - ↑/↓ or j/k: Navigate tasks
+   * - Enter: Select task for action
+   * - /: Search tasks
+   * - r: Refresh task list
+   * - h/l or ←/→: Filter by status
+   * - ?: Show help
+   * - q: Exit
+   *
+   * Available actions after selection:
+   * - View details
+   * - Edit task
+   * - Move to column
+   * - Update status
+   * - Delete task
+   */
   taskCmd
     .command('select')
     .alias('choose')
@@ -441,9 +651,9 @@ export function registerTaskCommands(program: Command): void {
       try {
         // Fetch tasks with spinner
         const params: Record<string, string> = {
-          limit: options.limit ?? '50',
-          sort: options.sort ?? 'priority',
-          order: options.order ?? 'desc',
+          limit: options.limit || '50',
+          sort: options.sort || 'priority',
+          order: options.order || 'desc',
         };
 
         if (options.board) params.board = options.board;
@@ -493,12 +703,15 @@ export function registerTaskCommands(program: Command): void {
 
           const handleTaskSelect = async (task: Task) => {
             _selectedTask = task;
-            formatter.info(`\n✅ Selected: ${task.title} [${task.id}]`);
-            formatter.info(`   Status: ${task.status}`);
-            formatter.info(`   Priority: ${task.priority || 'None'}`);
-            if (task.assignee) formatter.info(`   Assignee: ${task.assignee}`);
-            if (task.tags?.length) formatter.info(`   Tags: ${task.tags.join(', ')}`);
-            if (task.due_date) formatter.info(`   Due: ${task.due_date}`);
+            formatter.info(
+              `\n✅ Selected: ${String(String(task.title))} [${String(String(task.id))}]`
+            );
+            formatter.info(`   Status: ${String(String(task.status))}`);
+            formatter.info(`   Priority: ${String(String(task.priority || 'None'))}`);
+            if (task.assignee) formatter.info(`   Assignee: ${String(String(task.assignee))}`);
+            if (task.tags?.length)
+              formatter.info(`   Tags: ${String(String(task.tags.join(', ')))}`);
+            if (task.due_date) formatter.info(`   Due: ${String(String(task.due_date))}`);
 
             // Ask what to do with selected task
             const { action } = await inquirer.prompt([
@@ -525,7 +738,9 @@ export function registerTaskCommands(program: Command): void {
                 break;
               case 'edit':
                 // Launch edit command
-                formatter.info(`\n💡 Run: kanban task update ${task.id} --interactive`);
+                formatter.info(
+                  `\n💡 Run: kanban task update ${String(String(task.id))} --interactive`
+                );
                 break;
               case 'move':
                 // Launch move command
@@ -538,7 +753,7 @@ export function registerTaskCommands(program: Command): void {
                   },
                 ]);
                 await apiClient.moveTask(task.id, columnId);
-                formatter.success(`Task moved to column ${columnId}`);
+                formatter.success(`Task moved to column ${String(columnId)}`);
                 break;
               case 'status':
                 const { newStatus } = await inquirer.prompt([
@@ -550,14 +765,14 @@ export function registerTaskCommands(program: Command): void {
                   },
                 ]);
                 await apiClient.updateTask(task.id, { status: newStatus });
-                formatter.success(`Task status updated to ${newStatus}`);
+                formatter.success(`Task status updated to ${String(newStatus)}`);
                 break;
               case 'delete':
                 const { confirm } = await inquirer.prompt([
                   {
                     type: 'confirm',
                     name: 'confirm',
-                    message: `Delete task "${task.title}"?`,
+                    message: `Delete task "${String(String(task.title))}"?`,
                     default: false,
                   },
                 ]);
@@ -642,7 +857,7 @@ export function registerTaskCommands(program: Command): void {
                   const filtered = taskList.filter(t => t.status === status);
                   setCurrentTasks(filtered);
                   setStatusFilter([status]);
-                  formatter.info(`\n🔍 Filtered by status: ${status}`);
+                  formatter.info(`\n🔍 Filtered by status: ${String(status)}`);
                 }
                 break;
             }
@@ -666,14 +881,16 @@ export function registerTaskCommands(program: Command): void {
         };
 
         // Show instructions
-        formatter.info(`Starting interactive task selection (${taskList.length} tasks)`);
+        formatter.info(
+          `Starting interactive task selection (${String(String(taskList.length))} tasks)`
+        );
         formatter.info('Use ↑/↓ to navigate, Enter to select, ? for help, q to quit');
 
         // Render the interactive task selector
         render(React.createElement(InteractiveTaskSelector));
       } catch (error) {
         formatter.error(
-          `Failed to start task selection: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to start task selection: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }

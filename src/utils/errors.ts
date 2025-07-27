@@ -46,7 +46,7 @@ export class BaseServiceError extends Error implements ServiceError {
     this.code = code;
     this.statusCode = statusCode;
     this.details = details;
-    this.context = context;
+    this.context = context || undefined;
     this.timestamp = new Date();
 
     Error.captureStackTrace(this, this.constructor);
@@ -74,8 +74,13 @@ export class ValidationError extends BaseServiceError {
 }
 
 export class NotFoundError extends BaseServiceError {
-  constructor(resource: string, id: string | number, context?: ErrorContext) {
-    super('NOT_FOUND', `${resource} with id ${id} not found`, 404, { resource, id }, context);
+  constructor(resource: string, id?: string | number, context?: ErrorContext) {
+    const identifier = id !== undefined ? id : 'unknown';
+    const message =
+      id !== undefined
+        ? `${String(resource)} with identifier '${String(identifier)}' not found`
+        : `${String(resource)} not found`;
+    super('NOT_FOUND', message, 404, { resource, identifier }, context);
   }
 }
 
@@ -86,14 +91,18 @@ export class ConflictError extends BaseServiceError {
 }
 
 export class UnauthorizedError extends BaseServiceError {
-  constructor(message: string = 'Unauthorized', context?: ErrorContext) {
-    super('UNAUTHORIZED', message, 401, undefined, context);
+  constructor(
+    message: string = 'Authentication required',
+    details?: ErrorDetails,
+    context?: ErrorContext
+  ) {
+    super('UNAUTHORIZED', message, 401, details, context);
   }
 }
 
 export class ForbiddenError extends BaseServiceError {
-  constructor(message: string = 'Forbidden', context?: ErrorContext) {
-    super('FORBIDDEN', message, 403, undefined, context);
+  constructor(message: string = 'Forbidden', details?: ErrorDetails, context?: ErrorContext) {
+    super('FORBIDDEN', message, 403, details, context);
   }
 }
 
@@ -104,7 +113,11 @@ export class InternalServerError extends BaseServiceError {
 }
 
 export class DatabaseError extends BaseServiceError {
-  constructor(message: string, details?: ErrorDetails, context?: ErrorContext) {
+  constructor(message: string, originalError?: Error | ErrorDetails, context?: ErrorContext) {
+    const details =
+      originalError instanceof Error
+        ? { originalError: originalError.message }
+        : originalError || { originalError: undefined };
     super('DATABASE_ERROR', message, 500, details, context);
   }
 }
@@ -116,8 +129,12 @@ export class DependencyError extends BaseServiceError {
 }
 
 export class RateLimitError extends BaseServiceError {
-  constructor(message: string = 'Rate limit exceeded', context?: ErrorContext) {
-    super('RATE_LIMIT_EXCEEDED', message, 429, undefined, context);
+  constructor(
+    message: string = 'Rate limit exceeded',
+    details?: ErrorDetails,
+    context?: ErrorContext
+  ) {
+    super('RATE_LIMIT_EXCEEDED', message, 429, details, context);
   }
 }
 
@@ -125,7 +142,7 @@ export class ExternalServiceError extends BaseServiceError {
   constructor(service: string, message: string, details?: ErrorDetails, context?: ErrorContext) {
     super(
       'EXTERNAL_SERVICE_ERROR',
-      `External service error (${service}): ${message}`,
+      `${String(service)}: ${String(message)}`,
       502,
       details,
       context
@@ -157,6 +174,92 @@ export const createDatabaseError: ErrorFactory<[string, ErrorDetails?, ErrorCont
 ) => new DatabaseError(message, details, context);
 
 /**
+ * Error handler manager for custom error handling
+ */
+export type ErrorHandler = (error: Error, context?: ErrorContext) => ServiceError;
+
+export class ErrorHandlerManager {
+  private readonly handlers: Map<string, ErrorHandler> = new Map();
+
+  registerHandler(errorType: string, handler: ErrorHandler): void {
+    this.handlers.set(errorType, handler);
+  }
+
+  handleError(error: Error, context?: ErrorContext): ServiceError {
+    if (error instanceof BaseServiceError) {
+      return error;
+    }
+
+    const errorType = error.constructor.name;
+    const handler = this.handlers.get(errorType);
+
+    if (handler) {
+      return handler(error, context);
+    }
+
+    return this.handleGenericError(error, context);
+  }
+
+  private static handleGenericError(error: Error, context?: ErrorContext): ServiceError {
+    if (error.message.includes('UNIQUE constraint failed')) {
+      return new ConflictError(
+        'Resource already exists',
+        { originalError: error.message },
+        context
+      );
+    }
+
+    if (error.message.includes('FOREIGN KEY constraint failed')) {
+      return new ValidationError(
+        'Invalid reference to related resource',
+        { originalError: error.message },
+        context
+      );
+    }
+
+    if (error.message.includes('NOT NULL constraint failed')) {
+      return new ValidationError(
+        'Required field is missing',
+        { originalError: error.message },
+        context
+      );
+    }
+
+    if (error.message.includes('CHECK constraint failed')) {
+      return new ValidationError('Invalid field value', { originalError: error.message }, context);
+    }
+
+    if (error.message.includes('database is locked')) {
+      return new BaseServiceError(
+        'DATABASE_BUSY',
+        'Database is temporarily busy',
+        503,
+        { originalError: error.message },
+        context
+      );
+    }
+
+    if (error.message.includes('no such table')) {
+      return new BaseServiceError(
+        'DATABASE_SCHEMA_ERROR',
+        'Database schema error',
+        500,
+        { originalError: error.message },
+        context
+      );
+    }
+
+    return new BaseServiceError(
+      'INTERNAL_ERROR',
+      'An internal error occurred',
+      500,
+      { originalError: error.message },
+      context
+    );
+  }
+}
+
+/**
  * Global error handler with proper typing
  */
 class GlobalErrorHandler {
@@ -166,25 +269,45 @@ class GlobalErrorHandler {
   >();
 
   constructor() {
-    this.registerDefaultHandlers();
+    GlobalErrorHandler.registerDefaultHandlers();
   }
 
-  private registerDefaultHandlers(): void {
+  private static registerDefaultHandlers(): void {
     this.registerHandler('ValidationError', (error: unknown, context: ErrorContext) => {
       const message = getErrorMessage(error);
       return new ValidationError(message, undefined, context);
     });
 
+    this.registerHandler('ZodError', (error: unknown, context: ErrorContext) => {
+      const zodError = error as any;
+      const messages = zodError.errors?.map(
+        (err: any) => `${String(err.path.join('.'))}: ${String(err.message)}`
+      ) || [getErrorMessage(error)];
+      return new ValidationError(
+        `Validation failed: ${String(messages.join(', '))}`,
+        zodError.errors,
+        context
+      );
+    });
+
     this.registerHandler('TypeError', (error: unknown, context: ErrorContext) => {
       const message = getErrorMessage(error);
       if (message.includes('Cannot read') || message.includes('undefined')) {
-        return new ValidationError(
+        return new BaseServiceError(
+          'INVALID_INPUT',
           'Invalid input data structure',
+          400,
           { originalError: message },
           context
         );
       }
-      return new InternalServerError('Type error occurred', { originalError: message }, context);
+      return new BaseServiceError(
+        'TYPE_ERROR',
+        'Type error occurred',
+        500,
+        { originalError: message },
+        context
+      );
     });
 
     // Add more default handlers...
@@ -208,7 +331,8 @@ class GlobalErrorHandler {
         if (error instanceof NotFoundError) {
           return new NotFoundError(
             ((error.details as Record<string, unknown>)?.resource as string) || 'Resource',
-            ((error.details as Record<string, unknown>)?.id as string | number) || 'unknown',
+            ((error.details as Record<string, unknown>)?.identifier as string | number) ||
+              'unknown',
             context
           );
         }
@@ -378,6 +502,7 @@ export const ErrorCodes = {
 
   // System
   INTERNAL_SERVER_ERROR: 'INTERNAL_SERVER_ERROR',
+  INTERNAL_ERROR: 'INTERNAL_ERROR',
   DATABASE_ERROR: 'DATABASE_ERROR',
   EXTERNAL_SERVICE_ERROR: 'EXTERNAL_SERVICE_ERROR',
   RATE_LIMIT_EXCEEDED: 'RATE_LIMIT_EXCEEDED',
@@ -433,6 +558,141 @@ export async function retryWithBackoff<T>(
 }
 
 /**
+ * Retry options interface
+ */
+export interface RetryOptions {
+  maxAttempts: number;
+  baseDelay: number;
+  maxDelay: number;
+  exponentialBase: number;
+  jitter: boolean;
+}
+
+/**
+ * Retry function with exponential backoff and jitter
+ */
+export async function withRetry<T>(
+  operation: () => Promise<T>,
+  options: Partial<RetryOptions> = {},
+  context?: ErrorContext
+): Promise<T> {
+  const {
+    maxAttempts = 3,
+    baseDelay = 1000,
+    maxDelay = 10000,
+    exponentialBase = 2,
+    jitter = true,
+  } = options;
+
+  let lastError: Error;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error as Error;
+
+      if (attempt === maxAttempts) {
+        break;
+      }
+
+      if (error instanceof BaseServiceError && !isRetryableError(error)) {
+        break;
+      }
+
+      const delay = Math.min(baseDelay * exponentialBase ** (attempt - 1), maxDelay);
+
+      const finalDelay = jitter ? delay * (0.5 + Math.random() * 0.5) : delay;
+
+      logger.warn('Operation failed, retrying', {
+        attempt,
+        maxAttempts,
+        delay: finalDelay,
+        error: lastError.message,
+        context,
+      });
+
+      await new Promise(resolve => setTimeout(resolve, finalDelay));
+    }
+  }
+
+  throw globalErrorHandler.handleError(
+    lastError!,
+    context || {
+      service: 'retry',
+      method: 'withRetry',
+    }
+  );
+}
+
+function isRetryableError(error: BaseServiceError): boolean {
+  const retryableCodes = [
+    'DATABASE_BUSY',
+    'EXTERNAL_SERVICE_TIMEOUT',
+    'EXTERNAL_SERVICE_UNAVAILABLE',
+    'SERVICE_UNAVAILABLE',
+    'TIMEOUT',
+  ];
+
+  return retryableCodes.includes(error.code) || error.statusCode >= 500;
+}
+
+/**
+ * Circuit breaker implementation
+ */
+export function createCircuitBreaker(
+  name: string,
+  options: {
+    threshold: number;
+    timeout: number;
+    resetTimeout: number;
+  }
+) {
+  let failures = 0;
+  let lastFailureTime = 0;
+  let state: 'CLOSED' | 'OPEN' | 'HALF_OPEN' = 'CLOSED';
+
+  return async function <T>(operation: () => Promise<T>): Promise<T> {
+    const now = Date.now();
+
+    if (state === 'OPEN') {
+      if (now - lastFailureTime >= options.resetTimeout) {
+        state = 'HALF_OPEN';
+        logger.info('Circuit breaker half-open', { name });
+      } else {
+        throw new BaseServiceError(
+          'CIRCUIT_BREAKER_OPEN',
+          `Circuit breaker ${String(name)} is open`,
+          503
+        );
+      }
+    }
+
+    try {
+      const result = await operation();
+
+      if (state === 'HALF_OPEN') {
+        state = 'CLOSED';
+        failures = 0;
+        logger.info('Circuit breaker closed', { name });
+      }
+
+      return result;
+    } catch (error) {
+      failures++;
+      lastFailureTime = now;
+
+      if (failures >= options.threshold) {
+        state = 'OPEN';
+        logger.error('Circuit breaker opened', { name, failures, threshold: options.threshold });
+      }
+
+      throw error;
+    }
+  };
+}
+
+/**
  * Aggregate multiple errors
  */
 export class AggregateError extends BaseServiceError {
@@ -442,9 +702,9 @@ export class AggregateError extends BaseServiceError {
     const errorMessages = errors.map(e => e.message).join('; ');
     super(
       'AGGREGATE_ERROR',
-      `Multiple errors occurred: ${errorMessages}`,
+      `Multiple errors occurred: ${String(errorMessages)}`,
       500,
-      { errors: errors.map(e => e.toJSON()) as ErrorDetails },
+      { errors: errors.map(e => e.toJSON()) } as ErrorDetails,
       context
     );
     this.errors = errors;

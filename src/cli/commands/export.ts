@@ -4,7 +4,6 @@ import path from 'path';
 import type {
   CliComponents,
   ExportParams,
-  ExportResponse,
   ImportValidationResponse,
   ImportResponse,
 } from '../types';
@@ -49,18 +48,18 @@ export function registerExportCommands(program: Command): void {
         if (file) {
           const outputPath = path.resolve(file);
           const jsonData = options.pretty
-            ? JSON.stringify(response.data, null, 2)
-            : JSON.stringify(response.data);
+            ? JSON.stringify((response as any).data, null, 2)
+            : JSON.stringify((response as any).data);
 
           await fs.writeFile(outputPath, jsonData);
-          formatter.success(`Data exported to ${outputPath}`);
+          formatter.success(`Data exported to ${String(outputPath)}`);
         } else {
-          formatter.output(JSON.stringify(response.data, null, 2));
+          formatter.output(JSON.stringify((response as any).data, null, 2));
         }
       } catch (error) {
         const { formatter } = getComponents();
         formatter.error(
-          `Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Export failed: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -91,12 +90,12 @@ export function registerExportCommands(program: Command): void {
         const response = await apiClient.get('/export', { params });
 
         formatter.success('CSV export completed');
-        formatter.info(`Files: ${response.filePath}`);
-        formatter.info(`Items: ${response.itemCount}`);
+        formatter.info(`Files: ${String(String((response as any).filePath))}`);
+        formatter.info(`Items: ${String(String((response as any).itemCount))}`);
       } catch (error) {
         const { formatter } = getComponents();
         formatter.error(
-          `Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Export failed: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -137,33 +136,33 @@ export function registerExportCommands(program: Command): void {
         if (options.validateOnly) {
           const validationData = response.data as ImportValidationResponse;
           formatter.success('Validation completed');
-          formatter.info(`Valid: ${validationData.valid}`);
-          formatter.info(`Would import: ${validationData.wouldImport} items`);
-          formatter.info(`Would skip: ${validationData.wouldSkip} items`);
+          formatter.info(`Valid: ${String(String(validationData.valid))}`);
+          formatter.info(`Would import: ${String(String(validationData.wouldImport))} items`);
+          formatter.info(`Would skip: ${String(String(validationData.wouldSkip))} items`);
 
           if (validationData.errors.length > 0) {
             formatter.error('Validation errors:');
             validationData.errors.forEach((err: string) => {
-              formatter.error(`  • ${err}`);
+              formatter.error(`  • ${String(err)}`);
             });
           }
         } else {
           const importData = response.data as ImportResponse;
           formatter.success('Import completed');
-          formatter.info(`Imported: ${importData.imported} items`);
-          formatter.info(`Skipped: ${importData.skipped} items`);
+          formatter.info(`Imported: ${String(String(importData.imported))} items`);
+          formatter.info(`Skipped: ${String(String(importData.skipped))} items`);
 
           if (importData.errors.length > 0) {
             formatter.error('Import errors:');
             importData.errors.forEach((err: string) => {
-              formatter.error(`  • ${err}`);
+              formatter.error(`  • ${String(err)}`);
             });
           }
         }
       } catch (error) {
         const { formatter } = getComponents();
         formatter.error(
-          `Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Import failed: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }

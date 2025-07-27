@@ -1,9 +1,28 @@
+/**
+ * @module routes/tasks
+ * @description RESTful API routes for task management.
+ *
+ * This module provides comprehensive task operations including CRUD operations,
+ * dependency management, subtask handling, notes, and tags. All routes require
+ * authentication and appropriate permissions.
+ *
+ * Base path: `/api/v1/tasks`
+ *
+ * @example
+ * ```typescript
+ * // Client usage example
+ * const response = await fetch('/api/v1/tasks', {
+ *   method: 'GET',
+ *   headers: {
+ *     'X-API-Key': 'your-api-key',
+ *     'Content-Type': 'application/json'
+ *   }
+ * });
+ * ```
+ */
+
 import { Router } from 'express';
-import {
-  TaskService,
-  type CreateTaskRequest,
-  type UpdateTaskRequest,
-} from '@/services/TaskService';
+import { TaskService, type CreateTaskRequest } from '@/services/TaskService';
 import { NoteService } from '@/services/NoteService';
 import { TagService } from '@/services/TagService';
 import { dbConnection } from '@/database/connection';
@@ -12,6 +31,11 @@ import { TaskValidation, NoteValidation, validateInput } from '@/utils/validatio
 import type { Task } from '@/types';
 import { NotFoundError, ValidationError } from '@/utils/errors';
 
+/**
+ * Create and configure task routes.
+ *
+ * @returns Express router with all task endpoints configured
+ */
 export async function taskRoutes(): Promise<Router> {
   const router = Router();
 
@@ -19,6 +43,51 @@ export async function taskRoutes(): Promise<Router> {
   const noteService = new NoteService(dbConnection);
   const tagService = new TagService(dbConnection);
 
+  /**
+   * List tasks with filtering, sorting, and pagination.
+   *
+   * @route GET /api/v1/tasks
+   * @auth Required - Read permission
+   *
+   * @queryparam {number} limit - Maximum tasks to return (default: 50)
+   * @queryparam {number} offset - Pagination offset (default: 0)
+   * @queryparam {string} sortBy - Field to sort by: updated_at, created_at, priority, due_date (default: updated_at)
+   * @queryparam {string} sortOrder - Sort direction: asc or desc (default: desc)
+   * @queryparam {string} board_id - Filter by board ID
+   * @queryparam {string} column_id - Filter by column ID
+   * @queryparam {string} status - Filter by status: todo, in_progress, done, blocked, archived
+   * @queryparam {string} assignee - Filter by assignee
+   * @queryparam {string} parent_task_id - Filter by parent task (for subtasks)
+   * @queryparam {string} search - Search in title and description
+   * @queryparam {number} priority_min - Minimum priority (inclusive)
+   * @queryparam {number} priority_max - Maximum priority (inclusive)
+   * @queryparam {boolean} overdue - Filter overdue tasks (true/false)
+   *
+   * @response 200 - Success
+   * ```json
+   * {
+   *   "success": true,
+   *   "data": [
+   *     {
+   *       "id": "task123",
+   *       "title": "Implement feature",
+   *       "status": "in_progress",
+   *       "priority": 8,
+   *       "created_at": "2024-01-20T10:00:00Z"
+   *     }
+   *   ],
+   *   "pagination": {
+   *     "page": 1,
+   *     "limit": 50,
+   *     "total": 123,
+   *     "totalPages": 3
+   *   }
+   * }
+   * ```
+   *
+   * @response 401 - Missing or invalid API key
+   * @response 403 - Insufficient permissions
+   */
   // GET /api/v1/tasks - List tasks with filters
   router.get('/', requirePermission('read'), async (req, res, next) => {
     try {
@@ -96,6 +165,43 @@ export async function taskRoutes(): Promise<Router> {
     }
   });
 
+  /**
+   * Create a new task.
+   *
+   * @route POST /api/v1/tasks
+   * @auth Required - Write permission
+   *
+   * @bodyparam {string} title - Task title (required)
+   * @bodyparam {string} [description] - Task description
+   * @bodyparam {string} board_id - Board ID (required)
+   * @bodyparam {string} [column_id] - Column ID
+   * @bodyparam {string} [status] - Initial status: todo, in_progress, done, blocked
+   * @bodyparam {number} [priority] - Priority 1-10 (default: 5)
+   * @bodyparam {string} [assignee] - Assignee identifier
+   * @bodyparam {string} [due_date] - Due date in ISO format
+   * @bodyparam {string[]} [tags] - Array of tag IDs
+   * @bodyparam {string} [parent_task_id] - Parent task ID for subtasks
+   * @bodyparam {number} [position] - Position in column
+   *
+   * @response 201 - Task created successfully
+   * ```json
+   * {
+   *   "success": true,
+   *   "data": {
+   *     "id": "task456",
+   *     "title": "New task",
+   *     "board_id": "board123",
+   *     "status": "todo",
+   *     "priority": 5,
+   *     "created_at": "2024-01-20T10:00:00Z"
+   *   }
+   * }
+   * ```
+   *
+   * @response 400 - Invalid input data
+   * @response 401 - Missing or invalid API key
+   * @response 403 - Insufficient permissions
+   */
   // POST /api/v1/tasks - Create task
   router.post('/', requirePermission('write'), async (req, res, next) => {
     try {
@@ -111,6 +217,41 @@ export async function taskRoutes(): Promise<Router> {
     }
   });
 
+  /**
+   * Get detailed information about a specific task.
+   *
+   * @route GET /api/v1/tasks/:id
+   * @auth Required - Read permission
+   *
+   * @param {string} id - Task ID
+   * @queryparam {string} [include] - Include related data: 'subtasks' or 'dependencies'
+   *
+   * @response 200 - Success
+   * ```json
+   * {
+   *   "success": true,
+   *   "data": {
+   *     "id": "task123",
+   *     "title": "Task title",
+   *     "description": "Detailed description",
+   *     "status": "in_progress",
+   *     "priority": 8,
+   *     "assignee": "user123",
+   *     "due_date": "2024-12-31T00:00:00Z",
+   *     "tags": ["bug", "urgent"],
+   *     "created_at": "2024-01-20T10:00:00Z",
+   *     "updated_at": "2024-01-21T14:30:00Z",
+   *     "subtasks": [],  // If include=subtasks
+   *     "dependencies": [],  // If include=dependencies
+   *     "dependents": []  // If include=dependencies
+   *   }
+   * }
+   * ```
+   *
+   * @response 401 - Missing or invalid API key
+   * @response 403 - Insufficient permissions
+   * @response 404 - Task not found
+   */
   // GET /api/v1/tasks/:id - Get task details
   router.get('/:id', requirePermission('read'), async (req, res, next) => {
     try {
@@ -139,6 +280,39 @@ export async function taskRoutes(): Promise<Router> {
     }
   });
 
+  /**
+   * Update task properties.
+   *
+   * @route PATCH /api/v1/tasks/:id
+   * @auth Required - Write permission
+   *
+   * @param {string} id - Task ID
+   * @bodyparam {string} [title] - New title
+   * @bodyparam {string} [description] - New description
+   * @bodyparam {string} [status] - New status: todo, in_progress, done, blocked, archived
+   * @bodyparam {number} [priority] - New priority 1-10
+   * @bodyparam {string} [assignee] - New assignee
+   * @bodyparam {string} [due_date] - New due date in ISO format
+   * @bodyparam {number} [position] - New position in column
+   *
+   * @response 200 - Task updated successfully
+   * ```json
+   * {
+   *   "success": true,
+   *   "data": {
+   *     "id": "task123",
+   *     "title": "Updated title",
+   *     "status": "completed",
+   *     "updated_at": "2024-01-21T15:00:00Z"
+   *   }
+   * }
+   * ```
+   *
+   * @response 400 - Invalid input data
+   * @response 401 - Missing or invalid API key
+   * @response 403 - Insufficient permissions
+   * @response 404 - Task not found
+   */
   // PATCH /api/v1/tasks/:id - Update task
   router.patch('/:id', requirePermission('write'), async (req, res, next) => {
     try {
@@ -154,6 +328,22 @@ export async function taskRoutes(): Promise<Router> {
     }
   });
 
+  /**
+   * Delete a task permanently.
+   *
+   * @route DELETE /api/v1/tasks/:id
+   * @auth Required - Write permission
+   *
+   * @param {string} id - Task ID to delete
+   *
+   * @response 204 - Task deleted successfully (no content)
+   * @response 401 - Missing or invalid API key
+   * @response 403 - Insufficient permissions
+   * @response 404 - Task not found
+   *
+   * @warning This permanently deletes the task and all associated data
+   * (subtasks, notes, tags, dependencies). This action cannot be undone.
+   */
   // DELETE /api/v1/tasks/:id - Delete task
   router.delete('/:id', requirePermission('write'), async (req, res, next) => {
     try {
@@ -168,6 +358,34 @@ export async function taskRoutes(): Promise<Router> {
     }
   });
 
+  /**
+   * Add a dependency relationship between tasks.
+   *
+   * @route POST /api/v1/tasks/:id/dependencies
+   * @auth Required - Write permission
+   *
+   * @param {string} id - Task ID that depends on another task
+   * @bodyparam {string} depends_on_task_id - Task ID that this task depends on
+   * @bodyparam {string} [dependency_type] - Type: blocks, required, related (default: blocks)
+   *
+   * @response 201 - Dependency created
+   * ```json
+   * {
+   *   "success": true,
+   *   "data": {
+   *     "task_id": "task123",
+   *     "depends_on_task_id": "task456",
+   *     "dependency_type": "blocks",
+   *     "created_at": "2024-01-20T10:00:00Z"
+   *   }
+   * }
+   * ```
+   *
+   * @response 400 - Invalid dependency (e.g., circular dependency)
+   * @response 401 - Missing or invalid API key
+   * @response 403 - Insufficient permissions
+   * @response 404 - Task not found
+   */
   // POST /api/v1/tasks/:id/dependencies - Add dependency
   router.post('/:id/dependencies', requirePermission('write'), async (req, res, next) => {
     try {
@@ -278,6 +496,37 @@ export async function taskRoutes(): Promise<Router> {
     }
   });
 
+  /**
+   * Add a note to a task.
+   *
+   * @route POST /api/v1/tasks/:id/notes
+   * @auth Required - Write permission
+   *
+   * @param {string} id - Task ID
+   * @bodyparam {string} content - Note content (required)
+   * @bodyparam {string} [category] - Note category: comment, update, reminder, technical
+   * @bodyparam {boolean} [pinned] - Pin note to top (default: false)
+   *
+   * @response 201 - Note created
+   * ```json
+   * {
+   *   "success": true,
+   *   "data": {
+   *     "id": "note123",
+   *     "task_id": "task456",
+   *     "content": "Implementation note",
+   *     "category": "technical",
+   *     "pinned": false,
+   *     "created_at": "2024-01-20T10:00:00Z"
+   *   }
+   * }
+   * ```
+   *
+   * @response 400 - Invalid input data
+   * @response 401 - Missing or invalid API key
+   * @response 403 - Insufficient permissions
+   * @response 404 - Task not found
+   */
   // POST /api/v1/tasks/:id/notes - Add note to task
   router.post('/:id/notes', requirePermission('write'), async (req, res, next) => {
     try {
@@ -323,6 +572,34 @@ export async function taskRoutes(): Promise<Router> {
     }
   });
 
+  /**
+   * Add tags to a task.
+   *
+   * @route POST /api/v1/tasks/:id/tags
+   * @auth Required - Write permission
+   *
+   * @param {string} id - Task ID
+   * @bodyparam {string[]} tag_ids - Array of tag IDs to add
+   *
+   * @response 201 - Tags added successfully
+   * ```json
+   * {
+   *   "success": true,
+   *   "data": [
+   *     {
+   *       "task_id": "task123",
+   *       "tag_id": "tag456",
+   *       "created_at": "2024-01-20T10:00:00Z"
+   *     }
+   *   ]
+   * }
+   * ```
+   *
+   * @response 400 - Invalid input (not an array)
+   * @response 401 - Missing or invalid API key
+   * @response 403 - Insufficient permissions
+   * @response 404 - Task or tag not found
+   */
   // POST /api/v1/tasks/:id/tags - Add tags to task
   router.post('/:id/tags', requirePermission('write'), async (req, res, next) => {
     try {
@@ -337,13 +614,11 @@ export async function taskRoutes(): Promise<Router> {
         throw new ValidationError('Task ID is required');
       }
       const assignedTags = [];
-      for (const tagId of tag_ids) {
-        if (!tagId) {
-          throw new NotFoundError('Tag', tagId);
-        }
-        const assignment = await tagService.addTagToTask(id, tagId);
-        assignedTags.push(assignment);
-      }
+      await Promise.all(
+        tag_ids.map(async tagId => {
+          await tagService.addTagToTask(id, tagId);
+        })
+      );
 
       return res.status(201).apiSuccess(assignedTags);
     } catch (error) {

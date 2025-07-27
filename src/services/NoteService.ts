@@ -1,8 +1,46 @@
+/**
+ * Note Service - Core business logic for note management
+ *
+ * @module services/NoteService
+ * @description Provides comprehensive note management functionality including CRUD operations,
+ * search capabilities, categorization, pinning, and note statistics. Supports task-associated
+ * notes with categories for progress tracking, blockers, decisions, and questions.
+ *
+ * @example
+ * ```typescript
+ * import { NoteService } from '@/services/NoteService';
+ * import { dbConnection } from '@/database/connection';
+ *
+ * const noteService = new NoteService(dbConnection);
+ *
+ * // Create a blocker note
+ * const note = await noteService.createNote({
+ *   task_id: 'task-123',
+ *   content: 'Waiting for API credentials from client',
+ *   category: 'blocker',
+ *   pinned: true
+ * });
+ *
+ * // Search notes across boards
+ * const results = await noteService.searchNotes({
+ *   query: 'API',
+ *   board_id: 'board-123',
+ *   highlight: true
+ * });
+ * ```
+ */
+
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '@/utils/logger';
 import type { DatabaseConnection } from '@/database/connection';
 import type { Note, ServiceError, PaginationOptions, FilterOptions } from '@/types';
 
+/**
+ * Request interface for creating new notes
+ *
+ * @interface CreateNoteRequest
+ * @description Defines the structure for note creation requests with required task association
+ */
 export interface CreateNoteRequest {
   task_id: string;
   content: string;
@@ -10,12 +48,26 @@ export interface CreateNoteRequest {
   pinned?: boolean;
 }
 
+/**
+ * Request interface for updating existing notes
+ *
+ * @interface UpdateNoteRequest
+ * @description All fields are optional to support partial updates
+ */
 export interface UpdateNoteRequest {
   content?: string;
   category?: Note['category'];
   pinned?: boolean;
 }
 
+/**
+ * Advanced filtering options for note queries
+ *
+ * @interface NoteFilters
+ * @extends FilterOptions
+ * @description Provides comprehensive filtering capabilities including task/board scope,
+ * category filtering, pinned status, content search, and date ranges
+ */
 export interface NoteFilters extends FilterOptions {
   task_id?: string;
   category?: Note['category'];
@@ -26,6 +78,14 @@ export interface NoteFilters extends FilterOptions {
   date_to?: Date;
 }
 
+/**
+ * Options for note search functionality
+ *
+ * @interface NoteSearchOptions
+ * @extends PaginationOptions
+ * @description Defines search parameters including query text, scope filters,
+ * and highlighting options
+ */
 export interface NoteSearchOptions extends PaginationOptions {
   query: string;
   task_id?: string;
@@ -35,6 +95,13 @@ export interface NoteSearchOptions extends PaginationOptions {
   highlight?: boolean;
 }
 
+/**
+ * Note search result with additional context
+ *
+ * @interface NoteSearchResult
+ * @extends Note
+ * @description Includes task/board context and search relevance information
+ */
 export interface NoteSearchResult extends Note {
   task_title?: string;
   board_name?: string;
@@ -42,9 +109,43 @@ export interface NoteSearchResult extends Note {
   highlighted_content?: string;
 }
 
+/**
+ * Note Service - Manages all note-related operations
+ *
+ * @class NoteService
+ * @description Core service class providing comprehensive note management functionality.
+ * Handles note CRUD operations, search, categorization, and statistics with proper
+ * transaction handling and task association validation.
+ */
 export class NoteService {
+  /**
+   * Creates a new NoteService instance
+   *
+   * @param db Database connection instance for note operations
+   */
   constructor(private readonly db: DatabaseConnection) {}
 
+  /**
+   * Creates a new note associated with a task
+   *
+   * @param data Note creation data including task association and content
+   * @returns Promise resolving to the created note with generated ID and timestamps
+   *
+   * @throws {ServiceError} NOTE_CREATE_FAILED - When note creation fails
+   * @throws {Error} Task not found - When specified task_id doesn't exist
+   *
+   * @example
+   * ```typescript
+   * const note = await noteService.createNote({
+   *   task_id: 'task-123',
+   *   content: 'Implementation completed, ready for review',
+   *   category: 'progress',
+   *   pinned: false
+   * });
+   * ```
+   *
+   * @since 1.0.0
+   */
   async createNote(data: CreateNoteRequest): Promise<Note> {
     const id = uuidv4();
     const now = new Date();
@@ -91,6 +192,22 @@ export class NoteService {
     }
   }
 
+  /**
+   * Retrieves a single note by its ID
+   *
+   * @param id Unique note identifier
+   * @returns Promise resolving to the note if found, null otherwise
+   *
+   * @throws {ServiceError} NOTE_FETCH_FAILED - When database query fails
+   *
+   * @example
+   * ```typescript
+   * const note = await noteService.getNoteById('note-123');
+   * if (note) {
+   *   logger.log(`Note: ${String(String(note.content))}`);
+   * }
+   * ```
+   */
   async getNoteById(id: string): Promise<Note | null> {
     try {
       const note = await this.db.queryOne<Note>(
@@ -111,6 +228,32 @@ export class NoteService {
     }
   }
 
+  /**
+   * Retrieves notes with advanced filtering, pagination, and sorting
+   *
+   * @param options Comprehensive options for filtering, pagination, and sorting
+   * @returns Promise resolving to array of notes matching the criteria
+   *
+   * @throws {ServiceError} NOTES_FETCH_FAILED - When database query fails
+   *
+   * @example
+   * ```typescript
+   * // Get recent blocker notes for a board
+   * const blockers = await noteService.getNotes({
+   *   board_id: 'board-123',
+   *   category: 'blocker',
+   *   sortBy: 'created_at',
+   *   sortOrder: 'desc',
+   *   limit: 20
+   * });
+   *
+   * // Search notes by content
+   * const searchResults = await noteService.getNotes({
+   *   content_search: 'deployment',
+   *   date_from: new Date('2025-01-01')
+   * });
+   * ```
+   */
   async getNotes(options: PaginationOptions & NoteFilters = {}): Promise<Note[]> {
     const {
       limit = 50,
@@ -154,7 +297,7 @@ export class NoteService {
 
       if (content_search) {
         conditions.push('n.content LIKE ?');
-        params.push(`%${content_search}%`);
+        params.push(`%${String(content_search)}%`);
       }
 
       if (date_from) {
@@ -168,10 +311,10 @@ export class NoteService {
       }
 
       if (conditions.length > 0) {
-        query += ` WHERE ${conditions.join(' AND ')}`;
+        query += ` WHERE ${String(String(conditions.join(' AND ')))}`;
       }
 
-      query += ` ORDER BY n.${sortBy} ${sortOrder.toUpperCase()} LIMIT ? OFFSET ?`;
+      query += ` ORDER BY n.${String(sortBy)} ${String(String(sortOrder.toUpperCase()))} LIMIT ? OFFSET ?`;
       params.push(limit, offset);
 
       const notes = await this.db.query<Note>(query, params);
@@ -184,6 +327,23 @@ export class NoteService {
     }
   }
 
+  /**
+   * Retrieves all notes for a specific task
+   *
+   * @param taskId ID of the task
+   * @param options Pagination options
+   * @returns Promise resolving to array of task notes
+   *
+   * @throws {ServiceError} NOTES_FETCH_FAILED - When query fails
+   *
+   * @example
+   * ```typescript
+   * const taskNotes = await noteService.getTaskNotes('task-123', {
+   *   sortBy: 'created_at',
+   *   sortOrder: 'asc'
+   * });
+   * ```
+   */
   async getTaskNotes(taskId: string, options: PaginationOptions = {}): Promise<Note[]> {
     return this.getNotes({
       ...options,
@@ -191,6 +351,22 @@ export class NoteService {
     });
   }
 
+  /**
+   * Retrieves all pinned notes with optional scope filtering
+   *
+   * @param options Filtering and pagination options
+   * @returns Promise resolving to array of pinned notes
+   *
+   * @throws {ServiceError} NOTES_FETCH_FAILED - When query fails
+   *
+   * @example
+   * ```typescript
+   * // Get pinned notes for a board
+   * const pinnedNotes = await noteService.getPinnedNotes({
+   *   board_id: 'board-123'
+   * });
+   * ```
+   */
   async getPinnedNotes(
     options: PaginationOptions & { task_id?: string; board_id?: string } = {}
   ): Promise<Note[]> {
@@ -200,6 +376,25 @@ export class NoteService {
     });
   }
 
+  /**
+   * Updates an existing note
+   *
+   * @param id Unique note identifier
+   * @param data Partial note data to update (only provided fields will be changed)
+   * @returns Promise resolving to the updated note
+   *
+   * @throws {ServiceError} NOTE_NOT_FOUND - When note doesn't exist
+   * @throws {ServiceError} NOTE_UPDATE_FAILED - When update operation fails
+   *
+   * @example
+   * ```typescript
+   * const updated = await noteService.updateNote('note-123', {
+   *   content: 'Updated: Implementation completed and tested',
+   *   category: 'progress',
+   *   pinned: true
+   * });
+   * ```
+   */
   async updateNote(id: string, data: UpdateNoteRequest): Promise<Note> {
     try {
       const existingNote = await this.getNoteById(id);
@@ -234,7 +429,7 @@ export class NoteService {
       await this.db.execute(
         `
         UPDATE notes 
-        SET ${updates.join(', ')}
+        SET ${String(String(updates.join(', ')))}
         WHERE id = ?
       `,
         params
@@ -256,6 +451,20 @@ export class NoteService {
     }
   }
 
+  /**
+   * Permanently deletes a note
+   *
+   * @param id Unique note identifier
+   * @returns Promise that resolves when deletion is complete
+   *
+   * @throws {ServiceError} NOTE_NOT_FOUND - When note doesn't exist
+   * @throws {ServiceError} NOTE_DELETE_FAILED - When deletion fails
+   *
+   * @example
+   * ```typescript
+   * await noteService.deleteNote('note-123');
+   * ```
+   */
   async deleteNote(id: string): Promise<void> {
     try {
       const note = await this.getNoteById(id);
@@ -279,6 +488,34 @@ export class NoteService {
     }
   }
 
+  /**
+   * Searches notes with relevance scoring and optional highlighting
+   *
+   * @param options Search parameters including query and filters
+   * @returns Promise resolving to array of search results with context
+   *
+   * @throws {ServiceError} NOTE_SEARCH_FAILED - When search fails
+   *
+   * @description Performs full-text search across note content with:
+   * - Relevance scoring based on match quality
+   * - Optional content highlighting
+   * - Task and board context inclusion
+   *
+   * @example
+   * ```typescript
+   * const results = await noteService.searchNotes({
+   *   query: 'authentication',
+   *   board_id: 'board-123',
+   *   category: 'decision',
+   *   highlight: true,
+   *   limit: 10
+   * });
+   *
+   * results.forEach(result => {
+   *   logger.log(`${String(String(result.task_title))}: ${String(String(result.highlighted_content))}`);
+   * });
+   * ```
+   */
   async searchNotes(options: NoteSearchOptions): Promise<NoteSearchResult[]> {
     const {
       query,
@@ -310,9 +547,9 @@ export class NoteService {
         WHERE n.content LIKE ?
       `;
 
-      const searchTerm = `%${query}%`;
-      const exactMatch = `%${query}%`;
-      const wordBoundary = `% ${query} %`;
+      const searchTerm = `%${String(query)}%`;
+      const exactMatch = `%${String(query)}%`;
+      const wordBoundary = `% ${String(query)} %`;
 
       const params: any[] = [exactMatch, wordBoundary, searchTerm];
       const conditions: string[] = [];
@@ -337,13 +574,13 @@ export class NoteService {
       }
 
       if (conditions.length > 0) {
-        sql += ` AND ${conditions.join(' AND ')}`;
+        sql += ` AND ${String(String(conditions.join(' AND ')))}`;
       }
 
       if (sortBy === 'relevance') {
         sql += ' ORDER BY relevance_score DESC, n.updated_at DESC';
       } else {
-        sql += ` ORDER BY n.${sortBy} ${sortOrder.toUpperCase()}`;
+        sql += ` ORDER BY n.${String(sortBy)} ${String(String(sortOrder.toUpperCase()))}`;
       }
 
       sql += ` LIMIT ? OFFSET ?`;
@@ -377,6 +614,23 @@ export class NoteService {
     }
   }
 
+  /**
+   * Retrieves notes created within a recent time period
+   *
+   * @param options Options including time period and board filter
+   * @returns Promise resolving to array of recent notes
+   *
+   * @throws {ServiceError} NOTES_FETCH_FAILED - When query fails
+   *
+   * @example
+   * ```typescript
+   * // Get notes from last 3 days
+   * const recentNotes = await noteService.getRecentNotes({
+   *   days: 3,
+   *   board_id: 'board-123'
+   * });
+   * ```
+   */
   async getRecentNotes(
     options: PaginationOptions & { days?: number; board_id?: string } = {}
   ): Promise<Note[]> {
@@ -393,6 +647,25 @@ export class NoteService {
     });
   }
 
+  /**
+   * Retrieves all notes of a specific category
+   *
+   * @param category Note category to filter by
+   * @param options Additional filtering and pagination options
+   * @returns Promise resolving to array of notes in the category
+   *
+   * @throws {ServiceError} NOTES_FETCH_FAILED - When query fails
+   *
+   * @example
+   * ```typescript
+   * // Get all blocker notes
+   * const blockers = await noteService.getNotesByCategory('blocker', {
+   *   board_id: 'board-123',
+   *   sortBy: 'created_at',
+   *   sortOrder: 'desc'
+   * });
+   * ```
+   */
   async getNotesByCategory(
     category: Note['category'],
     options: PaginationOptions & { board_id?: string } = {}
@@ -403,6 +676,23 @@ export class NoteService {
     });
   }
 
+  /**
+   * Retrieves all notes for a specific board
+   *
+   * @param boardId ID of the board
+   * @param options Additional filtering and pagination options
+   * @returns Promise resolving to array of board notes
+   *
+   * @throws {ServiceError} NOTES_FETCH_FAILED - When query fails
+   *
+   * @example
+   * ```typescript
+   * const boardNotes = await noteService.getNotesForBoard('board-123', {
+   *   category: 'decision',
+   *   pinned: true
+   * });
+   * ```
+   */
   async getNotesForBoard(
     boardId: string,
     options: PaginationOptions & NoteFilters = {}
@@ -413,14 +703,67 @@ export class NoteService {
     });
   }
 
+  /**
+   * Pins a note for priority visibility
+   *
+   * @param id Unique note identifier
+   * @returns Promise resolving to the updated note
+   *
+   * @throws {ServiceError} NOTE_NOT_FOUND - When note doesn't exist
+   * @throws {ServiceError} NOTE_UPDATE_FAILED - When update fails
+   *
+   * @example
+   * ```typescript
+   * const pinnedNote = await noteService.pinNote('note-123');
+   * ```
+   */
   async pinNote(id: string): Promise<Note> {
     return this.updateNote(id, { pinned: true });
   }
 
+  /**
+   * Unpins a previously pinned note
+   *
+   * @param id Unique note identifier
+   * @returns Promise resolving to the updated note
+   *
+   * @throws {ServiceError} NOTE_NOT_FOUND - When note doesn't exist
+   * @throws {ServiceError} NOTE_UPDATE_FAILED - When update fails
+   *
+   * @example
+   * ```typescript
+   * const unpinnedNote = await noteService.unpinNote('note-123');
+   * ```
+   */
   async unpinNote(id: string): Promise<Note> {
     return this.updateNote(id, { pinned: false });
   }
 
+  /**
+   * Creates a duplicate of an existing note
+   *
+   * @param id ID of the note to duplicate
+   * @param newTaskId Optional different task ID for the duplicate
+   * @returns Promise resolving to the duplicated note
+   *
+   * @throws {ServiceError} NOTE_NOT_FOUND - When original note doesn't exist
+   * @throws {ServiceError} NOTE_DUPLICATE_FAILED - When duplication fails
+   *
+   * @description Creates a copy of the note with:
+   * - Same content and category
+   * - Reset pinned status to false
+   * - New timestamps
+   * - Optional different task association
+   *
+   * @example
+   * ```typescript
+   * // Duplicate to same task
+   * const duplicate = await noteService.duplicateNote('note-123');
+   *
+   * // Duplicate to different task
+   * const crossTaskDuplicate = await noteService.duplicateNote('note-123', 'task-456');
+   * ```
+   */
   async duplicateNote(id: string, newTaskId?: string): Promise<Note> {
     try {
       const originalNote = await this.getNoteById(id);
@@ -446,6 +789,27 @@ export class NoteService {
     }
   }
 
+  /**
+   * Retrieves comprehensive note statistics
+   *
+   * @param options Scope filters for statistics calculation
+   * @returns Promise resolving to note statistics object
+   *
+   * @throws {ServiceError} NOTE_STATS_FAILED - When statistics calculation fails
+   *
+   * @example
+   * ```typescript
+   * // Get board-wide note statistics
+   * const stats = await noteService.getNoteStats({
+   *   board_id: 'board-123',
+   *   days: 30
+   * });
+   *
+   * logger.log(`Total notes: ${String(String(stats.total))}`);
+   * logger.log(`Blockers: ${String(String(stats.by_category.blocker))}`);
+   * logger.log(`Recent notes (30 days): ${String(String(stats.recent))}`);
+   * ```
+   */
   async getNoteStats(
     options: { board_id?: string; task_id?: string; days?: number } = {}
   ): Promise<{
@@ -472,17 +836,18 @@ export class NoteService {
         params.push(task_id);
       }
 
-      const whereClause = conditions.length > 0 ? ` WHERE ${conditions.join(' AND ')}` : '';
+      const whereClause =
+        conditions.length > 0 ? ` WHERE ${String(String(conditions.join(' AND ')))}` : '';
 
       const [totalResult, categoryStats, pinnedResult, recentResult] = await Promise.all([
         this.db.queryOne<{ count: number }>(
-          `SELECT COUNT(*) as count ${baseQuery}${whereClause}`,
+          `SELECT COUNT(*) as count ${String(baseQuery)}${String(whereClause)}`,
           params
         ),
         this.db.query<{ category: Note['category']; count: number }>(
           `
           SELECT category, COUNT(*) as count 
-          ${baseQuery}${whereClause}
+          ${String(baseQuery)}${String(whereClause)}
           GROUP BY category
         `,
           params
@@ -490,14 +855,14 @@ export class NoteService {
         this.db.queryOne<{ count: number }>(
           `
           SELECT COUNT(*) as count 
-          ${baseQuery}${whereClause}${conditions.length > 0 ? ' AND' : ' WHERE'} n.pinned = TRUE
+          ${String(baseQuery)}${String(whereClause)}${String(String(conditions.length > 0 ? ' AND' : ' WHERE'))} n.pinned = TRUE
         `,
           params
         ),
         this.db.queryOne<{ count: number }>(
           `
           SELECT COUNT(*) as count 
-          ${baseQuery}${whereClause}${conditions.length > 0 ? ' AND' : ' WHERE'} n.created_at >= ?
+          ${String(baseQuery)}${String(whereClause)}${String(String(conditions.length > 0 ? ' AND' : ' WHERE'))} n.created_at >= ?
         `,
           [...params, new Date(Date.now() - days * 24 * 60 * 60 * 1000)]
         ),
@@ -527,6 +892,25 @@ export class NoteService {
     }
   }
 
+  /**
+   * Retrieves note category distribution with percentages
+   *
+   * @param filters Scope filters for category analysis
+   * @returns Promise resolving to array of category statistics
+   *
+   * @throws {ServiceError} NOTE_CATEGORIES_FAILED - When category analysis fails
+   *
+   * @example
+   * ```typescript
+   * const categories = await noteService.getNoteCategories({
+   *   board_id: 'board-123'
+   * });
+   *
+   * categories.forEach(cat => {
+   *   logger.log(`${String(String(cat.category))}: ${String(String(cat.count))} notes (${String(String(cat.percentage.toFixed(1)))}%)`);
+   * });
+   * ```
+   */
   async getNoteCategories(filters: { task_id?: string; board_id?: string } = {}): Promise<
     {
       category: Note['category'];
@@ -552,17 +936,18 @@ export class NoteService {
         params.push(task_id);
       }
 
-      const whereClause = conditions.length > 0 ? ` WHERE ${conditions.join(' AND ')}` : '';
+      const whereClause =
+        conditions.length > 0 ? ` WHERE ${String(String(conditions.join(' AND ')))}` : '';
 
       const [totalResult, categoryStats] = await Promise.all([
         this.db.queryOne<{ count: number }>(
-          `SELECT COUNT(*) as count ${baseQuery}${whereClause}`,
+          `SELECT COUNT(*) as count ${String(baseQuery)}${String(whereClause)}`,
           params
         ),
         this.db.query<{ category: Note['category']; count: number }>(
           `
           SELECT category, COUNT(*) as count 
-          ${baseQuery}${whereClause}
+          ${String(baseQuery)}${String(whereClause)}
           GROUP BY category
           ORDER BY count DESC
         `,
@@ -583,19 +968,43 @@ export class NoteService {
     }
   }
 
-  private highlightSearchTerm(content: string, searchTerm: string): string {
+  /**
+   * Highlights search terms in content using HTML markup
+   *
+   * @private
+   * @param content Original content
+   * @param searchTerm Term to highlight
+   * @returns Content with search terms wrapped in <mark> tags
+   */
+  private static highlightSearchTerm(content: string, searchTerm: string): string {
     if (!searchTerm.trim()) return content;
 
-    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    const escapedSearchTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escapedSearchTerm})`, 'gi');
     return content.replace(regex, '<mark>$1</mark>');
   }
 
-  private convertNoteDates(note: Note): void {
+  /**
+   * Converts string date fields to Date objects
+   *
+   * @private
+   * @param note Note object with potentially string-based dates
+   */
+  private static convertNoteDates(note: Note): void {
     note.created_at = new Date(note.created_at);
     note.updated_at = new Date(note.updated_at);
   }
 
-  private createError(code: string, message: string, originalError?: any): ServiceError {
+  /**
+   * Creates a standardized service error
+   *
+   * @private
+   * @param code Error code identifier
+   * @param message Human-readable error message
+   * @param originalError Optional original error for debugging
+   * @returns Standardized ServiceError with status code
+   */
+  private static createError(code: string, message: string, originalError?: any): ServiceError {
     const error = new Error(message) as ServiceError;
     error.code = code;
     error.statusCode = this.getStatusCodeForError(code);
@@ -603,7 +1012,14 @@ export class NoteService {
     return error;
   }
 
-  private getStatusCodeForError(code: string): number {
+  /**
+   * Maps error codes to HTTP status codes
+   *
+   * @private
+   * @param code Error code
+   * @returns HTTP status code
+   */
+  private static getStatusCodeForError(code: string): number {
     switch (code) {
       case 'NOTE_NOT_FOUND':
         return 404;

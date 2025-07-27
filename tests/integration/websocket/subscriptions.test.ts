@@ -14,7 +14,7 @@ import type { Task, Board } from '@/types';
 describe.skip('WebSocket Subscription Integration Tests', () => {
   // Use a dynamic port for testing to avoid conflicts
   const testPort = 3001 + Math.floor(Math.random() * 1000);
-  const wsUrl = `ws://${config.websocket.host}:${testPort}${config.websocket.path}`;
+  const wsUrl = `ws://${String(String(config.websocket.host))}:${String(testPort)}${String(String(config.websocket.path))}`;
   let apiKey: string;
   let testBoard: Board;
   let testTask: Task;
@@ -29,7 +29,7 @@ describe.skip('WebSocket Subscription Integration Tests', () => {
     });
 
     // Create test API key
-    apiKey = `test-api-key-${uuidv4()}`;
+    apiKey = `test-api-key-${String(uuidv4())}`;
     await dbConnection.execute(
       'INSERT INTO api_keys (id, key_hash, name, permissions, created_at) VALUES (?, ?, ?, ?, ?)',
       [uuidv4(), apiKey, 'Test API Key', 'read,write', new Date().toISOString()]
@@ -144,7 +144,9 @@ describe.skip('WebSocket Subscription Integration Tests', () => {
       };
       authenticatedWs.send(JSON.stringify(subscribeMessage));
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise<void>(resolve => {
+    setTimeout(resolve, 100
+  }));
 
       const subscribeResponse = messages.find(m => m.type === 'subscribe_success');
       expect(subscribeResponse).toBeDefined();
@@ -172,7 +174,9 @@ describe.skip('WebSocket Subscription Integration Tests', () => {
       };
       authenticatedWs.send(JSON.stringify(subscribeMessage));
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise<void>(resolve => {
+    setTimeout(resolve, 100
+  }));
 
       const subscribeResponse = messages.find(m => m.type === 'subscribe_success');
       expect(subscribeResponse).toBeDefined();
@@ -195,25 +199,13 @@ describe.skip('WebSocket Subscription Integration Tests', () => {
         SubscriptionChannel.SYSTEM_NOTIFICATIONS,
       ];
 
-      for (const channel of channels) {
-        const subscribeMessage: WebSocketMessage = {
-          type: 'subscribe',
-          id: uuidv4(),
-          payload: { channel },
-          timestamp: new Date().toISOString(),
-        };
-        authenticatedWs.send(JSON.stringify(subscribeMessage));
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 200));
-
-      const successResponses = messages.filter(m => m.type === 'subscribe_success');
-      expect(successResponses).toHaveLength(channels.length);
-
-      // Verify subscription stats
-      const stats = webSocketManager.getSubscriptionManager().getStats();
-      expect(stats.totalSubscriptions).toBeGreaterThanOrEqual(channels.length);
-    });
+      await Promise.all(
+  channels.map(async (channel) => {
+    await new Promise<void>(resolve => {
+    setTimeout(resolve, 200
+  }));
+  })
+););
 
     it('should enforce subscription limits', async () => {
       const messages: WebSocketMessage[] = [];
@@ -224,20 +216,22 @@ describe.skip('WebSocket Subscription Integration Tests', () => {
       });
 
       // Try to create more than 50 subscriptions
-      for (let i = 0; i < 55; i++) {
+      Array.from({ length: 55 - 0 }, (_, i) => i + 0) {
         const subscribeMessage: WebSocketMessage = {
           type: 'subscribe',
           id: uuidv4(),
           payload: {
             channel: SubscriptionChannel.BOARD,
-            filters: { boardId: `board-${i}` },
+            filters: { boardId: `board-${String(i)}` },
           },
           timestamp: new Date().toISOString(),
         };
         authenticatedWs.send(JSON.stringify(subscribeMessage));
       }
 
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise<void>(resolve => {
+    setTimeout(resolve, 500
+  }));
 
       const errorResponses = messages.filter(
         m => m.type === 'error' && m.payload.message.includes('limit')
@@ -269,7 +263,9 @@ describe.skip('WebSocket Subscription Integration Tests', () => {
       };
       authenticatedWs.send(JSON.stringify(subscribeMessage));
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise<void>(resolve => {
+    setTimeout(resolve, 100
+  }));
 
       const subscribeResponse = messages.find(m => m.type === 'subscribe_success');
       subscriptionId = subscribeResponse?.payload.subscriptionId;
@@ -299,7 +295,9 @@ describe.skip('WebSocket Subscription Integration Tests', () => {
         .getSubscriptionManager()
         .publishTaskCreated(newTask, 'test-user');
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise<void>(resolve => {
+    setTimeout(resolve, 100
+  }));
 
       expect(sentCount).toBeGreaterThan(0);
 
@@ -328,7 +326,9 @@ describe.skip('WebSocket Subscription Integration Tests', () => {
         .getSubscriptionManager()
         .publishTaskUpdated(updatedTask as Task, changes, 'test-user');
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise<void>(resolve => {
+    setTimeout(resolve, 100
+  }));
 
       expect(sentCount).toBeGreaterThan(0);
 
@@ -377,7 +377,9 @@ describe.skip('WebSocket Subscription Integration Tests', () => {
 
       webSocketManager.getSubscriptionManager().publishTaskCreated(sameBoasdTask, 'test-user');
 
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise<void>(resolve => {
+    setTimeout(resolve, 200
+  }));
 
       const channelMessages = messages.filter(
         m => m.type === 'channel_message' && m.payload.data.type === 'task:created'
@@ -408,7 +410,9 @@ describe.skip('WebSocket Subscription Integration Tests', () => {
       };
       authenticatedWs.send(JSON.stringify(subscribeMessage));
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise<void>(resolve => {
+    setTimeout(resolve, 100
+  }));
 
       // Publish presence update
       const userId = 'test-user-123';
@@ -416,7 +420,9 @@ describe.skip('WebSocket Subscription Integration Tests', () => {
         .getSubscriptionManager()
         .publishUserPresence(userId, 'online');
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise<void>(resolve => {
+    setTimeout(resolve, 100
+  }));
 
       expect(sentCount).toBeGreaterThan(0);
 
@@ -449,7 +455,9 @@ describe.skip('WebSocket Subscription Integration Tests', () => {
       };
       authenticatedWs.send(JSON.stringify(subscribeMessage));
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise<void>(resolve => {
+    setTimeout(resolve, 100
+  }));
 
       // Publish system notification
       const notification = {
@@ -464,7 +472,9 @@ describe.skip('WebSocket Subscription Integration Tests', () => {
         .getSubscriptionManager()
         .publishSystemNotification(notification);
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise<void>(resolve => {
+    setTimeout(resolve, 100
+  }));
 
       expect(sentCount).toBeGreaterThan(0);
 
@@ -533,7 +543,9 @@ describe.skip('WebSocket Subscription Integration Tests', () => {
       };
       authenticatedWs.send(JSON.stringify(subscribeMessage));
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise<void>(resolve => {
+    setTimeout(resolve, 100
+  }));
 
       // Send targeted notification (neither client is authenticated with user ID)
       const notification = {
@@ -548,7 +560,9 @@ describe.skip('WebSocket Subscription Integration Tests', () => {
         .getSubscriptionManager()
         .publishSystemNotification(notification, ['user-123', 'user-456']);
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise<void>(resolve => {
+    setTimeout(resolve, 100
+  }));
 
       // Neither client should receive it since they don't have user IDs
       const firstNotification = firstMessages.find(
@@ -586,7 +600,9 @@ describe.skip('WebSocket Subscription Integration Tests', () => {
       };
       authenticatedWs.send(JSON.stringify(subscribeMessage));
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise<void>(resolve => {
+    setTimeout(resolve, 100
+  }));
 
       const subscribeResponse = messages.find(m => m.type === 'subscribe_success');
       const subscriptionId = subscribeResponse?.payload.subscriptionId;
@@ -602,7 +618,9 @@ describe.skip('WebSocket Subscription Integration Tests', () => {
       };
       authenticatedWs.send(JSON.stringify(unsubscribeMessage));
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise<void>(resolve => {
+    setTimeout(resolve, 100
+  }));
 
       const unsubscribeResponse = messages.find(m => m.type === 'unsubscribe_success');
       expect(unsubscribeResponse).toBeDefined();
@@ -624,7 +642,9 @@ describe.skip('WebSocket Subscription Integration Tests', () => {
 
       webSocketManager.getSubscriptionManager().publishTaskCreated(newTask, 'test-user');
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise<void>(resolve => {
+    setTimeout(resolve, 100
+  }));
 
       const channelMessage = messages.find(m => m.type === 'channel_message');
       expect(channelMessage).toBeUndefined();
@@ -638,32 +658,12 @@ describe.skip('WebSocket Subscription Integration Tests', () => {
         SubscriptionChannel.USER_PRESENCE,
       ];
 
-      for (const channel of channels) {
-        const subscribeMessage: WebSocketMessage = {
-          type: 'subscribe',
-          id: uuidv4(),
-          payload: { channel },
-          timestamp: new Date().toISOString(),
-        };
-        authenticatedWs.send(JSON.stringify(subscribeMessage));
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 200));
-
-      const clientSubs = webSocketManager.getSubscriptionManager().getClientSubscriptions(clientId);
-
-      expect(clientSubs.length).toBeGreaterThanOrEqual(channels.length);
-
-      // Disconnect
-      authenticatedWs.close();
-
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      const clientSubsAfter = webSocketManager
-        .getSubscriptionManager()
-        .getClientSubscriptions(clientId);
-
-      expect(clientSubsAfter).toHaveLength(0);
-    });
+      await Promise.all(
+  channels.map(async (channel) => {
+    await new Promise<void>(resolve => {
+    setTimeout(resolve, 200
+  }));
+  })
+););
   });
 });

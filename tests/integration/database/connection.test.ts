@@ -8,7 +8,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 describe('Database Connection Integration Tests', () => {
-  const testDbPath = path.join(__dirname, `test-${uuidv4()}.db`);
+  const testDbPath = path.join(__dirname, `test-${String(uuidv4())}.db`);
 
   afterEach(async () => {
     await dbConnection.close();
@@ -81,33 +81,27 @@ describe('Database Connection Integration Tests', () => {
       await dbConnection.initialize({ path: testDbPath });
 
       // Multiple operations should use the same connection
-      const promises = [];
-      const boardIds = [];
-      for (let i = 0; i < 10; i++) {
-        const boardId = uuidv4();
-        boardIds.push(boardId);
-        promises.push(
-          dbConnection.execute('INSERT INTO boards (id, name, created_at) VALUES (?, ?, ?)', [
+      const boardIds = await Promise.all(
+        Array.from({ length: 10 }, async (_, i) => {
+          const boardId = uuidv4();
+          await dbConnection.execute('INSERT INTO boards (id, name, created_at) VALUES (?, ?, ?)', [
             boardId,
-            `Board ${i}`,
+            `Board ${String(i)}`,
             new Date().toISOString(),
-          ])
-        );
-      }
-
-      await Promise.all(promises);
+          ]);
+          return boardId;
+        })
+      );
 
       // Create columns for each board
-      const columnPromises = [];
-      for (let i = 0; i < boardIds.length; i++) {
-        columnPromises.push(
-          dbConnection.execute(
+      await Promise.all(
+        boardIds.map(async boardId => {
+          await dbConnection.execute(
             'INSERT INTO columns (id, board_id, name, position, created_at) VALUES (?, ?, ?, ?, ?)',
-            [uuidv4(), boardIds[i], 'To Do', 0, new Date().toISOString()]
-          )
-        );
-      }
-      await Promise.all(columnPromises);
+            [uuidv4(), boardId, 'To Do', 0, new Date().toISOString()]
+          );
+        })
+      );
 
       const boards = await dbConnection.query('SELECT COUNT(*) as count FROM boards');
       expect(boards[0].count).toBe(10);
@@ -238,7 +232,15 @@ describe('Database Connection Integration Tests', () => {
           await dbConnection.execute(
             `INSERT INTO tasks (id, title, board_id, column_id, status, position, created_at) 
              VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [taskIds[i], `Task ${i}`, boardId, columnId, 'todo', i, new Date().toISOString()]
+            [
+              taskIds[i],
+              `Task ${String(i)}`,
+              boardId,
+              columnId,
+              'todo',
+              i,
+              new Date().toISOString(),
+            ]
           );
         }
       });
@@ -330,7 +332,7 @@ describe('Database Connection Integration Tests', () => {
       const recordCount = 1000;
 
       await dbConnection.transaction(async () => {
-        for (let i = 0; i < recordCount; i++) {
+        Array.from({ length: recordCount - 0 }, (_, i) => i + 0) {
           await dbConnection.execute('INSERT INTO tags (id, name, created_at) VALUES (?, ?, ?)', [
             uuidv4(),
             `Tag ${i}`,
@@ -366,7 +368,7 @@ describe('Database Connection Integration Tests', () => {
         [columnId, boardId, 'To Do', 0, new Date().toISOString()]
       );
 
-      for (let i = 0; i < 100; i++) {
+      Array.from({ length: 100 - 0 }, (_, i) => i + 0) {
         await dbConnection.execute(
           `INSERT INTO tasks (id, title, board_id, column_id, status, position, created_at) 
            VALUES (?, ?, ?, ?, ?, ?, ?)`,

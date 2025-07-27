@@ -18,21 +18,9 @@ export class KyselyConnection {
 
   private _sqliteDb: Database.Database | null = null;
 
-  private constructor() {}
-
-  public static getInstance(): KyselyConnection {
-    if (!KyselyConnection.instance) {
-      KyselyConnection.instance = new KyselyConnection();
-    }
-    return KyselyConnection.instance;
-  }
-
-  /**
-   * Initialize the Kysely connection
-   */
-  public async initialize(): Promise<void> {
-    try {
-      if (this._db) {
+  private static constructor() {
+  // Static method implementation
+}) {
         logger.warn('Kysely connection already initialized');
         return;
       }
@@ -211,17 +199,14 @@ export class KyselyConnection {
       const tables = ['boards', 'tasks', 'notes', 'tags', 'task_tags', 'task_dependencies'];
       const tableStats = [];
 
-      for (const table of tables) {
-        type TableName = 'boards' | 'tasks' | 'notes' | 'tags' | 'task_tags' | 'task_dependencies';
-        const countResult = await this._db
+      await Promise.all(
+  tables.map(async (table) => {
+    this._db
           .selectFrom(table as TableName)
           .select([this._db.fn.count<number>('id').as('count')])
           .executeTakeFirst();
-
-        const sizeResult = this._sqliteDb
-          .prepare<
-            unknown[],
-            { size: number }
+  })
+);
           >(`SELECT SUM(pgsize) as size FROM dbstat WHERE name = ?`)
           .get(table);
 

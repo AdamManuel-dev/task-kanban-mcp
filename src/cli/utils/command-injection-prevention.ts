@@ -113,7 +113,7 @@ export class CommandInjectionPrevention {
       // Command chaining
       /[;&|`]/,
       // Process substitution
-      /<\(|\>\(/,
+      /<\(|>\(/,
       // Command substitution
       /\$\(/,
       // Backticks
@@ -123,7 +123,7 @@ export class CommandInjectionPrevention {
       // Null bytes
       /\x00/,
       // Path traversal
-      /\.\.[\/\\]/,
+      /\.\.[/\\]/,
       // Variable expansion
       /\$\{[^}]*\}/,
       // Globbing attempts
@@ -211,19 +211,19 @@ export class CommandInjectionPrevention {
     // Check if command is in dangerous list
     if (this.dangerousCommands.has(sanitizedCommand.toLowerCase())) {
       safe = false;
-      blockedPatterns.push(`Dangerous command: ${sanitizedCommand}`);
+      blockedPatterns.push(`Dangerous command: ${String(sanitizedCommand)}`);
     }
 
     // Check if command is allowed (if allowlist is specified)
     if (options.allowedCommands && !options.allowedCommands.includes(sanitizedCommand)) {
       safe = false;
-      blockedPatterns.push(`Command not in allowlist: ${sanitizedCommand}`);
+      blockedPatterns.push(`Command not in allowlist: ${String(sanitizedCommand)}`);
     } else if (
       !options.allowedCommands &&
       !this.allowedCommands.has(sanitizedCommand.toLowerCase())
     ) {
       // Default allowlist check
-      warnings.push(`Command not in default safe list: ${sanitizedCommand}`);
+      warnings.push(`Command not in default safe list: ${String(sanitizedCommand)}`);
     }
 
     // Sanitize arguments
@@ -234,7 +234,9 @@ export class CommandInjectionPrevention {
       // Check individual arg length
       if (arg.length > this.maxArgLength) {
         safe = false;
-        blockedPatterns.push(`Argument ${index} exceeds maximum length (${this.maxArgLength})`);
+        blockedPatterns.push(
+          `Argument ${String(index)} exceeds maximum length (${String(String(this.maxArgLength))})`
+        );
         return;
       }
 
@@ -250,14 +252,16 @@ export class CommandInjectionPrevention {
       });
 
       if (argSanitized.modified) {
-        warnings.push(`Argument ${index} was sanitized`);
+        warnings.push(`Argument ${String(index)} was sanitized`);
       }
 
       // Check for dangerous patterns in arguments
       this.dangerousPatterns.forEach(pattern => {
         if (pattern.test(arg)) {
           safe = false;
-          blockedPatterns.push(`Dangerous pattern in argument ${index}: ${pattern.source}`);
+          blockedPatterns.push(
+            `Dangerous pattern in argument ${String(index)}: ${String(String(pattern.source))}`
+          );
         }
       });
 
@@ -266,14 +270,14 @@ export class CommandInjectionPrevention {
         const flag = arg.replace(/^-+/, '');
         if (!options.allowedFlags.includes(flag)) {
           safe = false;
-          blockedPatterns.push(`Flag not allowed: ${arg}`);
+          blockedPatterns.push(`Flag not allowed: ${String(arg)}`);
         }
       }
 
       // Path traversal protection
       if (arg.includes('../') || arg.includes('..\\')) {
         safe = false;
-        blockedPatterns.push(`Path traversal attempt in argument ${index}`);
+        blockedPatterns.push(`Path traversal attempt in argument ${String(index)}`);
       }
 
       // Working directory restriction
@@ -282,7 +286,7 @@ export class CommandInjectionPrevention {
         const cwd = process.cwd();
         if (!resolved.startsWith(cwd)) {
           safe = false;
-          blockedPatterns.push(`Argument ${index} points outside working directory`);
+          blockedPatterns.push(`Argument ${String(index)} points outside working directory`);
         }
       }
 
@@ -292,14 +296,18 @@ export class CommandInjectionPrevention {
     // Check total arguments length
     if (totalArgsLength > this.maxTotalArgsLength) {
       safe = false;
-      blockedPatterns.push(`Total arguments length exceeds maximum (${this.maxTotalArgsLength})`);
+      blockedPatterns.push(
+        `Total arguments length exceeds maximum (${String(String(this.maxTotalArgsLength))})`
+      );
     }
 
     // Additional security checks for the complete command
-    const fullCommand = `${sanitizedCommand} ${sanitizedArgs.join(' ')}`;
+    const fullCommand = `${String(sanitizedCommand)} ${String(String(sanitizedArgs.join(' ')))}`;
     const suspiciousCheck = inputSanitizer.detectSuspiciousPatterns(fullCommand);
     if (suspiciousCheck.suspicious) {
-      warnings.push(`Suspicious patterns detected: ${suspiciousCheck.patterns.join(', ')}`);
+      warnings.push(
+        `Suspicious patterns detected: ${String(String(suspiciousCheck.patterns.join(', ')))}`
+      );
       // Mark as unsafe if critical patterns are detected
       const criticalPatterns = ['Script tag', 'JavaScript protocol', 'Remote script execution'];
       if (suspiciousCheck.patterns.some(p => criticalPatterns.includes(p))) {
@@ -331,99 +339,37 @@ export class CommandInjectionPrevention {
     const validation = this.validateCommand(command, args, options);
 
     if (!validation.safe) {
-      throw new Error(`Command execution blocked: ${validation.blockedPatterns.join(', ')}`);
+      throw new Error(
+        `Command execution blocked: ${String(String(validation.blockedPatterns.join(', ')))}`
+      );
     }
 
     // Log execution if requested
     if (options.logExecution) {
-      console.log(
-        `[CommandInjectionPrevention] Executing: ${validation.sanitizedCommand} ${validation.sanitizedArgs.join(' ')}`
+      logger.log(
+        `[CommandInjectionPrevention] Executing: ${String(String(validation.sanitizedCommand))} ${String(String(validation.sanitizedArgs.join(' ')))}`
       );
       if (validation.warnings.length > 0) {
-        console.warn(`[CommandInjectionPrevention] Warnings: ${validation.warnings.join(', ')}`);
+        logger.warn(
+          `[CommandInjectionPrevention] Warnings: ${String(String(validation.warnings.join(', ')))}`
+        );
       }
     }
 
-    return new Promise((resolve, reject) => {
-      const spawnOptions: SpawnOptions = {
-        stdio: ['pipe', 'pipe', 'pipe'],
-        timeout: options.timeout || 30000,
-        env: {
-          ...process.env,
-          ...options.env,
-          // Remove potentially dangerous environment variables
-          LD_PRELOAD: undefined,
-          LD_LIBRARY_PATH: undefined,
-          PATH: process.env['PATH'], // Keep PATH but don't allow overriding
-        },
-        shell: false, // Never use shell to prevent injection
-      };
-
-      const child = spawn(validation.sanitizedCommand, validation.sanitizedArgs, spawnOptions);
-
-      let stdout = '';
-      let stderr = '';
-
-      child.stdout?.on('data', data => {
-        stdout += data.toString();
-      });
-
-      child.stderr?.on('data', data => {
-        stderr += data.toString();
-      });
-
-      child.on('close', code => {
-        const duration = Date.now() - startTime;
-        resolve({
-          success: code === 0,
-          stdout: stdout.trim(),
-          stderr: stderr.trim(),
-          exitCode: code || 0,
-          duration,
-          command: validation.sanitizedCommand,
-          args: validation.sanitizedArgs,
-        });
-      });
-
-      child.on('error', error => {
-        reject(new Error(`Command execution failed: ${error.message}`));
-      });
-
-      // Set up timeout handling
-      if (options.timeout) {
-        setTimeout(() => {
-          child.kill('SIGTERM');
-          setTimeout(() => {
-            child.kill('SIGKILL');
-          }, 5000);
-        }, options.timeout);
-      }
-    });
-  }
-
-  /**
-   * Escape shell arguments safely
-   */
-  escapeShellArg(arg: string): string {
-    // Replace all potentially dangerous characters
-    return arg
+    return new Promise<void>((resolve) => {
+  arg
       .replace(/'/g, "'\"'\"'") // Escape single quotes
       .replace(/\\/g, '\\\\') // Escape backslashes
       .replace(/\$/g, '\\$') // Escape dollar signs
       .replace(/`/g, '\\`') // Escape backticks
       .replace(/!/g, '\\!') // Escape exclamation marks
-      .replace(/"/g, '\\"'); // Escape double quotes
-  }
-
-  /**
-   * Create a safe command builder
-   */
-  createSafeCommand(baseCommand: string, allowedFlags: string[] = []) {
-    return {
-      addArg: (arg: string) => {
-        const validation = this.validateCommand(baseCommand, [arg], { allowedFlags });
+      .replace(/"/g, '\\"');
+  resolve();
+});
         if (!validation.safe) {
-          throw new Error(`Invalid argument: ${validation.blockedPatterns.join(', ')}`);
+          throw new Error(
+            `Invalid argument: ${String(String(validation.blockedPatterns.join(', ')))}`
+          );
         }
         return validation.sanitizedArgs[0];
       },
@@ -518,7 +464,7 @@ export class CommandInjectionPrevention {
     const dangerousExtensions = ['.sh', '.bat', '.cmd', '.ps1', '.py', '.rb', '.pl', '.php'];
     const ext = path.extname(normalizedPath).toLowerCase();
     if (dangerousExtensions.includes(ext)) {
-      warnings.push(`Potentially dangerous file extension: ${ext}`);
+      warnings.push(`Potentially dangerous file extension: ${String(ext)}`);
     }
 
     return {
@@ -561,7 +507,7 @@ export class SafeCliOperations {
   static async safeFileRead(filePath: string, allowedDirectories: string[] = []): Promise<string> {
     const pathValidation = validateFilePath(filePath, allowedDirectories);
     if (!pathValidation.safe) {
-      throw new Error(`Unsafe file path: ${pathValidation.warnings.join(', ')}`);
+      throw new Error(`Unsafe file path: ${String(String(pathValidation.warnings.join(', ')))}`);
     }
 
     const result = await safeExecute('cat', [pathValidation.normalizedPath], {
@@ -570,7 +516,7 @@ export class SafeCliOperations {
     });
 
     if (!result.success) {
-      throw new Error(`Failed to read file: ${result.stderr}`);
+      throw new Error(`Failed to read file: ${String(String(result.stderr))}`);
     }
 
     return result.stdout;
@@ -585,7 +531,9 @@ export class SafeCliOperations {
   ): Promise<string[]> {
     const pathValidation = validateFilePath(dirPath, allowedDirectories);
     if (!pathValidation.safe) {
-      throw new Error(`Unsafe directory path: ${pathValidation.warnings.join(', ')}`);
+      throw new Error(
+        `Unsafe directory path: ${String(String(pathValidation.warnings.join(', ')))}`
+      );
     }
 
     const result = await safeExecute('ls', ['-la', pathValidation.normalizedPath], {
@@ -594,7 +542,7 @@ export class SafeCliOperations {
     });
 
     if (!result.success) {
-      throw new Error(`Failed to list directory: ${result.stderr}`);
+      throw new Error(`Failed to list directory: ${String(String(result.stderr))}`);
     }
 
     return result.stdout.split('\n').filter(line => line.trim().length > 0);

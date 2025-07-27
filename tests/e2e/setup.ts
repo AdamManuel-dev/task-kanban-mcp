@@ -75,7 +75,7 @@ export const testUtils = {
   createTestDir: async (prefix: string = 'e2e-test'): Promise<string> => {
     const testDir = join(
       tmpdir(),
-      `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      `${String(prefix)}-${String(String(Date.now()))}-${String(String(Math.random().toString(36).substr(2, 9)))}`
     );
     await fs.mkdir(testDir, { recursive: true });
     testDirectories.push(testDir);
@@ -94,7 +94,7 @@ export const testUtils = {
    */
   execCli: (command: string): string => {
     try {
-      return execSync(`node dist/cli/index.js ${command}`, {
+      return execSync(`node dist/cli/index.js ${String(command)}`, {
         encoding: 'utf8',
         cwd: process.cwd(),
         timeout: TEST_CONFIG.timeout,
@@ -102,7 +102,7 @@ export const testUtils = {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       // Re-throw with more context
-      throw new Error(`CLI command failed: ${command}\nError: ${message}`);
+      throw new Error(`CLI command failed: ${String(command)}\nError: ${String(message)}`);
     }
   },
 
@@ -116,14 +116,23 @@ export const testUtils = {
   ): Promise<void> => {
     const startTime = Date.now();
 
-    while (Date.now() - startTime < timeout) {
+    const checkCondition = async (): Promise<void> => {
+      if (Date.now() - startTime >= timeout) {
+        throw new Error(`Condition not met within ${String(timeout)}ms`);
+      }
+
       if (await condition()) {
         return;
       }
-      await new Promise(resolve => setTimeout(resolve, interval));
-    }
 
-    throw new Error(`Condition not met within ${timeout}ms`);
+      await new Promise<void>(resolve => {
+        setTimeout(resolve, interval);
+      });
+
+      return checkCondition();
+    };
+
+    return checkCondition();
   },
 
   /**
@@ -132,7 +141,7 @@ export const testUtils = {
   createTestData: {
     board: (name = 'Test Board'): string => {
       const result = testUtils.execCli(
-        `board create --name "${TEST_CONFIG.testDataPrefix}${name}"`
+        `board create --name "${String(String(TEST_CONFIG.testDataPrefix))}${String(name)}"`
       );
       const boardMatch = result.match(/Board.*created.*ID:?\s*([a-zA-Z0-9-]+)/);
       return boardMatch ? boardMatch[1] : '';
@@ -140,8 +149,8 @@ export const testUtils = {
 
     task: (boardId: string | undefined, title = 'Test Task'): string => {
       const command = boardId
-        ? `task create --title "${TEST_CONFIG.testDataPrefix}${title}" --board-id ${boardId}`
-        : `task create --title "${TEST_CONFIG.testDataPrefix}${title}"`;
+        ? `task create --title "${String(String(TEST_CONFIG.testDataPrefix))}${String(title)}" --board-id ${String(boardId)}`
+        : `task create --title "${String(String(TEST_CONFIG.testDataPrefix))}${String(title)}"`;
 
       const result = testUtils.execCli(command);
       const taskMatch = result.match(/Task.*created.*ID:?\s*([a-zA-Z0-9-]+)/);
@@ -161,7 +170,7 @@ export const testUtils = {
   /**
    * Simulate user input for interactive commands
    */
-  simulateInput: (inputs: string[]): string => `${inputs.join('\\n')}\\n`,
+  simulateInput: (inputs: string[]): string => `${String(String(inputs.join('\\n')))}\\n`,
 
   /**
    * Check if CLI binary exists and is executable
@@ -190,6 +199,7 @@ interface CustomMatchers<R = unknown> {
 }
 
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace jest {
     interface Expect extends CustomMatchers {}
     interface Matchers<R> extends CustomMatchers<R> {}
@@ -210,13 +220,13 @@ expect.extend({
 
     if (pass) {
       return {
-        message: (): string => `expected ${received} to not contain sanitized input`,
+        message: (): string => `expected ${String(received)} to not contain sanitized input`,
         pass: true,
       };
     }
     return {
       message: (): string =>
-        `expected ${received} to contain sanitized input (original: ${original}, safe: ${safe})`,
+        `expected ${String(received)} to contain sanitized input (original: ${String(original)}, safe: ${String(safe)})`,
       pass: false,
     };
   },
@@ -227,12 +237,12 @@ expect.extend({
 
     if (hasValidStructure) {
       return {
-        message: (): string => `expected ${received} to not be valid CLI output`,
+        message: (): string => `expected ${String(received)} to not be valid CLI output`,
         pass: true,
       };
     }
     return {
-      message: (): string => `expected ${received} to be valid CLI output`,
+      message: (): string => `expected ${String(received)} to be valid CLI output`,
       pass: false,
     };
   },

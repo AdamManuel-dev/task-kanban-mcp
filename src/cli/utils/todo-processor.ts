@@ -45,124 +45,11 @@ export class TodoProcessor {
     const todos = new Map<string, TodoItem>();
     let currentPhase = '';
 
-    for (const line of lines) {
-      // Detect phase headers
-      if (line.startsWith('## Phase')) {
-        const phaseMatch = line.match(/## Phase \d+: (.+?) \(/);
-        if (phaseMatch) {
-          currentPhase = phaseMatch[1] || '';
-        }
-        continue;
-      }
-
-      // Parse TODO items
-      const todoMatch = line.match(
-        /- \[([ x])\] \*\*TASK-(\d+)\*\*: (.+?) \[([SML]|XL), (P[1-5]), Value: ([SML])\]/
-      );
-      if (todoMatch) {
-        const [, completed, taskId, description, size, priority, value] = todoMatch;
-        const id = `TASK-${taskId}`;
-
-        // Look for dependencies in subsequent lines
-        const dependencies: string[] = [];
-        const lineIndex = lines.indexOf(line);
-        if (lineIndex < lines.length - 1) {
-          const nextLines = lines.slice(lineIndex + 1, lineIndex + 5);
-          for (const nextLine of nextLines) {
-            if (nextLine.includes('Dependencies:')) {
-              const depMatch = nextLine.match(/Dependencies: (.+)/);
-              if (depMatch && depMatch[1] !== 'None') {
-                dependencies.push(...(depMatch[1]?.split(', ').map(d => d.trim()) || []));
-              }
-              break;
-            }
-          }
-        }
-
-        todos.set(id, {
-          id,
-          text: description || '',
-          completed: completed === 'x',
-          priority: priority as TodoItem['priority'],
-          size: size as TodoItem['size'],
-          value: value as TodoItem['value'],
-          dependencies,
-          phase: currentPhase || '',
-        });
-      }
-    }
-
-    return todos;
-  }
-
-  /**
-   * Group todos by phase
-   */
-  private groupByPhase(todos: Map<string, TodoItem>): Map<string, TodoItem[]> {
-    const phases = new Map<string, TodoItem[]>();
-
-    for (const todo of todos.values()) {
-      const phase = todo.phase || 'Uncategorized';
-      if (!phases.has(phase)) {
-        phases.set(phase, []);
-      }
-      const phaseArray = phases.get(phase);
-      if (phaseArray) {
-        phaseArray.push(todo);
-      }
-    }
-
-    return phases;
-  }
-
-  /**
-   * Check if a todo can be executed based on dependencies
-   */
-  private canExecuteTodo(todo: TodoItem, completedTodos: Set<string>): boolean {
-    if (todo.completed) return false;
-    if (!todo.dependencies || todo.dependencies.length === 0) return true;
-    return todo.dependencies.every(dep => completedTodos.has(dep));
-  }
-
-  /**
-   * Create execution groups based on dependencies
-   */
-  private createExecutionGroups(todos: Map<string, TodoItem>): TodoItem[][] {
-    const groups: TodoItem[][] = [];
-    const completed = new Set<string>(
-      Array.from(todos.values())
-        .filter(t => t.completed)
-        .map(t => t.id)
-    );
-    const remaining = Array.from(todos.values()).filter(t => !t.completed);
-
-    while (remaining.length > 0) {
-      const executable = remaining.filter(t => this.canExecuteTodo(t, completed));
-
-      if (executable.length === 0) {
-        console.warn(chalk.yellow('Warning: Some tasks have unresolvable dependencies'));
-        break;
-      }
-
-      groups.push(executable);
-      executable.forEach(t => {
-        completed.add(t.id);
-        remaining.splice(remaining.indexOf(t), 1);
-      });
-    }
-
-    return groups;
-  }
-
-  /**
-   * Process todos with visual feedback
-   */
-  async processTodos(todoFile: string, options: TodoProcessorOptions = {}): Promise<void> {
-    const todos = await this.parseTodoFile(todoFile);
-
-    if (options.groupByPhase) {
-      await this.processGroupedByPhase(todos, options);
-    } else {
+    await Promise.all(
+  lines.map(async (line) => {
+    this.parseTodoFile(todoFile);
+  })
+); else {
       await this.processWithDependencies(todos, options);
     }
 
@@ -210,7 +97,7 @@ export class TodoProcessor {
               return false;
             },
           })),
-        concurrent: options.concurrent ?? false,
+        concurrent: options.concurrent || false,
       });
     }
 
@@ -243,7 +130,7 @@ export class TodoProcessor {
           }));
 
           return task.newListr(subtasks, {
-            concurrent: options.concurrent ?? true,
+            concurrent: options.concurrent || true,
             rendererOptions: {
               showSubtasks: true,
             } as any,
@@ -292,13 +179,13 @@ ${pending.map(t => `- [ ] ${t.id}: ${t.text}`).join('\n')}
 `;
 
     await writeFile(reportPath, report);
-    console.log(chalk.green(`\n✅ Report generated: ${reportPath}`));
+    logger.log(chalk.green(`\n✅ Report generated: ${reportPath}`));
   }
 
   /**
    * Calculate time estimate based on task sizes
    */
-  private calculateTimeEstimate(todos: TodoItem[]): number {
+  private static calculateTimeEstimate(todos: TodoItem[]): number {
     const sizeMultipliers = { S: 1, M: 1.4, L: 4, XL: 8 };
     return todos.reduce((total, todo) => total + sizeMultipliers[todo.size], 0);
   }

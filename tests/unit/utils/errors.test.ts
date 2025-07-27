@@ -137,7 +137,7 @@ describe('Error Utilities', () => {
       const error = new NotFoundError('User');
 
       expect(error.message).toBe('User not found');
-      expect(error.details).toEqual({ resource: 'User', identifier: undefined });
+      expect(error.details).toEqual({ resource: 'User', identifier: 'unknown' });
     });
   });
 

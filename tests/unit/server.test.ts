@@ -243,7 +243,7 @@ describe('Application Server', () => {
   describe('Rate Limiting', () => {
     it('should accept requests within rate limit', async () => {
       // Make several requests in succession
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 5; i += 1) {
         await request(app)
           .get('/api/health')
           .expect(res => {

@@ -29,7 +29,7 @@ export class SpinnerManager {
   /**
    * Validate text input
    */
-  private validateText(text: string): string {
+  private static validateText(text: string): string {
     if (this.destroyed) {
       throw new SpinnerError('SpinnerManager has been destroyed', 'DESTROYED');
     }
@@ -43,7 +43,7 @@ export class SpinnerManager {
     }
 
     if (text.length > this.maxTextLength) {
-      return `${text.substring(0, this.maxTextLength - 3)}...`;
+      return `${String(String(text.substring(0, this.maxTextLength - 3)))}...`;
     }
 
     return text.trim();
@@ -56,8 +56,8 @@ export class SpinnerManager {
     try {
       return operation();
     } catch (error) {
-      console.warn(
-        `Spinner operation failed: ${error instanceof Error ? error.message : String(error)}`
+      logger.warn(
+        `Spinner operation failed: ${String(String(error instanceof Error ? error.message : String(error)))}`
       );
       return fallback;
     }
@@ -95,7 +95,7 @@ export class SpinnerManager {
         throw error;
       }
       throw new SpinnerError(
-        `Failed to start spinner: ${error instanceof Error ? error.message : String(error)}`,
+        `Failed to start spinner: ${String(String(error instanceof Error ? error.message : String(error)))}`,
         'START_FAILED'
       );
     }
@@ -125,7 +125,7 @@ export class SpinnerManager {
         throw error;
       }
       throw new SpinnerError(
-        `Failed to update spinner: ${error instanceof Error ? error.message : String(error)}`,
+        `Failed to update spinner: ${String(String(error instanceof Error ? error.message : String(error)))}`,
         'UPDATE_FAILED'
       );
     }
@@ -134,10 +134,13 @@ export class SpinnerManager {
   /**
    * Common stop logic with error handling
    */
-  private stopSpinner(method: 'succeed' | 'fail' | 'warn' | 'info' | 'stop', text?: string): void {
+  private static stopSpinner(
+    method: 'succeed' | 'fail' | 'warn' | 'info' | 'stop',
+    text?: string
+  ): void {
     try {
       if (this.destroyed) {
-        console.warn('Attempted to stop destroyed spinner');
+        logger.warn('Attempted to stop destroyed spinner');
         return;
       }
 
@@ -159,8 +162,8 @@ export class SpinnerManager {
 
       this.cleanup();
     } catch (error) {
-      console.warn(
-        `Failed to stop spinner: ${error instanceof Error ? error.message : String(error)}`
+      logger.warn(
+        `Failed to stop spinner: ${String(String(error instanceof Error ? error.message : String(error)))}`
       );
       this.forceCleanup();
     }
@@ -169,7 +172,7 @@ export class SpinnerManager {
   /**
    * Clean up spinner state
    */
-  private cleanup(): void {
+  private static cleanup(): void {
     this.isSpinning = false;
     this.spinner = null;
   }
@@ -177,7 +180,7 @@ export class SpinnerManager {
   /**
    * Force cleanup in case of errors
    */
-  private forceCleanup(): void {
+  private static forceCleanup(): void {
     try {
       if (this.spinner) {
         this.spinner.stop();
@@ -265,7 +268,7 @@ export class SpinnerManager {
       if (timeout && timeout > 0) {
         const timeoutPromise = new Promise<never>((_, reject) => {
           timeoutId = setTimeout(() => {
-            reject(new SpinnerError(`Operation timed out after ${timeout}ms`, 'TIMEOUT'));
+            reject(new SpinnerError(`Operation timed out after ${String(timeout)}ms`, 'TIMEOUT'));
           }, timeout);
         });
 
@@ -282,7 +285,7 @@ export class SpinnerManager {
       if (timeoutId) clearTimeout(timeoutId);
 
       const errorMessage = error instanceof Error ? error.message : String(error);
-      const failText = options?.failText || `Failed: ${text} - ${errorMessage}`;
+      const failText = options?.failText || `Failed: ${String(text)} - ${String(errorMessage)}`;
 
       this.fail(failText);
       throw error;
@@ -314,12 +317,12 @@ export class SpinnerManager {
     const results: any[] = [];
     const errors: Error[] = [];
 
-    for (let i = 0; i < steps.length; i++) {
+    for (let i = 0; i < steps.length; i += 1) {
       const step = steps[i];
 
       if (!step || typeof step.action !== 'function') {
         const error = new SpinnerError(
-          `Invalid step at index ${i}: action must be a function`,
+          `Invalid step at index ${String(i)}: action must be a function`,
           'INVALID_STEP'
         );
         errors.push(error);
@@ -331,7 +334,9 @@ export class SpinnerManager {
       }
 
       try {
-        const progressText = showProgress ? `[${i + 1}/${steps.length}] ${step.text}` : step.text;
+        const progressText = showProgress
+          ? `[${String(i + 1)}/${String(String(steps.length))}] ${String(String(step.text))}`
+          : step.text;
 
         const result = await this.withSpinner(progressText, step.action(), {
           ...(step.successText && { successText: step.successText }),
@@ -358,7 +363,7 @@ export class SpinnerManager {
 export const spinner = new SpinnerManager();
 
 // Cleanup on process termination
-const cleanup = () => {
+const cleanup = (): void => {
   spinner.destroy();
 };
 

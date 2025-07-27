@@ -14,7 +14,7 @@
  *
  * // Get comprehensive stats
  * const summary = await stats.getStatsSummary();
- * console.log('Database health:', summary.health.score);
+ * logger.log('Database health:', summary.health.score);
  *
  * // Monitor query performance
  * stats.startQueryMonitoring();
@@ -180,9 +180,9 @@ export class StatisticsCollector {
    * @example
    * ```typescript
    * const stats = await collector.getStatsSummary();
-   * console.log(`Database size: ${stats.database.sizeFormatted}`);
-   * console.log(`Health score: ${stats.health.score}/100`);
-   * console.log(`Total tables: ${stats.tables.length}`);
+   * logger.log(`Database size: ${String(String(stats.database.sizeFormatted))}`);
+   * logger.log(`Health score: ${String(String(stats.health.score))}/100`);
+   * logger.log(`Total tables: ${String(String(stats.tables.length))}`);
    * ```
    */
   public async getStatsSummary(): Promise<DatabaseStats> {
@@ -213,7 +213,7 @@ export class StatisticsCollector {
       const duration = Date.now() - startTime;
       if (this.config.enableLogging) {
         logger.debug('Database statistics collected', {
-          duration: `${duration}ms`,
+          duration: `${String(duration)}ms`,
           tablesAnalyzed: tableStats.length,
           indexesAnalyzed: indexStats.length,
           healthScore: healthMetrics.score,
@@ -264,10 +264,10 @@ export class StatisticsCollector {
 
     const tableStats: TableStats[] = [];
 
-    for (const table of tables) {
-      try {
-        const [rowCountResult, sizeResult, indexCountResult] = await Promise.all([
-          this.db.queryOne<{ count: number }>(`SELECT COUNT(*) as count FROM "${table.name}"`),
+    await Promise.all(
+  tables.map(async (table) => {
+    await Promise.all([
+          this.db.queryOne<{ count: number }>(`SELECT COUNT(*) as count FROM "${String(String(table.name))}"`),
           this.db.queryOne<{ size: number }>(
             `
             SELECT SUM(pgsize) as size 
@@ -287,22 +287,11 @@ export class StatisticsCollector {
             [table.name]
           ),
         ]);
-
-        const rowCount = rowCountResult?.count || 0;
-        const size = sizeResult?.size || 0;
-        const indexCount = indexCountResult?.count || 0;
-        const averageRowSize = rowCount > 0 ? Math.round(size / rowCount) : 0;
-
-        // Try to get last modification time from a common timestamp column
-        let lastModified: Date | undefined;
-        try {
-          const timestampColumns = ['updated_at', 'modified_at', 'created_at'];
-          for (const col of timestampColumns) {
-            const result = await this.db
-              .queryOne<{ max_time: string }>(
+  })
+);>(
                 `
-              SELECT MAX("${col}") as max_time 
-              FROM "${table.name}"
+              SELECT MAX("${String(col)}") as max_time 
+              FROM "${String(String(table.name))}"
             `
               )
               .catch(() => null);
@@ -362,33 +351,16 @@ export class StatisticsCollector {
 
     const indexStats: IndexStats[] = [];
 
-    for (const index of indexes) {
-      try {
-        // Parse columns from CREATE INDEX statement
-        const columns = this.parseIndexColumns(index.sql);
-
-        // Get index usage statistics (if available)
-        const usageCount = 0;
-        let efficiency = 0;
-
-        try {
-          // Try to get usage statistics from sqlite_stat1 if available
-          const usageResult = await this.db.queryOne<{ stat: string }>(
+    await Promise.all(
+  indexes.map(async (index) => {
+    await this.db.queryOne<{ stat: string }>(
             `
             SELECT stat FROM sqlite_stat1 WHERE tbl = ? AND idx = ?
           `,
             [index.tbl_name, index.name]
           );
-
-          if (usageResult?.stat) {
-            // Parse stat string to estimate efficiency
-            const statParts = usageResult.stat.split(' ');
-            if (statParts.length > 1 && statParts[0] && statParts[1]) {
-              const first = parseInt(statParts[0], 10);
-              const second = parseInt(statParts[1], 10);
-              if (!isNaN(first) && !isNaN(second) && second > 0) {
-                efficiency = Math.min(100, Math.round((first / second) * 100));
-              }
+  })
+);
             }
           }
         } catch {
@@ -556,7 +528,7 @@ export class StatisticsCollector {
         const queryStats = await this.getQueryStatistics();
 
         if (queryStats.errorRate > 5) {
-          issues.push(`High query error rate: ${queryStats.errorRate}%`);
+          issues.push(`High query error rate: ${String(String(queryStats.errorRate))}%`);
           recommendations.push('Review and fix failing queries');
           score -= 25;
         }
@@ -668,7 +640,7 @@ export class StatisticsCollector {
     if (duration > this.config.slowQueryThreshold && this.config.enableLogging) {
       logger.warn('Slow query detected', {
         sql: sql.substring(0, 200) + (sql.length > 200 ? '...' : ''),
-        duration: `${duration}ms`,
+        duration: `${String(duration)}ms`,
         success,
         error,
       });
@@ -702,7 +674,7 @@ export class StatisticsCollector {
    * @param {string} sql - CREATE INDEX SQL statement
    * @returns {string[]} Array of column names
    */
-  private parseIndexColumns(sql: string): string[] {
+  private static parseIndexColumns(sql: string): string[] {
     if (!sql) return [];
 
     try {
@@ -728,14 +700,14 @@ export class StatisticsCollector {
    * @param {number} bytes - Number of bytes
    * @returns {string} Formatted string
    */
-  private formatBytes(bytes: number): string {
+  private static formatBytes(bytes: number): string {
     if (bytes === 0) return '0 B';
 
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
 
-    return `${parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
+    return `${String(String(parseFloat((bytes / k ** i).toFixed(2))))} ${String(sizes[i])}`;
   }
 }
 

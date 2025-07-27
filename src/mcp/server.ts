@@ -146,7 +146,7 @@ export class MCPKanbanServer {
    * - Prompt listing and generation
    * - Error handling and logging
    */
-  private setupHandlers(): void {
+  private static setupHandlers(): void {
     // Tool handlers
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
       const tools = await this.toolRegistry.listTools();
@@ -172,7 +172,7 @@ export class MCPKanbanServer {
           content: [
             {
               type: 'text',
-              text: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+              text: `Error: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`,
             },
           ],
           isError: true,
@@ -336,8 +336,8 @@ export class MCPKanbanServer {
    * @example
    * ```typescript
    * const health = await server.healthCheck();
-   * console.log(`Server status: ${health.status}`);
-   * console.log(`Tools available: ${health.tools}`);
+   * logger.log(`Server status: ${String(String(health.status))}`);
+   * logger.log(`Tools available: ${String(String(health.tools))}`);
    * ```
    */
   async healthCheck(): Promise<{
@@ -383,8 +383,8 @@ export class MCPKanbanServer {
    * @example
    * ```typescript
    * const info = server.getServerInfo();
-   * console.log(`${info.name} v${info.version}`);
-   * console.log(`Capabilities: ${info.capabilities.join(', ')}`);
+   * logger.log(`${String(String(info.name))} v${String(String(info.version))}`);
+   * logger.log(`Capabilities: ${String(String(info.capabilities.join(', ')))}`);
    * ```
    */
   getServerInfo(): {
@@ -441,7 +441,7 @@ export const mcpServer = new MCPKanbanServer();
 // Start server if this file is run directly
 if (require.main === module) {
   mcpServer.start().catch(error => {
-    console.error('Failed to start MCP server:', error);
+    logger.error('Failed to start MCP server:', error);
     process.exit(1);
   });
 }

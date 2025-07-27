@@ -737,7 +737,7 @@ describe('Validation Utilities', () => {
 
           invalidTransitions.forEach(([from, to]) => {
             expect(() => BusinessRules.task.validateStatusTransition(from, to)).toThrow(
-              `Invalid status transition from ${from} to ${to}`
+              `Invalid status transition from ${String(from)} to ${String(to)}`
             );
           });
         });
@@ -782,7 +782,7 @@ describe('Validation Utilities', () => {
           const invalidCategory = 'invalid';
 
           expect(() => BusinessRules.note.validateCategory(invalidCategory)).toThrow(
-            `Invalid note category: ${invalidCategory}`
+            `Invalid note category: ${String(invalidCategory)}`
           );
         });
       });

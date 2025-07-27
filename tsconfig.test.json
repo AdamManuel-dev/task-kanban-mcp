@@ -1,7 +1,20 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "noEmit": true
+    "noEmit": true,
+    "baseUrl": "./",
+    "paths": {
+      "@/*": ["src/*"],
+      "@config/*": ["src/config/*"],
+      "@services/*": ["src/services/*"],
+      "@repositories/*": ["src/repositories/*"],
+      "@controllers/*": ["src/controllers/*"],
+      "@middleware/*": ["src/middleware/*"],
+      "@utils/*": ["src/utils/*"],
+      "@types/*": ["src/types/*"],
+      "@mcp/*": ["src/mcp/*"],
+      "@cli/*": ["src/cli/*"]
+    }
   },
   "include": [
     "src/**/*",

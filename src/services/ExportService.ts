@@ -192,7 +192,7 @@ export class ExportService {
           'created_at',
           'updated_at',
         ]);
-        const boardsFile = path.join(baseDir, `${baseName}_boards.csv`);
+        const boardsFile = path.join(baseDir, `${String(baseName)}_boards.csv`);
         await fs.writeFile(boardsFile, boardsCsv);
         csvFiles.push(boardsFile);
         totalItems += boards.length;
@@ -218,7 +218,7 @@ export class ExportService {
           'created_at',
           'updated_at',
         ]);
-        const tasksFile = path.join(baseDir, `${baseName}_tasks.csv`);
+        const tasksFile = path.join(baseDir, `${String(baseName)}_tasks.csv`);
         await fs.writeFile(tasksFile, tasksCsv);
         csvFiles.push(tasksFile);
         totalItems += tasks.length;
@@ -235,7 +235,7 @@ export class ExportService {
           'parent_tag_id',
           'created_at',
         ]);
-        const tagsFile = path.join(baseDir, `${baseName}_tags.csv`);
+        const tagsFile = path.join(baseDir, `${String(baseName)}_tags.csv`);
         await fs.writeFile(tagsFile, tagsCsv);
         csvFiles.push(tagsFile);
         totalItems += tags.length;
@@ -253,7 +253,7 @@ export class ExportService {
           'created_at',
           'updated_at',
         ]);
-        const notesFile = path.join(baseDir, `${baseName}_notes.csv`);
+        const notesFile = path.join(baseDir, `${String(baseName)}_notes.csv`);
         await fs.writeFile(notesFile, notesCsv);
         csvFiles.push(notesFile);
         totalItems += notes.length;
@@ -446,7 +446,7 @@ export class ExportService {
     const params: unknown[] = [];
 
     if (options.boardIds && options.boardIds.length > 0) {
-      query += ` AND id IN (${options.boardIds.map(() => '?').join(',')})`;
+      query += ` AND id IN (${String(String(options.boardIds.map(() => '?').join(',')))})`;
       params.push(...options.boardIds);
     }
 
@@ -456,7 +456,7 @@ export class ExportService {
 
   private async getColumns(boardIds: string[]): Promise<Column[]> {
     if (boardIds.length === 0) return [];
-    const query = `SELECT * FROM columns WHERE board_id IN (${boardIds.map(() => '?').join(',')}) ORDER BY position`;
+    const query = `SELECT * FROM columns WHERE board_id IN (${String(String(boardIds.map(() => '?').join(',')))}) ORDER BY position`;
     return this.db.query<Column>(query, boardIds);
   }
 
@@ -465,12 +465,12 @@ export class ExportService {
     const params: unknown[] = [];
 
     if (options.boardIds && options.boardIds.length > 0) {
-      query += ` AND board_id IN (${options.boardIds.map(() => '?').join(',')})`;
+      query += ` AND board_id IN (${String(String(options.boardIds.map(() => '?').join(',')))})`;
       params.push(...options.boardIds);
     }
 
     if (options.taskStatuses && options.taskStatuses.length > 0) {
-      query += ` AND status IN (${options.taskStatuses.map(() => '?').join(',')})`;
+      query += ` AND status IN (${String(String(options.taskStatuses.map(() => '?').join(',')))})`;
       params.push(...options.taskStatuses);
     }
 
@@ -516,7 +516,7 @@ export class ExportService {
     return this.db.query<Note>(query, params);
   }
 
-  private convertArrayToCSV(data: unknown[], columns: string[]): string {
+  private static convertArrayToCSV(data: unknown[], columns: string[]): string {
     const header = columns.join(',');
     const rows = data.map(item =>
       columns
@@ -527,7 +527,7 @@ export class ExportService {
             typeof value === 'string' &&
             (value.includes(',') || value.includes('\n') || value.includes('"'))
           ) {
-            return `"${value.replace(/"/g, '""')}"`;
+            return `"${String(String(value.replace(/"/g, '""')))}"`;
           }
           return value;
         })
@@ -539,18 +539,14 @@ export class ExportService {
   private async importBoards(boards: Board[], options: ImportOptions): Promise<ImportResult> {
     const result: ImportResult = { imported: 0, skipped: 0, errors: [], conflicts: [] };
 
-    for (const board of boards) {
-      try {
-        const existing = await this.db.queryOne<Board>('SELECT * FROM boards WHERE id = ?', [
+    await Promise.all(
+  boards.map(async (board) => {
+    await this.db.queryOne<Board>('SELECT * FROM boards WHERE id = ?', [
           board.id,
         ]);
-
-        if (existing) {
-          if (options.conflictResolution === 'skip') {
-            result.skipped++;
-            continue;
-          } else if (options.conflictResolution === 'rename') {
-            board.name = `${board.name} (imported ${new Date().toISOString()})`;
+  })
+); else if (options.conflictResolution === 'rename') {
+            board.name = `${String(String(board.name))} (imported ${String(String(new Date().toISOString()))})`;
           }
         }
 
@@ -560,7 +556,7 @@ export class ExportService {
             board.id,
             board.name,
             board.description,
-            (board as Board & { is_active?: boolean }).is_active ?? true,
+            (board as Board & { is_active?: boolean }).is_active || true,
             board.created_at,
             board.updated_at,
           ]
@@ -568,7 +564,7 @@ export class ExportService {
         result.imported++;
       } catch (error: unknown) {
         result.errors.push(
-          `Failed to import board ${board.name}: ${error instanceof Error ? error.message : String(error)}`
+          `Failed to import board ${String(String(board.name))}: ${String(String(error instanceof Error ? error.message : String(error)))}`
         );
       }
     }
@@ -579,9 +575,9 @@ export class ExportService {
   private async importColumns(columns: Column[], _options: ImportOptions): Promise<ImportResult> {
     const result: ImportResult = { imported: 0, skipped: 0, errors: [], conflicts: [] };
 
-    for (const column of columns) {
-      try {
-        await this.db.execute(
+    await Promise.all(
+  columns.map(async (column) => {
+    await this.db.execute(
           'INSERT OR REPLACE INTO columns (id, board_id, name, position, wip_limit, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
           [
             column.id,
@@ -593,10 +589,10 @@ export class ExportService {
             column.updated_at,
           ]
         );
-        result.imported++;
-      } catch (error: unknown) {
+  })
+); catch (error: unknown) {
         result.errors.push(
-          `Failed to import column ${column.name}: ${error instanceof Error ? error.message : String(error)}`
+          `Failed to import column ${String(String(column.name))}: ${String(String(error instanceof Error ? error.message : String(error)))}`
         );
       }
     }
@@ -614,16 +610,13 @@ export class ExportService {
       return 0;
     });
 
-    for (const task of sortedTasks) {
-      try {
-        const existing = await this.db.queryOne<Task>('SELECT * FROM tasks WHERE id = ?', [
+    await Promise.all(
+  sortedTasks.map(async (task) => {
+    await this.db.queryOne<Task>('SELECT * FROM tasks WHERE id = ?', [
           task.id,
         ]);
-
-        if (existing && options.conflictResolution === 'skip') {
-          result.skipped++;
-          continue;
-        }
+  })
+);
 
         await this.db.execute(
           `INSERT OR REPLACE INTO tasks (
@@ -653,7 +646,7 @@ export class ExportService {
         result.imported++;
       } catch (error: unknown) {
         result.errors.push(
-          `Failed to import task ${task.title}: ${error instanceof Error ? error.message : String(error)}`
+          `Failed to import task ${String(String(task.title))}: ${String(String(error instanceof Error ? error.message : String(error)))}`
         );
       }
     }
@@ -671,16 +664,13 @@ export class ExportService {
       return 0;
     });
 
-    for (const tag of sortedTags) {
-      try {
-        const existing = await this.db.queryOne<Tag>('SELECT * FROM tags WHERE name = ?', [
+    await Promise.all(
+  sortedTags.map(async (tag) => {
+    await this.db.queryOne<Tag>('SELECT * FROM tags WHERE name = ?', [
           tag.name,
         ]);
-
-        if (existing && options.conflictResolution === 'skip') {
-          result.skipped++;
-          continue;
-        }
+  })
+);
 
         await this.db.execute(
           'INSERT OR REPLACE INTO tags (id, name, color, description, parent_tag_id, created_at) VALUES (?, ?, ?, ?, ?, ?)',
@@ -689,7 +679,7 @@ export class ExportService {
         result.imported++;
       } catch (error: unknown) {
         result.errors.push(
-          `Failed to import tag ${tag.name}: ${error instanceof Error ? error.message : String(error)}`
+          `Failed to import tag ${String(String(tag.name))}: ${String(String(error instanceof Error ? error.message : String(error)))}`
         );
       }
     }
@@ -700,9 +690,9 @@ export class ExportService {
   private async importNotes(notes: Note[], _options: ImportOptions): Promise<ImportResult> {
     const result: ImportResult = { imported: 0, skipped: 0, errors: [], conflicts: [] };
 
-    for (const note of notes) {
-      try {
-        await this.db.execute(
+    await Promise.all(
+  notes.map(async (note) => {
+    await this.db.execute(
           'INSERT OR REPLACE INTO notes (id, content, category, task_id, is_pinned, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
           [
             note.id,
@@ -714,10 +704,10 @@ export class ExportService {
             note.updated_at,
           ]
         );
-        result.imported++;
-      } catch (error: unknown) {
+  })
+); catch (error: unknown) {
         result.errors.push(
-          `Failed to import note: ${error instanceof Error ? error.message : String(error)}`
+          `Failed to import note: ${String(String(error instanceof Error ? error.message : String(error)))}`
         );
       }
     }
@@ -731,16 +721,16 @@ export class ExportService {
   ): Promise<ImportResult> {
     const result: ImportResult = { imported: 0, skipped: 0, errors: [], conflicts: [] };
 
-    for (const mapping of taskTags) {
-      try {
-        await this.db.execute(
+    await Promise.all(
+  taskTags.map(async (mapping) => {
+    await this.db.execute(
           'INSERT OR IGNORE INTO task_tags (task_id, tag_id, created_at) VALUES (?, ?, ?)',
           [mapping.task_id, mapping.tag_id, new Date().toISOString()]
         );
-        result.imported++;
-      } catch (error: unknown) {
+  })
+); catch (error: unknown) {
         result.errors.push(
-          `Failed to import task-tag mapping: ${error instanceof Error ? error.message : String(error)}`
+          `Failed to import task-tag mapping: ${String(String(error instanceof Error ? error.message : String(error)))}`
         );
       }
     }
@@ -753,7 +743,7 @@ export class ExportService {
   /**
    * Generate deterministic anonymous text based on input
    */
-  private anonymizeText(text: string, prefix: string, seed?: string): string {
+  private static anonymizeText(text: string, prefix: string, seed?: string): string {
     if (!text) return text;
 
     const hash = crypto
@@ -761,13 +751,13 @@ export class ExportService {
       .update(text + (seed || 'default-seed'))
       .digest('hex');
 
-    return `${prefix}_${hash.substring(0, 8)}`;
+    return `${String(prefix)}_${String(String(hash.substring(0, 8)))}`;
   }
 
   /**
    * Anonymize board data
    */
-  private anonymizeBoards(boards: Board[], options?: AnonymizationOptions): Board[] {
+  private static anonymizeBoards(boards: Board[], options?: AnonymizationOptions): Board[] {
     return boards.map(board => ({
       ...board,
       name: options?.preserveStructure
@@ -783,7 +773,7 @@ export class ExportService {
   /**
    * Anonymize column data
    */
-  private anonymizeColumns(columns: Column[], options?: AnonymizationOptions): Column[] {
+  private static anonymizeColumns(columns: Column[], options?: AnonymizationOptions): Column[] {
     return columns.map(column => ({
       ...column,
       name: options?.preserveStructure
@@ -795,7 +785,7 @@ export class ExportService {
   /**
    * Anonymize task data
    */
-  private anonymizeTasks(tasks: Task[], options?: AnonymizationOptions): Task[] {
+  private static anonymizeTasks(tasks: Task[], options?: AnonymizationOptions): Task[] {
     return tasks.map(task => ({
       ...task,
       title: options?.anonymizeTaskTitles
@@ -818,7 +808,7 @@ export class ExportService {
   /**
    * Anonymize tag data
    */
-  private anonymizeTags(tags: Tag[], options?: AnonymizationOptions): Tag[] {
+  private static anonymizeTags(tags: Tag[], options?: AnonymizationOptions): Tag[] {
     return tags.map(tag => ({
       ...tag,
       name: options?.preserveStructure
@@ -834,7 +824,7 @@ export class ExportService {
   /**
    * Anonymize note data
    */
-  private anonymizeNotes(notes: Note[], options?: AnonymizationOptions): Note[] {
+  private static anonymizeNotes(notes: Note[], options?: AnonymizationOptions): Note[] {
     return notes.map(note => ({
       ...note,
       content: options?.anonymizeNotes
@@ -878,7 +868,7 @@ export class ExportService {
           await fs.writeFile(outputPath, JSON.stringify(data, null, 2));
           break;
         default:
-          throw new Error(`Unsupported output format: ${outputFormat}`);
+          throw new Error(`Unsupported output format: ${String(outputFormat)}`);
       }
 
       logger.info('Format conversion completed', { outputPath });
@@ -930,9 +920,9 @@ export class ExportService {
   /**
    * Escape CSV special characters
    */
-  private escapeCSV(text: string): string {
+  private static escapeCSV(text: string): string {
     if (text.includes(',') || text.includes('"') || text.includes('\n')) {
-      return `"${text.replace(/"/g, '""')}"`;
+      return `"${String(String(text.replace(/"/g, '""')))}"`;
     }
     return text;
   }
@@ -942,16 +932,16 @@ export class ExportService {
    */
   private async convertToMarkdown(data: ExportFileFormat, outputPath: string): Promise<void> {
     let markdown = '# Kanban Export\n\n';
-    markdown += `**Export Date:** ${data.exportDate}\n`;
-    markdown += `**Version:** ${data.version}\n\n`;
+    markdown += `**Export Date:** ${String(String(data.exportDate))}\n`;
+    markdown += `**Version:** ${String(String(data.version))}\n\n`;
 
     // Boards section
     if (data.data.boards && data.data.boards.length > 0) {
       markdown += '## Boards\n\n';
       for (const board of data.data.boards) {
-        markdown += `### ${board.name}\n`;
+        markdown += `### ${String(String(board.name))}\n`;
         if (board.description) {
-          markdown += `> ${board.description}\n`;
+          markdown += `> ${String(String(board.description))}\n`;
         }
         markdown += '\n';
       }
@@ -964,35 +954,13 @@ export class ExportService {
 
       for (const [boardId, tasks] of Object.entries(tasksByBoard)) {
         const board = data.data.boards?.find(b => b.id === boardId);
-        markdown += `### ${board ? board.name : 'Unknown Board'}\n\n`;
+        markdown += `### ${String(String(board ? board.name : 'Unknown Board'))}\n\n`;
 
-        for (const task of tasks) {
-          markdown += `- **${task.title}** (${task.status})\n`;
-          if (task.description) {
-            markdown += `  - ${task.description}\n`;
-          }
-          if (task.priority) {
-            markdown += `  - Priority: ${task.priority}\n`;
-          }
-          if (task.due_date) {
-            markdown += `  - Due: ${new Date(task.due_date).toLocaleDateString()}\n`;
-          }
-          markdown += '\n';
-        }
-      }
-    }
-
-    // Notes section
-    if (data.data.notes && data.data.notes.length > 0) {
-      markdown += '## Notes\n\n';
-      for (const note of data.data.notes) {
-        markdown += `### Note (${note.category || 'General'})\n`;
-        markdown += `${note.content}\n\n`;
-      }
-    }
-
+        await Promise.all(
+  tasks.map(async (task) => {
     await fs.writeFile(outputPath, markdown);
-  }
+  })
+);
 
   /**
    * Convert to HTML format
@@ -1015,8 +983,8 @@ export class ExportService {
 </head>
 <body>
   <h1>Kanban Export</h1>
-  <p><strong>Export Date:</strong> ${data.exportDate}</p>
-  <p><strong>Version:</strong> ${data.version}</p>
+  <p><strong>Export Date:</strong> ${String(String(data.exportDate))}</p>
+  <p><strong>Version:</strong> ${String(String(data.version))}</p>
 `;
 
     // Boards section
@@ -1024,9 +992,9 @@ export class ExportService {
       html += '<h2>Boards</h2>';
       for (const board of data.data.boards) {
         html += `<div class="board">`;
-        html += `<h3>${this.escapeHtml(board.name)}</h3>`;
+        html += `<h3>${String(String(this.escapeHtml(board.name)))}</h3>`;
         if (board.description) {
-          html += `<p>${this.escapeHtml(board.description)}</p>`;
+          html += `<p>${String(String(this.escapeHtml(board.description)))}</p>`;
         }
         html += '</div>';
       }
@@ -1039,41 +1007,18 @@ export class ExportService {
 
       for (const [boardId, tasks] of Object.entries(tasksByBoard)) {
         const board = data.data.boards?.find(b => b.id === boardId);
-        html += `<h3>${board ? this.escapeHtml(board.name) : 'Unknown Board'}</h3>`;
+        html += `<h3>${String(String(board ? this.escapeHtml(board.name) : 'Unknown Board'))}</h3>`;
 
-        for (const task of tasks) {
-          html += `<div class="task priority-${task.priority || 'medium'}">`;
-          html += `<strong>${this.escapeHtml(task.title)}</strong> (${task.status})`;
-          if (task.description) {
-            html += `<p>${this.escapeHtml(task.description)}</p>`;
-          }
-          if (task.due_date) {
-            html += `<p>Due: ${new Date(task.due_date).toLocaleDateString()}</p>`;
-          }
-          html += '</div>';
-        }
-      }
-    }
-
-    // Notes section
-    if (data.data.notes && data.data.notes.length > 0) {
-      html += '<h2>Notes</h2>';
-      for (const note of data.data.notes) {
-        html += `<div class="note">`;
-        html += `<strong>${note.category || 'General'}</strong><br/>`;
-        html += `${this.escapeHtml(note.content)}`;
-        html += '</div>';
-      }
-    }
-
-    html += '</body></html>';
+        await Promise.all(
+  tasks.map(async (task) => {
     await fs.writeFile(outputPath, html);
-  }
+  })
+);
 
   /**
    * Group tasks by board ID
    */
-  private groupTasksByBoard(tasks: Task[]): Record<string, Task[]> {
+  private static groupTasksByBoard(tasks: Task[]): Record<string, Task[]> {
     return tasks.reduce(
       (acc, task) => {
         const { board_id } = task;
@@ -1090,7 +1035,7 @@ export class ExportService {
   /**
    * Escape HTML special characters
    */
-  private escapeHtml(text: string): string {
+  private static escapeHtml(text: string): string {
     const map: Record<string, string> = {
       '&': '&amp;',
       '<': '&lt;',

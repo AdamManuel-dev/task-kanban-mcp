@@ -165,7 +165,7 @@ export async function quickBoardSetup(
     type: 'toggle',
     name: 'isPublic',
     message: 'Make board public?',
-    initial: defaults?.isPublic ?? false,
+    initial: defaults?.isPublic || false,
     active: 'yes',
     inactive: 'no',
   });
@@ -200,7 +200,7 @@ export async function confirmAction(message: string, defaultAnswer = false): Pro
     initial: defaultAnswer,
   });
 
-  return response.confirmed ?? false;
+  return response.confirmed || false;
 }
 
 /**

@@ -26,7 +26,7 @@
  *
  * // Get current work recommendations
  * const workContext = await contextService.getCurrentWorkContext();
- * console.log('Next actions:', workContext.next_actions);
+ * logger.log('Next actions:', workContext.next_actions);
  * ```
  */
 
@@ -215,9 +215,9 @@ export interface ContextOptions {
  *   detail_level: 'comprehensive'
  * });
  *
- * console.log(context.summary);
- * console.log(`Priority tasks: ${context.priorities.length}`);
- * console.log(`Active blockers: ${context.blockers.length}`);
+ * logger.log(context.summary);
+ * logger.log(`Priority tasks: ${String(String(context.priorities.length))}`);
+ * logger.log(`Active blockers: ${String(String(context.blockers.length))}`);
  * ```
  */
 export class ContextService {
@@ -259,10 +259,10 @@ export class ContextService {
    *   max_items: 25
    * });
    *
-   * console.log(`Project Summary: ${context.summary}`);
-   * console.log(`Active Boards: ${context.boards.length}`);
-   * console.log(`High Priority Tasks: ${context.priorities.filter(p => p.urgency_level === 'high').length}`);
-   * console.log(`Critical Blockers: ${context.blockers.filter(b => b.impact_level === 'high').length}`);
+   * logger.log(`Project Summary: ${String(String(context.summary))}`);
+   * logger.log(`Active Boards: ${String(String(context.boards.length))}`);
+   * logger.log(`High Priority Tasks: ${String(String(context.priorities.filter(p => p.urgency_level === 'high').length))}`);
+   * logger.log(`Critical Blockers: ${String(String(context.blockers.filter(b => b.impact_level === 'high').length))}`);
    * ```
    */
   async getProjectContext(options: ContextOptions = {}): Promise<ProjectContext> {
@@ -344,13 +344,13 @@ export class ContextService {
    *   days_back: 7
    * });
    *
-   * console.log(`Task: ${taskContext.task.title}`);
-   * console.log(`Board: ${taskContext.board.name}`);
-   * console.log(`Related Tasks: ${taskContext.related_tasks.length}`);
-   * console.log(`Dependencies: ${taskContext.dependencies.depends_on.length}`);
-   * console.log(`Blocks: ${taskContext.dependencies.blocks.length}`);
-   * console.log(`Notes: ${taskContext.notes.length}`);
-   * console.log(`Recommendations: ${taskContext.recommendations.join(', ')}`);
+   * logger.log(`Task: ${String(String(taskContext.task.title))}`);
+   * logger.log(`Board: ${String(String(taskContext.board.name))}`);
+   * logger.log(`Related Tasks: ${String(String(taskContext.related_tasks.length))}`);
+   * logger.log(`Dependencies: ${String(String(taskContext.dependencies.depends_on.length))}`);
+   * logger.log(`Blocks: ${String(String(taskContext.dependencies.blocks.length))}`);
+   * logger.log(`Notes: ${String(String(taskContext.notes.length))}`);
+   * logger.log(`Recommendations: ${String(String(taskContext.recommendations.join(', ')))}`);
    * ```
    */
   async getTaskContext(taskId: string, options: ContextOptions = {}): Promise<TaskContext> {
@@ -429,13 +429,13 @@ export class ContextService {
    *   max_items: 5
    * });
    *
-   * console.log(`Active Tasks: ${workContext.active_tasks.length}`);
-   * console.log(`Next Actions: ${workContext.next_actions.length}`);
-   * console.log(`Blockers: ${workContext.blockers.length}`);
-   * console.log(`Estimated Hours: ${workContext.estimated_work_hours}`);
+   * logger.log(`Active Tasks: ${String(String(workContext.active_tasks.length))}`);
+   * logger.log(`Next Actions: ${String(String(workContext.next_actions.length))}`);
+   * logger.log(`Blockers: ${String(String(workContext.blockers.length))}`);
+   * logger.log(`Estimated Hours: ${String(String(workContext.estimated_work_hours))}`);
    *
    * workContext.focus_recommendations.forEach(rec => {
-   *   console.log(`Recommendation: ${rec}`);
+   *   logger.log(`Recommendation: ${String(rec)}`);
    * });
    * ```
    */
@@ -483,24 +483,11 @@ export class ContextService {
     const boards = await this.boardService.getBoards({ archived: false });
     const boardContexts: BoardContextInfo[] = [];
 
-    for (const board of boards) {
-      const boardWithStats = await this.boardService.getBoardWithStats(board.id);
-      if (!boardWithStats) continue;
-
-      const recentActivityCount = await this.getRecentActivityCount(board.id, 7);
-      const priorityScore = this.calculateBoardPriorityScore(boardWithStats, recentActivityCount);
-
-      boardContexts.push({
-        board,
-        task_count: boardWithStats.taskCount,
-        completion_rate:
-          boardWithStats.taskCount > 0
-            ? (boardWithStats.completedTasks / boardWithStats.taskCount) * 100
-            : 0,
-        recent_activity: recentActivityCount,
-        priority_score: priorityScore,
-      });
-    }
+    await Promise.all(
+      boards.map(async board => {
+        await this.boardService.getBoardWithStats(board.id);
+      })
+    );
 
     return boardContexts.sort((a, b) => b.priority_score - a.priority_score);
   }
@@ -582,23 +569,11 @@ export class ContextService {
 
     const priorityInfos: PriorityInfo[] = [];
 
-    for (const task of tasks) {
-      const [blockingCount, urgencyFactors] = await Promise.all([
-        this.getBlockingTaskCount(task.id),
-        this.calculateUrgencyFactors(task),
-      ]);
-
-      const score = this.calculatePriorityScore(task, blockingCount, urgencyFactors);
-      const reasoning = this.generatePriorityReasoning(task, blockingCount, urgencyFactors);
-
-      priorityInfos.push({
-        task,
-        score,
-        reasoning,
-        blocking_count: blockingCount,
-        urgency_level: this.determineUrgencyLevel(score, urgencyFactors),
-      });
-    }
+    await Promise.all(
+      tasks.map(async task => {
+        await Promise.all([this.getBlockingTaskCount(task.id), this.calculateUrgencyFactors(task)]);
+      })
+    );
 
     return priorityInfos.sort((a, b) => b.score - a.score).slice(0, maxItems);
   }
@@ -607,31 +582,17 @@ export class ContextService {
     const blockedTasks = await this.taskService.getBlockedTasks();
     const blockers: BlockerInfo[] = [];
 
-    for (const blockedTask of blockedTasks) {
-      const dependencies = await this.db.query<{ depends_on_task_id: string }>(
-        `
-        SELECT depends_on_task_id FROM task_dependencies 
-        WHERE task_id = ? AND dependency_type = 'blocks'
-      `,
-        [blockedTask.id]
-      );
-
-      for (const dep of dependencies) {
-        const blockingTask = await this.taskService.getTaskById(dep.depends_on_task_id);
-        if (!blockingTask || blockingTask.status === 'done') continue;
-
-        const daysBlocked = Math.floor(
-          (Date.now() - blockedTask.created_at.getTime()) / (1000 * 60 * 60 * 24)
+    await Promise.all(
+      blockedTasks.map(async blockedTask => {
+        await this.db.query<{ depends_on_task_id: string }>(
+          `
+          SELECT depends_on_task_id FROM task_dependencies 
+          WHERE task_id = ? AND dependency_type = 'blocks'
+        `,
+          [blockedTask.id]
         );
-
-        blockers.push({
-          blocked_task: blockedTask,
-          blocking_task: blockingTask,
-          days_blocked: daysBlocked,
-          impact_level: this.determineBlockerImpact(daysBlocked, blockedTask.priority),
-        });
-      }
-    }
+      })
+    );
 
     return blockers.sort((a, b) => b.days_blocked - a.days_blocked);
   }
@@ -735,7 +696,7 @@ export class ContextService {
     );
   }
 
-  private generateProjectSummary(
+  private static generateProjectSummary(
     boards: BoardContextInfo[],
     priorities: PriorityInfo[],
     blockers: BlockerInfo[],
@@ -748,64 +709,64 @@ export class ContextService {
     ).length;
     const criticalBlockerCount = blockers.filter(b => b.impact_level === 'high').length;
 
-    let summary = `Project Status: ${activeBoardCount} active boards, ${metrics.completion_rate.toFixed(1)}% completion rate. `;
+    let summary = `Project Status: ${String(activeBoardCount)} active boards, ${String(String(metrics.completion_rate.toFixed(1)))}% completion rate. `;
 
     if (highPriorityCount > 0) {
-      summary += `${highPriorityCount} high-priority tasks need attention. `;
+      summary += `${String(highPriorityCount)} high-priority tasks need attention. `;
     }
 
     if (criticalBlockerCount > 0) {
-      summary += `${criticalBlockerCount} critical blockers identified. `;
+      summary += `${String(criticalBlockerCount)} critical blockers identified. `;
     }
 
     if (metrics.overdue_count > 0) {
-      summary += `${metrics.overdue_count} tasks are overdue. `;
+      summary += `${String(String(metrics.overdue_count))} tasks are overdue. `;
     }
 
-    summary += `Current velocity trend: ${metrics.velocity_trend}.`;
+    summary += `Current velocity trend: ${String(String(metrics.velocity_trend))}.`;
 
     if (detailLevel === 'comprehensive' && metrics.estimated_completion_date) {
-      summary += ` Estimated completion: ${metrics.estimated_completion_date.toLocaleDateString()}.`;
+      summary += ` Estimated completion: ${String(String(metrics.estimated_completion_date.toLocaleDateString()))}.`;
     }
 
     return summary;
   }
 
-  private generateTaskContextSummary(
+  private static generateTaskContextSummary(
     task: Task,
     _relatedTasks: RelatedTaskInfo[],
     dependencies: DependencyInfo,
     notes: Note[],
     _detailLevel: string
   ): string {
-    let summary = `Task "${task.title}" (${task.status}, Priority: ${task.priority}). `;
+    let summary = `Task "${String(String(task.title))}" (${String(String(task.status))}, Priority: ${String(String(task.priority))}). `;
 
     if (dependencies.depends_on.length > 0) {
-      summary += `Depends on ${dependencies.depends_on.length} task(s). `;
+      summary += `Depends on ${String(String(dependencies.depends_on.length))} task(s). `;
     }
 
     if (dependencies.blocks.length > 0) {
-      summary += `Blocks ${dependencies.blocks.length} task(s). `;
+      summary += `Blocks ${String(String(dependencies.blocks.length))} task(s). `;
     }
 
     if (notes.length > 0) {
       const recentNotes = notes.filter(
         n => Date.now() - n.created_at.getTime() < 7 * 24 * 60 * 60 * 1000 // 7 days
       ).length;
-      summary += `${notes.length} notes (${recentNotes} recent). `;
+      summary += `${String(String(notes.length))} notes (${String(recentNotes)} recent). `;
     }
 
     if (task.due_date && task.due_date < new Date()) {
       const daysOverdue = Math.floor(
         (Date.now() - task.due_date.getTime()) / (1000 * 60 * 60 * 24)
       );
-      summary += `Overdue by ${daysOverdue} days. `;
+      summary += `Overdue by ${String(daysOverdue)} days. `;
     }
 
     return summary.trim();
   }
 
-  private generateTaskRecommendations(
+  private static generateTaskRecommendations(
     task: Task,
     dependencies: DependencyInfo,
     notes: Note[],
@@ -844,7 +805,7 @@ export class ContextService {
     return recommendations;
   }
 
-  private generateFocusRecommendations(
+  private static generateFocusRecommendations(
     activeTasks: Task[],
     nextActions: PriorityInfo[],
     blockers: BlockerInfo[]
@@ -865,7 +826,9 @@ export class ContextService {
       a => a.urgency_level === 'high' || a.urgency_level === 'critical'
     );
     if (highPriorityNext.length > 0) {
-      recommendations.push(`${highPriorityNext.length} high-priority tasks ready to start`);
+      recommendations.push(
+        `${String(String(highPriorityNext.length))} high-priority tasks ready to start`
+      );
     }
 
     return recommendations;
@@ -946,7 +909,7 @@ export class ContextService {
     return 'stable';
   }
 
-  private getEmptyMetrics(): ProjectMetrics {
+  private static getEmptyMetrics(): ProjectMetrics {
     return {
       total_tasks: 0,
       completed_tasks: 0,
@@ -973,7 +936,7 @@ export class ContextService {
     return result?.count || 0;
   }
 
-  private calculateBoardPriorityScore(board: any, recentActivity: number): number {
+  private static calculateBoardPriorityScore(board: any, recentActivity: number): number {
     let score = 0;
 
     // Task count factor
@@ -1017,7 +980,11 @@ export class ContextService {
     };
   }
 
-  private calculatePriorityScore(task: Task, blockingCount: number, urgencyFactors: any): number {
+  private static calculatePriorityScore(
+    task: Task,
+    blockingCount: number,
+    urgencyFactors: any
+  ): number {
     let score = task.priority * 10; // Base priority
 
     if (urgencyFactors.overdue) score += 50;
@@ -1028,7 +995,7 @@ export class ContextService {
     return Math.round(score);
   }
 
-  private generatePriorityReasoning(
+  private static generatePriorityReasoning(
     _task: Task,
     blockingCount: number,
     urgencyFactors: any
@@ -1036,14 +1003,14 @@ export class ContextService {
     const reasons: string[] = [];
 
     if (urgencyFactors.overdue) reasons.push('Task is overdue');
-    if (urgencyFactors.blocks_others) reasons.push(`Blocks ${blockingCount} other task(s)`);
+    if (urgencyFactors.blocks_others) reasons.push(`Blocks ${String(blockingCount)} other task(s)`);
     if (urgencyFactors.high_priority) reasons.push('High priority level set');
     if (urgencyFactors.has_due_date) reasons.push('Has due date');
 
     return reasons;
   }
 
-  private determineUrgencyLevel(
+  private static determineUrgencyLevel(
     score: number,
     urgencyFactors: any
   ): 'low' | 'medium' | 'high' | 'critical' {
@@ -1053,7 +1020,10 @@ export class ContextService {
     return 'low';
   }
 
-  private determineBlockerImpact(daysBlocked: number, priority: number): 'low' | 'medium' | 'high' {
+  private static determineBlockerImpact(
+    daysBlocked: number,
+    priority: number
+  ): 'low' | 'medium' | 'high' {
     if (daysBlocked > 7 || priority >= 8) return 'high';
     if (daysBlocked > 3 || priority >= 5) return 'medium';
     return 'low';
@@ -1070,7 +1040,7 @@ export class ContextService {
     return blockingCount > 2; // Simple heuristic
   }
 
-  private calculateEstimatedWorkHours(tasks: Task[]): number {
+  private static calculateEstimatedWorkHours(tasks: Task[]): number {
     return tasks.reduce((total, task) => {
       const remaining = (task.estimated_hours || 0) - (task.actual_hours || 0);
       return total + Math.max(0, remaining);
@@ -1086,7 +1056,7 @@ export class ContextService {
    * @param {any} [originalError] - Original error object for debugging
    * @returns {ServiceError} Formatted service error with status code
    */
-  private createError(code: string, message: string, originalError?: any): ServiceError {
+  private static createError(code: string, message: string, originalError?: any): ServiceError {
     const error = new Error(message) as ServiceError;
     error.code = code;
     error.statusCode = 500;

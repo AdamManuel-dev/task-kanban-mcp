@@ -23,27 +23,27 @@ export function formatFileSize(bytes: number): string {
 
   while (size >= 1024 && unitIndex < units.length - 1) {
     size /= 1024;
-    unitIndex++;
+    unitIndex += 1;
   }
 
-  return `${size.toFixed(1)} ${units[unitIndex]}`;
+  return `${String(String(size.toFixed(1)))} ${String(units[unitIndex])}`;
 }
 
 /**
  * Format duration in human-readable format
  */
 export function formatDuration(ms: number): string {
-  if (ms < 1000) return `${ms}ms`;
+  if (ms < 1000) return `${String(ms)}ms`;
 
   const seconds = Math.floor(ms / 1000);
   const minutes = Math.floor(seconds / 60);
   const hours = Math.floor(minutes / 60);
   const days = Math.floor(hours / 24);
 
-  if (days > 0) return `${days}d ${hours % 24}h`;
-  if (hours > 0) return `${hours}h ${minutes % 60}m`;
-  if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
-  return `${seconds}s`;
+  if (days > 0) return `${String(days)}d ${String(hours % 24)}h`;
+  if (hours > 0) return `${String(hours)}h ${String(minutes % 60)}m`;
+  if (minutes > 0) return `${String(minutes)}m ${String(seconds % 60)}s`;
+  return `${String(seconds)}s`;
 }
 
 /**
@@ -66,9 +66,9 @@ export function formatRelativeTime(date: Date | string): string {
   const hours = Math.floor(minutes / 60);
   const days = Math.floor(hours / 24);
 
-  if (days > 0) return `${days} day${days > 1 ? 's' : ''} ago`;
-  if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-  if (minutes > 0) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+  if (days > 0) return `${String(days)} day${String(days > 1 ? 's' : '')} ago`;
+  if (hours > 0) return `${String(hours)} hour${String(hours > 1 ? 's' : '')} ago`;
+  if (minutes > 0) return `${String(minutes)} minute${String(minutes > 1 ? 's' : '')} ago`;
   return 'just now';
 }
 
@@ -100,18 +100,18 @@ export function formatDueDate(date: Date | string): string {
 
   const now = new Date();
   if (dateObj < now) {
-    return chalk.red(`Overdue (${formatDistanceToNow(dateObj)} ago)`);
+    return chalk.red(`Overdue (${String(formatDistanceToNow(dateObj))} ago)`);
   }
 
   if (isThisWeek(dateObj)) {
-    return `Due ${format(dateObj, 'EEEE')}`;
+    return `Due ${String(format(dateObj, 'EEEE'))}`;
   }
 
   if (isThisYear(dateObj)) {
-    return `Due ${format(dateObj, 'MMM d')}`;
+    return `Due ${String(format(dateObj, 'MMM d'))}`;
   }
 
-  return `Due ${format(dateObj, 'MMM d, yyyy')}`;
+  return `Due ${String(format(dateObj, 'MMM d, yyyy'))}`;
 }
 
 /**
@@ -125,11 +125,11 @@ export function formatSmartDateTime(date: Date | string): string {
   }
 
   if (isYesterday(dateObj)) {
-    return `Yesterday ${format(dateObj, 'HH:mm')}`;
+    return `Yesterday ${String(format(dateObj, 'HH:mm'))}`;
   }
 
   if (isTomorrow(dateObj)) {
-    return `Tomorrow ${format(dateObj, 'HH:mm')}`;
+    return `Tomorrow ${String(format(dateObj, 'HH:mm'))}`;
   }
 
   if (isThisWeek(dateObj)) {
@@ -152,23 +152,30 @@ export function formatTimeRange(startDate: Date | string, endDate: Date | string
 
   // Same day
   if (isToday(start) && isToday(end)) {
-    return `Today ${format(start, 'HH:mm')} - ${format(end, 'HH:mm')}`;
+    return `Today ${String(format(start, 'HH:mm'))} - ${String(format(end, 'HH:mm'))}`;
   }
 
   // Same date
   if (format(start, 'yyyy-MM-dd') === format(end, 'yyyy-MM-dd')) {
-    return `${format(start, 'MMM d')} ${format(start, 'HH:mm')} - ${format(end, 'HH:mm')}`;
+    return `${String(format(start, 'MMM d'))} ${String(format(start, 'HH:mm'))} - ${String(format(end, 'HH:mm'))}`;
   }
 
   // Different dates
-  return `${formatSmartDateTime(start)} - ${formatSmartDateTime(end)}`;
+  return `${String(formatSmartDateTime(start))} - ${String(formatSmartDateTime(end))}`;
 }
 
 /**
  * Format timestamp for logs and debugging
  */
 export function formatTimestamp(date?: Date | string): string {
-  const dateObj = date ? (typeof date === 'string' ? new Date(date) : date) : new Date();
+  let dateObj: Date;
+  if (!date) {
+    dateObj = new Date();
+  } else if (typeof date === 'string') {
+    dateObj = new Date(date);
+  } else {
+    dateObj = date;
+  }
   return format(dateObj, 'yyyy-MM-dd HH:mm:ss.SSS');
 }
 
@@ -201,21 +208,21 @@ export function formatDateShort(date: Date | string): string {
 export function formatWorkingHours(hours: number): string {
   if (hours < 1) {
     const minutes = Math.round(hours * 60);
-    return `${minutes}min`;
+    return `${String(minutes)}min`;
   }
 
   if (hours < 8) {
-    return `${hours.toFixed(1)}h`;
+    return `${String(String(hours.toFixed(1)))}h`;
   }
 
   const days = Math.floor(hours / 8);
   const remainingHours = hours % 8;
 
   if (remainingHours === 0) {
-    return `${days}d`;
+    return `${String(days)}d`;
   }
 
-  return `${days}d ${remainingHours.toFixed(1)}h`;
+  return `${String(days)}d ${String(String(remainingHours.toFixed(1)))}h`;
 }
 
 /**
@@ -257,7 +264,7 @@ export function formatStatus(status: string): string {
     color: chalk.white,
   };
 
-  return `${config.color(config.icon)} ${config.color(status)}`;
+  return `${String(String(config.color(config.icon)))} ${String(String(config.color(status)))}`;
 }
 
 /**
@@ -272,16 +279,17 @@ export function formatPercentage(value: number, total: number): string {
   else if (rounded < 50) color = chalk.yellow;
   else if (rounded < 75) color = chalk.blue;
 
-  return color(`${rounded}%`);
+  return color(`${String(rounded)}%`);
 }
 
 /**
  * Format board column with task count
  */
 export function formatBoardColumn(name: string, taskCount: number, maxWidth = 20): string {
-  const truncatedName = name.length > maxWidth ? `${name.substring(0, maxWidth - 3)}...` : name;
+  const truncatedName =
+    name.length > maxWidth ? `${String(String(name.substring(0, maxWidth - 3)))}...` : name;
 
-  return `${chalk.bold(truncatedName)} (${taskCount})`;
+  return `${String(String(chalk.bold(truncatedName)))} (${String(taskCount)})`;
 }
 
 /**
@@ -294,7 +302,7 @@ export function formatTaskListItem(task: {
   status?: string;
   assignee?: string;
 }): string {
-  const parts = [chalk.dim(`[${task.id}]`), task.title];
+  const parts = [chalk.dim(`[${String(String(task.id))}]`), task.title];
 
   if (task.priority) {
     parts.push(formatPriority(task.priority));
@@ -305,7 +313,7 @@ export function formatTaskListItem(task: {
   }
 
   if (task.assignee) {
-    parts.push(chalk.cyan(`@${task.assignee}`));
+    parts.push(chalk.cyan(`@${String(String(task.assignee))}`));
   }
 
   return parts.join(' ');
@@ -316,19 +324,19 @@ export function formatTaskListItem(task: {
  */
 export function formatError(error: Error | string, showStack = false): string {
   if (typeof error === 'string') {
-    return chalk.red(`✖ ${error}`);
+    return chalk.red(`✖ ${String(error)}`);
   }
 
-  const message = chalk.red(`✖ ${error.message}`);
+  const message = chalk.red(`✖ ${String(String(error.message))}`);
 
   if (showStack && error.stack) {
     const stack = error.stack
       .split('\n')
       .slice(1)
-      .map(line => chalk.gray(`  ${line.trim()}`))
+      .map(line => chalk.gray(`  ${String(String(line.trim()))}`))
       .join('\n');
 
-    return `${message}\n${stack}`;
+    return `${String(message)}\n${String(stack)}`;
   }
 
   return message;
@@ -338,21 +346,21 @@ export function formatError(error: Error | string, showStack = false): string {
  * Format success message
  */
 export function formatSuccess(message: string): string {
-  return chalk.green(`✓ ${message}`);
+  return chalk.green(`✓ ${String(message)}`);
 }
 
 /**
  * Format warning message
  */
 export function formatWarning(message: string): string {
-  return chalk.yellow(`⚠ ${message}`);
+  return chalk.yellow(`⚠ ${String(message)}`);
 }
 
 /**
  * Format info message
  */
 export function formatInfo(message: string): string {
-  return chalk.blue(`ℹ ${message}`);
+  return chalk.blue(`ℹ ${String(message)}`);
 }
 
 /**
@@ -366,15 +374,15 @@ export function formatProgressBar(current: number, total: number, width = 20): s
   const bar = '█'.repeat(filled) + '░'.repeat(empty);
   const percentStr = formatPercentage(current, total);
 
-  return `[${bar}] ${percentStr} (${current}/${total})`;
+  return `[${String(bar)}] ${String(percentStr)} (${String(current)}/${String(total)})`;
 }
 
 /**
  * Format key-value pairs for display
  */
-export function formatKeyValue(key: string, value: any, keyWidth = 15): string {
+export function formatKeyValue(key: string, value: unknown, keyWidth = 15): string {
   const paddedKey = key.padEnd(keyWidth);
-  return `${chalk.gray(paddedKey)} ${value}`;
+  return `${String(String(chalk.gray(paddedKey)))} ${String(String(value))}`;
 }
 
 /**
@@ -394,7 +402,7 @@ export function formatHeader(title: string, width = 60): string {
 
   return [
     formatDivider('═', width),
-    `${' '.repeat(leftPad)}${chalk.bold(title)}${' '.repeat(rightPad)}`,
+    `${String(String(' '.repeat(leftPad)))}${String(String(chalk.bold(title)))}${String(String(' '.repeat(rightPad)))}`,
     formatDivider('═', width),
   ].join('\n');
 }
@@ -404,7 +412,7 @@ export function formatHeader(title: string, width = 60): string {
  */
 export function truncate(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text;
-  return `${text.substring(0, maxLength - 3)}...`;
+  return `${String(String(text.substring(0, maxLength - 3)))}...`;
 }
 
 /**
@@ -415,14 +423,14 @@ export function wrapText(text: string, width: number): string[] {
   const lines: string[] = [];
   let currentLine = '';
 
-  for (const word of words) {
-    if (`${currentLine} ${word}`.trim().length <= width) {
-      currentLine = `${currentLine} ${word}`.trim();
+  words.forEach(word => {
+    if (`${String(currentLine)} ${String(word)}`.trim().length <= width) {
+      currentLine = `${String(currentLine)} ${String(word)}`.trim();
     } else {
       if (currentLine) lines.push(currentLine);
       currentLine = word;
     }
-  }
+  });
 
   if (currentLine) lines.push(currentLine);
   return lines;

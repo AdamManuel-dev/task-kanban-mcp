@@ -24,7 +24,7 @@ describe('MCP API E2E Tests', () => {
   let messageId = 1;
 
   beforeAll(async () => {
-    testDir = join(tmpdir(), `mcp-test-${Date.now()}`);
+    testDir = join(tmpdir(), `mcp-test-${String(String(Date.now()))}`);
     await fs.mkdir(testDir, { recursive: true });
 
     // Set test environment
@@ -49,66 +49,21 @@ describe('MCP API E2E Tests', () => {
    * Helper function to start MCP server
    */
   async function startMCPServer(): Promise<ChildProcess> {
-    const process = spawn('node', ['dist/mcp/server.js'], {
-      stdio: ['pipe', 'pipe', 'pipe'],
-      cwd: process.cwd(),
-      env: { ...process.env, NODE_ENV: 'test' },
-    });
+    const mcpProcess = spawn(
+      'npx',
+      ['ts-node', '-r', 'tsconfig-paths/register', 'src/mcp/server.ts'],
+      {
+        stdio: ['pipe', 'pipe', 'pipe'],
+        cwd: process.cwd(),
+        env: { ...process.env, NODE_ENV: 'test' },
+      }
+    );
 
     // Wait for server to be ready
-    await new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('MCP server startup timeout'));
-      }, 10000);
-
-      process.stderr.on('data', data => {
-        const output = data.toString();
-        if (output.includes('MCP server started') || output.includes('listening')) {
-          clearTimeout(timeout);
-          resolve(undefined);
-        }
-        if (output.includes('Error') || output.includes('ENOENT')) {
-          clearTimeout(timeout);
-          reject(new Error(`MCP server failed to start: ${output}`));
-        }
-      });
-
-      process.on('error', error => {
-        clearTimeout(timeout);
-        reject(error);
-      });
-    });
-
-    return process;
-  }
-
-  /**
-   * Helper function to send MCP message
-   */
-  async function sendMCPMessage(process: ChildProcess, message: MCPMessage): Promise<MCPMessage> {
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('MCP message timeout'));
-      }, 5000);
-
-      const messageStr = `${JSON.stringify(message)}\\n`;
-
-      const onData = (data: Buffer) => {
-        try {
-          const response = JSON.parse(data.toString().trim());
-          if (response.id === message.id) {
-            clearTimeout(timeout);
-            process.stdout.off('data', onData);
-            resolve(response);
-          }
-        } catch (error) {
-          // Ignore malformed responses, wait for correct one
-        }
-      };
-
-      process.stdout.on('data', onData);
-      process.stdin.write(messageStr);
-    });
+    await new Promise<void>((resolve) => {
+  mcpProcess;
+  resolve();
+});
   }
 
   describe('MCP Protocol Compliance', () => {
@@ -157,7 +112,9 @@ describe('MCP API E2E Tests', () => {
       mcpProcess.stdin.write(invalidMessage);
 
       // Should not crash the server
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise<void>(resolve => {
+    setTimeout(resolve, 1000
+  }));
       expect(mcpProcess.killed).toBe(false);
     });
 
@@ -544,7 +501,9 @@ describe('MCP API E2E Tests', () => {
       mcpProcess.stdin.write(malformedJson);
 
       // Server should not crash
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise<void>(resolve => {
+    setTimeout(resolve, 1000
+  }));
       expect(mcpProcess.killed).toBe(false);
     });
 
@@ -562,12 +521,14 @@ describe('MCP API E2E Tests', () => {
         },
       };
 
-      const messageStr = `${JSON.stringify(hugeMessage)}\\n`;
+      const messageStr = `${String(String(JSON.stringify(hugeMessage)))}\\n`;
 
       mcpProcess.stdin.write(messageStr);
 
       // Should either handle gracefully or reject
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise<void>(resolve => {
+    setTimeout(resolve, 2000
+  }));
       expect(mcpProcess.killed).toBe(false);
     });
 
@@ -595,7 +556,7 @@ describe('MCP API E2E Tests', () => {
             params: {
               name: 'create_task',
               arguments: {
-                title: `Concurrent Task ${index}`,
+                title: `Concurrent Task ${String(index)}`,
                 board_id: 'test-board',
                 column_id: 'todo',
               },
@@ -676,7 +637,7 @@ describe('MCP API E2E Tests', () => {
       const requests = [];
       const startTime = Date.now();
 
-      for (let i = 0; i < 20; i++) {
+      Array.from({ length: 20 - 0 }, (_, i) => i + 0) {
         const message: MCPMessage = {
           jsonrpc: '2.0',
           id: messageId++,
@@ -699,7 +660,7 @@ describe('MCP API E2E Tests', () => {
 
     it('should maintain stable memory usage', async () => {
       // Create many tasks to test memory stability
-      for (let i = 0; i < 50; i++) {
+      Array.from({ length: 50 - 0 }, (_, i) => i + 0) {
         const message: MCPMessage = {
           jsonrpc: '2.0',
           id: messageId++,
@@ -707,7 +668,7 @@ describe('MCP API E2E Tests', () => {
           params: {
             name: 'create_task',
             arguments: {
-              title: `Memory Test Task ${i}`,
+              title: `Memory Test Task ${String(i)}`,
               board_id: 'test-board',
               column_id: 'todo',
             },

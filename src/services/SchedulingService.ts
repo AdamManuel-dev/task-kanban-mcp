@@ -116,7 +116,7 @@ export class SchedulingService {
   async createSchedule(options: CreateScheduleOptions): Promise<BackupSchedule> {
     // Validate cron expression
     if (!cron.validate(options.cronExpression)) {
-      throw new Error(`Invalid cron expression: ${options.cronExpression}`);
+      throw new Error(`Invalid cron expression: ${String(String(options.cronExpression))}`);
     }
 
     const id = uuidv4();
@@ -127,13 +127,13 @@ export class SchedulingService {
       name: options.name,
       cronExpression: options.cronExpression,
       backupType: options.backupType,
-      enabled: options.enabled ?? true,
+      enabled: options.enabled || true,
       nextRunAt: this.calculateNextRun(options.cronExpression),
       runCount: 0,
       failureCount: 0,
       retentionDays: options.retentionDays || 30,
-      compressionEnabled: options.compressionEnabled ?? true,
-      verificationEnabled: options.verificationEnabled ?? true,
+      compressionEnabled: options.compressionEnabled || true,
+      verificationEnabled: options.verificationEnabled || true,
       createdAt: now,
       updatedAt: now,
     };
@@ -149,7 +149,7 @@ export class SchedulingService {
         this.startJob(schedule);
       }
 
-      logger.info(`Backup schedule created: ${schedule.name}`, { scheduleId: id });
+      logger.info(`Backup schedule created: ${String(String(schedule.name))}`, { scheduleId: id });
       return schedule;
     } catch (error) {
       logger.error('Failed to create backup schedule', error);
@@ -215,12 +215,12 @@ export class SchedulingService {
   async updateSchedule(id: string, options: UpdateScheduleOptions): Promise<BackupSchedule> {
     const existingSchedule = await this.getScheduleById(id);
     if (!existingSchedule) {
-      throw new Error(`Schedule not found: ${id}`);
+      throw new Error(`Schedule not found: ${String(id)}`);
     }
 
     // Validate cron expression if provided
     if (options.cronExpression && !cron.validate(options.cronExpression)) {
-      throw new Error(`Invalid cron expression: ${options.cronExpression}`);
+      throw new Error(`Invalid cron expression: ${String(String(options.cronExpression))}`);
     }
 
     const updates: string[] = [];
@@ -270,7 +270,7 @@ export class SchedulingService {
     await this.db.execute(
       `
       UPDATE backup_schedules 
-      SET ${updates.join(', ')}
+      SET ${String(String(updates.join(', ')))}
       WHERE id = ?
     `,
       params
@@ -289,7 +289,7 @@ export class SchedulingService {
       }
     }
 
-    logger.info(`Backup schedule updated: ${updatedSchedule.name}`, { scheduleId: id });
+    logger.info(`Backup schedule updated: ${String(String(updatedSchedule.name))}`, { scheduleId: id });
     return updatedSchedule;
   }
 
@@ -302,7 +302,7 @@ export class SchedulingService {
   async deleteSchedule(id: string): Promise<void> {
     const schedule = await this.getScheduleById(id);
     if (!schedule) {
-      throw new Error(`Schedule not found: ${id}`);
+      throw new Error(`Schedule not found: ${String(id)}`);
     }
 
     // Stop the job if running
@@ -310,7 +310,7 @@ export class SchedulingService {
 
     await this.db.execute('DELETE FROM backup_schedules WHERE id = ?', [id]);
 
-    logger.info(`Backup schedule deleted: ${schedule.name}`, { scheduleId: id });
+    logger.info(`Backup schedule deleted: ${String(String(schedule.name))}`, { scheduleId: id });
   }
 
   /**
@@ -359,7 +359,7 @@ export class SchedulingService {
   async executeSchedule(id: string): Promise<void> {
     const schedule = await this.getScheduleById(id);
     if (!schedule) {
-      throw new Error(`Schedule not found: ${id}`);
+      throw new Error(`Schedule not found: ${String(id)}`);
     }
 
     await this.executeBackup(schedule);
@@ -373,32 +373,19 @@ export class SchedulingService {
   async cleanupOldBackups(): Promise<void> {
     const schedules = await this.getSchedules({ enabled: true });
 
-    for (const schedule of schedules) {
-      if (schedule.retentionDays && schedule.retentionDays > 0) {
-        const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - schedule.retentionDays);
-
-        try {
-          // Get old backups for this schedule's pattern
-          const oldBackups = await this.backupService.listBackups({
+    await Promise.all(
+  schedules.map(async (schedule) => {
+    await this.backupService.listBackups({
             limit: 1000,
           });
-
-          const backupsToDelete = oldBackups.filter(
-            backup =>
-              new Date(backup.createdAt) < cutoffDate &&
-              backup.name.includes(schedule.name.toLowerCase())
-          );
-
-          for (const backup of backupsToDelete) {
-            await this.backupService.deleteBackup(backup.id);
-            logger.info(`Cleaned up old backup: ${backup.name}`, {
+  })
+);`, {
               scheduleId: schedule.id,
               backupId: backup.id,
             });
           }
         } catch (error) {
-          logger.error(`Failed to cleanup old backups for schedule ${schedule.name}:`, error);
+          logger.error(`Failed to cleanup old backups for schedule ${String(String(schedule.name))}:`, error);
         }
       }
     }
@@ -411,28 +398,11 @@ export class SchedulingService {
     try {
       const schedules = await this.getSchedules({ enabled: true });
 
-      for (const schedule of schedules) {
-        this.startJob(schedule);
-      }
-
-      logger.info(`Started ${schedules.length} backup schedules`);
-    } catch (error) {
-      logger.error('Failed to load backup schedules:', error);
-    }
-  }
-
-  /**
-   * Start a scheduled job
-   *
-   * @param {BackupSchedule} schedule - Schedule configuration
-   */
-  private startJob(schedule: BackupSchedule): void {
-    try {
-      const task = cron.schedule(
-        schedule.cronExpression,
-        async () => {
-          await this.executeBackup(schedule);
-        },
+      await Promise.all(
+  schedules.map(async (schedule) => {
+    await this.executeBackup(schedule);
+  })
+);,
         {
           scheduled: false,
           timezone: 'UTC',
@@ -442,13 +412,13 @@ export class SchedulingService {
       task.start();
       this.activeJobs.set(schedule.id, task);
 
-      logger.info(`Started backup job: ${schedule.name}`, {
+      logger.info(`Started backup job: ${String(String(schedule.name))}`, {
         scheduleId: schedule.id,
         cronExpression: schedule.cronExpression,
         nextRun: schedule.nextRunAt,
       });
     } catch (error) {
-      logger.error(`Failed to start backup job: ${schedule.name}`, error);
+      logger.error(`Failed to start backup job: ${String(String(schedule.name))}`, error);
     }
   }
 
@@ -457,12 +427,12 @@ export class SchedulingService {
    *
    * @param {string} scheduleId - Schedule ID
    */
-  private stopJob(scheduleId: string): void {
+  private static stopJob(scheduleId: string): void {
     const task = this.activeJobs.get(scheduleId);
     if (task) {
       task.stop();
       this.activeJobs.delete(scheduleId);
-      logger.info(`Stopped backup job for schedule: ${scheduleId}`);
+      logger.info(`Stopped backup job for schedule: ${String(scheduleId)}`);
     }
   }
 
@@ -475,11 +445,11 @@ export class SchedulingService {
     const startTime = Date.now();
 
     try {
-      logger.info(`Executing scheduled backup: ${schedule.name}`, { scheduleId: schedule.id });
+      logger.info(`Executing scheduled backup: ${String(String(schedule.name))}`, { scheduleId: schedule.id });
 
       // Create backup name with timestamp
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const backupName = `${schedule.name}-${timestamp}`;
+      const backupName = `${String(String(schedule.name))}-${String(timestamp)}`;
 
       // Execute backup based on type
       let backup;
@@ -497,7 +467,7 @@ export class SchedulingService {
         if (parentBackup) {
           backup = await this.backupService.createIncrementalBackup({
             name: backupName,
-            description: `Scheduled incremental backup from ${schedule.name}`,
+            description: `Scheduled incremental backup from ${String(String(schedule.name))}`,
             compress: schedule.compressionEnabled,
             verify: schedule.verificationEnabled,
             parentBackupId: parentBackup.id,
@@ -509,7 +479,7 @@ export class SchedulingService {
           );
           backup = await this.backupService.createFullBackup({
             name: backupName,
-            description: `Scheduled full backup from ${schedule.name} (fallback)`,
+            description: `Scheduled full backup from ${String(String(schedule.name))} (fallback)`,
             compress: schedule.compressionEnabled,
             verify: schedule.verificationEnabled,
           });
@@ -517,7 +487,7 @@ export class SchedulingService {
       } else {
         backup = await this.backupService.createFullBackup({
           name: backupName,
-          description: `Scheduled full backup from ${schedule.name}`,
+          description: `Scheduled full backup from ${String(String(schedule.name))}`,
           compress: schedule.compressionEnabled,
           verify: schedule.verificationEnabled,
         });
@@ -527,10 +497,10 @@ export class SchedulingService {
       await this.updateScheduleStats(schedule.id, true);
 
       const duration = Date.now() - startTime;
-      logger.info(`Scheduled backup completed: ${schedule.name}`, {
+      logger.info(`Scheduled backup completed: ${String(String(schedule.name))}`, {
         scheduleId: schedule.id,
         backupId: backup.id,
-        duration: `${duration}ms`,
+        duration: `${String(duration)}ms`,
         size: backup.size,
       });
     } catch (error) {
@@ -538,9 +508,9 @@ export class SchedulingService {
       await this.updateScheduleStats(schedule.id, false);
 
       const duration = Date.now() - startTime;
-      logger.error(`Scheduled backup failed: ${schedule.name}`, {
+      logger.error(`Scheduled backup failed: ${String(String(schedule.name))}`, {
         scheduleId: schedule.id,
-        duration: `${duration}ms`,
+        duration: `${String(duration)}ms`,
         error,
       });
     }
@@ -581,7 +551,7 @@ export class SchedulingService {
    * @param {string} cronExpression - Cron expression
    * @returns {string} Next run time in ISO format
    */
-  private calculateNextRun(_cronExpression: string): string {
+  private static calculateNextRun(_cronExpression: string): string {
     try {
       // Use a simple approximation - in production you'd want a proper cron parser
       return new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours from now
@@ -658,7 +628,7 @@ export class SchedulingService {
    * @param {any} row - Database row
    * @returns {BackupSchedule} Deserialized schedule
    */
-  private deserializeSchedule(row: {
+  private static deserializeSchedule(row: {
     id: string;
     name: string;
     description?: string;

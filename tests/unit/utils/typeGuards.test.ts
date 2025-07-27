@@ -143,7 +143,7 @@ describe('Type Guards', () => {
 
     it('should return true for template literals', () => {
       const name = 'World';
-      expect(isString(`Hello ${name}!`)).toBe(true);
+      expect(isString(`Hello ${String(name)}!`)).toBe(true);
     });
 
     it('should return false for non-string types', () => {
@@ -210,15 +210,15 @@ describe('Type Guards', () => {
     it('should provide type safety in conditional flows', () => {
       function processValue(value: unknown): string {
         if (isString(value)) {
-          return `String: ${value}`;
+          return `String: ${String(value)}`;
         }
         if (isErrorWithMessage(value)) {
-          return `Error: ${value.message}`;
+          return `Error: ${String(String(value.message))}`;
         }
         if (isRecord(value)) {
-          return `Object with ${Object.keys(value).length} keys`;
+          return `Object with ${String(String(Object.keys(value).length))} keys`;
         }
-        return `Other: ${typeof value}`;
+        return `Other: ${String(typeof value)}`;
       }
 
       expect(processValue('test')).toBe('String: test');
@@ -232,7 +232,7 @@ describe('Type Guards', () => {
     it('should handle large objects efficiently', () => {
       const largeObject: Record<string, number> = {};
       for (let i = 0; i < 10000; i += 1) {
-        largeObject[`key${i}`] = i;
+        largeObject[`key${String(i)}`] = i;
       }
 
       const start = performance.now();

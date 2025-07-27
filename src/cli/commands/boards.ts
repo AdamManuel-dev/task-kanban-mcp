@@ -1,3 +1,30 @@
+/**
+ * @module cli/commands/boards
+ * @description Board management commands for the CLI.
+ *
+ * Provides comprehensive board operations including creating, updating, listing,
+ * archiving, and viewing boards. Supports interactive board setup with templates
+ * and real-time board visualization.
+ *
+ * @example
+ * ```bash
+ * # List all boards
+ * kanban board list
+ *
+ * # Create a board interactively
+ * kanban board create --interactive
+ *
+ * # Quick setup with template
+ * kanban board quick-setup --template scrum --name "Dev Sprint"
+ *
+ * # View board in interactive mode
+ * kanban board view board123
+ *
+ * # Set default board
+ * kanban board use board123
+ * ```
+ */
+
 import type { Command } from 'commander';
 import inquirer from 'inquirer';
 // import * as React from 'react';
@@ -15,19 +42,9 @@ interface ListBoardOptions {
   archived?: boolean;
 }
 
-interface CreateBoardOptions {
-  description?: string;
-  template?: string;
-}
-
 interface ShowBoardOptions {
   tasks?: boolean;
   stats?: boolean;
-}
-
-interface UpdateBoardOptions {
-  name?: string;
-  description?: string;
 }
 
 interface BoardData {
@@ -86,19 +103,57 @@ interface QuickSetupDefaults {
   columns?: Array<{ name: string; order: number }>;
 }
 
-interface BoardSetupData {
-  name: string;
-  description?: string;
-  isPublic: boolean;
-  columns: Array<{ name: string; order: number }>;
-}
-
+/**
+ * Register all board-related commands with the CLI program.
+ *
+ * @param program - The commander program instance
+ *
+ * Available commands:
+ * - `list` (alias: `ls`) - List boards with filtering
+ * - `show <id>` - Display board details and statistics
+ * - `view [id]` - Interactive board visualization
+ * - `create` (alias: `new`) - Create a new board
+ * - `update <id>` - Update board properties
+ * - `delete <id>` (alias: `rm`) - Delete a board
+ * - `use <id>` - Set board as default
+ * - `archive <id>` - Archive a board
+ * - `unarchive <id>` - Restore archived board
+ * - `quick-setup` (alias: `setup`) - Quick board setup with templates
+ */
 export function registerBoardCommands(program: Command): void {
   const boardCmd = program.command('board').alias('b').description('Manage boards');
 
   // Get global components with proper typing
   const getComponents = (): CliComponents => global.cliComponents;
 
+  /**
+   * List all boards with optional filtering.
+   *
+   * @command list
+   * @alias ls
+   *
+   * @option --active - Show only active (non-archived) boards
+   * @option --archived - Show only archived boards
+   *
+   * @example
+   * ```bash
+   * # List all boards
+   * kanban board list
+   *
+   * # List only active boards
+   * kanban board list --active
+   *
+   * # List archived boards
+   * kanban board list --archived
+   * ```
+   *
+   * Output columns:
+   * - ID: Board identifier
+   * - Name: Board name
+   * - Description: Board description
+   * - Archived: Archive status
+   * - Created: Creation timestamp
+   */
   boardCmd
     .command('list')
     .alias('ls')
@@ -110,7 +165,7 @@ export function registerBoardCommands(program: Command): void {
 
       try {
         const response = await apiClient.getBoards();
-        const boards = response.data as BoardData[];
+        const boards = 'data' in response ? (response.data as BoardData[]) : [];
 
         if (!boards || boards.length === 0) {
           formatter.info('No boards found');
@@ -131,12 +186,40 @@ export function registerBoardCommands(program: Command): void {
         });
       } catch (error) {
         formatter.error(
-          `Failed to list boards: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to list boards: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
     });
 
+  /**
+   * Show detailed information about a specific board.
+   *
+   * @command show <id>
+   *
+   * @param id - The board ID to display
+   * @option --tasks - Include all tasks in the board
+   * @option --stats - Include board statistics and analytics
+   *
+   * @example
+   * ```bash
+   * # Show basic board details
+   * kanban board show board123
+   *
+   * # Show board with tasks
+   * kanban board show board123 --tasks
+   *
+   * # Show board with statistics
+   * kanban board show board123 --stats
+   * ```
+   *
+   * Statistics include:
+   * - Total tasks by status
+   * - Task completion rate
+   * - Average task age
+   * - Overdue task count
+   * - Team productivity metrics
+   */
   boardCmd
     .command('show <id>')
     .description('Show board details')
@@ -147,10 +230,10 @@ export function registerBoardCommands(program: Command): void {
 
       try {
         const response = await apiClient.getBoard(id);
-        const board = response.data as BoardData;
+        const board = 'data' in response ? (response.data as BoardData) : undefined;
 
         if (!board) {
-          formatter.error(`Board ${id} not found`);
+          formatter.error(`Board ${String(id)} not found`);
           process.exit(1);
         }
 
@@ -168,19 +251,61 @@ export function registerBoardCommands(program: Command): void {
           formatter.info('\n--- Statistics ---');
           try {
             const statsResponse = await apiClient.getBoardStats(id);
-            formatter.output(statsResponse.data);
+            if ('data' in statsResponse) {
+              formatter.output(statsResponse.data);
+            } else {
+              formatter.warn('No statistics data available');
+            }
           } catch (error) {
             formatter.warn('Could not retrieve board statistics');
           }
         }
       } catch (error) {
         formatter.error(
-          `Failed to get board: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to get board: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
     });
 
+  /**
+   * Interactive board view with real-time updates.
+   *
+   * @command view [id]
+   *
+   * @param id - Board ID (uses default board if not specified)
+   * @option -i, --interactive - Enable interactive mode (default: true)
+   * @option --no-interactive - Disable interactive mode
+   * @option --wip-limits - Show Work-In-Progress limits (default: true)
+   * @option --refresh <seconds> - Auto-refresh interval in seconds (default: 30)
+   * @option --max-height <number> - Maximum tasks shown per column (default: 8)
+   * @option --column-width <number> - Column display width (default: 25)
+   *
+   * @example
+   * ```bash
+   * # View default board interactively
+   * kanban board view
+   *
+   * # View specific board with custom refresh
+   * kanban board view board123 --refresh 10
+   *
+   * # Non-interactive view (static display)
+   * kanban board view board123 --no-interactive
+   * ```
+   *
+   * Interactive controls:
+   * - ←/→ or h/l: Switch columns
+   * - ↑/↓ or j/k: Navigate tasks
+   * - Enter: Select task/column
+   * - r: Manual refresh
+   * - n: New task in column
+   * - e: Edit selected task
+   * - d: Delete selected task
+   * - ?: Show help
+   * - q: Quit
+   *
+   * @note Interactive mode is temporarily disabled pending Ink/React ESM resolution
+   */
   boardCmd
     .command('view [id]')
     .description('Interactive board view with live updates')
@@ -205,7 +330,7 @@ export function registerBoardCommands(program: Command): void {
 
         // Fetch board data with spinner
         const boardData = await spinner.withSpinner(
-          `Loading board: ${boardId}`,
+          `Loading board: ${String(boardId)}`,
           apiClient.getBoard(boardId),
           {
             successText: 'Board loaded successfully',
@@ -214,7 +339,7 @@ export function registerBoardCommands(program: Command): void {
         );
 
         if (!boardData) {
-          formatter.error(`Board ${boardId} not found`);
+          formatter.error(`Board ${String(boardId)} not found`);
           process.exit(1);
         }
 
@@ -224,24 +349,10 @@ export function registerBoardCommands(program: Command): void {
           id: apiResponse.id,
           name: apiResponse.name,
           description: apiResponse.description,
-          columns: (apiResponse.columns || []).map(
-            (col: ApiColumnData): Column => ({
-              id: col.id,
-              name: col.name,
-              limit: col.wip_limit,
-              tasks: (col.tasks || []).map(
-                (task: ApiTaskData): Task => ({
-                  id: task.id,
-                  title: task.title,
-                  status: task.status,
-                  priority: task.priority,
-                  assignee: task.assignee,
-                  tags: task.tags,
-                  due_date: task.due_date,
-                })
-              ),
-            })
-          ),
+          color: '#007acc',
+          created_at: new Date(),
+          updated_at: new Date(),
+          archived: false,
         };
 
         if (!options?.interactive) {
@@ -327,21 +438,21 @@ export function registerBoardCommands(program: Command): void {
             onTaskSelect: async (task, _columnId) => {
               try {
                 // Show task details
-                formatter.info(`\nTask: ${task.title}`);
-                formatter.info(`Status: ${task.status}`);
-                formatter.info(`Priority: ${task.priority || 'None'}`);
-                if (task.assignee) formatter.info(`Assignee: ${task.assignee}`);
-                if (task.tags?.length) formatter.info(`Tags: ${task.tags.join(', ')}`);
-                if (task.due_date) formatter.info(`Due: ${task.due_date}`);
+                formatter.info(`\nTask: ${String(String(task.title))}`);
+                formatter.info(`Status: ${String(String(task.status))}`);
+                formatter.info(`Priority: ${String(String(task.priority || 'None'))}`);
+                if (task.assignee) formatter.info(`Assignee: ${String(String(task.assignee))}`);
+                if (task.tags?.length) formatter.info(`Tags: ${String(String(task.tags.join(', ')))}`);
+                if (task.due_date) formatter.info(`Due: ${String(String(task.due_date))}`);
               } catch (error) {
                 // Handle task selection error
               }
             },
             onColumnSelect: async column => {
               try {
-                formatter.info(`\nColumn: ${column.name}`);
-                formatter.info(`Tasks: ${column.tasks.length}`);
-                if (column.limit) formatter.info(`WIP Limit: ${column.limit}`);
+                formatter.info(`\nColumn: ${String(String(column.name))}`);
+                formatter.info(`Tasks: ${String(String(column.tasks.length))}`);
+                if (column.limit) formatter.info(`WIP Limit: ${String(String(column.limit))}`);
               } catch (error) {
                 // Handle column selection error
               }
@@ -389,19 +500,19 @@ export function registerBoardCommands(program: Command): void {
                 case 'n':
                   // Create new task in selected column
                   if (context.selectedColumn) {
-                    formatter.info(`\nCreate new task in column: ${context.selectedColumn.name}`);
+                    formatter.info(`\nCreate new task in column: ${String(String(context.selectedColumn.name))}`);
                   }
                   break;
                 case 'e':
                   // Edit selected task
                   if (context.selectedTask) {
-                    formatter.info(`\nEdit task: ${context.selectedTask.title}`);
+                    formatter.info(`\nEdit task: ${String(String(context.selectedTask.title))}`);
                   }
                   break;
                 case 'd':
                   // Delete selected task
                   if (context.selectedTask) {
-                    formatter.info(`\nDelete task: ${context.selectedTask.title}`);
+                    formatter.info(`\nDelete task: ${String(String(context.selectedTask.title))}`);
                   }
                   break;
                 case '?':
@@ -426,7 +537,7 @@ export function registerBoardCommands(program: Command): void {
         };
 
         // Show loading indicator and instructions
-        formatter.info(`Starting interactive board view for: ${board.name}`);
+        formatter.info(`Starting interactive board view for: ${String(String(board.name))}`);
         formatter.info('Press ? for help, q to quit');
 
         // Render the interactive board view
@@ -434,12 +545,36 @@ export function registerBoardCommands(program: Command): void {
         */
       } catch (error) {
         formatter.error(
-          `Failed to start board view: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to start board view: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
     });
 
+  /**
+   * Create a new board.
+   *
+   * @command create
+   * @alias new
+   *
+   * @option -n, --name <name> - Board name (required in non-interactive mode)
+   * @option -d, --description <desc> - Board description
+   * @option -i, --interactive - Use interactive prompts
+   *
+   * @example
+   * ```bash
+   * # Create board with options
+   * kanban board create --name "Q4 Sprint" --description "Fourth quarter development"
+   *
+   * # Create board interactively
+   * kanban board create --interactive
+   * ```
+   *
+   * Interactive mode prompts:
+   * - Board name (required)
+   * - Description (optional)
+   * - Set as default board
+   */
   boardCmd
     .command('create')
     .alias('new')
@@ -495,7 +630,7 @@ export function registerBoardCommands(program: Command): void {
 
       try {
         const board = await apiClient.createBoard(boardData);
-        formatter.success(`Board created successfully: ${(board as { id: string }).id}`);
+        formatter.success(`Board created successfully: ${String((board as { id: string }).id)}`);
         formatter.output(board);
 
         // Set as default if requested
@@ -505,7 +640,7 @@ export function registerBoardCommands(program: Command): void {
         }
       } catch (error) {
         formatter.error(
-          `Failed to create board: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to create board: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -524,7 +659,7 @@ export function registerBoardCommands(program: Command): void {
         // Get current board data
         const currentBoard = await apiClient.getBoard(id);
         if (!currentBoard) {
-          formatter.error(`Board ${id} not found`);
+          formatter.error(`Board ${String(id)} not found`);
           process.exit(1);
         }
 
@@ -562,7 +697,7 @@ export function registerBoardCommands(program: Command): void {
         formatter.output(updatedBoard);
       } catch (error) {
         formatter.error(
-          `Failed to update board: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to update board: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -580,7 +715,7 @@ export function registerBoardCommands(program: Command): void {
         if (!options.force) {
           const board = await apiClient.getBoard(id);
           if (!board) {
-            formatter.error(`Board ${id} not found`);
+            formatter.error(`Board ${String(id)} not found`);
             process.exit(1);
           }
 
@@ -588,7 +723,7 @@ export function registerBoardCommands(program: Command): void {
             {
               type: 'confirm',
               name: 'confirm',
-              message: `Delete board "${board.name}"? This will also delete all tasks in the board.`,
+              message: `Delete board "${String(String(board.name))}"? This will also delete all tasks in the board.`,
               default: false,
             },
           ]);
@@ -600,15 +735,31 @@ export function registerBoardCommands(program: Command): void {
         }
 
         await apiClient.deleteBoard(id);
-        formatter.success(`Board ${id} deleted successfully`);
+        formatter.success(`Board ${String(id)} deleted successfully`);
       } catch (error) {
         formatter.error(
-          `Failed to delete board: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to delete board: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
     });
 
+  /**
+   * Set a board as the default for all CLI operations.
+   *
+   * @command use <id>
+   *
+   * @param id - The board ID to set as default
+   *
+   * @example
+   * ```bash
+   * # Set default board
+   * kanban board use board123
+   *
+   * # Now all task operations use this board by default
+   * kanban task list  # Lists tasks from board123
+   * ```
+   */
   boardCmd
     .command('use <id>')
     .description('Set board as default')
@@ -619,20 +770,35 @@ export function registerBoardCommands(program: Command): void {
         // Verify board exists
         const board = await apiClient.getBoard(id);
         if (!board) {
-          formatter.error(`Board ${id} not found`);
+          formatter.error(`Board ${String(id)} not found`);
           process.exit(1);
         }
 
         config.setDefaultBoard(id);
-        formatter.success(`Default board set to "${board.name}" (${id})`);
+        formatter.success(`Default board set to "${String(String(board.name))}" (${String(id)})`);
       } catch (error) {
         formatter.error(
-          `Failed to set default board: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to set default board: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
     });
 
+  /**
+   * Archive a board to hide it from active board lists.
+   *
+   * @command archive <id>
+   *
+   * @param id - The board ID to archive
+   *
+   * @example
+   * ```bash
+   * kanban board archive board123
+   * ```
+   *
+   * @note Archived boards can be restored using the `unarchive` command.
+   * Tasks within archived boards remain accessible.
+   */
   boardCmd
     .command('archive <id>')
     .description('Archive a board')
@@ -641,10 +807,10 @@ export function registerBoardCommands(program: Command): void {
 
       try {
         await apiClient.updateBoard(id, { archived: true });
-        formatter.success(`Board ${id} archived successfully`);
+        formatter.success(`Board ${String(id)} archived successfully`);
       } catch (error) {
         formatter.error(
-          `Failed to archive board: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to archive board: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -658,15 +824,50 @@ export function registerBoardCommands(program: Command): void {
 
       try {
         await apiClient.updateBoard(id, { archived: false });
-        formatter.success(`Board ${id} unarchived successfully`);
+        formatter.success(`Board ${String(id)} unarchived successfully`);
       } catch (error) {
         formatter.error(
-          `Failed to unarchive board: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to unarchive board: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
     });
 
+  /**
+   * Quick board setup with pre-configured templates.
+   *
+   * @command quick-setup
+   * @alias setup
+   *
+   * @option -n, --name <name> - Board name
+   * @option -d, --description <desc> - Board description
+   * @option --template <type> - Template type: basic, scrum, bugs, content
+   * @option --public - Make board publicly accessible
+   * @option --set-default - Automatically set as default board
+   *
+   * @example
+   * ```bash
+   * # Interactive setup
+   * kanban board quick-setup
+   *
+   * # Use Scrum template
+   * kanban board quick-setup --template scrum --name "Sprint Board"
+   *
+   * # Quick setup with all options
+   * kanban board quick-setup --template bugs --name "Bug Tracker" --public --set-default
+   * ```
+   *
+   * Available templates:
+   * - **basic**: To Do → In Progress → Done
+   * - **scrum**: Backlog → To Do → In Progress → Review → Done
+   * - **bugs**: New → Confirmed → In Progress → Testing → Resolved
+   * - **content**: Ideas → Writing → Editing → Review → Published
+   *
+   * After creation:
+   * - View board: `kanban board view <id>`
+   * - Create task: `kanban task create --interactive`
+   * - List tasks: `kanban task list`
+   */
   boardCmd
     .command('quick-setup')
     .alias('setup')
@@ -722,7 +923,7 @@ export function registerBoardCommands(program: Command): void {
 
           if (!templates[options.template]) {
             formatter.error(
-              `Invalid template: ${options.template}. Available: ${Object.keys(templates).join(', ')}`
+              `Invalid template: ${String(String(options.template))}. Available: ${String(String(Object.keys(templates).join(', ')))}`
             );
             process.exit(1);
           }
@@ -758,7 +959,7 @@ export function registerBoardCommands(program: Command): void {
 
         // Create the board with spinner
         const board = await spinner.withSpinner(
-          `Creating board: ${boardData.name}`,
+          `Creating board: ${String(String(boardData.name))}`,
           apiClient.createBoard(createData),
           {
             successText: 'Board created successfully! 🎉',
@@ -767,17 +968,19 @@ export function registerBoardCommands(program: Command): void {
         );
 
         formatter.success(
-          `Board "${boardData.name}" created with ID: ${(board as { id: string }).id}`
+          `Board "${String(String(boardData.name))}" created with ID: ${String((board as { id: string }).id)}`
         );
 
         // Show board details
         formatter.info('\n📊 Board Summary:');
-        formatter.info(`Name: ${chalk.bold(boardData.name)}`);
+        formatter.info(`Name: ${String(String(chalk.bold(boardData.name)))}`);
         if (boardData.description) {
-          formatter.info(`Description: ${boardData.description}`);
+          formatter.info(`Description: ${String(String(boardData.description))}`);
         }
-        formatter.info(`Visibility: ${boardData.isPublic ? 'Public' : 'Private'}`);
-        formatter.info(`Columns: ${boardData.columns.map(c => c.name).join(' → ')}`);
+        formatter.info(`Visibility: ${String(String(boardData.isPublic ? 'Public' : 'Private'))}`);
+        formatter.info(
+          `Columns: ${String(String(boardData.columns.map(c => c.name).join(' → ')))}`
+        );
 
         // Set as default if requested
         if (options.setDefault) {
@@ -795,7 +998,7 @@ export function registerBoardCommands(program: Command): void {
 
         // Offer quick actions
         formatter.info('\n💡 Quick Actions:');
-        formatter.info(`  View board: kanban board view ${(board as { id: string }).id}`);
+        formatter.info(`  View board: kanban board view ${String((board as { id: string }).id)}`);
         formatter.info(`  Create task: kanban task create --interactive`);
         formatter.info(`  List tasks: kanban task list`);
 
@@ -807,7 +1010,7 @@ export function registerBoardCommands(program: Command): void {
         }
 
         formatter.error(
-          `Failed to setup board: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to setup board: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
