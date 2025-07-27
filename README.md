@@ -32,13 +32,13 @@ Instead of wasting tokens on "remember to implement X after Y" or "the previous 
            └─────────┬──────────────────┘
                      │
               ┌──────▼──────┐
-              │  MCP Server  │
-              │(Task State)  │
+              │  MCP Server │
+              │(Task State) │
               └──────┬──────┘
                      │
            ┌─────────┴─────────┐
            │                   │
-    ┌──────▼──────┐    ┌──────▼──────┐
+    ┌──────▼──────┐    ┌───────▼──────┐
     │   Human     │    │   Human      │
     │ Supervisor  │    │ Supervisor   │
     │   (CLI)     │    │   (CLI)      │
