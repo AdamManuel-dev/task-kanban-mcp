@@ -274,7 +274,10 @@ export class TagServiceKysely {
         .orderBy('usage_count', 'desc')
         .execute();
 
-      return tagsWithUsage;
+      return tagsWithUsage.map(tag => ({
+        ...tag,
+        usage_count: Number(tag.usage_count)
+      })) as TagWithUsage[];
     } catch (error) {
       logger.error('Failed to get tags with usage', { error });
       throw new BaseServiceError('TAG_USAGE_FETCH_FAILED', 'Failed to fetch tag usage', error);

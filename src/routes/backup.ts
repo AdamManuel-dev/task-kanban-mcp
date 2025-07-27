@@ -536,7 +536,7 @@ router.get('/:id/export', async (req, res) => {
     if (!id) {
       return res.status(400).json(formatErrorResponse('Backup ID is required'));
     }
-    const format = (req.query.format as string) || 'json';
+    const format = (req.query['format'] as string) || 'json';
 
     const backup = await backupService.getBackupMetadata(id);
     if (!backup) {

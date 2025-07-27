@@ -1,4 +1,4 @@
-import * as Table from 'cli-table3';
+import Table from 'cli-table3';
 import chalk from 'chalk';
 
 type OutputFormat = 'table' | 'json' | 'csv';
@@ -203,7 +203,7 @@ export class OutputFormatter {
   private getNestedValue(obj: unknown, path: string): unknown {
     return path
       .split('.')
-      .reduce((current, key) => (current && current[key] !== undefined ? current[key] : ''), obj);
+      .reduce((current: any, key) => (current && current[key] !== undefined ? current[key] : ''), obj);
   }
 
   /**
@@ -381,7 +381,7 @@ export class OutputFormatter {
   /**
    * Format backup schedule information
    */
-  formatSchedule(schedule: { name?: string; cron?: string; enabled?: boolean; next_run?: string }): string {
+  formatSchedule(schedule: any): string {
     const lines = [];
 
     // Header
@@ -390,9 +390,9 @@ export class OutputFormatter {
 
     // Basic info
     lines.push(`ID: ${schedule.id}`);
-    lines.push(`Type: ${schedule.backupType.toUpperCase()}`);
+    lines.push(`Type: ${schedule.backupType?.toUpperCase() || 'N/A'}`);
     lines.push(`Status: ${schedule.enabled ? chalk.green('ENABLED') : chalk.red('DISABLED')}`);
-    lines.push(`Cron: ${schedule.cronExpression}`);
+    lines.push(`Cron: ${schedule.cronExpression || schedule.cron || 'N/A'}`)
 
     if (schedule.description) {
       lines.push(`Description: ${schedule.description}`);
@@ -408,8 +408,8 @@ export class OutputFormatter {
       lines.push(`Last Run: ${new Date(schedule.lastRunAt).toLocaleString()}`);
     }
 
-    if (schedule.nextRunAt) {
-      lines.push(`Next Run: ${new Date(schedule.nextRunAt).toLocaleString()}`);
+    if (schedule.nextRunAt || schedule.next_run) {
+      lines.push(`Next Run: ${new Date(schedule.nextRunAt || schedule.next_run).toLocaleString()}`);
     }
 
     // Statistics

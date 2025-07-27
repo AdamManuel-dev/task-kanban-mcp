@@ -11,7 +11,7 @@ export interface WebSocketClient {
   id: string;
   ws: WebSocket;
   ip: string;
-  userAgent?: string;
+  userAgent?: string | undefined;
   connectedAt: Date;
   lastHeartbeat: Date;
   authenticated: boolean;

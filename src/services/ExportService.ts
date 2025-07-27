@@ -31,11 +31,18 @@ export interface ExportData {
   tags?: Tag[];
   notes?: Note[];
   columns?: Column[];
+  taskTags?: any[];
   metadata?: {
     exportDate: string;
     version: string;
     totalItems: number;
   };
+}
+
+export interface ExportFileFormat {
+  version: string;
+  exportDate?: string;
+  data: ExportData;
 }
 
 export interface ImportOptions {
@@ -205,7 +212,7 @@ export class ExportService {
   /**
    * Import data from JSON
    */
-  async importFromJSON(data: ExportData | { data: ExportData }, options: ImportOptions): Promise<ImportResult> {
+  async importFromJSON(data: ExportData | ExportFileFormat, options: ImportOptions): Promise<ImportResult> {
     logger.info('Starting JSON import', { options });
     
     const result: ImportResult = {
@@ -217,9 +224,12 @@ export class ExportService {
 
     try {
       // Validate JSON structure
-      if (!data.version || !data.data) {
+      const isFileFormat = 'version' in data && 'data' in data;
+      if (!isFileFormat) {
         throw new BaseServiceError('INVALID_FORMAT', 'Invalid JSON format', 400);
       }
+      
+      const exportData = (data as ExportFileFormat).data;
 
       // Use transaction
       if (options.validateOnly) {
@@ -229,8 +239,8 @@ export class ExportService {
             // Import in correct order to maintain referential integrity
             
             // 1. Import boards
-            if (data.data.boards) {
-              const boardResult = await this.importBoards(data.data.boards, options);
+            if (exportData.boards) {
+              const boardResult = await this.importBoards(exportData.boards, options);
               result.imported += boardResult.imported;
               result.skipped += boardResult.skipped;
               result.errors.push(...boardResult.errors);
@@ -238,8 +248,8 @@ export class ExportService {
             }
 
             // 2. Import columns
-            if (data.data.columns) {
-              const columnResult = await this.importColumns(data.data.columns, options);
+            if (exportData.columns) {
+              const columnResult = await this.importColumns(exportData.columns, options);
               result.imported += columnResult.imported;
               result.skipped += columnResult.skipped;
               result.errors.push(...columnResult.errors);
@@ -247,8 +257,8 @@ export class ExportService {
             }
 
             // 3. Import tasks
-            if (data.data.tasks) {
-              const taskResult = await this.importTasks(data.data.tasks, options);
+            if (exportData.tasks) {
+              const taskResult = await this.importTasks(exportData.tasks, options);
               result.imported += taskResult.imported;
               result.skipped += taskResult.skipped;
               result.errors.push(...taskResult.errors);
@@ -256,8 +266,8 @@ export class ExportService {
             }
 
             // 4. Import tags
-            if (data.data.tags) {
-              const tagResult = await this.importTags(data.data.tags, options);
+            if (exportData.tags) {
+              const tagResult = await this.importTags(exportData.tags, options);
               result.imported += tagResult.imported;
               result.skipped += tagResult.skipped;
               result.errors.push(...tagResult.errors);
@@ -265,8 +275,8 @@ export class ExportService {
             }
 
             // 5. Import notes
-            if (data.data.notes) {
-              const noteResult = await this.importNotes(data.data.notes, options);
+            if (exportData.notes) {
+              const noteResult = await this.importNotes(exportData.notes, options);
               result.imported += noteResult.imported;
               result.skipped += noteResult.skipped;
               result.errors.push(...noteResult.errors);
@@ -274,8 +284,8 @@ export class ExportService {
             }
 
             // 6. Import task-tag mappings
-            if (data.data.taskTags) {
-              const taskTagResult = await this.importTaskTags(data.data.taskTags, options);
+            if (exportData.taskTags) {
+              const taskTagResult = await this.importTaskTags(exportData.taskTags, options);
               result.imported += taskTagResult.imported;
               result.skipped += taskTagResult.skipped;
               result.errors.push(...taskTagResult.errors);
@@ -297,8 +307,8 @@ export class ExportService {
           // Import in correct order to maintain referential integrity
           
           // 1. Import boards
-          if (data.data.boards) {
-            const boardResult = await this.importBoards(data.data.boards, options);
+          if (exportData.boards) {
+            const boardResult = await this.importBoards(exportData.boards, options);
             result.imported += boardResult.imported;
             result.skipped += boardResult.skipped;
             result.errors.push(...boardResult.errors);
@@ -306,8 +316,8 @@ export class ExportService {
           }
 
           // 2. Import columns
-          if (data.data.columns) {
-            const columnResult = await this.importColumns(data.data.columns, options);
+          if (exportData.columns) {
+            const columnResult = await this.importColumns(exportData.columns, options);
             result.imported += columnResult.imported;
             result.skipped += columnResult.skipped;
             result.errors.push(...columnResult.errors);
@@ -315,8 +325,8 @@ export class ExportService {
           }
 
           // 3. Import tasks
-          if (data.data.tasks) {
-            const taskResult = await this.importTasks(data.data.tasks, options);
+          if (exportData.tasks) {
+            const taskResult = await this.importTasks(exportData.tasks, options);
             result.imported += taskResult.imported;
             result.skipped += taskResult.skipped;
             result.errors.push(...taskResult.errors);
@@ -324,8 +334,8 @@ export class ExportService {
           }
 
           // 4. Import tags
-          if (data.data.tags) {
-            const tagResult = await this.importTags(data.data.tags, options);
+          if (exportData.tags) {
+            const tagResult = await this.importTags(exportData.tags, options);
             result.imported += tagResult.imported;
             result.skipped += tagResult.skipped;
             result.errors.push(...tagResult.errors);
@@ -333,8 +343,8 @@ export class ExportService {
           }
 
           // 5. Import notes
-          if (data.data.notes) {
-            const noteResult = await this.importNotes(data.data.notes, options);
+          if (exportData.notes) {
+            const noteResult = await this.importNotes(exportData.notes, options);
             result.imported += noteResult.imported;
             result.skipped += noteResult.skipped;
             result.errors.push(...noteResult.errors);
@@ -342,8 +352,8 @@ export class ExportService {
           }
 
           // 6. Import task-tag mappings
-          if (data.data.taskTags) {
-            const taskTagResult = await this.importTaskTags(data.data.taskTags, options);
+          if (exportData.taskTags) {
+            const taskTagResult = await this.importTaskTags(exportData.taskTags, options);
             result.imported += taskTagResult.imported;
             result.skipped += taskTagResult.skipped;
             result.errors.push(...taskTagResult.errors);

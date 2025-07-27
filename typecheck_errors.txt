@@ -1,0 +1,158 @@
+
+> @mcp-kanban/server@0.1.0 typecheck
+> tsc --noEmit
+
+src/database/kyselyConnection.ts(51,22): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(args: KyselyConfig): Kysely<Database>', gave the following error.
+    Argument of type '{ dialect: SqliteDialect; log: ((event: LogEvent) => void) | undefined; }' is not assignable to parameter of type 'KyselyConfig' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+      Types of property 'log' are incompatible.
+        Type '((event: LogEvent) => void) | undefined' is not assignable to type 'LogConfig'.
+          Type 'undefined' is not assignable to type 'LogConfig'.
+  Overload 2 of 2, '(args: KyselyProps): Kysely<Database>', gave the following error.
+    Object literal may only specify known properties, and 'log' does not exist in type 'KyselyProps'.
+src/database/kyselyConnection.ts(166,13): error TS6133: 'result' is declared but its value is never read.
+src/mcp/tools.ts(9,3): error TS6196: 'ToolArgs' is declared but never used.
+src/mcp/tools.ts(462,61): error TS2379: Argument of type 'CreateTaskArgs' is not assignable to parameter of type 'CreateTaskRequest' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Property 'column_id' is optional in type 'CreateTaskArgs' but required in type 'CreateTaskRequest'.
+src/mcp/tools.ts(509,60): error TS2379: Argument of type 'ListTasksArgs' is not assignable to parameter of type 'PaginationOptions & TaskFilters' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'ListTasksArgs' is not assignable to type 'TaskFilters' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+    Types of property 'status' are incompatible.
+      Type 'string' is not assignable to type '"done" | "todo" | "in_progress" | "blocked" | "archived"'.
+src/mcp/tools.ts(554,61): error TS2379: Argument of type 'AddNoteArgs' is not assignable to parameter of type 'CreateNoteRequest' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Property 'task_id' is optional in type 'AddNoteArgs' but required in type 'CreateNoteRequest'.
+src/mcp/tools.ts(559,63): error TS2379: Argument of type 'SearchNotesArgs' is not assignable to parameter of type 'NoteSearchOptions' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Property 'query' is optional in type 'SearchNotesArgs' but required in type 'NoteSearchOptions'.
+src/mcp/tools.ts(578,29): error TS2739: Type 'ProjectContext' is missing the following properties from type '{ summary: string; active_tasks: Task[]; recent_activity: unknown[]; priorities: Task[]; bottlenecks: unknown[]; metrics?: Record<string, unknown>; recommendations?: string[]; }': active_tasks, recent_activity, bottlenecks
+src/mcp/tools.ts(583,80): error TS2559: Type '{ include_history?: boolean; include_related?: boolean; include_blockers?: boolean; }' has no properties in common with type 'ContextOptions'.
+src/mcp/tools.ts(584,29): error TS2741: Property 'subtasks' is missing in type 'TaskContext' but required in type '{ task: Task; dependencies: Task[]; subtasks: Task[]; notes: Note[]; tags: Tag[]; history?: unknown[]; related?: Task[]; blockers?: unknown[]; }'.
+src/mcp/tools.ts(589,75): error TS2559: Type '{ metrics?: string[]; time_range?: string; }' has no properties in common with type 'ContextOptions'.
+src/mcp/tools.ts(594,18): error TS2352: Conversion of type 'ProjectContext' to type 'Record<string, unknown>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Index signature for type 'string' is missing in type 'ProjectContext'.
+src/routes/backup.ts(13,10): error TS2305: Module '"@/middleware/validation"' has no exported member 'validateRequest'.
+src/routes/context.ts(44,44): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string | number'.
+  Type 'undefined' is not assignable to type 'string | number'.
+src/routes/context.ts(100,42): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string | number'.
+  Type 'undefined' is not assignable to type 'string | number'.
+src/routes/export.ts(25,7): error TS6133: '_ImportSchema' is declared but its value is never read.
+src/routes/schedule.ts(14,10): error TS2305: Module '"@/middleware/validation"' has no exported member 'validateRequest'.
+src/routes/tasks.ts(240,41): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string | number'.
+  Type 'undefined' is not assignable to type 'string | number'.
+src/routes/tasks.ts(259,41): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string | number'.
+  Type 'undefined' is not assignable to type 'string | number'.
+src/routes/tasks.ts(290,41): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string | number'.
+  Type 'undefined' is not assignable to type 'string | number'.
+src/routes/tasks.ts(310,41): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string | number'.
+  Type 'undefined' is not assignable to type 'string | number'.
+src/routes/tasks.ts(349,41): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string | number'.
+  Type 'undefined' is not assignable to type 'string | number'.
+src/services/ExportService.ts(133,9): error TS2559: Type '{ version: string; exportDate: string; data: ExportData; }' has no properties in common with type 'ExportData'.
+src/services/ExportService.ts(139,89): error TS2345: Argument of type '{ error: unknown; }' is not assignable to parameter of type 'ErrorDetails'.
+  Types of property 'error' are incompatible.
+    Type 'unknown' is not assignable to type 'ErrorDetails'.
+src/services/ExportService.ts(208,88): error TS2345: Argument of type '{ error: unknown; }' is not assignable to parameter of type 'ErrorDetails'.
+  Types of property 'error' are incompatible.
+    Type 'unknown' is not assignable to type 'ErrorDetails'.
+src/services/ExportService.ts(299,15): error TS18046: 'error' is of type 'unknown'.
+src/services/ExportService.ts(370,91): error TS2345: Argument of type '{ error: unknown; }' is not assignable to parameter of type 'ErrorDetails'.
+  Types of property 'error' are incompatible.
+    Type 'unknown' is not assignable to type 'ErrorDetails'.
+src/services/ExportService.ts(453,23): error TS18046: 'item' is of type 'unknown'.
+src/services/ExportService.ts(486,69): error TS18046: 'error' is of type 'unknown'.
+src/services/ExportService.ts(504,71): error TS18046: 'error' is of type 'unknown'.
+src/services/ExportService.ts(545,68): error TS18046: 'error' is of type 'unknown'.
+src/services/ExportService.ts(577,65): error TS18046: 'error' is of type 'unknown'.
+src/services/ExportService.ts(595,54): error TS18046: 'error' is of type 'unknown'.
+src/services/ExportService.ts(609,53): error TS2339: Property 'created_at' does not exist on type '{ task_id: string; tag_id: string; }'.
+src/services/ExportService.ts(613,66): error TS18046: 'error' is of type 'unknown'.
+src/services/TagService.kysely-poc.ts(116,77): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'number | undefined'.
+src/services/TagService.kysely-poc.ts(154,78): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'number | undefined'.
+src/services/TagService.kysely-poc.ts(283,89): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'number | undefined'.
+src/services/TagService.kysely-poc.ts(310,34): error TS2345: Argument of type '{ children: never[]; description: string | null; id: string; name: string; updated_at: string; created_at: string; color: string | null; parent_id: string | null; }' is not assignable to parameter of type 'never'.
+src/services/TagService.kysely-poc.ts(320,97): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'number | undefined'.
+src/services/TagService.kysely-poc.ts(378,80): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'number | undefined'.
+src/utils/databaseValidation.ts(61,4): error TS1360: Type 'ZodObject<{ id: ZodEffects<ZodUnion<[ZodString, ZodNumber]>, string, string | number>; name: ZodString; description: ZodEffects<ZodNullable<ZodString>, string | undefined, string | null>; color: ZodString; created_at: ZodEffects<...>; updated_at: ZodEffects<...>; archived: ZodEffects<...>; }, "strip", ZodTypeAny, { ...' does not satisfy the expected type 'ZodType<Board, ZodTypeDef, Board>'.
+  The types of '_input.id' are incompatible between these types.
+    Type 'string | number' is not assignable to type 'string'.
+      Type 'number' is not assignable to type 'string'.
+src/utils/databaseValidation.ts(77,4): error TS1360: Type 'ZodObject<{ id: ZodEffects<ZodUnion<[ZodString, ZodNumber]>, string, string | number>; board_id: ZodEffects<ZodUnion<[ZodString, ZodNumber]>, string, string | number>; ... 4 more ...; updated_at: ZodEffects<...>; }, "strip", ZodTypeAny, { ...; }, { ...; }>' does not satisfy the expected type 'ZodType<Column, ZodTypeDef, Column>'.
+  The types of '_type.wip_limit' are incompatible between these types.
+    Type 'number | undefined' is not assignable to type 'number'.
+      Type 'undefined' is not assignable to type 'number'.
+src/utils/databaseValidation.ts(124,4): error TS1360: Type 'ZodObject<{ id: ZodEffects<ZodUnion<[ZodString, ZodNumber]>, string, string | number>; title: ZodString; description: ZodEffects<ZodNullable<ZodString>, string | undefined, string | null>; ... 14 more ...; metadata: ZodEffects<...>; }, "strip", ZodTypeAny, { ...; }, { ...; }>' does not satisfy the expected type 'ZodType<Task, ZodTypeDef, Task>'.
+  The types of '_input.id' are incompatible between these types.
+    Type 'string | number' is not assignable to type 'string'.
+      Type 'number' is not assignable to type 'string'.
+src/utils/databaseValidation.ts(140,4): error TS1360: Type 'ZodObject<{ id: ZodEffects<ZodUnion<[ZodString, ZodNumber]>, string, string | number>; task_id: ZodEffects<ZodUnion<[ZodString, ZodNumber]>, string, string | number>; depends_on_task_id: ZodEffects<...>; dependency_type: ZodEnum<...>; created_at: ZodEffects<...>; }, "strip", ZodTypeAny, { ...; }, { ...; }>' does not satisfy the expected type 'ZodType<TaskDependency, ZodTypeDef, TaskDependency>'.
+  The types of '_input.id' are incompatible between these types.
+    Type 'string | number' is not assignable to type 'string'.
+      Type 'number' is not assignable to type 'string'.
+src/utils/databaseValidation.ts(158,4): error TS1360: Type 'ZodObject<{ id: ZodEffects<ZodUnion<[ZodString, ZodNumber]>, string, string | number>; task_id: ZodEffects<ZodUnion<[ZodString, ZodNumber]>, string, string | number>; ... 4 more ...; updated_at: ZodEffects<...>; }, "strip", ZodTypeAny, { ...; }, { ...; }>' does not satisfy the expected type 'ZodType<Note, ZodTypeDef, Note>'.
+  The types of '_input.id' are incompatible between these types.
+    Type 'string | number' is not assignable to type 'string'.
+      Type 'number' is not assignable to type 'string'.
+src/utils/databaseValidation.ts(176,4): error TS1360: Type 'ZodObject<{ id: ZodEffects<ZodUnion<[ZodString, ZodNumber]>, string, string | number>; name: ZodString; color: ZodString; description: ZodEffects<...>; parent_tag_id: ZodEffects<...>; created_at: ZodEffects<...>; }, "strip", ZodTypeAny, { ...; }, { ...; }>' does not satisfy the expected type 'ZodType<Tag, ZodTypeDef, Tag>'.
+  The types of '_input.id' are incompatible between these types.
+    Type 'string | number' is not assignable to type 'string'.
+      Type 'number' is not assignable to type 'string'.
+src/utils/databaseValidation.ts(186,4): error TS1360: Type 'ZodObject<{ id: ZodEffects<ZodUnion<[ZodString, ZodNumber]>, string, string | number>; task_id: ZodEffects<ZodUnion<[ZodString, ZodNumber]>, string, string | number>; tag_id: ZodEffects<...>; created_at: ZodEffects<...>; }, "strip", ZodTypeAny, { ...; }, { ...; }>' does not satisfy the expected type 'ZodType<TaskTag, ZodTypeDef, TaskTag>'.
+  The types of '_input.id' are incompatible between these types.
+    Type 'string | number' is not assignable to type 'string'.
+      Type 'number' is not assignable to type 'string'.
+src/utils/databaseValidation.ts(197,4): error TS1360: Type 'ZodObject<{ id: ZodEffects<ZodUnion<[ZodString, ZodNumber]>, string, string | number>; name: ZodString; description: ZodEffects<ZodNullable<ZodString>, string | undefined, string | null>; color: ZodString; created_at: ZodEffects<...>; updated_at: ZodEffects<...>; archived: ZodEffects<...>; } & { ...; }, "strip", Zod...' does not satisfy the expected type 'ZodType<BoardWithStats, ZodTypeDef, BoardWithStats>'.
+  The types of '_input.id' are incompatible between these types.
+    Type 'string | number' is not assignable to type 'string'.
+      Type 'number' is not assignable to type 'string'.
+src/utils/databaseValidation.ts(207,4): error TS1360: Type 'ZodObject<{ id: ZodEffects<ZodUnion<[ZodString, ZodNumber]>, string, string | number>; name: ZodString; color: ZodString; description: ZodEffects<...>; parent_tag_id: ZodEffects<...>; created_at: ZodEffects<...>; } & { ...; }, "strip", ZodTypeAny, { ...; }, { ...; }>' does not satisfy the expected type 'ZodType<TagWithStats, ZodTypeDef, TagWithStats>'.
+  The types of '_input.last_used' are incompatible between these types.
+    Type 'string | Date | null' is not assignable to type 'Date | undefined'.
+      Type 'null' is not assignable to type 'Date | undefined'.
+src/utils/databaseValidation.ts(264,31): error TS2345: Argument of type 'ZodObject<{ id: ZodEffects<ZodUnion<[ZodString, ZodNumber]>, string, string | number>; name: ZodString; description: ZodEffects<ZodNullable<ZodString>, string | undefined, string | null>; color: ZodString; created_at: ZodEffects<...>; updated_at: ZodEffects<...>; archived: ZodEffects<...>; }, "strip", ZodTypeAny, { ...' is not assignable to parameter of type 'ZodType<{ id: string; name: string; archived: boolean; updated_at: Date; created_at: Date; color: string; description?: string | undefined; }, ZodTypeDef, { id: string; name: string; ... 4 more ...; description?: string | undefined; }>'.
+  The types of '_input.id' are incompatible between these types.
+    Type 'string | number' is not assignable to type 'string'.
+      Type 'number' is not assignable to type 'string'.
+src/utils/databaseValidation.ts(265,32): error TS2345: Argument of type 'ZodObject<{ id: ZodEffects<ZodUnion<[ZodString, ZodNumber]>, string, string | number>; board_id: ZodEffects<ZodUnion<[ZodString, ZodNumber]>, string, string | number>; ... 4 more ...; updated_at: ZodEffects<...>; }, "strip", ZodTypeAny, { ...; }, { ...; }>' is not assignable to parameter of type 'ZodType<{ id: string; name: string; board_id: string; updated_at: Date; position: number; created_at: Date; wip_limit?: number | undefined; }, ZodTypeDef, { id: string; name: string; ... 4 more ...; wip_limit?: number | undefined; }>'.
+  The types of '_input.id' are incompatible between these types.
+    Type 'string | number' is not assignable to type 'string'.
+      Type 'number' is not assignable to type 'string'.
+src/utils/databaseValidation.ts(266,30): error TS2345: Argument of type 'ZodObject<{ id: ZodEffects<ZodUnion<[ZodString, ZodNumber]>, string, string | number>; title: ZodString; description: ZodEffects<ZodNullable<ZodString>, string | undefined, string | null>; ... 14 more ...; metadata: ZodEffects<...>; }, "strip", ZodTypeAny, { ...; }, { ...; }>' is not assignable to parameter of type 'ZodType<{ status: "done" | "todo" | "in_progress" | "blocked" | "archived"; priority: number; id: string; archived: boolean; board_id: string; column_id: string; updated_at: Date; position: number; ... 9 more ...; completed_at?: Date | undefined; }, ZodTypeDef, { ...; }>'.
+  The types of '_input.id' are incompatible between these types.
+    Type 'string | number' is not assignable to type 'string'.
+      Type 'number' is not assignable to type 'string'.
+src/utils/databaseValidation.ts(269,29): error TS2345: Argument of type 'ZodObject<{ id: ZodEffects<ZodUnion<[ZodString, ZodNumber]>, string, string | number>; name: ZodString; color: ZodString; description: ZodEffects<...>; parent_tag_id: ZodEffects<...>; created_at: ZodEffects<...>; }, "strip", ZodTypeAny, { ...; }, { ...; }>' is not assignable to parameter of type 'ZodType<{ id: string; name: string; created_at: Date; color: string; description?: string | undefined; parent_tag_id?: string | undefined; }, ZodTypeDef, { id: string; name: string; created_at: Date; color: string; description?: string | undefined; parent_tag_id?: string | undefined; }>'.
+  The types of '_input.id' are incompatible between these types.
+    Type 'string | number' is not assignable to type 'string'.
+      Type 'number' is not assignable to type 'string'.
+src/utils/databaseValidation.ts(271,40): error TS2345: Argument of type 'ZodObject<{ id: ZodEffects<ZodUnion<[ZodString, ZodNumber]>, string, string | number>; name: ZodString; description: ZodEffects<ZodNullable<ZodString>, string | undefined, string | null>; color: ZodString; created_at: ZodEffects<...>; updated_at: ZodEffects<...>; archived: ZodEffects<...>; } & { ...; }, "strip", Zod...' is not assignable to parameter of type 'ZodType<{ id: string; name: string; archived: boolean; updated_at: Date; created_at: Date; color: string; taskCount: number; columnCount: number; completedTasks: number; inProgressTasks: number; todoTasks: number; description?: string | undefined; }, ZodTypeDef, { ...; }>'.
+  The types of '_input.id' are incompatible between these types.
+    Type 'string | number' is not assignable to type 'string'.
+      Type 'number' is not assignable to type 'string'.
+src/utils/databaseValidation.ts(272,38): error TS2345: Argument of type 'ZodObject<{ id: ZodEffects<ZodUnion<[ZodString, ZodNumber]>, string, string | number>; name: ZodString; color: ZodString; description: ZodEffects<...>; parent_tag_id: ZodEffects<...>; created_at: ZodEffects<...>; } & { ...; }, "strip", ZodTypeAny, { ...; }, { ...; }>' is not assignable to parameter of type 'ZodType<{ id: string; name: string; created_at: Date; color: string; task_count: number; usage_count: number; child_count: number; description?: string | undefined; parent_tag_id?: string | undefined; last_used?: Date | undefined; }, ZodTypeDef, { ...; }>'.
+  The types of '_input.id' are incompatible between these types.
+    Type 'string | number' is not assignable to type 'string'.
+      Type 'number' is not assignable to type 'string'.
+src/utils/errors.ts(49,5): error TS2412: Type 'ErrorContext | undefined' is not assignable to type 'ErrorContext' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the type of the target.
+  Type 'undefined' is not assignable to type 'ErrorContext'.
+src/utils/errors.ts(311,12): error TS2545: A mixin class must have a constructor with a single rest parameter of type 'any[]'.
+src/utils/errors.ts(420,7): error TS2345: Argument of type '{ errors: Record<string, unknown>[]; }' is not assignable to parameter of type 'ErrorDetails'.
+  Types of property 'errors' are incompatible.
+    Type 'Record<string, unknown>[]' is not assignable to type 'ErrorDetails'.
+      Type 'Record<string, unknown>[]' is not assignable to type 'ErrorDetails[]'.
+        Type 'Record<string, unknown>' is not assignable to type 'ErrorDetails'.
+          Type 'Record<string, unknown>' is missing the following properties from type 'ErrorDetails[]': length, pop, push, concat, and 29 more.
+src/utils/transactions-old.ts(107,9): error TS2345: Argument of type 'Error' is not assignable to parameter of type 'ErrorDetails'.
+  Type 'Error' is not assignable to type '{ [key: string]: ErrorDetails; }'.
+    Index signature for type 'string' is missing in type 'Error'.
+src/utils/transactions.ts(60,7): error TS2322: Type 'TransactionOptions' is not assignable to type 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'TransactionOptions'.
+src/utils/transactions.ts(71,40): error TS2345: Argument of type 'Database<Database, Statement>' is not assignable to parameter of type 'DatabaseConnection'.
+  Type 'Database<Database, Statement>' is missing the following properties from type 'DatabaseConnection': schemaManager, migrationRunner, seedRunner, initialize, and 21 more.
+src/utils/transactions.ts(142,58): error TS2379: Argument of type '{ retryAttempts: undefined; isolationLevel?: "READ_UNCOMMITTED" | "READ_COMMITTED" | "REPEATABLE_READ" | "SERIALIZABLE"; timeout?: number; autoRollback?: boolean; }' is not assignable to parameter of type 'TransactionOptions' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'retryAttempts' are incompatible.
+    Type 'undefined' is not assignable to type 'number'.
+src/utils/transactions.ts(259,14): error TS2339: Property 'run' does not exist on type 'DatabaseConnection'.
+src/utils/transactions.ts(354,19): error TS2339: Property 'run' does not exist on type 'DatabaseConnection'.
+src/utils/transactions.ts(358,19): error TS2339: Property 'run' does not exist on type 'DatabaseConnection'.
+src/utils/transactions.ts(362,19): error TS2339: Property 'run' does not exist on type 'DatabaseConnection'.
+src/utils/zod-helpers.ts(210,3): error TS2322: Type 'ZodObject<{ [k in keyof T]: ZodOptional<T[k]>; }, UnknownKeysParam, ZodTypeAny, { [k in keyof addQuestionMarks<baseObjectOutputType<{ [k in keyof T]: ZodOptional<T[k]>; }>, any>]: addQuestionMarks<...>[k]; }, { [k in keyof baseObjectInputType<...>]: baseObjectInputType<...>[k]; }>' is not assignable to type 'ReturnType<{ (): ZodObject<{ [k in keyof T]: ZodOptional<T[k]>; }, UnknownKeysParam, ZodTypeAny, { [k in keyof addQuestionMarks<baseObjectOutputType<{ [k in keyof T]: ZodOptional<T[k]>; }>, any>]: addQuestionMarks<...>[k]; }, { [k in keyof baseObjectInputType<...>]: baseObjectInputType<...>[k]; }>; <Mask extends Exa...'.
+src/websocket/auth.ts(55,55): error TS2345: Argument of type '{ username?: string; password?: string; }' is not assignable to parameter of type '{ email: string; password: string; }'.
+  Property 'email' is missing in type '{ username?: string; password?: string; }' but required in type '{ email: string; password: string; }'.

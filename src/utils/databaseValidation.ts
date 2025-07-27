@@ -58,7 +58,7 @@ export const BoardSchema = z.object({
   created_at: sqliteDate,
   updated_at: sqliteDate,
   archived: sqliteBoolean,
-}) satisfies z.ZodType<Board>;
+});
 
 /**
  * Column schema for database results
@@ -74,7 +74,7 @@ export const ColumnSchema = z.object({
     .transform(val => val ?? undefined),
   created_at: sqliteDate,
   updated_at: sqliteDate,
-}) satisfies z.ZodType<Column>;
+});
 
 /**
  * Task status enum
@@ -121,7 +121,7 @@ export const TaskSchema = z.object({
     .string()
     .nullable()
     .transform(val => val ?? undefined),
-}) satisfies z.ZodType<Task>;
+});
 
 /**
  * Task dependency type enum
@@ -137,7 +137,7 @@ export const TaskDependencySchema = z.object({
   depends_on_task_id: z.union([z.string(), z.number()]).transform(String),
   dependency_type: DependencyTypeSchema,
   created_at: sqliteDate,
-}) satisfies z.ZodType<TaskDependency>;
+});
 
 /**
  * Note category enum
@@ -155,7 +155,7 @@ export const NoteSchema = z.object({
   pinned: sqliteBoolean,
   created_at: sqliteDate,
   updated_at: sqliteDate,
-}) satisfies z.ZodType<Note>;
+});
 
 /**
  * Tag schema
@@ -173,7 +173,7 @@ export const TagSchema = z.object({
     .nullable()
     .transform(val => (val ? String(val) : undefined)),
   created_at: sqliteDate,
-}) satisfies z.ZodType<Tag>;
+});
 
 /**
  * Task-Tag relationship schema
@@ -183,7 +183,7 @@ export const TaskTagSchema = z.object({
   task_id: z.union([z.string(), z.number()]).transform(String),
   tag_id: z.union([z.string(), z.number()]).transform(String),
   created_at: sqliteDate,
-}) satisfies z.ZodType<TaskTag>;
+});
 
 /**
  * Board with stats schema
@@ -194,7 +194,7 @@ export const BoardWithStatsSchema = BoardSchema.extend({
   inProgressTasks: z.number(),
   todoTasks: z.number(),
   columnCount: z.number(),
-}) satisfies z.ZodType<BoardWithStats>;
+});
 
 /**
  * Tag with stats schema
@@ -204,12 +204,12 @@ export const TagWithStatsSchema = TagSchema.extend({
   usage_count: z.number(),
   last_used: sqliteDateOptional,
   child_count: z.number(),
-}) satisfies z.ZodType<TagWithStats>;
+});
 
 /**
  * Validate a single database row
  */
-export function validateRow<T>(row: unknown, schema: z.ZodType<T>, context?: string): T {
+export function validateRow<TOutput, TInput = TOutput>(row: unknown, schema: z.ZodType<TOutput, z.ZodTypeDef, TInput>, context?: string): TOutput {
   try {
     return schema.parse(row);
   } catch (error) {
@@ -224,7 +224,7 @@ export function validateRow<T>(row: unknown, schema: z.ZodType<T>, context?: str
 /**
  * Validate an array of database rows
  */
-export function validateRows<T>(rows: unknown[], schema: z.ZodType<T>, context?: string): T[] {
+export function validateRows<TOutput, TInput = TOutput>(rows: unknown[], schema: z.ZodType<TOutput, z.ZodTypeDef, TInput>, context?: string): TOutput[] {
   return rows.map((row, index) =>
     validateRow(row, schema, `${context || 'row'} at index ${index}`)
   );
@@ -233,22 +233,22 @@ export function validateRows<T>(rows: unknown[], schema: z.ZodType<T>, context?:
 /**
  * Create a validated database query function
  */
-export function createValidatedQuery<T>(schema: z.ZodType<T>, queryName: string) {
+export function createValidatedQuery<TOutput, TInput = TOutput>(schema: z.ZodType<TOutput, z.ZodTypeDef, TInput>, queryName: string) {
   return {
     /**
      * Validate a single row result
      */
-    validateOne: (result: unknown): T => validateRow(result, schema, queryName),
+    validateOne: (result: unknown): TOutput => validateRow(result, schema, queryName),
 
     /**
      * Validate multiple row results
      */
-    validateMany: (results: unknown[]): T[] => validateRows(results, schema, queryName),
+    validateMany: (results: unknown[]): TOutput[] => validateRows(results, schema, queryName),
 
     /**
      * Validate an optional single row result
      */
-    validateOptional: (result: unknown): T | null => {
+    validateOptional: (result: unknown): TOutput | null => {
       if (result === null || result === undefined) {
         return null;
       }

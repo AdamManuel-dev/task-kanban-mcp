@@ -110,7 +110,7 @@ export function createOptionalSchema<T extends z.ZodRawShape>(
   
   for (const key in shape) {
     if (shape.hasOwnProperty(key)) {
-      optionalShape[key] = shape[key].optional();
+      (optionalShape as any)[key] = shape[key]?.optional();
     }
   }
   

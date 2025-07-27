@@ -46,7 +46,7 @@ export class BaseServiceError extends Error implements ServiceError {
     this.code = code;
     this.statusCode = statusCode;
     this.details = details;
-    this.context = context;
+    this.context = context || {};
     this.timestamp = new Date();
 
     Error.captureStackTrace(this, this.constructor);
@@ -307,9 +307,9 @@ export function withErrorContext<TFn extends (...args: unknown[]) => unknown>(
  * Type-safe error boundary class decorator
  */
 export function createErrorBoundary(serviceName: string) {
-  return function <T extends new (...args: unknown[]) => object>(constructor: T): T {
+  return function <T extends new (...args: any[]) => object>(constructor: T): T {
     return class extends constructor {
-      constructor(...args: unknown[]) {
+      constructor(...args: any[]) {
         super(...args);
 
         const prototype = Object.getPrototypeOf(this);
@@ -417,7 +417,7 @@ export class AggregateError extends BaseServiceError {
       'AGGREGATE_ERROR',
       `Multiple errors occurred: ${errorMessages}`,
       500,
-      { errors: errors.map(e => e.toJSON()) },
+      { errors: errors.map(e => e.toJSON()) as ErrorDetails },
       context
     );
     this.errors = errors;

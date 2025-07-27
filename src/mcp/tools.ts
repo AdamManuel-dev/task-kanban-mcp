@@ -464,8 +464,12 @@ export class MCPToolRegistry {
   }
 
   private async updateTask(args: UpdateTaskArgs): Promise<TaskResponse> {
-    const { task_id, ...updates } = args;
-    const task = await this.services.taskService.updateTask(task_id, updates);
+    const { task_id, due_date, ...updates } = args;
+    const updateData: any = updates;
+    if (due_date) {
+      updateData.due_date = new Date(due_date);
+    }
+    const task = await this.services.taskService.updateTask(task_id, updateData);
     return { success: true, task };
   }
 
@@ -586,7 +590,7 @@ export class MCPToolRegistry {
     return {
       success: true,
       analysis: {
-        board: await this.services.boardService.getBoardById(board_id)!,
+        board: (await this.services.boardService.getBoardById(board_id))!,
         metrics: analysis as Record<string, unknown>,
         insights: [],
         recommendations: [],

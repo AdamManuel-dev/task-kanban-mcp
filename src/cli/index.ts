@@ -50,10 +50,10 @@ program
     const options = thisCommand.opts();
 
     // Set formatter options
-    formatter.setFormat(options.format);
-    formatter.setVerbose(options.verbose);
-    formatter.setQuiet(options.quiet);
-    formatter.setColor(!options.noColor);
+    formatter.setFormat(options['format']);
+    formatter.setVerbose(options['verbose']);
+    formatter.setQuiet(options['quiet']);
+    formatter.setColor(!options['noColor']);
 
     // Validate configuration exists
     if (!config.exists()) {

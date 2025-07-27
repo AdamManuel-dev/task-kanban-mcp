@@ -1,294 +1,350 @@
-# MCP Kanban Server
+# task-kanban-mcp
 
-A headless kanban task management system designed specifically for AI agents and developers using the Model Context Protocol (MCP).
+A headless kanban task management system built specifically for AI coding agents to maintain project context and coordinate work, freeing up their limited context windows for actual coding tasks.
 
-## Overview
+## 🤖 Agent-First Philosophy
 
-The MCP Kanban Server provides AI agents (like Claude Code, Cursor, etc.) with direct access to a powerful task management system. It automatically detects git repository context, provides real-time updates via WebSocket, and uses SQLite for reliable local data storage.
+This system recognizes that modern software development is increasingly done by AI agents (Claude Code, Cursor, Aider, etc.) supervised by humans. Unlike traditional developer tools, task-kanban-mcp is designed from the ground up for agents that:
 
-## Key Features
+- Have limited context windows (100k-200k tokens)
+- Need to focus on the current coding task without tracking project state
+- Work best with clear, structured task definitions
+- Can operate independently when given proper task isolation
 
-- **🤖 AI-First Design**: Built specifically for AI agent integration via MCP protocol
-- **🔄 Context-Aware**: Automatically maps git repositories to appropriate kanban boards  
-- **⚡ Real-Time Updates**: WebSocket-based live synchronization across all connected clients
-- **📊 Smart Prioritization**: AI-powered task prioritization based on dependencies and context
-- **🏗️ Hierarchical Tasks**: Support for subtasks and complex dependency relationships
-- **🔍 Full-Text Search**: Search across tasks, notes, and tags with advanced filtering
-- **💾 Local-First**: SQLite database with automatic backups and data integrity
-- **🛠️ Developer-Friendly**: Comprehensive CLI and REST API for all operations
+## 🎯 Core Purpose
 
-## Quick Start
+**Free up agent context windows** by externalizing project management, allowing agents to use their full capacity for:
+- Understanding complex codebases
+- Implementing sophisticated features
+- Maintaining code quality
+- Following architectural patterns
 
-### Prerequisites
+Instead of wasting tokens on "remember to implement X after Y" or "the previous task was about Z", agents can query the task system when needed and focus entirely on the current implementation.
 
-- Node.js 18.0.0 or higher
-- npm 9.0.0 or higher
-
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/mcp-kanban.git
-cd mcp-kanban
-
-# Install dependencies
-npm install
-
-# Set up environment
-cp .env.example .env
-
-# Run database migrations
-npm run migrate
-
-# Start development server
-npm run dev
-```
-
-### CLI Usage
-
-```bash
-# Install CLI globally
-npm install -g @mcp-kanban/cli
-
-# Configure connection
-kanban config set api-url http://localhost:3000
-kanban config set api-key your-api-key
-
-# Create your first task
-kanban task create "Implement user authentication" --tags backend,security
-
-# Get next recommended task
-kanban next
-
-# Search tasks and notes
-kanban search tasks "authentication"
-```
-
-## Architecture
+## 🏗️ Architecture for Agent Workflows
 
 ```
-┌─────────────────────┐     ┌──────────────────┐     ┌──────────────────┐
-│   AI Agent (MCP)    │────▶│   MCP Server     │◀────│   CLI Client     │
-└─────────────────────┘     └──────────────────┘     └──────────────────┘
-                                     │
-                            ┌────────┴────────┐
-                            │                 │
-                      ┌─────▼─────┐    ┌─────▼─────┐
-                      │  REST API │    │ WebSocket │
-                      └─────┬─────┘    └─────┬─────┘
-                            │                │
-                      ┌─────▼─────────────────▼─────┐
-                      │    Business Logic Layer     │
-                      └─────────────┬───────────────┘
-                                    │
-                            ┌───────▼────────┐
-                            │     SQLite     │
-                            │   (local.db)   │
-                            └────────────────┘
+┌─────────────────────┐     ┌─────────────────────┐
+│  AI Coding Agent 1  │     │  AI Coding Agent 2  │
+│   (Claude Code)     │     │     (Cursor)        │
+└──────────┬──────────┘     └──────────┬──────────┘
+           │                            │
+           └─────────┬──────────────────┘
+                     │
+              ┌──────▼──────┐
+              │  MCP Server  │
+              │(Task State)  │
+              └──────┬──────┘
+                     │
+           ┌─────────┴─────────┐
+           │                   │
+    ┌──────▼──────┐    ┌──────▼──────┐
+    │   Human     │    │   Human      │
+    │ Supervisor  │    │ Supervisor   │
+    │   (CLI)     │    │   (CLI)      │
+    └─────────────┘    └──────────────┘
 ```
 
-## Core Concepts
+## 🚀 Key Features for Agent Productivity
 
-### Boards & Tasks
-- **Boards**: Project-specific kanban boards with customizable columns
-- **Tasks**: Core work items with rich metadata, notes, and relationships
-- **Subtasks**: Hierarchical task breakdown with automatic progress tracking
-- **Dependencies**: Block/unblock relationships with critical path analysis
+### Context Window Optimization
+- **Stateless Task Execution**: Agents don't need to remember previous tasks
+- **On-Demand Context Loading**: Query only the information needed for current work
+- **Task Isolation**: Each task contains all necessary context for completion
 
-### AI Integration
-- **Context Awareness**: Understands current work state and provides relevant suggestions
-- **Smart Prioritization**: Considers dependencies, deadlines, and work patterns
-- **Natural Language**: Create and update tasks using conversational commands
-- **Pattern Recognition**: Learns from past work to suggest similar solutions
+### Multi-Agent Coordination
+- **Exclusive Task Locking**: Prevents agents from working on conflicting code
+- **Dependency Awareness**: Agents automatically wait for blocked tasks
+- **Work Distribution**: Intelligently assigns tasks based on agent availability
 
-### Git Integration
-- **Auto-Detection**: Automatically maps git repositories to appropriate boards
-- **Branch Parsing**: Extracts task IDs from branch names for automatic updates
-- **Commit Integration**: Links commits to tasks and updates progress
-- **Flexible Mapping**: Configurable repository-to-board mapping rules
-
-## Development
-
-### Project Structure
-
-See [DIRECTORY_STRUCTURE.md](./DIRECTORY_STRUCTURE.md) for detailed project organization.
-
-### Scripts
-
-```bash
-npm run dev          # Start development server with hot reload
-npm run build        # Build for production
-npm run test         # Run test suite
-npm run test:watch   # Run tests in watch mode
-npm run test:coverage # Generate coverage report
-npm run lint         # Run ESLint
-npm run lint:fix     # Fix ESLint errors automatically
-npm run format       # Format code with Prettier
-npm run typecheck    # Run TypeScript type checking
-```
-
-### Testing
-
-```bash
-# Run all tests
-npm test
-
-# Run specific test suites
-npm run test:unit
-npm run test:integration
-npm run test:e2e
-
-# Run tests with coverage
-npm run test:coverage
-```
-
-## API Documentation
-
-### REST API
-
-The server provides a comprehensive REST API for all operations:
-
-- `POST /api/tasks` - Create tasks
-- `GET /api/tasks` - List and filter tasks  
-- `PATCH /api/tasks/:id` - Update tasks
-- `GET /api/context` - Get current work context
-- `GET /api/priorities/next` - Get next recommended task
-
-See [API Documentation](./docs/api/) for complete endpoint reference.
-
-### WebSocket Events
-
-Real-time updates are provided via WebSocket:
-
-- `task:created` - New task created
-- `task:updated` - Task modified
-- `task:moved` - Task moved between columns
-- `priority:changed` - Task priority updated
-- `dependency:blocked` - Task blocked by dependency
-
-### MCP Tools
-
-For AI agents, the following MCP tools are available:
-
-- `create_task` - Create new tasks with rich metadata
-- `get_context` - Get comprehensive work context
-- `get_next_task` - Get AI-recommended next task
-- `search_tasks` - Search across all tasks and notes
-- `add_note` - Add implementation notes to tasks
-
-## Configuration
-
-### Environment Variables
-
-```bash
-# Server Configuration
-PORT=3000
-NODE_ENV=development
-
-# Database
-DATABASE_PATH=./kanban.db
-DATABASE_BACKUP_PATH=./backups
-
-# API Security
-API_KEY_SECRET=your-secret-key
-RATE_LIMIT_WINDOW_MS=60000
-RATE_LIMIT_MAX_REQUESTS=1000
-
-# Git Integration  
-GIT_AUTO_DETECT=true
-GIT_BRANCH_PATTERNS=feature/{taskId}-*,{taskId}-*
-
-# Backup Configuration
-BACKUP_ENABLED=true
-BACKUP_SCHEDULE=0 2 * * *
-BACKUP_RETENTION_DAYS=30
-```
-
-### Repository Mapping
-
-Configure automatic repository-to-board mapping:
-
+### Agent-Optimized Task Structure
 ```json
 {
-  "mappings": [
-    {
-      "pattern": "github.com/myorg/project-*",
-      "boardId": "work-projects"
-    },
-    {
-      "pattern": "personal-blog",
-      "boardId": "blog-tasks"
+  "task": {
+    "id": 42,
+    "title": "Implement user authentication",
+    "context": {
+      "files_to_modify": ["src/auth.js", "src/routes/user.js"],
+      "dependencies": ["database-schema-task-41"],
+      "acceptance_criteria": [
+        "JWT tokens with 24h expiration",
+        "Refresh token mechanism",
+        "Rate limiting on login endpoint"
+      ],
+      "technical_notes": "Use bcrypt for password hashing",
+      "reference_implementations": ["task-23", "task-31"]
     }
-  ]
+  }
 }
 ```
 
-## Deployment
+## 📋 Installation
 
-### Docker
+### For AI Agents (MCP Protocol)
 
-```bash
-# Build image
-docker build -t mcp-kanban .
+Agents using MCP (like Claude Code) can directly connect:
 
-# Run container
-docker run -p 3000:3000 -v ./data:/app/data mcp-kanban
+```json
+// .mcp/config.json
+{
+  "servers": {
+    "task-kanban": {
+      "url": "http://localhost:3000/mcp",
+      "apiKey": "your-agent-api-key"
+    }
+  }
+}
 ```
 
-### Docker Compose
+### For Human Supervisors (CLI)
 
 ```bash
-# Start all services
-docker-compose up -d
+# Install CLI globally
+npm install -g @task-kanban-mcp/cli
 
-# View logs
-docker-compose logs -f
+# Configure connection
+kanban config set api-url http://localhost:3000
+kanban config set api-key your-supervisor-key
+
+# Monitor agent progress
+kanban watch --board main
 ```
 
-## Performance
+## 🎮 Agent-Centric Commands
 
-- **Response Time**: < 100ms for task operations
-- **WebSocket Latency**: < 50ms for real-time updates  
-- **Concurrent Connections**: Supports 10+ simultaneous clients
-- **Database**: Optimized SQLite with WAL mode and indexes
-- **Memory Usage**: < 256MB under normal operation
+### For Agents (MCP Tools)
 
-## Security
+```javascript
+// Get next task with full context
+{
+  "tool": "get_next_task",
+  "parameters": {
+    "capabilities": ["javascript", "react", "testing"],
+    "exclude_files": ["src/legacy/*"]  // Files already in context
+  }
+}
 
-- **API Key Authentication**: Simple but secure for personal deployment
-- **Rate Limiting**: 1000 requests per minute per API key
-- **Input Validation**: Comprehensive sanitization and validation
-- **CORS**: Configurable cross-origin resource sharing
-- **Audit Logging**: Complete audit trail of all operations
+// Report task completion
+{
+  "tool": "complete_task",
+  "parameters": {
+    "task_id": 42,
+    "implementation_notes": "Added middleware for token validation",
+    "files_modified": ["src/auth.js", "src/middleware/auth.js"],
+    "tests_added": ["test/auth.test.js"]
+  }
+}
 
-## Contributing
+// Check dependencies before starting
+{
+  "tool": "check_task_dependencies",
+  "parameters": {
+    "task_id": 43
+  }
+}
+```
+
+### For Human Supervisors (CLI)
+
+```bash
+# Create tasks for agents
+kanban task create "Refactor payment module" \
+  --context-files "src/payments/*" \
+  --depends-on 41 \
+  --assign-to-agent claude-code
+
+# Monitor agent activity
+kanban agents status
+kanban agent logs claude-code --follow
+
+# Review completed work
+kanban task review 42 --show-diff
+
+# Coordinate multiple agents
+kanban orchestrate --agents claude-code,cursor \
+  --strategy parallel \
+  --board sprint-15
+```
+
+## 🔄 Workflow Examples
+
+### Single Agent Deep Work
+
+```bash
+# Human creates focused task batch
+kanban batch create authentication-sprint \
+  --tasks auth.yaml \
+  --agent claude-code \
+  --strategy sequential
+
+# Agent works through tasks autonomously
+# Each task query returns complete context
+# No need to maintain state between tasks
+```
+
+### Multi-Agent Parallel Development
+
+```bash
+# Human defines work boundaries
+kanban boundary create \
+  --agent-1 claude-code --scope "backend/*" \
+  --agent-2 cursor --scope "frontend/*" \
+  --coordination-point "api-contracts"
+
+# Agents work independently
+# System prevents conflicts
+# Automatic synchronization at coordination points
+```
+
+### Context-Aware Task Generation
+
+```yaml
+# tasks.yaml - Human-defined high-level tasks
+- title: "Implement OAuth2 flow"
+  agent_context:
+    pattern: "server-side-flow"
+    reference_docs: ["RFC-6749"]
+    security_requirements: ["PKCE", "state-parameter"]
+  decomposition: auto  # Let system break this down
+```
+
+## 🧠 Advanced Features
+
+### Semantic Task Routing (Coming Soon)
+- Vector embeddings for task similarity
+- Automatic task assignment based on agent history
+- Pattern learning from completed tasks
+
+### Context Window Analytics
+```bash
+# Monitor agent context usage
+kanban agent stats claude-code --metric context-efficiency
+
+# Optimize task sizing
+kanban analyze tasks --suggest-split --max-context 50000
+```
+
+### Agent Performance Insights
+- Track completion time by task type
+- Identify optimal task sizes for each agent
+- Suggest task batching strategies
+
+## 🔧 Configuration
+
+### Agent-Specific Settings
+
+```env
+# Agent Configuration
+MAX_CONTEXT_PER_TASK=50000  # Tokens
+AGENT_TIMEOUT_MINUTES=30
+PARALLEL_AGENT_LIMIT=3
+
+# Task Chunking
+AUTO_DECOMPOSE_THRESHOLD=100000  # Auto-split large tasks
+OVERLAP_PREVENTION=true
+CONFLICT_RESOLUTION=queue  # or 'reject'
+
+# Context Optimization
+INCLUDE_RELATED_TASKS=true
+MAX_RELATED_CONTEXT=10000
+COMPRESS_HISTORICAL_CONTEXT=true
+```
+
+### Multi-Agent Coordination
+
+```json
+{
+  "coordination": {
+    "lock_timeout": "15m",
+    "heartbeat_interval": "1m",
+    "conflict_strategy": "queue",
+    "boundary_enforcement": "strict"
+  }
+}
+```
+
+## 📊 Observability for Supervisors
+
+### Real-Time Dashboard
+```bash
+# Launch monitoring interface
+kanban dashboard
+
+# Shows:
+# - Active agents and current tasks
+# - Context window utilization
+# - Task completion velocity
+# - Dependency graph visualization
+```
+
+### Agent Behavior Logs
+```bash
+# Detailed agent decision tracking
+kanban agent trace claude-code --verbose
+
+# Context usage analysis
+kanban analyze context-usage --by-task-type
+```
+
+## 🚦 Best Practices
+
+### For Human Supervisors
+
+1. **Task Sizing**: Keep tasks under 50k tokens of required context
+2. **Clear Boundaries**: Define explicit file/module boundaries for parallel work
+3. **Dependency Chains**: Keep chains shallow to maximize parallelism
+4. **Context Hints**: Include examples and patterns in task context
+
+### For Agent Implementers
+
+1. **Stateless Execution**: Don't assume memory between tasks
+2. **Context Queries**: Request only needed information
+3. **Progress Updates**: Report progress for long-running tasks
+4. **Graceful Handling**: Check dependencies before starting
+
+## 🔮 Roadmap
+
+### Phase 1: Enhanced Agent Coordination (Current)
+- ✅ Basic MCP integration
+- ✅ Task isolation and locking
+- 🚧 Multi-agent orchestration
+- 🚧 Context window optimization
+
+### Phase 2: Intelligent Task Management
+- Vector embeddings for semantic search
+- Pattern learning from completions
+- Automatic task decomposition
+- Predictive task assignment
+
+### Phase 3: Agent Ecosystem
+- Plugin system for different agent types
+- Cross-agent knowledge sharing
+- Automated code review workflows
+- Performance optimization recommendations
+
+## 🤝 Contributing
+
+We welcome contributions that enhance agent productivity:
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+2. Create a feature branch (`git checkout -b agent-feature/amazing-enhancement`)
+3. Ensure changes maintain agent-first philosophy
+4. Add tests for agent interactions
+5. Submit a Pull Request
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed guidelines.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
-## License
+## 📝 License
 
-This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
+MIT License - See [LICENSE](LICENSE) file for details.
 
-## Support
+## 🆘 Support
 
-- **Documentation**: [docs/](./docs/)
-- **Issues**: [GitHub Issues](https://github.com/yourusername/mcp-kanban/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/mcp-kanban/discussions)
-
-## Roadmap
-
-- [ ] **v0.1.0**: Core MVP with basic task management
-- [ ] **v0.2.0**: Full MCP integration and AI features  
-- [ ] **v0.3.0**: Advanced dependency management and prioritization
-- [ ] **v0.4.0**: Plugin system and extensibility
-- [ ] **v1.0.0**: Production-ready release with full feature set
+- **Documentation**: [docs/](docs/)
+- **Agent Integration Guide**: [docs/agent-integration.md](docs/agent-integration.md)
+- **Discussions**: [GitHub Discussions](https://github.com/AdamManuel-dev/task-kanban-mcp/discussions)
+- **Issues**: [GitHub Issues](https://github.com/AdamManuel-dev/task-kanban-mcp/issues)
 
 ---
 
-**Made with ❤️ for AI-powered development workflows**
+Built for the future of software development where AI agents do the coding and humans do the thinking.

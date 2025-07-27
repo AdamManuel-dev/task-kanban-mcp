@@ -57,7 +57,7 @@ export class TransactionManager {
       startTime: new Date(),
       operations: [],
       rollbackActions: [],
-      metadata: options,
+      metadata: options as Record<string, unknown>,
     };
 
     this.activeTransactions.set(transactionId, context);
@@ -139,10 +139,8 @@ export class TransactionManager {
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        return await this.executeTransaction(operations, {
-          ...options,
-          retryAttempts: undefined, // Prevent nested retries
-        });
+        const { retryAttempts, ...restOptions } = options;
+        return await this.executeTransaction(operations, restOptions);
       } catch (error) {
         lastError = error;
 
@@ -245,7 +243,7 @@ export class TransactionManager {
    * Set transaction isolation level
    */
   private async setIsolationLevel(
-    db: DatabaseConnection,
+    db: any,
     level: TransactionOptions['isolationLevel']
   ): Promise<void> {
     const levelMap = {
@@ -256,7 +254,7 @@ export class TransactionManager {
     };
 
     const sqlLevel = levelMap[level!];
-    await db.run(`PRAGMA read_uncommitted = ${sqlLevel === 'READ UNCOMMITTED' ? 'ON' : 'OFF'}`);
+    await db.exec(`PRAGMA read_uncommitted = ${sqlLevel === 'READ UNCOMMITTED' ? 'ON' : 'OFF'}`);
   }
 
   /**
@@ -347,19 +345,19 @@ export async function batchInTransaction<T, R>(
 export class Savepoint {
   constructor(
     private readonly name: string,
-    private readonly db: DatabaseConnection
+    private readonly db: any
   ) {}
 
   async create(): Promise<void> {
-    await this.db.run(`SAVEPOINT ${this.name}`);
+    await this.db.exec(`SAVEPOINT ${this.name}`);
   }
 
   async release(): Promise<void> {
-    await this.db.run(`RELEASE SAVEPOINT ${this.name}`);
+    await this.db.exec(`RELEASE SAVEPOINT ${this.name}`);
   }
 
   async rollback(): Promise<void> {
-    await this.db.run(`ROLLBACK TO SAVEPOINT ${this.name}`);
+    await this.db.exec(`ROLLBACK TO SAVEPOINT ${this.name}`);
   }
 }
 

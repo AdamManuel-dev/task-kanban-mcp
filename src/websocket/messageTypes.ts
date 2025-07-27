@@ -18,6 +18,10 @@ export interface AuthPayload {
   apiKey?: string;
   userId?: string;
   sessionId?: string;
+  credentials?: {
+    username?: string;
+    password?: string;
+  };
 }
 
 // System notification payload

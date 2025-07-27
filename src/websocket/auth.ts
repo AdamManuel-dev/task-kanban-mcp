@@ -75,7 +75,15 @@ export class WebSocketAuth {
         logger.warn('JWT authentication using default secret - configure JWT_SECRET in production');
       }
 
-      const decoded = jwt.verify(token, jwtSecret) as { userId: string; exp?: number; iat?: number };
+      const decoded = jwt.verify(token, jwtSecret) as { 
+        userId: string; 
+        exp?: number; 
+        iat?: number;
+        permissions?: string[];
+        role?: string;
+        email?: string;
+        name?: string;
+      };
 
       if (!decoded.userId) {
         return {
@@ -280,7 +288,7 @@ export class WebSocketAuth {
       logger.warn('JWT generation using default secret - configure JWT_SECRET in production');
     }
 
-    const payload: { userId: string; iat: number; exp: number } = {
+    const payload: any = {
       userId: user.id,
       permissions,
     };

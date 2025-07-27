@@ -96,7 +96,7 @@ export class BackupService {
    * @param {DatabaseConnection} db - Database connection instance
    */
   constructor(private readonly db: DatabaseConnection) {
-    this.backupDir = process.env.BACKUP_DIR || path.join(process.cwd(), 'backups');
+    this.backupDir = process.env['BACKUP_DIR'] || path.join(process.cwd(), 'backups');
     this.ensureBackupDirectory();
   }
 

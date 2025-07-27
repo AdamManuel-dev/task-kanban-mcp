@@ -141,7 +141,7 @@ export class WebSocketManager {
         id: clientId,
         ws,
         ip: clientIP,
-        userAgent: request.headers['user-agent'],
+        userAgent: request.headers['user-agent'] || undefined,
         connectedAt: new Date(),
         lastHeartbeat: new Date(),
         authenticated: false,
