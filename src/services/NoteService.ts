@@ -1,12 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '@/utils/logger';
 import type { DatabaseConnection } from '@/database/connection';
-import type {
-  Note,
-  ServiceError,
-  PaginationOptions,
-  FilterOptions,
-} from '@/types';
+import type { Note, ServiceError, PaginationOptions, FilterOptions } from '@/types';
 
 export interface CreateNoteRequest {
   task_id: string;
@@ -48,12 +43,12 @@ export interface NoteSearchResult extends Note {
 }
 
 export class NoteService {
-  constructor(private db: DatabaseConnection) {}
+  constructor(private readonly db: DatabaseConnection) {}
 
   async createNote(data: CreateNoteRequest): Promise<Note> {
     const id = uuidv4();
     const now = new Date();
-    
+
     const note: Note = {
       id,
       task_id: data.task_id,
@@ -65,16 +60,27 @@ export class NoteService {
     };
 
     try {
-      await this.db.transaction(async (db) => {
+      await this.db.transaction(async db => {
         const taskExists = await db.get('SELECT id FROM tasks WHERE id = ?', [data.task_id]);
         if (!taskExists) {
           throw new Error('Task not found');
         }
 
-        await db.run(`
+        await db.run(
+          `
           INSERT INTO notes (id, task_id, content, category, pinned, created_at, updated_at)
           VALUES (?, ?, ?, ?, ?, ?, ?)
-        `, [note.id, note.task_id, note.content, note.category, note.pinned, note.created_at, note.updated_at]);
+        `,
+          [
+            note.id,
+            note.task_id,
+            note.content,
+            note.category,
+            note.pinned,
+            note.created_at,
+            note.updated_at,
+          ]
+        );
       });
 
       logger.info('Note created successfully', { noteId: note.id, taskId: data.task_id });
@@ -87,9 +93,12 @@ export class NoteService {
 
   async getNoteById(id: string): Promise<Note | null> {
     try {
-      const note = await this.db.queryOne<Note>(`
+      const note = await this.db.queryOne<Note>(
+        `
         SELECT * FROM notes WHERE id = ?
-      `, [id]);
+      `,
+        [id]
+      );
 
       if (note) {
         this.convertNoteDates(note);
@@ -182,7 +191,9 @@ export class NoteService {
     });
   }
 
-  async getPinnedNotes(options: PaginationOptions & { task_id?: string; board_id?: string } = {}): Promise<Note[]> {
+  async getPinnedNotes(
+    options: PaginationOptions & { task_id?: string; board_id?: string } = {}
+  ): Promise<Note[]> {
     return this.getNotes({
       ...options,
       pinned: true,
@@ -220,11 +231,14 @@ export class NoteService {
       params.push(new Date());
       params.push(id);
 
-      await this.db.execute(`
+      await this.db.execute(
+        `
         UPDATE notes 
         SET ${updates.join(', ')}
         WHERE id = ?
-      `, params);
+      `,
+        params
+      );
 
       const updatedNote = await this.getNoteById(id);
       if (!updatedNote) {
@@ -295,11 +309,11 @@ export class NoteService {
         INNER JOIN boards b ON t.board_id = b.id
         WHERE n.content LIKE ?
       `;
-      
+
       const searchTerm = `%${query}%`;
       const exactMatch = `%${query}%`;
       const wordBoundary = `% ${query} %`;
-      
+
       const params: any[] = [exactMatch, wordBoundary, searchTerm];
       const conditions: string[] = [];
 
@@ -335,15 +349,17 @@ export class NoteService {
       sql += ` LIMIT ? OFFSET ?`;
       params.push(limit, offset);
 
-      const results = await this.db.query<NoteSearchResult & {
-        task_title: string;
-        board_name: string;
-        relevance_score: number;
-      }>(sql, params);
+      const results = await this.db.query<
+        NoteSearchResult & {
+          task_title: string;
+          board_name: string;
+          relevance_score: number;
+        }
+      >(sql, params);
 
       return results.map(result => {
         this.convertNoteDates(result);
-        
+
         if (highlight) {
           result.highlighted_content = this.highlightSearchTerm(result.content, query);
         }
@@ -361,7 +377,9 @@ export class NoteService {
     }
   }
 
-  async getRecentNotes(options: PaginationOptions & { days?: number; board_id?: string } = {}): Promise<Note[]> {
+  async getRecentNotes(
+    options: PaginationOptions & { days?: number; board_id?: string } = {}
+  ): Promise<Note[]> {
     const { days = 7, board_id, ...paginationOptions } = options;
     const date_from = new Date();
     date_from.setDate(date_from.getDate() - days);
@@ -375,14 +393,20 @@ export class NoteService {
     });
   }
 
-  async getNotesByCategory(category: Note['category'], options: PaginationOptions & { board_id?: string } = {}): Promise<Note[]> {
+  async getNotesByCategory(
+    category: Note['category'],
+    options: PaginationOptions & { board_id?: string } = {}
+  ): Promise<Note[]> {
     return this.getNotes({
       ...options,
       category,
     });
   }
 
-  async getNotesForBoard(boardId: string, options: PaginationOptions & NoteFilters = {}): Promise<Note[]> {
+  async getNotesForBoard(
+    boardId: string,
+    options: PaginationOptions & NoteFilters = {}
+  ): Promise<Note[]> {
     return this.getNotes({
       ...options,
       board_id: boardId,
@@ -422,7 +446,9 @@ export class NoteService {
     }
   }
 
-  async getNoteStats(options: { board_id?: string; task_id?: string; days?: number } = {}): Promise<{
+  async getNoteStats(
+    options: { board_id?: string; task_id?: string; days?: number } = {}
+  ): Promise<{
     total: number;
     by_category: Record<Note['category'], number>;
     pinned: number;
@@ -449,20 +475,32 @@ export class NoteService {
       const whereClause = conditions.length > 0 ? ` WHERE ${conditions.join(' AND ')}` : '';
 
       const [totalResult, categoryStats, pinnedResult, recentResult] = await Promise.all([
-        this.db.queryOne<{ count: number }>(`SELECT COUNT(*) as count ${baseQuery}${whereClause}`, params),
-        this.db.query<{ category: Note['category']; count: number }>(`
+        this.db.queryOne<{ count: number }>(
+          `SELECT COUNT(*) as count ${baseQuery}${whereClause}`,
+          params
+        ),
+        this.db.query<{ category: Note['category']; count: number }>(
+          `
           SELECT category, COUNT(*) as count 
           ${baseQuery}${whereClause}
           GROUP BY category
-        `, params),
-        this.db.queryOne<{ count: number }>(`
+        `,
+          params
+        ),
+        this.db.queryOne<{ count: number }>(
+          `
           SELECT COUNT(*) as count 
           ${baseQuery}${whereClause}${conditions.length > 0 ? ' AND' : ' WHERE'} n.pinned = TRUE
-        `, params),
-        this.db.queryOne<{ count: number }>(`
+        `,
+          params
+        ),
+        this.db.queryOne<{ count: number }>(
+          `
           SELECT COUNT(*) as count 
           ${baseQuery}${whereClause}${conditions.length > 0 ? ' AND' : ' WHERE'} n.created_at >= ?
-        `, [...params, new Date(Date.now() - days * 24 * 60 * 60 * 1000)]),
+        `,
+          [...params, new Date(Date.now() - days * 24 * 60 * 60 * 1000)]
+        ),
       ]);
 
       const by_category: Record<Note['category'], number> = {
@@ -486,6 +524,62 @@ export class NoteService {
     } catch (error) {
       logger.error('Failed to get note stats', { error, options });
       throw this.createError('NOTE_STATS_FAILED', 'Failed to get note statistics', error);
+    }
+  }
+
+  async getNoteCategories(filters: { task_id?: string; board_id?: string } = {}): Promise<
+    {
+      category: Note['category'];
+      count: number;
+      percentage: number;
+    }[]
+  > {
+    const { task_id, board_id } = filters;
+
+    try {
+      let baseQuery = 'FROM notes n';
+      const params: any[] = [];
+      const conditions: string[] = [];
+
+      if (board_id) {
+        baseQuery += ' INNER JOIN tasks t ON n.task_id = t.id';
+        conditions.push('t.board_id = ?');
+        params.push(board_id);
+      }
+
+      if (task_id) {
+        conditions.push('n.task_id = ?');
+        params.push(task_id);
+      }
+
+      const whereClause = conditions.length > 0 ? ` WHERE ${conditions.join(' AND ')}` : '';
+
+      const [totalResult, categoryStats] = await Promise.all([
+        this.db.queryOne<{ count: number }>(
+          `SELECT COUNT(*) as count ${baseQuery}${whereClause}`,
+          params
+        ),
+        this.db.query<{ category: Note['category']; count: number }>(
+          `
+          SELECT category, COUNT(*) as count 
+          ${baseQuery}${whereClause}
+          GROUP BY category
+          ORDER BY count DESC
+        `,
+          params
+        ),
+      ]);
+
+      const total = totalResult?.count || 0;
+
+      return categoryStats.map(stat => ({
+        category: stat.category,
+        count: stat.count,
+        percentage: total > 0 ? (stat.count / total) * 100 : 0,
+      }));
+    } catch (error) {
+      logger.error('Failed to get note categories', { error, filters });
+      throw this.createError('NOTE_CATEGORIES_FAILED', 'Failed to get note categories', error);
     }
   }
 

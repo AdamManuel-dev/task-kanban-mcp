@@ -1,5 +1,5 @@
-import { Database } from 'sqlite';
-import { Database as SQLiteDB } from 'sqlite3';
+import type { Database } from 'sqlite';
+import type { Database as SQLiteDB } from 'sqlite3';
 
 export const name = 'Sample Tags and Notes';
 export const description = 'Create sample tags, task-tag relationships, and notes';

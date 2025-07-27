@@ -7,7 +7,7 @@ import { NotFoundError } from '@/utils/errors';
 
 export async function tagRoutes() {
   const router = Router();
-  
+
   const tagService = new TagService(dbConnection);
 
   // GET /api/v1/tags - List tags with filters
@@ -36,14 +36,20 @@ export async function tagRoutes() {
       };
 
       const tags = await tagService.getTags(options);
-      
+
       // Get total count for pagination
-      const totalTags = await tagService.getTags({ ...options, limit: undefined, offset: undefined });
+      const { limit: _, offset: __, ...countOptions } = options;
+      const totalTags = await tagService.getTags(countOptions);
       const total = totalTags.length;
 
-      res.apiPagination(tags, Math.floor(options.offset / options.limit) + 1, options.limit, total);
+      return res.apiPagination(
+        tags,
+        Math.floor(options.offset / options.limit) + 1,
+        options.limit,
+        total
+      );
     } catch (error) {
-      next(error);
+      return next(error);
     }
   });
 
@@ -52,9 +58,80 @@ export async function tagRoutes() {
     try {
       const tagData = validateInput(TagValidation.create, req.body);
       const tag = await tagService.createTag(tagData);
-      res.status(201).apiSuccess(tag);
+      return res.status(201).apiSuccess(tag);
     } catch (error) {
-      next(error);
+      return next(error);
+    }
+  });
+
+  // GET /api/v1/tags/tree - Get tag hierarchy tree
+  router.get('/tree', requirePermission('read'), async (req, res, next) => {
+    try {
+      const { includeUsageCount = false } = req.query;
+      const tree = await tagService.getTagTree(includeUsageCount === 'true');
+      return res.apiSuccess(tree);
+    } catch (error) {
+      return next(error);
+    }
+  });
+
+  // GET /api/v1/tags/popular - Get most used tags
+  router.get('/popular', requirePermission('read'), async (req, res, next) => {
+    try {
+      const { limit = 20, board_id, days = 30 } = req.query;
+
+      const options = {
+        limit: parseInt(limit as string, 10),
+        board_id: board_id as string,
+        days: parseInt(days as string, 10),
+      };
+
+      const popularTags = await tagService.getPopularTags(options);
+      return res.apiSuccess(popularTags);
+    } catch (error) {
+      return next(error);
+    }
+  });
+
+  // GET /api/v1/tags/colors - Get available tag colors
+  router.get('/colors', requirePermission('read'), async (_req, res, next) => {
+    try {
+      const colors = [
+        '#ff6b6b',
+        '#4ecdc4',
+        '#45b7d1',
+        '#96ceb4',
+        '#ffeaa7',
+        '#dda0dd',
+        '#98d8c8',
+        '#f7dc6f',
+        '#bb8fce',
+        '#85c1e9',
+        '#f8c471',
+        '#82e0aa',
+        '#f1948a',
+        '#85c1e9',
+        '#d2b4de',
+        '#aed6f1',
+        '#a3e4d7',
+        '#f9e79f',
+        '#f5b7b1',
+        '#d5dbdb',
+      ];
+      return res.apiSuccess(colors);
+    } catch (error) {
+      return next(error);
+    }
+  });
+
+  // GET /api/v1/tags/stats - Get tag usage statistics
+  router.get('/stats', requirePermission('read'), async (req, res, next) => {
+    try {
+      const { board_id } = req.query;
+      const stats = await tagService.getTagStats(board_id as string);
+      return res.apiSuccess(stats);
+    } catch (error) {
+      return next(error);
     }
   });
 
@@ -62,6 +139,9 @@ export async function tagRoutes() {
   router.get('/:id', requirePermission('read'), async (req, res, next) => {
     try {
       const { id } = req.params;
+      if (!id) {
+        throw new NotFoundError('Tag', 'ID is required');
+      }
       const { include } = req.query;
 
       let tag;
@@ -75,9 +155,9 @@ export async function tagRoutes() {
         throw new NotFoundError('Tag', id);
       }
 
-      res.apiSuccess(tag);
+      return res.apiSuccess(tag);
     } catch (error) {
-      next(error);
+      return next(error);
     }
   });
 
@@ -85,11 +165,14 @@ export async function tagRoutes() {
   router.patch('/:id', requirePermission('write'), async (req, res, next) => {
     try {
       const { id } = req.params;
+      if (!id) {
+        throw new NotFoundError('Tag', 'ID is required');
+      }
       const updateData = validateInput(TagValidation.update, req.body);
       const tag = await tagService.updateTag(id, updateData);
-      res.apiSuccess(tag);
+      return res.apiSuccess(tag);
     } catch (error) {
-      next(error);
+      return next(error);
     }
   });
 
@@ -97,10 +180,13 @@ export async function tagRoutes() {
   router.delete('/:id', requirePermission('write'), async (req, res, next) => {
     try {
       const { id } = req.params;
+      if (!id) {
+        throw new NotFoundError('Tag', 'ID is required');
+      }
       await tagService.deleteTag(id);
-      res.status(204).send();
+      return res.status(204).send();
     } catch (error) {
-      next(error);
+      return next(error);
     }
   });
 
@@ -108,15 +194,18 @@ export async function tagRoutes() {
   router.get('/:id/children', requirePermission('read'), async (req, res, next) => {
     try {
       const { id } = req.params;
+      if (!id) {
+        throw new NotFoundError('Tag', 'ID is required');
+      }
       const tagWithChildren = await tagService.getTagWithChildren(id);
-      
+
       if (!tagWithChildren) {
         throw new NotFoundError('Tag', id);
       }
 
-      res.apiSuccess(tagWithChildren.children || []);
+      return res.apiSuccess(tagWithChildren.children || []);
     } catch (error) {
-      next(error);
+      return next(error);
     }
   });
 
@@ -124,10 +213,13 @@ export async function tagRoutes() {
   router.get('/:id/path', requirePermission('read'), async (req, res, next) => {
     try {
       const { id } = req.params;
+      if (!id) {
+        throw new NotFoundError('Tag', 'ID is required');
+      }
       const path = await tagService.getTagPath(id);
-      res.apiSuccess(path);
+      return res.apiSuccess(path);
     } catch (error) {
-      next(error);
+      return next(error);
     }
   });
 
@@ -135,6 +227,9 @@ export async function tagRoutes() {
   router.post('/:id/merge', requirePermission('write'), async (req, res, next) => {
     try {
       const { id } = req.params;
+      if (!id) {
+        throw new NotFoundError('Tag', 'ID is required');
+      }
       const { target_tag_id } = req.body;
 
       if (!target_tag_id) {
@@ -142,9 +237,9 @@ export async function tagRoutes() {
       }
 
       await tagService.mergeTags(id, target_tag_id);
-      res.status(204).send();
+      return res.status(204).send();
     } catch (error) {
-      next(error);
+      return next(error);
     }
   });
 
@@ -152,92 +247,40 @@ export async function tagRoutes() {
   router.get('/:id/tasks', requirePermission('read'), async (req, res, next) => {
     try {
       const { id } = req.params;
-      const {
-        limit = 50,
-        offset = 0,
-        sortBy = 'updated_at',
-        sortOrder = 'desc',
-        board_id,
-        status,
-      } = req.query;
+      if (!id) {
+        throw new NotFoundError('Tag', 'ID is required');
+      }
+      // Query parameters available for future filtering implementation
+      // const {
+      //   limit = 50,
+      //   offset = 0,
+      //   sortBy = 'updated_at',
+      //   sortOrder = 'desc',
+      //   board_id,
+      //   status,
+      // } = req.query;
 
-      const options = {
-        limit: parseInt(limit as string, 10),
-        offset: parseInt(offset as string, 10),
-        sortBy: sortBy as string,
-        sortOrder: sortOrder as 'asc' | 'desc',
-        board_id: board_id as string,
-        status: status as any,
-      };
+      // TODO: Pagination options could be used to limit/filter the task IDs returned
+      // const options = {
+      //   limit: parseInt(limit as string, 10),
+      //   offset: parseInt(offset as string, 10),
+      //   sortBy: sortBy as string,
+      //   sortOrder: sortOrder as 'asc' | 'desc',
+      //   board_id: board_id as string,
+      //   status: status as any,
+      // };
 
-      const tasks = await tagService.getTagTasks(id, options);
-      
-      // Get total count for pagination
-      const totalTasks = await tagService.getTagTasks(id, { ...options, limit: undefined, offset: undefined });
-      const total = totalTasks.length;
+      const taskIds = await tagService.getTaggedTasks(id);
 
-      res.apiPagination(tasks, Math.floor(options.offset / options.limit) + 1, options.limit, total);
+      // TODO: This currently just returns task IDs. You might want to fetch the actual task objects
+      // by using TaskService to get the full task details based on these IDs
+
+      return res.apiSuccess({
+        task_ids: taskIds,
+        message: 'Returns task IDs. Use TaskService to get full task details.',
+      });
     } catch (error) {
-      next(error);
-    }
-  });
-
-  // GET /api/v1/tags/tree - Get tag hierarchy tree
-  router.get('/tree', requirePermission('read'), async (req, res, next) => {
-    try {
-      const { includeUsageCount = false } = req.query;
-      const tree = await tagService.getTagTree(includeUsageCount === 'true');
-      res.apiSuccess(tree);
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  // GET /api/v1/tags/popular - Get most used tags
-  router.get('/popular', requirePermission('read'), async (req, res, next) => {
-    try {
-      const {
-        limit = 20,
-        board_id,
-        days = 30,
-      } = req.query;
-
-      const options = {
-        limit: parseInt(limit as string, 10),
-        board_id: board_id as string,
-        days: parseInt(days as string, 10),
-      };
-
-      const popularTags = await tagService.getPopularTags(options);
-      res.apiSuccess(popularTags);
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  // GET /api/v1/tags/colors - Get available tag colors
-  router.get('/colors', requirePermission('read'), async (req, res, next) => {
-    try {
-      const colors = [
-        '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7',
-        '#dda0dd', '#98d8c8', '#f7dc6f', '#bb8fce', '#85c1e9',
-        '#f8c471', '#82e0aa', '#f1948a', '#85c1e9', '#d2b4de',
-        '#aed6f1', '#a3e4d7', '#f9e79f', '#f5b7b1', '#d5dbdb',
-      ];
-      res.apiSuccess(colors);
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  // GET /api/v1/tags/stats - Get tag usage statistics
-  router.get('/stats', requirePermission('read'), async (req, res, next) => {
-    try {
-      const { board_id } = req.query;
-      const stats = await tagService.getTagStats(board_id as string);
-      res.apiSuccess(stats);
-    } catch (error) {
-      next(error);
+      return next(error);
     }
   });
 

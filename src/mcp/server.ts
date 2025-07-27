@@ -1,19 +1,19 @@
 /**
  * MCP Kanban Server - Model Context Protocol server implementation
- * 
+ *
  * @module mcp/server
  * @description Provides MCP (Model Context Protocol) server implementation for the Kanban system.
  * This allows AI agents like Claude to interact with the kanban board through standardized
  * tools, resources, and prompts. The server handles tool execution, resource access, and
  * prompt generation for AI-powered task management workflows.
- * 
+ *
  * @example
  * ```typescript
  * import { mcpServer } from '@/mcp/server';
- * 
+ *
  * // Start the MCP server
  * await mcpServer.start();
- * 
+ *
  * // The server will be available via stdio transport
  * // AI agents can now call tools like:
  * // - create_task
@@ -47,26 +47,34 @@ import { MCPPromptRegistry } from './prompts';
 
 /**
  * MCP Kanban Server - Main server class for Model Context Protocol integration
- * 
+ *
  * @class MCPKanbanServer
  * @description Implements the MCP server specification to provide AI agents with
  * access to kanban functionality through tools, resources, and prompts. Handles
  * all MCP protocol communications and delegates actual work to service layers.
  */
 export class MCPKanbanServer {
-  private server: Server;
-  private taskService: TaskService;
-  private boardService: BoardService;
-  private noteService: NoteService;
-  private tagService: TagService;
-  private contextService: ContextService;
-  private toolRegistry: MCPToolRegistry;
-  private resourceRegistry: MCPResourceRegistry;
-  private promptRegistry: MCPPromptRegistry;
+  private readonly server: Server;
+
+  private readonly taskService: TaskService;
+
+  private readonly boardService: BoardService;
+
+  private readonly noteService: NoteService;
+
+  private readonly tagService: TagService;
+
+  private readonly contextService: ContextService;
+
+  private readonly toolRegistry: MCPToolRegistry;
+
+  private readonly resourceRegistry: MCPResourceRegistry;
+
+  private readonly promptRegistry: MCPPromptRegistry;
 
   /**
    * Creates a new MCP Kanban Server instance
-   * 
+   *
    * @description Initializes the MCP server with kanban capabilities:
    * - Tools: For task manipulation and querying
    * - Resources: For accessing board and task data
@@ -130,7 +138,7 @@ export class MCPKanbanServer {
 
   /**
    * Sets up all MCP protocol request handlers
-   * 
+   *
    * @private
    * @description Configures handlers for:
    * - Tool listing and execution
@@ -145,9 +153,9 @@ export class MCPKanbanServer {
       return { tools };
     });
 
-    this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    this.server.setRequestHandler(CallToolRequestSchema, async request => {
       const { name, arguments: args } = request.params;
-      
+
       try {
         const result = await this.toolRegistry.callTool(name, args || {});
         return {
@@ -178,9 +186,9 @@ export class MCPKanbanServer {
       return { resources };
     });
 
-    this.server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+    this.server.setRequestHandler(ReadResourceRequestSchema, async request => {
       const { uri } = request.params;
-      
+
       try {
         const resource = await this.resourceRegistry.readResource(uri);
         return {
@@ -204,9 +212,9 @@ export class MCPKanbanServer {
       return { prompts };
     });
 
-    this.server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+    this.server.setRequestHandler(GetPromptRequestSchema, async request => {
       const { name, arguments: args } = request.params;
-      
+
       try {
         const prompt = await this.promptRegistry.getPrompt(name, args || {});
         return {
@@ -220,25 +228,25 @@ export class MCPKanbanServer {
     });
 
     // Error handler
-    this.server.onerror = (error) => {
+    this.server.onerror = error => {
       logger.error('MCP server error', { error });
     };
   }
 
   /**
    * Starts the MCP server and establishes transport connection
-   * 
+   *
    * @returns Promise that resolves when server is fully started
-   * 
+   *
    * @throws {Error} When database initialization fails
    * @throws {Error} When MCP transport connection fails
-   * 
+   *
    * @description This method:
    * - Initializes the database connection
    * - Sets up stdio transport for CLI communication
    * - Registers signal handlers for graceful shutdown
    * - Logs server startup information
-   * 
+   *
    * @example
    * ```typescript
    * const server = new MCPKanbanServer();
@@ -282,15 +290,15 @@ export class MCPKanbanServer {
 
   /**
    * Gracefully stops the MCP server and cleans up resources
-   * 
+   *
    * @returns Promise that resolves when server is fully stopped
-   * 
+   *
    * @description This method:
    * - Closes the MCP server connection
    * - Closes the database connection
    * - Logs shutdown information
    * - Exits the process with appropriate code
-   * 
+   *
    * @example
    * ```typescript
    * await server.stop();
@@ -299,13 +307,13 @@ export class MCPKanbanServer {
   async stop(): Promise<void> {
     try {
       logger.info('Stopping MCP Kanban server...');
-      
+
       await this.server.close();
-      
+
       if (dbConnection.isConnected()) {
         await dbConnection.close();
       }
-      
+
       logger.info('MCP Kanban server stopped');
       process.exit(0);
     } catch (error) {
@@ -316,15 +324,15 @@ export class MCPKanbanServer {
 
   /**
    * Performs a comprehensive health check of the MCP server
-   * 
+   *
    * @returns Promise resolving to health status with detailed metrics
-   * 
+   *
    * @description Checks:
    * - Database connection health
    * - Number of available tools, resources, and prompts
    * - Server uptime
    * - Overall system status
-   * 
+   *
    * @example
    * ```typescript
    * const health = await server.healthCheck();
@@ -369,9 +377,9 @@ export class MCPKanbanServer {
 
   /**
    * Gets basic server information and capabilities
-   * 
+   *
    * @returns Server metadata including name, version, and capabilities
-   * 
+   *
    * @example
    * ```typescript
    * const info = server.getServerInfo();
@@ -395,9 +403,9 @@ export class MCPKanbanServer {
 
   /**
    * Gets the tool registry for external access
-   * 
+   *
    * @returns The MCPToolRegistry instance
-   * 
+   *
    * @example
    * ```typescript
    * const tools = server.getToolRegistry();
@@ -410,7 +418,7 @@ export class MCPKanbanServer {
 
   /**
    * Gets the resource registry for external access
-   * 
+   *
    * @returns The MCPResourceRegistry instance
    */
   getResourceRegistry(): MCPResourceRegistry {
@@ -419,7 +427,7 @@ export class MCPKanbanServer {
 
   /**
    * Gets the prompt registry for external access
-   * 
+   *
    * @returns The MCPPromptRegistry instance
    */
   getPromptRegistry(): MCPPromptRegistry {
@@ -432,7 +440,7 @@ export const mcpServer = new MCPKanbanServer();
 
 // Start server if this file is run directly
 if (require.main === module) {
-  mcpServer.start().catch((error) => {
+  mcpServer.start().catch(error => {
     console.error('Failed to start MCP server:', error);
     process.exit(1);
   });

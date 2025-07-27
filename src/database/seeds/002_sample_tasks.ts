@@ -1,8 +1,9 @@
-import { Database } from 'sqlite';
-import { Database as SQLiteDB } from 'sqlite3';
+import type { Database } from 'sqlite';
+import type { Database as SQLiteDB } from 'sqlite3';
 
 export const name = 'Sample Tasks';
-export const description = 'Create sample tasks with various statuses, priorities, and relationships';
+export const description =
+  'Create sample tasks with various statuses, priorities, and relationships';
 
 export async function run(db: Database<SQLiteDB>): Promise<void> {
   // Create sample tasks for Development Board

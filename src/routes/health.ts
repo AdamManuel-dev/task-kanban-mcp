@@ -10,7 +10,7 @@ export async function healthRoutes() {
   // Basic health check
   router.get('/health', async (_req, res) => {
     const health = await dbConnection.healthCheck();
-    
+
     const status = health.connected && health.responsive ? 'healthy' : 'unhealthy';
     const statusCode = status === 'healthy' ? 200 : 503;
 
@@ -23,7 +23,7 @@ export async function healthRoutes() {
         responseTime: health.stats?.responseTime,
       },
       websocket: {
-        running: webSocketManager ? true : false,
+        running: !!webSocketManager,
         clients: webSocketManager?.getClientCount() || 0,
       },
       uptime: process.uptime(),
@@ -48,7 +48,7 @@ export async function healthRoutes() {
         walMode: stats.walMode,
       },
       websocket: {
-        running: webSocketManager ? true : false,
+        running: !!webSocketManager,
         clients: webSocketManager?.getClientCount() || 0,
         subscriptions: webSocketManager?.getSubscriptionManager().getStats() || null,
       },
@@ -65,14 +65,16 @@ export async function healthRoutes() {
   router.get('/ready', async (_req, res) => {
     try {
       const health = await dbConnection.healthCheck();
-      
+
       if (health.connected && health.responsive) {
         res.apiSuccess({ ready: true });
       } else {
         res.status(503).apiError('SERVICE_NOT_READY', 'Service not ready');
       }
     } catch (error) {
-      res.status(503).apiError('SERVICE_NOT_READY', 'Service not ready', 503, { error: (error as Error).message });
+      res.status(503).apiError('SERVICE_NOT_READY', 'Service not ready', 503, {
+        error: (error as Error).message,
+      });
     }
   });
 

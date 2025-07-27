@@ -1,24 +1,28 @@
 import { logger } from '@/utils/logger';
-import { 
-  WebSocketMessage, 
-  MessageContext, 
-  SubscriptionChannel,
-  SubscribeMessage,
-  UnsubscribeMessage
-} from './types';
-import { WebSocketManager } from './server';
 import { TaskService } from '@/services/TaskService';
 import { BoardService } from '@/services/BoardService';
 import { NoteService } from '@/services/NoteService';
 import { TagService } from '@/services/TagService';
 import { dbConnection } from '@/database/connection';
+import type { WebSocketManager } from './server';
+import type {
+  WebSocketMessage,
+  MessageContext,
+  SubscriptionChannel,
+  SubscribeMessage,
+  UnsubscribeMessage,
+} from './types';
 
 export class MessageHandler {
-  private webSocketManager: WebSocketManager;
-  private taskService: TaskService;
-  private boardService: BoardService;
-  private noteService: NoteService;
-  private tagService: TagService;
+  private readonly webSocketManager: WebSocketManager;
+
+  private readonly taskService: TaskService;
+
+  private readonly boardService: BoardService;
+
+  private readonly noteService: NoteService;
+
+  private readonly tagService: TagService;
 
   constructor(webSocketManager: WebSocketManager) {
     this.webSocketManager = webSocketManager;
@@ -202,9 +206,7 @@ export class MessageHandler {
     const subscription = subscriptions.find(sub => sub.channel === payload.channel);
 
     if (subscription) {
-      const success = this.webSocketManager
-        .getSubscriptionManager()
-        .unsubscribe(subscription.id);
+      const success = this.webSocketManager.getSubscriptionManager().unsubscribe(subscription.id);
 
       if (success) {
         this.webSocketManager.sendToClient(clientId, {
@@ -273,12 +275,7 @@ export class MessageHandler {
       const task = await this.taskService.getTaskById(taskId);
 
       if (!task) {
-        this.webSocketManager.sendError(
-          clientId,
-          'TASK_NOT_FOUND',
-          'Task not found',
-          message.id
-        );
+        this.webSocketManager.sendError(clientId, 'TASK_NOT_FOUND', 'Task not found', message.id);
         return;
       }
 
@@ -336,7 +333,6 @@ export class MessageHandler {
       this.webSocketManager
         .getSubscriptionManager()
         .publishTaskUpdated(updatedTask, updates, client.user?.id || 'unknown');
-
     } catch (error) {
       logger.error('Error updating task', { taskId, updates, error });
       this.webSocketManager.sendError(
@@ -352,7 +348,7 @@ export class MessageHandler {
     const { clientId, client, message } = context;
     const taskData = message.payload;
 
-    if (!taskData || !taskData.title || !taskData.board_id) {
+    if (!taskData?.title || !taskData.board_id) {
       this.webSocketManager.sendError(
         clientId,
         'INVALID_REQUEST',
@@ -364,7 +360,10 @@ export class MessageHandler {
 
     try {
       // Check permissions
-      if (!client.permissions.has('write:all') && !client.permissions.has(`write:board:${taskData.board_id}`)) {
+      if (
+        !client.permissions.has('write:all') &&
+        !client.permissions.has(`write:board:${taskData.board_id}`)
+      ) {
         this.webSocketManager.sendError(
           clientId,
           'INSUFFICIENT_PERMISSIONS',
@@ -386,7 +385,6 @@ export class MessageHandler {
       this.webSocketManager
         .getSubscriptionManager()
         .publishTaskCreated(newTask, client.user?.id || 'unknown');
-
     } catch (error) {
       logger.error('Error creating task', { taskData, error });
       this.webSocketManager.sendError(
@@ -416,17 +414,15 @@ export class MessageHandler {
       // Get task first to check permissions and get board ID
       const task = await this.taskService.getTaskById(taskId);
       if (!task) {
-        this.webSocketManager.sendError(
-          clientId,
-          'TASK_NOT_FOUND',
-          'Task not found',
-          message.id
-        );
+        this.webSocketManager.sendError(clientId, 'TASK_NOT_FOUND', 'Task not found', message.id);
         return;
       }
 
       // Check permissions
-      if (!client.permissions.has('delete:all') && !client.permissions.has(`delete:task:${taskId}`)) {
+      if (
+        !client.permissions.has('delete:all') &&
+        !client.permissions.has(`delete:task:${taskId}`)
+      ) {
         this.webSocketManager.sendError(
           clientId,
           'INSUFFICIENT_PERMISSIONS',
@@ -448,7 +444,6 @@ export class MessageHandler {
       this.webSocketManager
         .getSubscriptionManager()
         .publishTaskDeleted(taskId, task.board_id, client.user?.id || 'unknown');
-
     } catch (error) {
       logger.error('Error deleting task', { taskId, error });
       this.webSocketManager.sendError(
@@ -489,12 +484,7 @@ export class MessageHandler {
       const board = await this.boardService.getBoardById(boardId);
 
       if (!board) {
-        this.webSocketManager.sendError(
-          clientId,
-          'BOARD_NOT_FOUND',
-          'Board not found',
-          message.id
-        );
+        this.webSocketManager.sendError(clientId, 'BOARD_NOT_FOUND', 'Board not found', message.id);
         return;
       }
 
@@ -530,7 +520,10 @@ export class MessageHandler {
 
     try {
       // Check permissions
-      if (!client.permissions.has('write:all') && !client.permissions.has(`write:board:${boardId}`)) {
+      if (
+        !client.permissions.has('write:all') &&
+        !client.permissions.has(`write:board:${boardId}`)
+      ) {
         this.webSocketManager.sendError(
           clientId,
           'INSUFFICIENT_PERMISSIONS',
@@ -549,15 +542,12 @@ export class MessageHandler {
       });
 
       // Broadcast update to subscribers
-      this.webSocketManager
-        .getSubscriptionManager()
-        .publishBoardUpdate(boardId, {
-          type: 'board_updated',
-          board: updatedBoard,
-          changes: updates,
-          updatedBy: client.user?.id || 'unknown',
-        });
-
+      this.webSocketManager.getSubscriptionManager().publishBoardUpdate(boardId, {
+        type: 'board_updated',
+        board: updatedBoard,
+        changes: updates,
+        updatedBy: client.user?.id || 'unknown',
+      });
     } catch (error) {
       logger.error('Error updating board', { boardId, updates, error });
       this.webSocketManager.sendError(
@@ -573,7 +563,7 @@ export class MessageHandler {
     const { clientId, client, message } = context;
     const noteData = message.payload;
 
-    if (!noteData || !noteData.content || !noteData.task_id) {
+    if (!noteData?.content || !noteData.task_id) {
       this.webSocketManager.sendError(
         clientId,
         'INVALID_REQUEST',
@@ -585,7 +575,10 @@ export class MessageHandler {
 
     try {
       // Check permissions
-      if (!client.permissions.has('write:all') && !client.permissions.has(`write:task:${noteData.task_id}`)) {
+      if (
+        !client.permissions.has('write:all') &&
+        !client.permissions.has(`write:task:${noteData.task_id}`)
+      ) {
         this.webSocketManager.sendError(
           clientId,
           'INSUFFICIENT_PERMISSIONS',
@@ -610,15 +603,9 @@ export class MessageHandler {
           .getSubscriptionManager()
           .publishNoteAdded(newNote, noteData.task_id, task.board_id, client.user?.id || 'unknown');
       }
-
     } catch (error) {
       logger.error('Error adding note', { noteData, error });
-      this.webSocketManager.sendError(
-        clientId,
-        'NOTE_ADD_ERROR',
-        'Error adding note',
-        message.id
-      );
+      this.webSocketManager.sendError(clientId, 'NOTE_ADD_ERROR', 'Error adding note', message.id);
     }
   }
 
@@ -663,7 +650,6 @@ export class MessageHandler {
           .getSubscriptionManager()
           .publishTagAssigned(taskId, tagId, task.board_id, client.user?.id || 'unknown');
       }
-
     } catch (error) {
       logger.error('Error assigning tag', { taskId, tagId, error });
       this.webSocketManager.sendError(
@@ -700,7 +686,6 @@ export class MessageHandler {
         id: message.id,
         payload: { status },
       });
-
     } catch (error) {
       logger.error('Error updating user presence', { status, boardId, taskId, error });
       this.webSocketManager.sendError(

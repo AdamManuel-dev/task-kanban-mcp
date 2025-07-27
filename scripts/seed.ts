@@ -2,7 +2,7 @@
 
 /**
  * Database seeding CLI script
- * 
+ *
  * Usage:
  *   npm run seed run           # Run all pending seeds
  *   npm run seed run --force   # Force re-run all seeds
@@ -19,20 +19,17 @@ import { logger } from '../src/utils/logger';
 
 const program = new Command();
 
-program
-  .name('seed')
-  .description('Database seed management')
-  .version('1.0.0');
+program.name('seed').description('Database seed management').version('1.0.0');
 
 program
   .command('run')
   .description('Run database seeds')
   .option('-f, --force', 'Force re-run seeds that have already been applied')
-  .action(async (options) => {
+  .action(async options => {
     try {
       await dbConnection.initialize({ skipSchema: true });
       const count = await dbConnection.runSeeds({ force: options.force });
-      
+
       if (count === 0) {
         console.log('✅ No pending seeds');
       } else {
@@ -53,22 +50,22 @@ program
     try {
       await dbConnection.initialize({ skipSchema: true });
       const status = await dbConnection.getSeedStatus();
-      
+
       console.log('\n📊 Seed Status:');
       console.log(`   Total seeds: ${status.total}`);
       console.log(`   Applied: ${status.applied.length}`);
       console.log(`   Pending: ${status.pending.length}`);
-      
+
       if (status.applied.length > 0) {
         console.log('\n✅ Applied Seeds:');
         status.applied.forEach(name => console.log(`   - ${name}`));
       }
-      
+
       if (status.pending.length > 0) {
         console.log('\n⏳ Pending Seeds:');
         status.pending.forEach(name => console.log(`   - ${name}`));
       }
-      
+
       console.log('');
     } catch (error) {
       console.error('❌ Failed to get seed status:', error);
@@ -112,7 +109,10 @@ program
 
 // Handle any unknown commands
 program.on('command:*', () => {
-  console.error('❌ Invalid command: %s\nSee --help for a list of available commands.', program.args.join(' '));
+  console.error(
+    '❌ Invalid command: %s\nSee --help for a list of available commands.',
+    program.args.join(' ')
+  );
   process.exit(1);
 });
 

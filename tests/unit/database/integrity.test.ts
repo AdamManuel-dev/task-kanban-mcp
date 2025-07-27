@@ -23,9 +23,17 @@ describe('DatabaseIntegrityChecker', () => {
   beforeEach(async () => {
     // Clean the database before each test
     const tables = [
-      'task_tags', 'task_dependencies', 'task_progress', 'notes', 'tags',
-      'tasks', 'columns', 'boards', 'repository_mappings', 'context_analytics',
-      'backup_metadata'
+      'task_tags',
+      'task_dependencies',
+      'task_progress',
+      'notes',
+      'tags',
+      'tasks',
+      'columns',
+      'boards',
+      'repository_mappings',
+      'context_analytics',
+      'backup_metadata',
     ];
 
     for (const table of tables) {
@@ -82,14 +90,13 @@ describe('DatabaseIntegrityChecker', () => {
 
     it('should detect integrity issues when present', async () => {
       // Create test data with some detectable issues (foreign key violations)
-      await db.execute(
-        'INSERT INTO boards (id, name) VALUES (?, ?)',
-        ['board-1', 'Test Board']
-      );
-      await db.execute(
-        'INSERT INTO columns (id, board_id, name, position) VALUES (?, ?, ?, ?)',
-        ['col-1', 'board-1', 'Todo', 1]
-      );
+      await db.execute('INSERT INTO boards (id, name) VALUES (?, ?)', ['board-1', 'Test Board']);
+      await db.execute('INSERT INTO columns (id, board_id, name, position) VALUES (?, ?, ?, ?)', [
+        'col-1',
+        'board-1',
+        'Todo',
+        1,
+      ]);
 
       // Temporarily disable foreign keys to create violations
       await db.execute('PRAGMA foreign_keys = OFF');
@@ -128,18 +135,17 @@ describe('DatabaseIntegrityChecker', () => {
 
     it('should detect foreign key violations', async () => {
       // Create board and column
-      await db.execute(
-        'INSERT INTO boards (id, name) VALUES (?, ?)',
-        ['board-1', 'Test Board']
-      );
-      await db.execute(
-        'INSERT INTO columns (id, board_id, name, position) VALUES (?, ?, ?, ?)',
-        ['col-1', 'board-1', 'Todo', 1]
-      );
+      await db.execute('INSERT INTO boards (id, name) VALUES (?, ?)', ['board-1', 'Test Board']);
+      await db.execute('INSERT INTO columns (id, board_id, name, position) VALUES (?, ?, ?, ?)', [
+        'col-1',
+        'board-1',
+        'Todo',
+        1,
+      ]);
 
       // Temporarily disable foreign keys to insert invalid data
       await db.execute('PRAGMA foreign_keys = OFF');
-      
+
       // Create task with invalid board_id
       await db.execute(
         'INSERT INTO tasks (id, board_id, column_id, title, position) VALUES (?, ?, ?, ?, ?)',
@@ -159,10 +165,7 @@ describe('DatabaseIntegrityChecker', () => {
 
     it('should detect multiple foreign key violations', async () => {
       // Create board
-      await db.execute(
-        'INSERT INTO boards (id, name) VALUES (?, ?)',
-        ['board-1', 'Test Board']
-      );
+      await db.execute('INSERT INTO boards (id, name) VALUES (?, ?)', ['board-1', 'Test Board']);
 
       // Temporarily disable foreign keys to insert invalid data
       await db.execute('PRAGMA foreign_keys = OFF');
@@ -197,7 +200,7 @@ describe('DatabaseIntegrityChecker', () => {
     it('should detect orphaned task progress records', async () => {
       // Temporarily disable foreign keys to insert orphaned data
       await db.execute('PRAGMA foreign_keys = OFF');
-      
+
       // Create orphaned task progress record
       await db.execute(
         'INSERT INTO task_progress (task_id, subtasks_total, subtasks_completed) VALUES (?, ?, ?)',
@@ -216,14 +219,13 @@ describe('DatabaseIntegrityChecker', () => {
 
     it('should detect empty columns', async () => {
       // Create board and column without tasks
-      await db.execute(
-        'INSERT INTO boards (id, name) VALUES (?, ?)',
-        ['board-1', 'Test Board']
-      );
-      await db.execute(
-        'INSERT INTO columns (id, board_id, name, position) VALUES (?, ?, ?, ?)',
-        ['col-1', 'board-1', 'Empty Column', 1]
-      );
+      await db.execute('INSERT INTO boards (id, name) VALUES (?, ?)', ['board-1', 'Test Board']);
+      await db.execute('INSERT INTO columns (id, board_id, name, position) VALUES (?, ?, ?, ?)', [
+        'col-1',
+        'board-1',
+        'Empty Column',
+        1,
+      ]);
 
       const result = await checker.checkOrphanedRecords();
 
@@ -244,14 +246,13 @@ describe('DatabaseIntegrityChecker', () => {
 
     it('should detect self-referencing tasks', async () => {
       // Create board and column
-      await db.execute(
-        'INSERT INTO boards (id, name) VALUES (?, ?)',
-        ['board-1', 'Test Board']
-      );
-      await db.execute(
-        'INSERT INTO columns (id, board_id, name, position) VALUES (?, ?, ?, ?)',
-        ['col-1', 'board-1', 'Todo', 1]
-      );
+      await db.execute('INSERT INTO boards (id, name) VALUES (?, ?)', ['board-1', 'Test Board']);
+      await db.execute('INSERT INTO columns (id, board_id, name, position) VALUES (?, ?, ?, ?)', [
+        'col-1',
+        'board-1',
+        'Todo',
+        1,
+      ]);
 
       // Create task that references itself as parent
       await db.execute(
@@ -267,14 +268,13 @@ describe('DatabaseIntegrityChecker', () => {
 
     it('should detect circular task dependencies', async () => {
       // Create board, column, and tasks
-      await db.execute(
-        'INSERT INTO boards (id, name) VALUES (?, ?)',
-        ['board-1', 'Test Board']
-      );
-      await db.execute(
-        'INSERT INTO columns (id, board_id, name, position) VALUES (?, ?, ?, ?)',
-        ['col-1', 'board-1', 'Todo', 1]
-      );
+      await db.execute('INSERT INTO boards (id, name) VALUES (?, ?)', ['board-1', 'Test Board']);
+      await db.execute('INSERT INTO columns (id, board_id, name, position) VALUES (?, ?, ?, ?)', [
+        'col-1',
+        'board-1',
+        'Todo',
+        1,
+      ]);
       await db.execute(
         'INSERT INTO tasks (id, board_id, column_id, title, position) VALUES (?, ?, ?, ?, ?)',
         ['task-1', 'board-1', 'col-1', 'Task 1', 1]
@@ -341,7 +341,7 @@ describe('DatabaseIntegrityChecker', () => {
       // This test may not work correctly if FTS tables are empty in test environment
       // The FTS tables might not get populated by triggers during testing
       // So we'll test the basic functionality without creating actual inconsistency
-      
+
       const result = await checker.checkFullTextSearchConsistency();
 
       // The test should pass (no errors) but we verify the function works
@@ -385,14 +385,13 @@ describe('DatabaseIntegrityChecker', () => {
 
     it('should detect health issues', async () => {
       // Create foreign key violations for health issues
-      await db.execute(
-        'INSERT INTO boards (id, name) VALUES (?, ?)',
-        ['board-1', 'Test Board']
-      );
-      await db.execute(
-        'INSERT INTO columns (id, board_id, name, position) VALUES (?, ?, ?, ?)',
-        ['col-1', 'board-1', 'Todo', 1]
-      );
+      await db.execute('INSERT INTO boards (id, name) VALUES (?, ?)', ['board-1', 'Test Board']);
+      await db.execute('INSERT INTO columns (id, board_id, name, position) VALUES (?, ?, ?, ?)', [
+        'col-1',
+        'board-1',
+        'Todo',
+        1,
+      ]);
 
       // Create foreign key violation
       await db.execute('PRAGMA foreign_keys = OFF');
@@ -421,14 +420,13 @@ describe('DatabaseIntegrityChecker', () => {
 
     it('should return false when integrity issues exist', async () => {
       // Create foreign key violations
-      await db.execute(
-        'INSERT INTO boards (id, name) VALUES (?, ?)',
-        ['board-1', 'Test Board']
-      );
-      await db.execute(
-        'INSERT INTO columns (id, board_id, name, position) VALUES (?, ?, ?, ?)',
-        ['col-1', 'board-1', 'Todo', 1]
-      );
+      await db.execute('INSERT INTO boards (id, name) VALUES (?, ?)', ['board-1', 'Test Board']);
+      await db.execute('INSERT INTO columns (id, board_id, name, position) VALUES (?, ?, ?, ?)', [
+        'col-1',
+        'board-1',
+        'Todo',
+        1,
+      ]);
 
       await db.execute('PRAGMA foreign_keys = OFF');
       await db.execute(
@@ -446,19 +444,20 @@ describe('DatabaseIntegrityChecker', () => {
   // Helper functions
   async function setupCleanTestData(): Promise<void> {
     // Create clean test data structure
-    await db.execute(
-      'INSERT INTO boards (id, name) VALUES (?, ?)',
-      ['board-1', 'Test Board']
-    );
+    await db.execute('INSERT INTO boards (id, name) VALUES (?, ?)', ['board-1', 'Test Board']);
 
-    await db.execute(
-      'INSERT INTO columns (id, board_id, name, position) VALUES (?, ?, ?, ?)',
-      ['col-1', 'board-1', 'Todo', 1]
-    );
-    await db.execute(
-      'INSERT INTO columns (id, board_id, name, position) VALUES (?, ?, ?, ?)',
-      ['col-2', 'board-1', 'Done', 2]
-    );
+    await db.execute('INSERT INTO columns (id, board_id, name, position) VALUES (?, ?, ?, ?)', [
+      'col-1',
+      'board-1',
+      'Todo',
+      1,
+    ]);
+    await db.execute('INSERT INTO columns (id, board_id, name, position) VALUES (?, ?, ?, ?)', [
+      'col-2',
+      'board-1',
+      'Done',
+      2,
+    ]);
 
     await db.execute(
       'INSERT INTO tasks (id, board_id, column_id, title, priority, position) VALUES (?, ?, ?, ?, ?, ?)',
@@ -474,28 +473,26 @@ describe('DatabaseIntegrityChecker', () => {
       ['note-1', 'board-1', 'task-1', 'Test note content', 'general']
     );
 
-    await db.execute(
-      'INSERT INTO tags (id, name, slug, path) VALUES (?, ?, ?, ?)',
-      ['tag-1', 'test', 'test', 'test']
-    );
+    await db.execute('INSERT INTO tags (id, name, slug, path) VALUES (?, ?, ?, ?)', [
+      'tag-1',
+      'test',
+      'test',
+      'test',
+    ]);
 
-    await db.execute(
-      'INSERT INTO task_tags (task_id, tag_id) VALUES (?, ?)',
-      ['task-1', 'tag-1']
-    );
+    await db.execute('INSERT INTO task_tags (task_id, tag_id) VALUES (?, ?)', ['task-1', 'tag-1']);
   }
 
   async function setupTestDataWithIssues(): Promise<void> {
     // Create test data with various integrity issues using exec to bypass constraints
-    await db.execute(
-      'INSERT INTO boards (id, name) VALUES (?, ?)',
-      ['board-1', 'Test Board']
-    );
+    await db.execute('INSERT INTO boards (id, name) VALUES (?, ?)', ['board-1', 'Test Board']);
 
-    await db.execute(
-      'INSERT INTO columns (id, board_id, name, position) VALUES (?, ?, ?, ?)',
-      ['col-1', 'board-1', 'Todo', 1]
-    );
+    await db.execute('INSERT INTO columns (id, board_id, name, position) VALUES (?, ?, ?, ?)', [
+      'col-1',
+      'board-1',
+      'Todo',
+      1,
+    ]);
 
     // Use exec to bypass constraints for invalid data
     await db.getDatabase().exec(`

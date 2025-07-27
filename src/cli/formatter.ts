@@ -11,7 +11,7 @@ interface FormatterOptions {
 }
 
 export class OutputFormatter {
-  private options: FormatterOptions = {
+  private readonly options: FormatterOptions = {
     format: 'table',
     verbose: false,
     quiet: false,
@@ -156,7 +156,7 @@ export class OutputFormatter {
     const fields = options?.fields || this.getTableFields(items[0]);
     const headers = options?.headers || fields.map(field => this.formatHeader(field));
 
-    const table = new Table({
+    const table = new (Table as any)({
       head: headers.map(h => this.colorize(h, 'cyan')),
       style: {
         'padding-left': 1,
@@ -180,7 +180,7 @@ export class OutputFormatter {
    * Output single object as key-value table
    */
   private outputObjectTable<T>(obj: T): void {
-    const table = new Table({
+    const table = new (Table as any)({
       style: {
         'padding-left': 1,
         'padding-right': 1,
@@ -201,9 +201,9 @@ export class OutputFormatter {
    * Get nested value from object using dot notation
    */
   private getNestedValue(obj: any, path: string): any {
-    return path.split('.').reduce((current, key) => {
-      return current && current[key] !== undefined ? current[key] : '';
-    }, obj);
+    return path
+      .split('.')
+      .reduce((current, key) => (current && current[key] !== undefined ? current[key] : ''), obj);
   }
 
   /**
@@ -213,19 +213,19 @@ export class OutputFormatter {
     if (value === null || value === undefined) {
       return '';
     }
-    
+
     if (typeof value === 'boolean') {
       return value ? 'Yes' : 'No';
     }
-    
+
     if (value instanceof Date) {
       return value.toLocaleString();
     }
-    
+
     if (typeof value === 'object') {
       return JSON.stringify(value);
     }
-    
+
     return String(value);
   }
 
@@ -234,7 +234,7 @@ export class OutputFormatter {
    */
   private formatTableValue(value: any, field: string): string {
     const formatted = this.formatValue(value);
-    
+
     if (!this.options.color) {
       return formatted;
     }
@@ -281,7 +281,7 @@ export class OutputFormatter {
    */
   private getTableFields(obj: any): string[] {
     const allFields = Object.keys(obj);
-    
+
     // Define field priority for common objects
     const priorities = {
       id: 1,
@@ -298,11 +298,11 @@ export class OutputFormatter {
     return allFields.sort((a, b) => {
       const priorityA = priorities[a as keyof typeof priorities] || 6;
       const priorityB = priorities[b as keyof typeof priorities] || 6;
-      
+
       if (priorityA !== priorityB) {
         return priorityA - priorityB;
       }
-      
+
       return a.localeCompare(b);
     });
   }
@@ -340,10 +340,10 @@ export class OutputFormatter {
     const percentage = Math.round((current / total) * 100);
     const filled = Math.round((current / total) * width);
     const empty = width - filled;
-    
+
     const bar = '█'.repeat(filled) + '░'.repeat(empty);
     const text = `${bar} ${percentage}% (${current}/${total})`;
-    
+
     return this.options.color ? chalk.cyan(text) : text;
   }
 
@@ -354,12 +354,12 @@ export class OutputFormatter {
     const units = ['B', 'KB', 'MB', 'GB'];
     let size = bytes;
     let unitIndex = 0;
-    
+
     while (size >= 1024 && unitIndex < units.length - 1) {
       size /= 1024;
       unitIndex++;
     }
-    
+
     return `${size.toFixed(1)} ${units[unitIndex]}`;
   }
 
@@ -371,10 +371,68 @@ export class OutputFormatter {
     const minutes = Math.floor(seconds / 60);
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
-    
+
     if (days > 0) return `${days}d ${hours % 24}h`;
     if (hours > 0) return `${hours}h ${minutes % 60}m`;
     if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
     return `${seconds}s`;
+  }
+
+  /**
+   * Format backup schedule information
+   */
+  formatSchedule(schedule: any): string {
+    const lines = [];
+
+    // Header
+    lines.push(this.formatHeader(`Schedule: ${schedule.name}`));
+    lines.push('');
+
+    // Basic info
+    lines.push(`ID: ${schedule.id}`);
+    lines.push(`Type: ${schedule.backupType.toUpperCase()}`);
+    lines.push(`Status: ${schedule.enabled ? chalk.green('ENABLED') : chalk.red('DISABLED')}`);
+    lines.push(`Cron: ${schedule.cronExpression}`);
+
+    if (schedule.description) {
+      lines.push(`Description: ${schedule.description}`);
+    }
+
+    // Timing info
+    lines.push('');
+    lines.push(this.formatHeader('Timing:'));
+    lines.push(`Created: ${new Date(schedule.createdAt).toLocaleString()}`);
+    lines.push(`Updated: ${new Date(schedule.updatedAt).toLocaleString()}`);
+
+    if (schedule.lastRunAt) {
+      lines.push(`Last Run: ${new Date(schedule.lastRunAt).toLocaleString()}`);
+    }
+
+    if (schedule.nextRunAt) {
+      lines.push(`Next Run: ${new Date(schedule.nextRunAt).toLocaleString()}`);
+    }
+
+    // Statistics
+    lines.push('');
+    lines.push(this.formatHeader('Statistics:'));
+    lines.push(`Total Runs: ${schedule.runCount || 0}`);
+    lines.push(`Failures: ${schedule.failureCount || 0}`);
+
+    if (schedule.runCount > 0) {
+      const successRate = (
+        ((schedule.runCount - (schedule.failureCount || 0)) / schedule.runCount) *
+        100
+      ).toFixed(1);
+      lines.push(`Success Rate: ${successRate}%`);
+    }
+
+    // Configuration
+    lines.push('');
+    lines.push(this.formatHeader('Configuration:'));
+    lines.push(`Retention: ${schedule.retentionDays || 30} days`);
+    lines.push(`Compression: ${schedule.compressionEnabled ? 'Enabled' : 'Disabled'}`);
+    lines.push(`Verification: ${schedule.verificationEnabled ? 'Enabled' : 'Disabled'}`);
+
+    return lines.join('\n');
   }
 }

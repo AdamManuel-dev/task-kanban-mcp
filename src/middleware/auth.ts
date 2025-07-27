@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import { config } from '@/config';
 import { logger } from '@/utils/logger';
@@ -13,7 +13,11 @@ interface AuthenticatedRequest extends Request {
   };
 }
 
-export function authenticationMiddleware(req: AuthenticatedRequest, _res: Response, next: NextFunction) {
+export function authenticationMiddleware(
+  req: AuthenticatedRequest,
+  _res: Response,
+  next: NextFunction
+) {
   // Skip authentication for public endpoints
   const publicEndpoints = ['/health', '/docs', '/'];
   if (publicEndpoints.some(endpoint => req.path.startsWith(endpoint))) {
@@ -21,7 +25,7 @@ export function authenticationMiddleware(req: AuthenticatedRequest, _res: Respon
   }
 
   const apiKey = req.get('X-API-Key') || req.get('Authorization')?.replace('Bearer ', '');
-  
+
   if (!apiKey) {
     return next(new UnauthorizedError('API key required'));
   }
@@ -39,7 +43,7 @@ export function authenticationMiddleware(req: AuthenticatedRequest, _res: Respon
 
   // Attach API key to request
   req.apiKey = apiKey;
-  
+
   // For now, create a basic user object
   // In a real implementation, you'd look up the user associated with the API key
   req.user = {
@@ -80,13 +84,15 @@ export function requirePermissions(permissions: string[], requireAll: boolean = 
       return next();
     }
 
-    const hasPermissions = requireAll 
+    const hasPermissions = requireAll
       ? permissions.every(perm => req.user!.permissions.includes(perm))
       : permissions.some(perm => req.user!.permissions.includes(perm));
 
     if (!hasPermissions) {
       const operator = requireAll ? 'all' : 'any';
-      return next(new ForbiddenError(`Requires ${operator} of permissions: ${permissions.join(', ')}`));
+      return next(
+        new ForbiddenError(`Requires ${operator} of permissions: ${permissions.join(', ')}`)
+      );
     }
 
     next();
@@ -124,4 +130,42 @@ export function revokeApiKey(apiKey: string): boolean {
     return true;
   }
   return false;
+}
+
+/**
+ * Middleware specifically for API key authentication
+ */
+export function authenticateApiKey(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): void {
+  const apiKey = req.get('X-API-Key') || req.get('Authorization')?.replace('Bearer ', '');
+
+  if (!apiKey) {
+    res.status(401).json({
+      success: false,
+      error: {
+        code: 'MISSING_API_KEY',
+        message: 'API key required',
+      },
+    });
+    return;
+  }
+
+  // Validate API key
+  const isValidKey = validateApiKey(apiKey);
+  if (!isValidKey) {
+    res.status(401).json({
+      success: false,
+      error: {
+        code: 'INVALID_API_KEY',
+        message: 'Invalid API key',
+      },
+    });
+    return;
+  }
+
+  req.apiKey = apiKey;
+  next();
 }

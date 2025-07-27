@@ -1,6 +1,6 @@
 /**
  * Unit tests for TagService
- * 
+ *
  * @description Comprehensive test suite covering all TagService functionality
  * including CRUD operations, hierarchy management, task assignments, stats, and edge cases.
  */
@@ -16,8 +16,8 @@ jest.mock('@/utils/logger', () => ({
     info: jest.fn(),
     warn: jest.fn(),
     error: jest.fn(),
-    debug: jest.fn()
-  }
+    debug: jest.fn(),
+  },
 }));
 
 describe('TagService', () => {
@@ -31,14 +31,14 @@ describe('TagService', () => {
     // Force a new database instance for testing
     (DatabaseConnection as any).instance = null;
     dbConnection = DatabaseConnection.getInstance();
-    
+
     if (dbConnection.isConnected()) {
       await dbConnection.close();
     }
-    
+
     // Use test-specific database file
     process.env.DATABASE_PATH = './data/kanban-test.db';
-    
+
     await dbConnection.initialize();
     tagService = new TagService(dbConnection);
 
@@ -48,10 +48,11 @@ describe('TagService', () => {
     secondTaskId = 'test-task-2';
 
     // Create test board and column
-    await dbConnection.execute(
-      'INSERT INTO boards (id, name, description) VALUES (?, ?, ?)',
-      [boardId, 'Test Board', 'Test board description']
-    );
+    await dbConnection.execute('INSERT INTO boards (id, name, description) VALUES (?, ?, ?)', [
+      boardId,
+      'Test Board',
+      'Test board description',
+    ]);
 
     await dbConnection.execute(
       'INSERT INTO columns (id, board_id, name, position) VALUES (?, ?, ?, ?)',
@@ -81,7 +82,7 @@ describe('TagService', () => {
       const tagData = {
         name: 'frontend',
         color: '#FF5722',
-        description: 'Frontend development tasks'
+        description: 'Frontend development tasks',
       };
 
       const tag = await tagService.createTag(tagData);
@@ -97,7 +98,7 @@ describe('TagService', () => {
 
     it('should create a tag with default color', async () => {
       const tagData = {
-        name: 'backend'
+        name: 'backend',
       };
 
       const tag = await tagService.createTag(tagData);
@@ -108,12 +109,12 @@ describe('TagService', () => {
 
     it('should create a child tag', async () => {
       const parentTag = await tagService.createTag({
-        name: 'development'
+        name: 'development',
       });
 
       const childTag = await tagService.createTag({
         name: 'frontend',
-        parent_tag_id: parentTag.id
+        parent_tag_id: parentTag.id,
       });
 
       expect(childTag.parent_tag_id).toBe(parentTag.id);
@@ -122,16 +123,16 @@ describe('TagService', () => {
     it('should throw error for duplicate tag name', async () => {
       await tagService.createTag({ name: 'duplicate' });
 
-      await expect(
-        tagService.createTag({ name: 'duplicate' })
-      ).rejects.toThrow('Failed to create tag');
+      await expect(tagService.createTag({ name: 'duplicate' })).rejects.toThrow(
+        'Failed to create tag'
+      );
     });
 
     it('should throw error for non-existent parent tag', async () => {
       await expect(
         tagService.createTag({
           name: 'child',
-          parent_tag_id: 'non-existent-parent'
+          parent_tag_id: 'non-existent-parent',
         })
       ).rejects.toThrow('Failed to create tag');
     });
@@ -140,7 +141,7 @@ describe('TagService', () => {
       const parentTag = await tagService.createTag({ name: 'parent' });
       const childTag = await tagService.createTag({
         name: 'child',
-        parent_tag_id: parentTag.id
+        parent_tag_id: parentTag.id,
       });
 
       await expect(
@@ -156,7 +157,7 @@ describe('TagService', () => {
       createdTag = await tagService.createTag({
         name: 'test-tag',
         color: '#2196F3',
-        description: 'Test tag description'
+        description: 'Test tag description',
       });
     });
 
@@ -181,7 +182,7 @@ describe('TagService', () => {
     beforeEach(async () => {
       await tagService.createTag({
         name: 'unique-name',
-        description: 'Tag with unique name'
+        description: 'Tag with unique name',
       });
     });
 
@@ -203,24 +204,24 @@ describe('TagService', () => {
     beforeEach(async () => {
       const parentTag = await tagService.createTag({
         name: 'development',
-        color: '#4CAF50'
+        color: '#4CAF50',
       });
 
       await tagService.createTag({
         name: 'frontend',
         color: '#FF5722',
-        parent_tag_id: parentTag.id
+        parent_tag_id: parentTag.id,
       });
 
       await tagService.createTag({
         name: 'backend',
         color: '#2196F3',
-        parent_tag_id: parentTag.id
+        parent_tag_id: parentTag.id,
       });
 
       await tagService.createTag({
         name: 'testing',
-        color: '#9C27B0'
+        color: '#9C27B0',
       });
     });
 
@@ -262,7 +263,7 @@ describe('TagService', () => {
     it('should search tags by name and description', async () => {
       await tagService.createTag({
         name: 'api',
-        description: 'backend API development'
+        description: 'backend API development',
       });
 
       const searchResults = await tagService.getTags({ search: 'backend' });
@@ -282,7 +283,7 @@ describe('TagService', () => {
     it('should sort tags by different fields', async () => {
       const tagsByColor = await tagService.getTags({
         sortBy: 'color',
-        sortOrder: 'desc'
+        sortOrder: 'desc',
       });
 
       expect(tagsByColor[0].color >= tagsByColor[1].color).toBe(true);
@@ -296,11 +297,11 @@ describe('TagService', () => {
       parentTag = await tagService.createTag({ name: 'parent' });
       await tagService.createTag({
         name: 'child1',
-        parent_tag_id: parentTag.id
+        parent_tag_id: parentTag.id,
       });
       await tagService.createTag({
         name: 'child2',
-        parent_tag_id: parentTag.id
+        parent_tag_id: parentTag.id,
       });
       await tagService.createTag({ name: 'orphan' });
     });
@@ -325,15 +326,15 @@ describe('TagService', () => {
       const devTag = await tagService.createTag({ name: 'development' });
       const frontendTag = await tagService.createTag({
         name: 'frontend',
-        parent_tag_id: devTag.id
+        parent_tag_id: devTag.id,
       });
       await tagService.createTag({
         name: 'react',
-        parent_tag_id: frontendTag.id
+        parent_tag_id: frontendTag.id,
       });
       await tagService.createTag({
         name: 'backend',
-        parent_tag_id: devTag.id
+        parent_tag_id: devTag.id,
       });
     });
 
@@ -369,7 +370,7 @@ describe('TagService', () => {
       tag = await tagService.createTag({ name: 'stats-tag' });
       const childTag = await tagService.createTag({
         name: 'child-tag',
-        parent_tag_id: tag.id
+        parent_tag_id: tag.id,
       });
 
       // Add tag to tasks
@@ -400,13 +401,13 @@ describe('TagService', () => {
       tag = await tagService.createTag({
         name: 'original-name',
         color: '#000000',
-        description: 'Original description'
+        description: 'Original description',
       });
     });
 
     it('should update tag name', async () => {
       const updatedTag = await tagService.updateTag(tag.id, {
-        name: 'updated-name'
+        name: 'updated-name',
       });
 
       expect(updatedTag.name).toBe('updated-name');
@@ -415,7 +416,7 @@ describe('TagService', () => {
 
     it('should update tag color', async () => {
       const updatedTag = await tagService.updateTag(tag.id, {
-        color: '#FF0000'
+        color: '#FF0000',
       });
 
       expect(updatedTag.color).toBe('#FF0000');
@@ -424,7 +425,7 @@ describe('TagService', () => {
 
     it('should update tag description', async () => {
       const updatedTag = await tagService.updateTag(tag.id, {
-        description: 'Updated description'
+        description: 'Updated description',
       });
 
       expect(updatedTag.description).toBe('Updated description');
@@ -433,7 +434,7 @@ describe('TagService', () => {
     it('should update parent tag', async () => {
       const parentTag = await tagService.createTag({ name: 'parent' });
       const updatedTag = await tagService.updateTag(tag.id, {
-        parent_tag_id: parentTag.id
+        parent_tag_id: parentTag.id,
       });
 
       expect(updatedTag.parent_tag_id).toBe(parentTag.id);
@@ -443,7 +444,7 @@ describe('TagService', () => {
       const updatedTag = await tagService.updateTag(tag.id, {
         name: 'multi-update',
         color: '#00FF00',
-        description: 'Multi-field update'
+        description: 'Multi-field update',
       });
 
       expect(updatedTag.name).toBe('multi-update');
@@ -459,17 +460,17 @@ describe('TagService', () => {
     });
 
     it('should throw error for non-existent tag', async () => {
-      await expect(
-        tagService.updateTag('non-existent-id', { name: 'new-name' })
-      ).rejects.toThrow('Failed to update tag');
+      await expect(tagService.updateTag('non-existent-id', { name: 'new-name' })).rejects.toThrow(
+        'Failed to update tag'
+      );
     });
 
     it('should throw error for duplicate name', async () => {
       await tagService.createTag({ name: 'existing-name' });
 
-      await expect(
-        tagService.updateTag(tag.id, { name: 'existing-name' })
-      ).rejects.toThrow('Failed to update tag');
+      await expect(tagService.updateTag(tag.id, { name: 'existing-name' })).rejects.toThrow(
+        'Failed to update tag'
+      );
     });
 
     it('should throw error for non-existent parent', async () => {
@@ -488,11 +489,11 @@ describe('TagService', () => {
       parentTag = await tagService.createTag({ name: 'parent' });
       childTag = await tagService.createTag({
         name: 'child',
-        parent_tag_id: parentTag.id
+        parent_tag_id: parentTag.id,
       });
       grandChildTag = await tagService.createTag({
         name: 'grandchild',
-        parent_tag_id: childTag.id
+        parent_tag_id: childTag.id,
       });
 
       // Add tags to tasks
@@ -524,9 +525,7 @@ describe('TagService', () => {
     });
 
     it('should throw error for non-existent tag', async () => {
-      await expect(
-        tagService.deleteTag('non-existent-id')
-      ).rejects.toThrow('Failed to delete tag');
+      await expect(tagService.deleteTag('non-existent-id')).rejects.toThrow('Failed to delete tag');
     });
   });
 
@@ -548,23 +547,23 @@ describe('TagService', () => {
     });
 
     it('should throw error when adding tag to non-existent task', async () => {
-      await expect(
-        tagService.addTagToTask('non-existent-task', tag.id)
-      ).rejects.toThrow('Failed to assign tag to task');
+      await expect(tagService.addTagToTask('non-existent-task', tag.id)).rejects.toThrow(
+        'Failed to assign tag to task'
+      );
     });
 
     it('should throw error when adding non-existent tag to task', async () => {
-      await expect(
-        tagService.addTagToTask(taskId, 'non-existent-tag')
-      ).rejects.toThrow('Failed to assign tag to task');
+      await expect(tagService.addTagToTask(taskId, 'non-existent-tag')).rejects.toThrow(
+        'Failed to assign tag to task'
+      );
     });
 
     it('should throw error when adding duplicate tag assignment', async () => {
       await tagService.addTagToTask(taskId, tag.id);
 
-      await expect(
-        tagService.addTagToTask(taskId, tag.id)
-      ).rejects.toThrow('Failed to assign tag to task');
+      await expect(tagService.addTagToTask(taskId, tag.id)).rejects.toThrow(
+        'Failed to assign tag to task'
+      );
     });
 
     it('should remove tag from task', async () => {
@@ -576,9 +575,9 @@ describe('TagService', () => {
     });
 
     it('should throw error when removing non-existent assignment', async () => {
-      await expect(
-        tagService.removeTagFromTask(taskId, tag.id)
-      ).rejects.toThrow('Failed to remove tag from task');
+      await expect(tagService.removeTagFromTask(taskId, tag.id)).rejects.toThrow(
+        'Failed to remove tag from task'
+      );
     });
   });
 
@@ -615,7 +614,7 @@ describe('TagService', () => {
       parentTag = await tagService.createTag({ name: 'parent-tag' });
       childTag = await tagService.createTag({
         name: 'child-tag',
-        parent_tag_id: parentTag.id
+        parent_tag_id: parentTag.id,
       });
 
       await tagService.addTagToTask(taskId, parentTag.id);
@@ -689,7 +688,7 @@ describe('TagService', () => {
       targetTag = await tagService.createTag({ name: 'target-tag' });
       childTag = await tagService.createTag({
         name: 'child-of-source',
-        parent_tag_id: sourceTag.id
+        parent_tag_id: sourceTag.id,
       });
 
       await tagService.addTagToTask(taskId, sourceTag.id);
@@ -714,15 +713,15 @@ describe('TagService', () => {
     });
 
     it('should throw error for non-existent source tag', async () => {
-      await expect(
-        tagService.mergeTags('non-existent-source', targetTag.id)
-      ).rejects.toThrow('Failed to merge tags');
+      await expect(tagService.mergeTags('non-existent-source', targetTag.id)).rejects.toThrow(
+        'Failed to merge tags'
+      );
     });
 
     it('should throw error for non-existent target tag', async () => {
-      await expect(
-        tagService.mergeTags(sourceTag.id, 'non-existent-target')
-      ).rejects.toThrow('Failed to merge tags');
+      await expect(tagService.mergeTags(sourceTag.id, 'non-existent-target')).rejects.toThrow(
+        'Failed to merge tags'
+      );
     });
   });
 
@@ -731,7 +730,7 @@ describe('TagService', () => {
       await dbConnection.close();
 
       await expect(tagService.getTags()).rejects.toMatchObject({
-        code: 'TAGS_FETCH_FAILED'
+        code: 'TAGS_FETCH_FAILED',
       });
     });
 
@@ -751,17 +750,17 @@ describe('TagService', () => {
       const tag1 = await tagService.createTag({ name: 'tag1' });
       const tag2 = await tagService.createTag({
         name: 'tag2',
-        parent_tag_id: tag1.id
+        parent_tag_id: tag1.id,
       });
       const tag3 = await tagService.createTag({
         name: 'tag3',
-        parent_tag_id: tag2.id
+        parent_tag_id: tag2.id,
       });
 
       // Try to make tag1 a child of tag3 (would create cycle)
-      await expect(
-        tagService.updateTag(tag1.id, { parent_tag_id: tag3.id })
-      ).rejects.toThrow('Failed to update tag');
+      await expect(tagService.updateTag(tag1.id, { parent_tag_id: tag3.id })).rejects.toThrow(
+        'Failed to update tag'
+      );
     });
 
     it('should calculate trends correctly', async () => {
@@ -781,11 +780,11 @@ describe('TagService', () => {
       const level1 = await tagService.createTag({ name: 'level1' });
       const level2 = await tagService.createTag({
         name: 'level2',
-        parent_tag_id: level1.id
+        parent_tag_id: level1.id,
       });
       const level3 = await tagService.createTag({
         name: 'level3',
-        parent_tag_id: level2.id
+        parent_tag_id: level2.id,
       });
 
       const hierarchies = await tagService.getTagHierarchy(level1.id);

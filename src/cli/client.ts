@@ -1,4 +1,4 @@
-import { ConfigManager } from './config';
+import type { ConfigManager } from './config';
 
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -8,8 +8,10 @@ interface RequestOptions {
 }
 
 export class ApiClient {
-  private config: ConfigManager;
+  private readonly config: ConfigManager;
+
   private baseUrl: string;
+
   private apiKey: string | undefined;
 
   constructor(config: ConfigManager) {
@@ -22,12 +24,7 @@ export class ApiClient {
    * Make authenticated API request
    */
   async request<T = any>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-    const {
-      method = 'GET',
-      body,
-      params,
-      timeout = 10000,
-    } = options;
+    const { method = 'GET', body, params, timeout = 10000 } = options;
 
     // Build URL with query parameters
     const url = new URL(`${this.baseUrl}${endpoint}`);
@@ -60,18 +57,18 @@ export class ApiClient {
 
     try {
       const response = await fetch(url.toString(), requestOptions);
-      
+
       if (!response.ok) {
         await this.handleErrorResponse(response);
       }
 
       const contentType = response.headers.get('content-type');
       if (contentType && contentType.includes('application/json')) {
-        const data = await response.json() as any;
+        const data = (await response.json()) as any;
         return data.data || data;
       }
 
-      return await response.text() as T;
+      return (await response.text()) as T;
     } catch (error) {
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
@@ -94,7 +91,7 @@ export class ApiClient {
 
     try {
       if (contentType && contentType.includes('application/json')) {
-        const errorData = await response.json() as any;
+        const errorData = (await response.json()) as any;
         errorMessage = errorData.error || errorData.message || errorMessage;
       } else {
         const text = await response.text();

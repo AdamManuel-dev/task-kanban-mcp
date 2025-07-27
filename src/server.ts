@@ -17,36 +17,40 @@ export async function createServer() {
   app.set('trust proxy', 1);
 
   // Security middleware
-  app.use(helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        scriptSrc: ["'self'"],
-        imgSrc: ["'self'", "data:", "https:"],
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          scriptSrc: ["'self'"],
+          imgSrc: ["'self'", 'data:', 'https:'],
+        },
       },
-    },
-    hsts: {
-      maxAge: 31536000,
-      includeSubDomains: true,
-      preload: true,
-    },
-  }));
+      hsts: {
+        maxAge: 31536000,
+        includeSubDomains: true,
+        preload: true,
+      },
+    })
+  );
 
   // CORS configuration
-  app.use(cors({
-    origin: config.api.corsOrigin,
-    credentials: config.api.corsCredentials,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: [
-      'Content-Type',
-      'Authorization',
-      'X-API-Key',
-      'X-Request-ID',
-      'X-Forwarded-For',
-    ],
-    exposedHeaders: ['X-Request-ID', 'X-Rate-Limit-Remaining'],
-  }));
+  app.use(
+    cors({
+      origin: config.api.corsOrigin,
+      credentials: config.api.corsCredentials,
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowedHeaders: [
+        'Content-Type',
+        'Authorization',
+        'X-API-Key',
+        'X-Request-ID',
+        'X-Forwarded-For',
+      ],
+      exposedHeaders: ['X-Request-ID', 'X-Rate-Limit-Remaining'],
+    })
+  );
 
   // Rate limiting
   const limiter = rateLimit({
@@ -59,39 +63,43 @@ export async function createServer() {
     },
     standardHeaders: true,
     legacyHeaders: false,
-    skip: (req) => {
+    skip: req =>
       // Skip rate limiting for health checks
-      return req.path === '/health' || req.path === '/api/health';
-    },
-    keyGenerator: (req) => {
+      req.path === '/health' || req.path === '/api/health',
+    keyGenerator: req =>
       // Use API key if available, otherwise use IP
-      return req.get('X-API-Key') || req.ip || 'unknown';
-    },
+      req.get('X-API-Key') || req.ip || 'unknown',
   });
 
   app.use('/api', limiter);
 
   // Compression
-  app.use(compression({
-    filter: (req: express.Request, res: express.Response) => {
-      if (req.headers['x-no-compression']) {
-        return false;
-      }
-      return compression.filter(req, res);
-    },
-    threshold: 1024, // Only compress responses larger than 1KB
-  }));
+  app.use(
+    compression({
+      filter: (req: express.Request, res: express.Response) => {
+        if (req.headers['x-no-compression']) {
+          return false;
+        }
+        return compression.filter(req, res);
+      },
+      threshold: 1024, // Only compress responses larger than 1KB
+    })
+  );
 
   // Body parsing middleware
-  app.use(express.json({
-    limit: config.performance.maxRequestSize,
-    strict: true,
-  }));
+  app.use(
+    express.json({
+      limit: config.performance.maxRequestSize,
+      strict: true,
+    })
+  );
 
-  app.use(express.urlencoded({
-    extended: true,
-    limit: config.performance.maxRequestSize,
-  }));
+  app.use(
+    express.urlencoded({
+      extended: true,
+      limit: config.performance.maxRequestSize,
+    })
+  );
 
   // API middleware
   const apiMiddleware = await createApiMiddleware();
@@ -100,7 +108,7 @@ export async function createServer() {
   // Health check endpoint
   app.get('/health', async (_req, res) => {
     const health = await dbConnection.healthCheck();
-    
+
     const status = health.connected && health.responsive ? 'healthy' : 'unhealthy';
     const statusCode = status === 'healthy' ? 200 : 503;
 
@@ -144,37 +152,39 @@ export async function createServer() {
   });
 
   // Global error handler
-  app.use((error: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
-    const serviceError = globalErrorHandler.handleError(error, {
-      service: 'ExpressServer',
-      method: req.method,
-      metadata: {
+  app.use(
+    (error: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+      const serviceError = globalErrorHandler.handleError(error, {
+        service: 'ExpressServer',
+        method: req.method,
+        metadata: {
+          url: req.originalUrl,
+          userAgent: req.get('User-Agent'),
+          ip: req.ip,
+        },
+      });
+
+      logger.error('HTTP request error', {
+        requestId: req.get('X-Request-ID'),
+        method: req.method,
         url: req.originalUrl,
-        userAgent: req.get('User-Agent'),
-        ip: req.ip,
-      },
-    });
-
-    logger.error('HTTP request error', {
-      requestId: req.get('X-Request-ID'),
-      method: req.method,
-      url: req.originalUrl,
-      statusCode: serviceError.statusCode,
-      error: serviceError.message,
-      stack: serviceError.stack,
-    });
-
-    res.status(serviceError.statusCode).json({
-      error: serviceError.message,
-      code: serviceError.code,
-      timestamp: new Date().toISOString(),
-      requestId: req.get('X-Request-ID'),
-      ...(config.server.nodeEnv === 'development' && {
-        details: serviceError.details,
+        statusCode: serviceError.statusCode,
+        error: serviceError.message,
         stack: serviceError.stack,
-      }),
-    });
-  });
+      });
+
+      res.status(serviceError.statusCode).json({
+        error: serviceError.message,
+        code: serviceError.code,
+        timestamp: new Date().toISOString(),
+        requestId: req.get('X-Request-ID'),
+        ...(config.server.nodeEnv === 'development' && {
+          details: serviceError.details,
+          stack: serviceError.stack,
+        }),
+      });
+    }
+  );
 
   return app;
 }
@@ -251,7 +261,7 @@ export async function startServer() {
     });
 
     // Handle uncaught exceptions
-    process.on('uncaughtException', (error) => {
+    process.on('uncaughtException', error => {
       logger.error('Uncaught Exception', {
         error: error.message,
         stack: error.stack,
@@ -268,7 +278,7 @@ export async function startServer() {
 
 // Start server if this file is run directly
 if (require.main === module) {
-  startServer().catch((error) => {
+  startServer().catch(error => {
     console.error('Failed to start server:', error);
     process.exit(1);
   });

@@ -1,26 +1,26 @@
 /**
  * Winston logger configuration for MCP Kanban Server
- * 
+ *
  * @module utils/logger
  * @description Centralized logging configuration using Winston. Provides structured
  * logging with multiple transports (file and console), log rotation, and environment-specific
  * formatting. All logs include timestamps and service metadata.
- * 
+ *
  * @example
  * ```typescript
  * import { logger } from '@/utils/logger';
- * 
+ *
  * // Basic logging
  * logger.info('Server started', { port: 3000 });
  * logger.error('Database connection failed', { error: err });
- * 
+ *
  * // Structured logging with metadata
  * logger.debug('Query executed', {
  *   sql: 'SELECT * FROM tasks',
  *   duration: 45,
  *   rowCount: 10
  * });
- * 
+ *
  * // Error logging with stack trace
  * try {
  *   await riskyOperation();
@@ -33,15 +33,18 @@
 import winston from 'winston';
 import path from 'path';
 
+// Create logs directory if it doesn't exist
+import fs from 'fs';
+
 /**
  * Log severity levels
  * @constant {Object}
  */
 const logLevels = {
-  error: 0,   // Critical errors requiring immediate attention
-  warn: 1,    // Warning conditions that should be reviewed
-  info: 2,    // Informational messages about normal operations
-  debug: 3,   // Detailed debug information for troubleshooting
+  error: 0, // Critical errors requiring immediate attention
+  warn: 1, // Warning conditions that should be reviewed
+  info: 2, // Informational messages about normal operations
+  debug: 3, // Detailed debug information for troubleshooting
 };
 
 /**
@@ -60,7 +63,7 @@ winston.addColors(logColors);
 
 /**
  * Configured Winston logger instance
- * 
+ *
  * @constant {winston.Logger} logger
  * @description Pre-configured logger with file and console transports.
  * - Error logs: Saved to logs/error.log
@@ -68,7 +71,7 @@ winston.addColors(logColors);
  * - Console: Enabled in development with colors
  * - Automatic log rotation at 10MB
  * - Includes timestamp and service metadata
- * 
+ *
  * @example
  * ```typescript
  * // Log levels
@@ -76,7 +79,7 @@ winston.addColors(logColors);
  * logger.warn('Deprecation warning', { feature: 'oldAPI' });
  * logger.info('User logged in', { userId: 'user-123' });
  * logger.debug('Cache hit', { key: 'user:123', ttl: 300 });
- * 
+ *
  * // Child logger with additional context
  * const requestLogger = logger.child({ requestId: 'req-123' });
  * requestLogger.info('Processing request');
@@ -84,7 +87,7 @@ winston.addColors(logColors);
  */
 export const logger = winston.createLogger({
   levels: logLevels,
-  level: process.env['LOG_LEVEL'] || 'info',
+  level: process.env.LOG_LEVEL || 'info',
   format: winston.format.combine(
     winston.format.timestamp({
       format: 'YYYY-MM-DD HH:mm:ss',
@@ -94,7 +97,7 @@ export const logger = winston.createLogger({
   ),
   defaultMeta: {
     service: 'mcp-kanban',
-    version: process.env['npm_package_version'] || '0.1.0',
+    version: process.env.npm_package_version || '0.1.0',
   },
   transports: [
     // File transport for errors
@@ -104,7 +107,7 @@ export const logger = winston.createLogger({
       maxsize: 10485760, // 10MB
       maxFiles: 5,
     }),
-    
+
     // File transport for all logs
     new winston.transports.File({
       filename: path.join(process.cwd(), 'logs', 'combined.log'),
@@ -115,7 +118,7 @@ export const logger = winston.createLogger({
 });
 
 // Add console transport for non-production environments
-if (process.env['NODE_ENV'] !== 'production') {
+if (process.env.NODE_ENV !== 'production') {
   logger.add(
     new winston.transports.Console({
       format: winston.format.combine(
@@ -129,9 +132,6 @@ if (process.env['NODE_ENV'] !== 'production') {
     })
   );
 }
-
-// Create logs directory if it doesn't exist
-import fs from 'fs';
 const logsDir = path.join(process.cwd(), 'logs');
 if (!fs.existsSync(logsDir)) {
   fs.mkdirSync(logsDir, { recursive: true });

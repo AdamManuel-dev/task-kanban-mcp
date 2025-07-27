@@ -1,27 +1,27 @@
 /**
  * Database integrity check utilities
  * Provides comprehensive validation of database consistency, constraints, and data quality
- * 
+ *
  * @module database/integrity
  * @description This module provides tools for validating database integrity including
  * foreign key constraints, data consistency, circular dependency detection, and
  * schema validation. Used for health checks and data quality monitoring.
- * 
+ *
  * @example
  * ```typescript
  * import { DatabaseIntegrityChecker } from '@/database/integrity';
- * 
+ *
  * const checker = new DatabaseIntegrityChecker(dbConnection);
  * const results = await checker.runFullIntegrityCheck();
- * 
+ *
  * if (!results.isValid) {
  *   console.error('Database integrity issues found:', results.errors);
  * }
  * ```
  */
 
-import { DatabaseConnection } from './connection';
 import { logger } from '@/utils/logger';
+import type { DatabaseConnection } from './connection';
 
 /**
  * Configuration for integrity check operations
@@ -86,31 +86,29 @@ export interface FullIntegrityCheckResult {
 
 /**
  * Database integrity checker providing comprehensive validation tools
- * 
+ *
  * @class DatabaseIntegrityChecker
  * @description Provides methods for validating database consistency, constraints,
  * and data quality. Can run individual checks or comprehensive validation.
- * 
+ *
  * @example
  * ```typescript
  * const checker = new DatabaseIntegrityChecker(dbConnection);
- * 
+ *
  * // Run individual checks
  * const fkResult = await checker.checkForeignKeyConstraints();
  * const orphansResult = await checker.checkOrphanedRecords();
- * 
+ *
  * // Run comprehensive check
  * const fullResult = await checker.runFullIntegrityCheck();
  * ```
  */
 export class DatabaseIntegrityChecker {
-  private db: DatabaseConnection;
-  private config: IntegrityCheckConfig;
+  private readonly db: DatabaseConnection;
 
-  constructor(
-    database: DatabaseConnection,
-    config: Partial<IntegrityCheckConfig> = {}
-  ) {
+  private readonly config: IntegrityCheckConfig;
+
+  constructor(database: DatabaseConnection, config: Partial<IntegrityCheckConfig> = {}) {
     this.db = database;
     this.config = {
       checkForeignKeys: true,
@@ -126,17 +124,17 @@ export class DatabaseIntegrityChecker {
 
   /**
    * Run a comprehensive integrity check covering all aspects
-   * 
+   *
    * @returns {Promise<FullIntegrityCheckResult>} Complete integrity check results
-   * 
+   *
    * @example
    * ```typescript
    * const results = await checker.runFullIntegrityCheck();
-   * 
+   *
    * console.log(`Overall valid: ${results.isValid}`);
    * console.log(`Total errors: ${results.summary.totalErrors}`);
    * console.log(`Execution time: ${results.summary.totalExecutionTime}ms`);
-   * 
+   *
    * // Check specific results
    * if (!results.checks.foreignKeys.isValid) {
    *   console.error('Foreign key violations:', results.checks.foreignKeys.errors);
@@ -158,7 +156,10 @@ export class DatabaseIntegrityChecker {
 
     const totalExecutionTime = Date.now() - startTime;
     const totalErrors = Object.values(checks).reduce((sum, check) => sum + check.errors.length, 0);
-    const totalWarnings = Object.values(checks).reduce((sum, check) => sum + check.warnings.length, 0);
+    const totalWarnings = Object.values(checks).reduce(
+      (sum, check) => sum + check.warnings.length,
+      0
+    );
     const checksRun = Object.keys(checks).length;
     const checksPassed = Object.values(checks).filter(check => check.isValid).length;
     const isValid = totalErrors === 0;
@@ -188,9 +189,9 @@ export class DatabaseIntegrityChecker {
 
   /**
    * Check foreign key constraints across all tables
-   * 
+   *
    * @returns {Promise<IntegrityCheckResult>} Foreign key check results
-   * 
+   *
    * @example
    * ```typescript
    * const result = await checker.checkForeignKeyConstraints();
@@ -325,23 +326,22 @@ export class DatabaseIntegrityChecker {
           totalViolations += violations.length;
           errors.push(
             `Foreign key constraint violation in ${check.table}.${check.column} -> ${check.reference}: ` +
-            `${violations.length} invalid references found`
+              `${violations.length} invalid references found`
           );
-          
+
           // Log first few violations for debugging
           const sampleViolations = violations.slice(0, 3);
           metadata[`${check.table}_${check.column}_violations`] = sampleViolations;
         }
       }
 
-      metadata['totalViolations'] = totalViolations;
-      metadata['tablesChecked'] = foreignKeyChecks.length;
+      metadata.totalViolations = totalViolations;
+      metadata.tablesChecked = foreignKeyChecks.length;
 
       logger.debug('Foreign key constraint check completed', {
         violations: totalViolations,
         tablesChecked: foreignKeyChecks.length,
       });
-
     } catch (error) {
       errors.push(`Foreign key check failed: ${(error as Error).message}`);
       logger.error('Foreign key constraint check failed', { error });
@@ -358,9 +358,9 @@ export class DatabaseIntegrityChecker {
 
   /**
    * Check for orphaned records that should have been cleaned up
-   * 
+   *
    * @returns {Promise<IntegrityCheckResult>} Orphaned records check results
-   * 
+   *
    * @example
    * ```typescript
    * const result = await checker.checkOrphanedRecords();
@@ -387,7 +387,7 @@ export class DatabaseIntegrityChecker {
 
       if (orphanedProgress[0]?.count > 0) {
         warnings.push(`Found ${orphanedProgress[0].count} orphaned task progress records`);
-        metadata['orphanedTaskProgress'] = orphanedProgress[0].count;
+        metadata.orphanedTaskProgress = orphanedProgress[0].count;
       }
 
       // Check for tasks with invalid parent relationships
@@ -400,7 +400,7 @@ export class DatabaseIntegrityChecker {
 
       if (invalidParentTasks[0]?.count > 0) {
         warnings.push(`Found ${invalidParentTasks[0].count} tasks with invalid parent references`);
-        metadata['invalidParentTasks'] = invalidParentTasks[0].count;
+        metadata.invalidParentTasks = invalidParentTasks[0].count;
       }
 
       // Check for tags with zero usage but existing in task_tags
@@ -415,7 +415,7 @@ export class DatabaseIntegrityChecker {
         warnings.push(
           `Found ${unusedTagsWithReferences[0].count} tags with zero usage count but active references`
         );
-        metadata['unusedTagsWithReferences'] = unusedTagsWithReferences[0].count;
+        metadata.unusedTagsWithReferences = unusedTagsWithReferences[0].count;
       }
 
       // Check for columns without any tasks
@@ -429,8 +429,8 @@ export class DatabaseIntegrityChecker {
 
       if (emptyColumns.length > 0) {
         warnings.push(`Found ${emptyColumns.length} columns with no active tasks`);
-        metadata['emptyColumns'] = emptyColumns.length;
-        metadata['emptyColumnDetails'] = emptyColumns.slice(0, 5); // Sample for review
+        metadata.emptyColumns = emptyColumns.length;
+        metadata.emptyColumnDetails = emptyColumns.slice(0, 5); // Sample for review
       }
 
       logger.debug('Orphaned records check completed', {
@@ -439,7 +439,6 @@ export class DatabaseIntegrityChecker {
         unusedTags: unusedTagsWithReferences[0]?.count || 0,
         emptyColumns: emptyColumns.length,
       });
-
     } catch (error) {
       errors.push(`Orphaned records check failed: ${(error as Error).message}`);
       logger.error('Orphaned records check failed', { error });
@@ -456,9 +455,9 @@ export class DatabaseIntegrityChecker {
 
   /**
    * Check for circular dependencies in task relationships
-   * 
+   *
    * @returns {Promise<IntegrityCheckResult>} Circular dependency check results
-   * 
+   *
    * @example
    * ```typescript
    * const result = await checker.checkCircularDependencies();
@@ -477,7 +476,8 @@ export class DatabaseIntegrityChecker {
       logger.debug('Checking for circular dependencies');
 
       // Check for circular dependencies using recursive CTE
-      const circularDependencies = await this.db.query(`
+      const circularDependencies = await this.db.query(
+        `
         WITH RECURSIVE dependency_cycle_check(task_id, depends_on_task_id, depth, path) AS (
           -- Start with direct dependencies
           SELECT task_id, depends_on_task_id, 0 as depth, task_id || ' -> ' || depends_on_task_id as path
@@ -508,23 +508,28 @@ export class DatabaseIntegrityChecker {
         JOIN tasks t2 ON dc.depends_on_task_id = t2.id
         WHERE dc.task_id = dc.depends_on_task_id -- Circular dependency detected
         ORDER BY task_id, depth
-      `, [this.config.maxDependencyDepth]);
+      `,
+        [this.config.maxDependencyDepth]
+      );
 
       if (circularDependencies.length > 0) {
         errors.push(`Found ${circularDependencies.length} circular dependency chains`);
-        metadata['circularDependencies'] = circularDependencies;
+        metadata.circularDependencies = circularDependencies;
 
         // Group by task for better reporting
-        const taskGroups = circularDependencies.reduce((groups, dep) => {
-          if (!groups[dep.task_id]) {
-            groups[dep.task_id] = [];
-          }
-          groups[dep.task_id].push(dep);
-          return groups;
-        }, {} as Record<string, any[]>);
+        const taskGroups = circularDependencies.reduce(
+          (groups, dep) => {
+            if (!groups[dep.task_id]) {
+              groups[dep.task_id] = [];
+            }
+            groups[dep.task_id].push(dep);
+            return groups;
+          },
+          {} as Record<string, any[]>
+        );
 
-        metadata['affectedTasks'] = Object.keys(taskGroups).length;
-        metadata['sampleCircularPaths'] = Object.values(taskGroups)
+        metadata.affectedTasks = Object.keys(taskGroups).length;
+        metadata.sampleCircularPaths = Object.values(taskGroups)
           .slice(0, 3)
           .map(group => (group as any[])[0].path);
       }
@@ -537,12 +542,15 @@ export class DatabaseIntegrityChecker {
       `);
 
       if (selfReferencingTasks.length > 0) {
-        errors.push(`Found ${selfReferencingTasks.length} tasks that reference themselves as parent`);
-        metadata['selfReferencingTasks'] = selfReferencingTasks;
+        errors.push(
+          `Found ${selfReferencingTasks.length} tasks that reference themselves as parent`
+        );
+        metadata.selfReferencingTasks = selfReferencingTasks;
       }
 
       // Check for potential cycles in parent-child relationships
-      const parentChildCycles = await this.db.query(`
+      const parentChildCycles = await this.db.query(
+        `
         WITH RECURSIVE parent_cycle_check(child_id, parent_id, depth, path) AS (
           -- Start with direct parent relationships
           SELECT id as child_id, parent_task_id as parent_id, 0 as depth, id || ' -> ' || parent_task_id as path
@@ -575,11 +583,13 @@ export class DatabaseIntegrityChecker {
         JOIN tasks t2 ON pc.parent_id = t2.id
         WHERE pc.child_id = pc.parent_id -- Parent-child cycle detected
         ORDER BY child_id, depth
-      `, [this.config.maxDependencyDepth]);
+      `,
+        [this.config.maxDependencyDepth]
+      );
 
       if (parentChildCycles.length > 0) {
         errors.push(`Found ${parentChildCycles.length} parent-child relationship cycles`);
-        metadata['parentChildCycles'] = parentChildCycles;
+        metadata.parentChildCycles = parentChildCycles;
       }
 
       logger.debug('Circular dependency check completed', {
@@ -587,7 +597,6 @@ export class DatabaseIntegrityChecker {
         selfReferencingTasks: selfReferencingTasks.length,
         parentChildCycles: parentChildCycles.length,
       });
-
     } catch (error) {
       errors.push(`Circular dependency check failed: ${(error as Error).message}`);
       logger.error('Circular dependency check failed', { error });
@@ -604,9 +613,9 @@ export class DatabaseIntegrityChecker {
 
   /**
    * Check data type constraints and value validity
-   * 
+   *
    * @returns {Promise<IntegrityCheckResult>} Data type validation results
-   * 
+   *
    * @example
    * ```typescript
    * const result = await checker.checkDataTypeConstraints();
@@ -633,7 +642,7 @@ export class DatabaseIntegrityChecker {
 
       if (invalidPriorities[0]?.count > 0) {
         errors.push(`Found ${invalidPriorities[0].count} tasks with invalid priority values`);
-        metadata['invalidPriorities'] = invalidPriorities[0].count;
+        metadata.invalidPriorities = invalidPriorities[0].count;
       }
 
       // Check note category values
@@ -645,7 +654,7 @@ export class DatabaseIntegrityChecker {
 
       if (invalidNoteCategories[0]?.count > 0) {
         errors.push(`Found ${invalidNoteCategories[0].count} notes with invalid category values`);
-        metadata['invalidNoteCategories'] = invalidNoteCategories[0].count;
+        metadata.invalidNoteCategories = invalidNoteCategories[0].count;
       }
 
       // Check dependency types
@@ -657,7 +666,7 @@ export class DatabaseIntegrityChecker {
 
       if (invalidDependencyTypes[0]?.count > 0) {
         errors.push(`Found ${invalidDependencyTypes[0].count} dependencies with invalid types`);
-        metadata['invalidDependencyTypes'] = invalidDependencyTypes[0].count;
+        metadata.invalidDependencyTypes = invalidDependencyTypes[0].count;
       }
 
       // Check for negative priority scores
@@ -668,8 +677,10 @@ export class DatabaseIntegrityChecker {
       `);
 
       if (negativePriorityScores[0]?.count > 0) {
-        warnings.push(`Found ${negativePriorityScores[0].count} tasks with negative priority scores`);
-        metadata['negativePriorityScores'] = negativePriorityScores[0].count;
+        warnings.push(
+          `Found ${negativePriorityScores[0].count} tasks with negative priority scores`
+        );
+        metadata.negativePriorityScores = negativePriorityScores[0].count;
       }
 
       // Check for invalid JSON in settings columns
@@ -696,7 +707,9 @@ export class DatabaseIntegrityChecker {
           }
         } catch (error) {
           // SQLite version might not support json_valid
-          warnings.push(`Could not validate JSON in ${table}.${column}: ${(error as Error).message}`);
+          warnings.push(
+            `Could not validate JSON in ${table}.${column}: ${(error as Error).message}`
+          );
         }
       }
 
@@ -709,7 +722,7 @@ export class DatabaseIntegrityChecker {
 
       if (invalidProgress[0]?.count > 0) {
         errors.push(`Found ${invalidProgress[0].count} tasks with invalid progress percentages`);
-        metadata['invalidProgress'] = invalidProgress[0].count;
+        metadata.invalidProgress = invalidProgress[0].count;
       }
 
       // Check for inconsistent subtask counts
@@ -720,8 +733,10 @@ export class DatabaseIntegrityChecker {
       `);
 
       if (inconsistentSubtaskCounts[0]?.count > 0) {
-        errors.push(`Found ${inconsistentSubtaskCounts[0].count} tasks with more completed than total subtasks`);
-        metadata['inconsistentSubtaskCounts'] = inconsistentSubtaskCounts[0].count;
+        errors.push(
+          `Found ${inconsistentSubtaskCounts[0].count} tasks with more completed than total subtasks`
+        );
+        metadata.inconsistentSubtaskCounts = inconsistentSubtaskCounts[0].count;
       }
 
       logger.debug('Data type constraint check completed', {
@@ -731,7 +746,6 @@ export class DatabaseIntegrityChecker {
         negativePriorityScores: negativePriorityScores[0]?.count || 0,
         invalidProgress: invalidProgress[0]?.count || 0,
       });
-
     } catch (error) {
       errors.push(`Data type constraint check failed: ${(error as Error).message}`);
       logger.error('Data type constraint check failed', { error });
@@ -748,9 +762,9 @@ export class DatabaseIntegrityChecker {
 
   /**
    * Check full-text search table consistency
-   * 
+   *
    * @returns {Promise<IntegrityCheckResult>} FTS consistency check results
-   * 
+   *
    * @example
    * ```typescript
    * const result = await checker.checkFullTextSearchConsistency();
@@ -769,28 +783,36 @@ export class DatabaseIntegrityChecker {
       logger.debug('Checking full-text search consistency');
 
       // Check tasks FTS table consistency
-      const tasksCount = await this.db.queryOne<{ count: number }>('SELECT COUNT(*) as count FROM tasks');
-      const tasksFtsCount = await this.db.queryOne<{ count: number }>('SELECT COUNT(*) as count FROM tasks_fts');
+      const tasksCount = await this.db.queryOne<{ count: number }>(
+        'SELECT COUNT(*) as count FROM tasks'
+      );
+      const tasksFtsCount = await this.db.queryOne<{ count: number }>(
+        'SELECT COUNT(*) as count FROM tasks_fts'
+      );
 
       if (tasksCount?.count !== tasksFtsCount?.count) {
         errors.push(
           `Tasks FTS table inconsistency: ${tasksCount?.count || 0} tasks vs ${tasksFtsCount?.count || 0} FTS entries`
         );
-        metadata['tasksCountMismatch'] = {
+        metadata.tasksCountMismatch = {
           tasks: tasksCount?.count || 0,
           fts: tasksFtsCount?.count || 0,
         };
       }
 
       // Check notes FTS table consistency
-      const notesCount = await this.db.queryOne<{ count: number }>('SELECT COUNT(*) as count FROM notes');
-      const notesFtsCount = await this.db.queryOne<{ count: number }>('SELECT COUNT(*) as count FROM notes_fts');
+      const notesCount = await this.db.queryOne<{ count: number }>(
+        'SELECT COUNT(*) as count FROM notes'
+      );
+      const notesFtsCount = await this.db.queryOne<{ count: number }>(
+        'SELECT COUNT(*) as count FROM notes_fts'
+      );
 
       if (notesCount?.count !== notesFtsCount?.count) {
         errors.push(
           `Notes FTS table inconsistency: ${notesCount?.count || 0} notes vs ${notesFtsCount?.count || 0} FTS entries`
         );
-        metadata['notesCountMismatch'] = {
+        metadata.notesCountMismatch = {
           notes: notesCount?.count || 0,
           fts: notesFtsCount?.count || 0,
         };
@@ -805,7 +827,7 @@ export class DatabaseIntegrityChecker {
 
       if (orphanedTasksFts[0]?.count > 0) {
         warnings.push(`Found ${orphanedTasksFts[0].count} orphaned entries in tasks FTS table`);
-        metadata['orphanedTasksFts'] = orphanedTasksFts[0].count;
+        metadata.orphanedTasksFts = orphanedTasksFts[0].count;
       }
 
       const orphanedNotesFts = await this.db.query(`
@@ -816,7 +838,7 @@ export class DatabaseIntegrityChecker {
 
       if (orphanedNotesFts[0]?.count > 0) {
         warnings.push(`Found ${orphanedNotesFts[0].count} orphaned entries in notes FTS table`);
-        metadata['orphanedNotesFts'] = orphanedNotesFts[0].count;
+        metadata.orphanedNotesFts = orphanedNotesFts[0].count;
       }
 
       // Check for missing FTS entries
@@ -828,7 +850,7 @@ export class DatabaseIntegrityChecker {
 
       if (missingTasksFts[0]?.count > 0) {
         warnings.push(`Found ${missingTasksFts[0].count} tasks missing from FTS table`);
-        metadata['missingTasksFts'] = missingTasksFts[0].count;
+        metadata.missingTasksFts = missingTasksFts[0].count;
       }
 
       const missingNotesFts = await this.db.query(`
@@ -839,7 +861,7 @@ export class DatabaseIntegrityChecker {
 
       if (missingNotesFts[0]?.count > 0) {
         warnings.push(`Found ${missingNotesFts[0].count} notes missing from FTS table`);
-        metadata['missingNotesFts'] = missingNotesFts[0].count;
+        metadata.missingNotesFts = missingNotesFts[0].count;
       }
 
       logger.debug('Full-text search consistency check completed', {
@@ -850,7 +872,6 @@ export class DatabaseIntegrityChecker {
         missingTasksFts: missingTasksFts[0]?.count || 0,
         missingNotesFts: missingNotesFts[0]?.count || 0,
       });
-
     } catch (error) {
       errors.push(`Full-text search consistency check failed: ${(error as Error).message}`);
       logger.error('Full-text search consistency check failed', { error });
@@ -867,9 +888,9 @@ export class DatabaseIntegrityChecker {
 
   /**
    * Check database index integrity and effectiveness
-   * 
+   *
    * @returns {Promise<IntegrityCheckResult>} Index integrity check results
-   * 
+   *
    * @example
    * ```typescript
    * const result = await checker.checkIndexIntegrity();
@@ -909,7 +930,7 @@ export class DatabaseIntegrityChecker {
 
       if (missingIndexes.length > 0) {
         warnings.push(`Missing critical indexes: ${missingIndexes.join(', ')}`);
-        metadata['missingIndexes'] = missingIndexes;
+        metadata.missingIndexes = missingIndexes;
       }
 
       // Check for duplicate or redundant indexes
@@ -923,12 +944,15 @@ export class DatabaseIntegrityChecker {
         ORDER BY tbl_name, name
       `);
 
-      metadata['totalIndexes'] = allIndexes.length;
-      metadata['indexesByTable'] = allIndexes.reduce((acc, idx) => {
-        if (!acc[idx.table_name]) acc[idx.table_name] = [];
-        acc[idx.table_name].push(idx.name);
-        return acc;
-      }, {} as Record<string, string[]>);
+      metadata.totalIndexes = allIndexes.length;
+      metadata.indexesByTable = allIndexes.reduce(
+        (acc, idx) => {
+          if (!acc[idx.table_name]) acc[idx.table_name] = [];
+          acc[idx.table_name].push(idx.name);
+          return acc;
+        },
+        {} as Record<string, string[]>
+      );
 
       // Check index usage statistics (if available)
       try {
@@ -944,25 +968,27 @@ export class DatabaseIntegrityChecker {
 
         const indexesWithoutStats = indexStats.filter(idx => idx.stats_status === 'no_stats');
         if (indexesWithoutStats.length > 0) {
-          warnings.push(`${indexesWithoutStats.length} indexes lack statistics (consider running ANALYZE)`);
-          metadata['indexesWithoutStats'] = indexesWithoutStats.length;
+          warnings.push(
+            `${indexesWithoutStats.length} indexes lack statistics (consider running ANALYZE)`
+          );
+          metadata.indexesWithoutStats = indexesWithoutStats.length;
         }
 
-        metadata['indexesWithStats'] = indexStats.filter(idx => idx.stats_status === 'has_stats').length;
-
+        metadata.indexesWithStats = indexStats.filter(
+          idx => idx.stats_status === 'has_stats'
+        ).length;
       } catch (error) {
         // sqlite_stat1 might not be available
         warnings.push('Could not check index statistics');
-        metadata['indexesWithoutStats'] = 0;
-        metadata['indexesWithStats'] = 0;
+        metadata.indexesWithoutStats = 0;
+        metadata.indexesWithStats = 0;
       }
 
       logger.debug('Index integrity check completed', {
         totalIndexes: allIndexes.length,
         missingCriticalIndexes: missingIndexes.length,
-        indexesWithoutStats: metadata['indexesWithoutStats'] || 0,
+        indexesWithoutStats: metadata.indexesWithoutStats || 0,
       });
-
     } catch (error) {
       errors.push(`Index integrity check failed: ${(error as Error).message}`);
       logger.error('Index integrity check failed', { error });
@@ -979,9 +1005,9 @@ export class DatabaseIntegrityChecker {
 
   /**
    * Get a quick health summary of the database
-   * 
+   *
    * @returns {Promise<{isHealthy: boolean, issues: string[], recommendations: string[]}>} Health summary
-   * 
+   *
    * @example
    * ```typescript
    * const health = await checker.getHealthSummary();
@@ -1002,7 +1028,9 @@ export class DatabaseIntegrityChecker {
     try {
       // Quick checks for common issues
       const quickChecks = await Promise.all([
-        this.db.queryOne<{ count: number }>('SELECT COUNT(*) as count FROM sqlite_master WHERE type="table"'),
+        this.db.queryOne<{ count: number }>(
+          'SELECT COUNT(*) as count FROM sqlite_master WHERE type="table"'
+        ),
         this.db.queryOne<{ integrity: string }>('PRAGMA integrity_check(5)'),
         this.db.queryOne<{ mode: string }>('PRAGMA journal_mode'),
       ]);
@@ -1023,10 +1051,10 @@ export class DatabaseIntegrityChecker {
 
       // Check database size and recommend maintenance
       const stats = await this.db.getStats();
-      if (stats.size > 100 * 1024 * 1024) { // 100MB
+      if (stats.size > 100 * 1024 * 1024) {
+        // 100MB
         recommendations.push('Database is large, consider running VACUUM or incremental vacuum');
       }
-
     } catch (error) {
       issues.push(`Health check failed: ${(error as Error).message}`);
     }
@@ -1041,14 +1069,14 @@ export class DatabaseIntegrityChecker {
 
 /**
  * Convenience function to run a quick integrity check
- * 
+ *
  * @param {DatabaseConnection} db - Database connection
  * @returns {Promise<boolean>} True if database integrity is valid
- * 
+ *
  * @example
  * ```typescript
  * import { quickIntegrityCheck } from '@/database/integrity';
- * 
+ *
  * const isValid = await quickIntegrityCheck(dbConnection);
  * if (!isValid) {
  *   console.error('Database integrity issues detected');

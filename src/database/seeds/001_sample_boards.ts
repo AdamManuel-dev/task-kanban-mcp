@@ -1,5 +1,5 @@
-import { Database } from 'sqlite';
-import { Database as SQLiteDB } from 'sqlite3';
+import type { Database } from 'sqlite';
+import type { Database as SQLiteDB } from 'sqlite3';
 
 export const name = 'Sample Boards';
 export const description = 'Create sample boards with columns for development';

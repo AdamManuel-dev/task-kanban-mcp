@@ -1,5 +1,5 @@
-import { Database } from 'sqlite';
-import { Database as SQLiteDB } from 'sqlite3';
+import type { Database } from 'sqlite';
+import type { Database as SQLiteDB } from 'sqlite3';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { SeedRunner } from '../../../src/database/seeds/SeedRunner';
@@ -20,7 +20,7 @@ describe('SeedRunner', () => {
     // Create in-memory database for each test
     const sqlite3 = await import('sqlite3');
     const sqlite = await import('sqlite');
-    
+
     db = await sqlite.open({
       filename: ':memory:',
       driver: sqlite3.Database,
@@ -96,7 +96,7 @@ export async function run(db) {
       );
 
       const files = await seedRunner.getSeedFiles();
-      
+
       expect(files).toHaveLength(2);
       expect(files[0]).toBe('001_test_seed.ts');
       expect(files[1]).toBe('002_another_seed.ts');
@@ -166,7 +166,7 @@ export async function run(db) {
       );
 
       await seedRunner.initialize();
-      
+
       // Run seed twice
       const count1 = await seedRunner.run();
       const count2 = await seedRunner.run();
@@ -201,7 +201,7 @@ export async function run(db) {
       );
 
       await seedRunner.initialize();
-      
+
       // Run seed normally, then force re-run
       await seedRunner.run();
       const count = await seedRunner.run({ force: true });
@@ -321,12 +321,12 @@ export async function run(db) {
   describe('static methods', () => {
     it('should create seed file with correct template', async () => {
       const filename = await SeedRunner.createSeed('test seed', 'Test description', tempDir);
-      
+
       expect(filename).toBe('test_seed.ts');
-      
+
       const filePath = path.join(tempDir, filename);
       const content = await fs.readFile(filePath, 'utf-8');
-      
+
       expect(content).toContain("export const name = 'test seed'");
       expect(content).toContain("export const description = 'Test description'");
       expect(content).toContain('export async function run(db: Database<SQLiteDB>)');

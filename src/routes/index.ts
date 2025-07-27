@@ -5,6 +5,8 @@ import { noteRoutes } from './notes';
 import { tagRoutes } from './tags';
 import { contextRoutes } from './context';
 import { healthRoutes } from './health';
+import backupRoutes from './backup';
+import scheduleRoutes from './schedule';
 
 export async function apiRoutes() {
   const router = Router();
@@ -18,6 +20,8 @@ export async function apiRoutes() {
   router.use('/notes', await noteRoutes());
   router.use('/tags', await tagRoutes());
   router.use('/context', await contextRoutes());
+  router.use('/backup', backupRoutes);
+  router.use('/schedule', scheduleRoutes);
 
   return router;
 }

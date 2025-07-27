@@ -1,29 +1,29 @@
 /**
  * Context Service - Intelligent context generation for project and task analysis
- * 
+ *
  * @module services/ContextService
  * @description Provides comprehensive context generation for AI-powered project management.
  * Analyzes project data to generate intelligent summaries, priority insights, blocker detection,
  * and actionable recommendations. Supports multiple context levels and customizable analysis depth.
- * 
+ *
  * @example
  * ```typescript
  * import { ContextService } from '@/services/ContextService';
  * import { dbConnection } from '@/database/connection';
- * 
+ *
  * const contextService = new ContextService(db, boardService, taskService, noteService, tagService);
- * 
+ *
  * // Get comprehensive project overview
  * const projectContext = await contextService.getProjectContext({
  *   days_back: 30,
  *   detail_level: 'comprehensive'
  * });
- * 
+ *
  * // Get focused task analysis
  * const taskContext = await contextService.getTaskContext('task-123', {
  *   detail_level: 'detailed'
  * });
- * 
+ *
  * // Get current work recommendations
  * const workContext = await contextService.getCurrentWorkContext();
  * console.log('Next actions:', workContext.next_actions);
@@ -32,21 +32,15 @@
 
 import { logger } from '@/utils/logger';
 import type { DatabaseConnection } from '@/database/connection';
+import type { Task, Note, Tag, Board, ServiceError } from '@/types';
 import type { BoardService } from './BoardService';
 import type { TaskService } from './TaskService';
 import type { NoteService } from './NoteService';
 import type { TagService } from './TagService';
-import type {
-  Task,
-  Note,
-  Tag,
-  Board,
-  ServiceError,
-} from '@/types';
 
 /**
  * Comprehensive project context with analytics and insights
- * 
+ *
  * @interface ProjectContext
  * @description Contains project-wide analysis including board status, recent activities,
  * priority analysis, blocker detection, and key performance metrics
@@ -64,7 +58,7 @@ export interface ProjectContext {
 
 /**
  * Detailed task context with relationships and analysis
- * 
+ *
  * @interface TaskContext
  * @description Contains comprehensive task analysis including related tasks,
  * dependencies, notes, tags, history, and AI-generated recommendations
@@ -84,7 +78,7 @@ export interface TaskContext {
 
 /**
  * Board information with contextual metrics
- * 
+ *
  * @interface BoardContextInfo
  * @description Board data enriched with task counts, completion rates,
  * recent activity metrics, and calculated priority scores
@@ -99,7 +93,7 @@ export interface BoardContextInfo {
 
 /**
  * Project activity item for timeline tracking
- * 
+ *
  * @interface ActivityItem
  * @description Represents a significant project event with type classification,
  * entity references, and descriptive information for activity feeds
@@ -115,7 +109,7 @@ export interface ActivityItem {
 
 /**
  * Task priority analysis with scoring and reasoning
- * 
+ *
  * @interface PriorityInfo
  * @description Comprehensive priority assessment including calculated scores,
  * reasoning explanations, blocking impact, and urgency classification
@@ -130,7 +124,7 @@ export interface PriorityInfo {
 
 /**
  * Task blocker analysis with impact assessment
- * 
+ *
  * @interface BlockerInfo
  * @description Information about task dependencies that are causing blocks,
  * including duration metrics and impact level classification
@@ -144,7 +138,7 @@ export interface BlockerInfo {
 
 /**
  * Related task information with relationship classification
- * 
+ *
  * @interface RelatedTaskInfo
  * @description Task relationships with type classification and relevance scoring
  * for contextual task analysis and recommendations
@@ -157,7 +151,7 @@ export interface RelatedTaskInfo {
 
 /**
  * Task dependency analysis and risk assessment
- * 
+ *
  * @interface DependencyInfo
  * @description Comprehensive dependency mapping including upstream/downstream tasks,
  * circular dependency risks, and critical path analysis
@@ -171,7 +165,7 @@ export interface DependencyInfo {
 
 /**
  * Comprehensive project performance metrics
- * 
+ *
  * @interface ProjectMetrics
  * @description Key performance indicators including task counts, completion rates,
  * velocity trends, and predictive analytics for project health assessment
@@ -189,7 +183,7 @@ export interface ProjectMetrics {
 
 /**
  * Configuration options for context generation
- * 
+ *
  * @interface ContextOptions
  * @description Customizable options for controlling context generation scope,
  * depth, and inclusion criteria for different analysis needs
@@ -204,23 +198,23 @@ export interface ContextOptions {
 
 /**
  * Context Service - AI-powered project analysis and insight generation
- * 
+ *
  * @class ContextService
  * @description Provides intelligent context generation for project management workflows.
  * Analyzes project data to generate summaries, identify priorities, detect blockers,
  * and provide actionable recommendations. Integrates with all service layers to provide
  * comprehensive project insights for AI-powered task management.
- * 
+ *
  * @example
  * ```typescript
  * const contextService = new ContextService(db, boardService, taskService, noteService, tagService);
- * 
+ *
  * // Generate project overview
  * const context = await contextService.getProjectContext({
  *   days_back: 14,
  *   detail_level: 'comprehensive'
  * });
- * 
+ *
  * console.log(context.summary);
  * console.log(`Priority tasks: ${context.priorities.length}`);
  * console.log(`Active blockers: ${context.blockers.length}`);
@@ -229,24 +223,24 @@ export interface ContextOptions {
 export class ContextService {
   /**
    * Initialize ContextService with all required service dependencies
-   * 
+   *
    * @param {DatabaseConnection} db - Database connection instance
    * @param {BoardService} boardService - Board management service
-   * @param {TaskService} taskService - Task management service  
+   * @param {TaskService} taskService - Task management service
    * @param {NoteService} noteService - Note management service
    * @param {TagService} tagService - Tag management service
    */
   constructor(
-    private db: DatabaseConnection,
-    private boardService: BoardService,
-    private taskService: TaskService,
-    private noteService: NoteService,
-    private tagService: TagService
+    private readonly db: DatabaseConnection,
+    private readonly boardService: BoardService,
+    private readonly taskService: TaskService,
+    private readonly noteService: NoteService,
+    private readonly tagService: TagService
   ) {}
 
   /**
    * Generate comprehensive project context with analytics and insights
-   * 
+   *
    * @param {ContextOptions} [options={}] - Context generation options
    * @param {boolean} [options.include_completed=false] - Include completed tasks in analysis
    * @param {number} [options.days_back=30] - Number of days to look back for activities
@@ -255,7 +249,7 @@ export class ContextService {
    * @param {'summary'|'detailed'|'comprehensive'} [options.detail_level='detailed'] - Analysis depth
    * @returns {Promise<ProjectContext>} Comprehensive project analysis
    * @throws {ServiceError} If context generation fails
-   * 
+   *
    * @example
    * ```typescript
    * // Get detailed project overview
@@ -264,7 +258,7 @@ export class ContextService {
    *   detail_level: 'comprehensive',
    *   max_items: 25
    * });
-   * 
+   *
    * console.log(`Project Summary: ${context.summary}`);
    * console.log(`Active Boards: ${context.boards.length}`);
    * console.log(`High Priority Tasks: ${context.priorities.filter(p => p.urgency_level === 'high').length}`);
@@ -283,16 +277,25 @@ export class ContextService {
     try {
       logger.info('Generating project context', { options });
 
-      const [boards, recentActivities, priorities, blockers, overdueTasks, metrics] = await Promise.all([
-        this.getBoardsContext(include_completed),
-        this.getRecentActivities(days_back, max_items),
-        this.getPriorityAnalysis(max_items),
-        this.getBlockerAnalysis(),
-        this.taskService.getOverdueTasks(),
-        include_metrics ? this.calculateProjectMetrics() : Promise.resolve(this.getEmptyMetrics()),
-      ]);
+      const [boards, recentActivities, priorities, blockers, overdueTasks, metrics] =
+        await Promise.all([
+          this.getBoardsContext(include_completed),
+          this.getRecentActivities(days_back, max_items),
+          this.getPriorityAnalysis(max_items),
+          this.getBlockerAnalysis(),
+          this.taskService.getOverdueTasks(),
+          include_metrics
+            ? this.calculateProjectMetrics()
+            : Promise.resolve(this.getEmptyMetrics()),
+        ]);
 
-      const summary = this.generateProjectSummary(boards, priorities, blockers, metrics, detail_level);
+      const summary = this.generateProjectSummary(
+        boards,
+        priorities,
+        blockers,
+        metrics,
+        detail_level
+      );
 
       const context: ProjectContext = {
         summary,
@@ -315,13 +318,17 @@ export class ContextService {
       return context;
     } catch (error) {
       logger.error('Failed to generate project context', { error });
-      throw this.createError('CONTEXT_GENERATION_FAILED', 'Failed to generate project context', error);
+      throw this.createError(
+        'CONTEXT_GENERATION_FAILED',
+        'Failed to generate project context',
+        error
+      );
     }
   }
 
   /**
    * Generate detailed context analysis for a specific task
-   * 
+   *
    * @param {string} taskId - Task ID (UUID) to analyze
    * @param {ContextOptions} [options={}] - Context generation options
    * @param {number} [options.days_back=14] - Days to look back for task history
@@ -329,14 +336,14 @@ export class ContextService {
    * @param {'summary'|'detailed'|'comprehensive'} [options.detail_level='comprehensive'] - Analysis depth
    * @returns {Promise<TaskContext>} Detailed task analysis with recommendations
    * @throws {ServiceError} If task not found or context generation fails
-   * 
+   *
    * @example
    * ```typescript
    * const taskContext = await contextService.getTaskContext('task-123', {
    *   detail_level: 'comprehensive',
    *   days_back: 7
    * });
-   * 
+   *
    * console.log(`Task: ${taskContext.task.title}`);
    * console.log(`Board: ${taskContext.board.name}`);
    * console.log(`Related Tasks: ${taskContext.related_tasks.length}`);
@@ -347,11 +354,7 @@ export class ContextService {
    * ```
    */
   async getTaskContext(taskId: string, options: ContextOptions = {}): Promise<TaskContext> {
-    const {
-      days_back = 14,
-      max_items = 20,
-      detail_level = 'comprehensive',
-    } = options;
+    const { days_back = 14, max_items = 20, detail_level = 'comprehensive' } = options;
 
     try {
       logger.info('Generating task context', { taskId, options });
@@ -374,7 +377,13 @@ export class ContextService {
         throw this.createError('BOARD_NOT_FOUND', 'Task board not found');
       }
 
-      const contextSummary = this.generateTaskContextSummary(task, relatedTasks, dependencies, notes, detail_level);
+      const contextSummary = this.generateTaskContextSummary(
+        task,
+        relatedTasks,
+        dependencies,
+        notes,
+        detail_level
+      );
       const recommendations = this.generateTaskRecommendations(task, dependencies, notes, tags);
 
       const context: TaskContext = {
@@ -403,7 +412,7 @@ export class ContextService {
 
   /**
    * Get current work context with actionable recommendations
-   * 
+   *
    * @param {ContextOptions} [options={}] - Context generation options
    * @param {number} [options.max_items=10] - Maximum items per category
    * @returns {Promise<Object>} Current work context with recommendations
@@ -413,18 +422,18 @@ export class ContextService {
    * @returns {string[]} returns.focus_recommendations - AI-generated focus suggestions
    * @returns {number} returns.estimated_work_hours - Estimated remaining work hours
    * @throws {ServiceError} If work context generation fails
-   * 
+   *
    * @example
    * ```typescript
    * const workContext = await contextService.getCurrentWorkContext({
    *   max_items: 5
    * });
-   * 
+   *
    * console.log(`Active Tasks: ${workContext.active_tasks.length}`);
    * console.log(`Next Actions: ${workContext.next_actions.length}`);
    * console.log(`Blockers: ${workContext.blockers.length}`);
    * console.log(`Estimated Hours: ${workContext.estimated_work_hours}`);
-   * 
+   *
    * workContext.focus_recommendations.forEach(rec => {
    *   console.log(`Recommendation: ${rec}`);
    * });
@@ -450,7 +459,11 @@ export class ContextService {
         this.getBlockerAnalysis(),
       ]);
 
-      const focusRecommendations = this.generateFocusRecommendations(activeTasks, nextActions, blockers);
+      const focusRecommendations = this.generateFocusRecommendations(
+        activeTasks,
+        nextActions,
+        blockers
+      );
       const estimatedHours = this.calculateEstimatedWorkHours(activeTasks);
 
       return {
@@ -480,9 +493,10 @@ export class ContextService {
       boardContexts.push({
         board,
         task_count: boardWithStats.taskCount,
-        completion_rate: boardWithStats.taskCount > 0 
-          ? (boardWithStats.completedTasks / boardWithStats.taskCount) * 100 
-          : 0,
+        completion_rate:
+          boardWithStats.taskCount > 0
+            ? (boardWithStats.completedTasks / boardWithStats.taskCount) * 100
+            : 0,
         recent_activity: recentActivityCount,
         priority_score: priorityScore,
       });
@@ -502,7 +516,8 @@ export class ContextService {
       board_name: string;
       timestamp: string;
       description: string;
-    }>(`
+    }>(
+      `
       SELECT 
         'task_created' as type,
         t.id as entity_id,
@@ -543,7 +558,9 @@ export class ContextService {
       
       ORDER BY timestamp DESC
       LIMIT ?
-    `, [cutoffDate, cutoffDate, cutoffDate, maxItems]);
+    `,
+      [cutoffDate, cutoffDate, cutoffDate, maxItems]
+    );
 
     return activities.map(activity => ({
       type: activity.type as ActivityItem['type'],
@@ -583,9 +600,7 @@ export class ContextService {
       });
     }
 
-    return priorityInfos
-      .sort((a, b) => b.score - a.score)
-      .slice(0, maxItems);
+    return priorityInfos.sort((a, b) => b.score - a.score).slice(0, maxItems);
   }
 
   private async getBlockerAnalysis(): Promise<BlockerInfo[]> {
@@ -593,10 +608,13 @@ export class ContextService {
     const blockers: BlockerInfo[] = [];
 
     for (const blockedTask of blockedTasks) {
-      const dependencies = await this.db.query<{ depends_on_task_id: string }>(`
+      const dependencies = await this.db.query<{ depends_on_task_id: string }>(
+        `
         SELECT depends_on_task_id FROM task_dependencies 
         WHERE task_id = ? AND dependency_type = 'blocks'
-      `, [blockedTask.id]);
+      `,
+        [blockedTask.id]
+      );
 
       for (const dep of dependencies) {
         const blockingTask = await this.taskService.getTaskById(dep.depends_on_task_id);
@@ -636,9 +654,12 @@ export class ContextService {
       }
     }
 
-    const subtasks = await this.db.query<Task>(`
+    const subtasks = await this.db.query<Task>(
+      `
       SELECT * FROM tasks WHERE parent_task_id = ? LIMIT ?
-    `, [taskId, maxItems]);
+    `,
+      [taskId, maxItems]
+    );
 
     subtasks.forEach(subtask => {
       related.push({
@@ -649,12 +670,15 @@ export class ContextService {
     });
 
     // Get dependency tasks
-    const dependencies = await this.db.query<Task>(`
+    const dependencies = await this.db.query<Task>(
+      `
       SELECT t.* FROM tasks t
       INNER JOIN task_dependencies td ON t.id = td.depends_on_task_id
       WHERE td.task_id = ?
       LIMIT ?
-    `, [taskId, maxItems]);
+    `,
+      [taskId, maxItems]
+    );
 
     dependencies.forEach(depTask => {
       related.push({
@@ -664,9 +688,7 @@ export class ContextService {
       });
     });
 
-    return related
-      .sort((a, b) => b.relevance_score - a.relevance_score)
-      .slice(0, maxItems);
+    return related.sort((a, b) => b.relevance_score - a.relevance_score).slice(0, maxItems);
   }
 
   private async getDependencyContext(taskId: string): Promise<DependencyInfo> {
@@ -698,7 +720,7 @@ export class ContextService {
 
     return {
       depends_on: dependsOn,
-      blocks: blocks,
+      blocks,
       circular_risks: circularRisks,
       critical_path: criticalPath,
     };
@@ -721,7 +743,9 @@ export class ContextService {
     detailLevel: string
   ): string {
     const activeBoardCount = boards.length;
-    const highPriorityCount = priorities.filter(p => p.urgency_level === 'high' || p.urgency_level === 'critical').length;
+    const highPriorityCount = priorities.filter(
+      p => p.urgency_level === 'high' || p.urgency_level === 'critical'
+    ).length;
     const criticalBlockerCount = blockers.filter(b => b.impact_level === 'high').length;
 
     let summary = `Project Status: ${activeBoardCount} active boards, ${metrics.completion_rate.toFixed(1)}% completion rate. `;
@@ -765,14 +789,16 @@ export class ContextService {
     }
 
     if (notes.length > 0) {
-      const recentNotes = notes.filter(n => 
-        (Date.now() - n.created_at.getTime()) < 7 * 24 * 60 * 60 * 1000 // 7 days
+      const recentNotes = notes.filter(
+        n => Date.now() - n.created_at.getTime() < 7 * 24 * 60 * 60 * 1000 // 7 days
       ).length;
       summary += `${notes.length} notes (${recentNotes} recent). `;
     }
 
     if (task.due_date && task.due_date < new Date()) {
-      const daysOverdue = Math.floor((Date.now() - task.due_date.getTime()) / (1000 * 60 * 60 * 24));
+      const daysOverdue = Math.floor(
+        (Date.now() - task.due_date.getTime()) / (1000 * 60 * 60 * 24)
+      );
       summary += `Overdue by ${daysOverdue} days. `;
     }
 
@@ -807,7 +833,11 @@ export class ContextService {
       recommendations.push('Review dependency structure to prevent circular dependencies');
     }
 
-    if (task.estimated_hours && task.actual_hours && task.actual_hours > task.estimated_hours * 1.5) {
+    if (
+      task.estimated_hours &&
+      task.actual_hours &&
+      task.actual_hours > task.estimated_hours * 1.5
+    ) {
       recommendations.push('Task is taking longer than estimated - review scope or approach');
     }
 
@@ -822,14 +852,18 @@ export class ContextService {
     const recommendations: string[] = [];
 
     if (activeTasks.length > 3) {
-      recommendations.push('Consider reducing work in progress - focus on completing current tasks');
+      recommendations.push(
+        'Consider reducing work in progress - focus on completing current tasks'
+      );
     }
 
     if (blockers.length > 0) {
       recommendations.push('Address blocking tasks to improve team velocity');
     }
 
-    const highPriorityNext = nextActions.filter(a => a.urgency_level === 'high' || a.urgency_level === 'critical');
+    const highPriorityNext = nextActions.filter(
+      a => a.urgency_level === 'high' || a.urgency_level === 'critical'
+    );
     if (highPriorityNext.length > 0) {
       recommendations.push(`${highPriorityNext.length} high-priority tasks ready to start`);
     }
@@ -845,10 +879,13 @@ export class ContextService {
           SUM(CASE WHEN status = 'done' THEN 1 ELSE 0 END) as completed
         FROM tasks WHERE archived = FALSE
       `),
-      this.db.queryOne<{ count: number }>(`
+      this.db.queryOne<{ count: number }>(
+        `
         SELECT COUNT(*) as count FROM tasks 
         WHERE due_date < ? AND status != 'done' AND archived = FALSE
-      `, [new Date()]),
+      `,
+        [new Date()]
+      ),
       this.db.queryOne<{ count: number }>(`
         SELECT COUNT(DISTINCT t.id) as count FROM tasks t
         INNER JOIN task_dependencies td ON t.id = td.task_id
@@ -880,19 +917,25 @@ export class ContextService {
   private async calculateVelocityTrend(): Promise<'increasing' | 'decreasing' | 'stable'> {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
+
     const fifteenDaysAgo = new Date();
     fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
 
     const [recentVelocity, olderVelocity] = await Promise.all([
-      this.db.queryOne<{ count: number }>(`
+      this.db.queryOne<{ count: number }>(
+        `
         SELECT COUNT(*) as count FROM tasks 
         WHERE completed_at >= ? AND completed_at IS NOT NULL
-      `, [fifteenDaysAgo]),
-      this.db.queryOne<{ count: number }>(`
+      `,
+        [fifteenDaysAgo]
+      ),
+      this.db.queryOne<{ count: number }>(
+        `
         SELECT COUNT(*) as count FROM tasks 
         WHERE completed_at >= ? AND completed_at < ? AND completed_at IS NOT NULL
-      `, [thirtyDaysAgo, fifteenDaysAgo]),
+      `,
+        [thirtyDaysAgo, fifteenDaysAgo]
+      ),
     ]);
 
     const recent = recentVelocity?.count || 0;
@@ -919,35 +962,41 @@ export class ContextService {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - days);
 
-    const result = await this.db.queryOne<{ count: number }>(`
+    const result = await this.db.queryOne<{ count: number }>(
+      `
       SELECT COUNT(*) as count FROM tasks 
       WHERE board_id = ? AND (created_at >= ? OR updated_at >= ?)
-    `, [boardId, cutoffDate, cutoffDate]);
+    `,
+      [boardId, cutoffDate, cutoffDate]
+    );
 
     return result?.count || 0;
   }
 
   private calculateBoardPriorityScore(board: any, recentActivity: number): number {
     let score = 0;
-    
+
     // Task count factor
     score += Math.min(board.taskCount * 2, 20);
-    
+
     // Completion rate factor (inverse - lower completion means higher priority)
     score += (100 - board.completion_rate) * 0.3;
-    
+
     // Recent activity factor
     score += recentActivity * 5;
-    
+
     return Math.round(score);
   }
 
   private async getBlockingTaskCount(taskId: string): Promise<number> {
-    const result = await this.db.queryOne<{ count: number }>(`
+    const result = await this.db.queryOne<{ count: number }>(
+      `
       SELECT COUNT(*) as count FROM task_dependencies 
       WHERE depends_on_task_id = ?
-    `, [taskId]);
-    
+    `,
+      [taskId]
+    );
+
     return result?.count || 0;
   }
 
@@ -979,7 +1028,11 @@ export class ContextService {
     return Math.round(score);
   }
 
-  private generatePriorityReasoning(task: Task, blockingCount: number, urgencyFactors: any): string[] {
+  private generatePriorityReasoning(
+    _task: Task,
+    blockingCount: number,
+    urgencyFactors: any
+  ): string[] {
     const reasons: string[] = [];
 
     if (urgencyFactors.overdue) reasons.push('Task is overdue');
@@ -990,7 +1043,10 @@ export class ContextService {
     return reasons;
   }
 
-  private determineUrgencyLevel(score: number, urgencyFactors: any): 'low' | 'medium' | 'high' | 'critical' {
+  private determineUrgencyLevel(
+    score: number,
+    urgencyFactors: any
+  ): 'low' | 'medium' | 'high' | 'critical' {
     if (urgencyFactors.overdue || score >= 100) return 'critical';
     if (score >= 70) return 'high';
     if (score >= 40) return 'medium';
@@ -1023,7 +1079,7 @@ export class ContextService {
 
   /**
    * Create a standardized service error
-   * 
+   *
    * @private
    * @param {string} code - Error code for categorization
    * @param {string} message - Human-readable error message

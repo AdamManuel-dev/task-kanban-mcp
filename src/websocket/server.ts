@@ -3,7 +3,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { v4 as uuidv4 } from 'uuid';
 import { config } from '@/config';
 import { logger } from '@/utils/logger';
-import { WebSocketMessage, WebSocketClient, WebSocketError } from './types';
+import type { WebSocketMessage, WebSocketClient, WebSocketError } from './types';
 import { WebSocketAuth } from './auth';
 import { MessageHandler } from './handlers';
 import { SubscriptionManager } from './subscriptions';
@@ -11,12 +11,19 @@ import { RateLimiter } from './rateLimit';
 
 export class WebSocketManager {
   private wss: WebSocketServer | null = null;
+
   private httpServer: ReturnType<typeof createServer> | null = null;
-  private clients = new Map<string, WebSocketClient>();
-  private auth: WebSocketAuth;
-  private messageHandler: MessageHandler;
-  private subscriptionManager: SubscriptionManager;
-  private rateLimiter: RateLimiter;
+
+  private readonly clients = new Map<string, WebSocketClient>();
+
+  private readonly auth: WebSocketAuth;
+
+  private readonly messageHandler: MessageHandler;
+
+  private readonly subscriptionManager: SubscriptionManager;
+
+  private readonly rateLimiter: RateLimiter;
+
   private heartbeatInterval: NodeJS.Timeout | null = null;
 
   constructor() {
@@ -32,7 +39,7 @@ export class WebSocketManager {
 
       // Create HTTP server for WebSocket upgrade
       this.httpServer = createServer();
-      
+
       // Create WebSocket server
       this.wss = new WebSocketServer({
         server: this.httpServer,
@@ -57,7 +64,7 @@ export class WebSocketManager {
           resolve();
         });
 
-        this.httpServer!.on('error', (error) => {
+        this.httpServer!.on('error', error => {
           logger.error('WebSocket server error', { error });
           reject(error);
         });
@@ -84,7 +91,7 @@ export class WebSocketManager {
       }
 
       // Close all client connections
-      this.clients.forEach((client) => {
+      this.clients.forEach(client => {
         this.closeConnection(client.id, 'SERVER_SHUTDOWN', 'Server is shutting down');
       });
 
@@ -96,7 +103,7 @@ export class WebSocketManager {
 
       // Close HTTP server
       if (this.httpServer) {
-        await new Promise<void>((resolve) => {
+        await new Promise<void>(resolve => {
           this.httpServer!.close(() => {
             this.httpServer = null;
             resolve();
@@ -142,9 +149,9 @@ export class WebSocketManager {
       this.clients.set(clientId, client);
 
       // Set up WebSocket event handlers
-      ws.on('message', (data) => this.handleMessage(clientId, data.toString()));
+      ws.on('message', data => this.handleMessage(clientId, data.toString()));
       ws.on('close', (code, reason) => this.handleDisconnection(clientId, code, reason));
-      ws.on('error', (error) => this.handleClientError(clientId, error));
+      ws.on('error', error => this.handleClientError(clientId, error));
       ws.on('pong', () => this.handlePong(clientId));
 
       // Send welcome message
@@ -169,7 +176,6 @@ export class WebSocketManager {
           }
         }, config.websocket.authTimeout);
       }
-
     } catch (error) {
       logger.error('Error handling WebSocket connection', { clientId, error });
       ws.close(1011, 'Internal server error');
@@ -221,7 +227,6 @@ export class WebSocketManager {
 
       // Handle message
       await this.messageHandler.handleMessage(clientId, message);
-
     } catch (error) {
       logger.error('Error handling WebSocket message', { clientId, error });
       this.sendError(clientId, 'INTERNAL_ERROR', 'Internal server error');
@@ -248,7 +253,7 @@ export class WebSocketManager {
 
   private handleClientError(clientId: string, error: Error): void {
     logger.error('WebSocket client error', { clientId, error });
-    
+
     const client = this.clients.get(clientId);
     if (client) {
       this.closeConnection(clientId, 'CLIENT_ERROR', 'Client error occurred');
@@ -270,7 +275,7 @@ export class WebSocketManager {
     try {
       const authResult = await this.auth.authenticate(message.payload);
       const client = this.clients.get(clientId);
-      
+
       if (!client) return;
 
       if (authResult.success) {
@@ -293,8 +298,13 @@ export class WebSocketManager {
           permissions: Array.from(client.permissions),
         });
       } else {
-        this.sendError(clientId, 'AUTH_FAILED', authResult.error || 'Authentication failed', message.id);
-        
+        this.sendError(
+          clientId,
+          'AUTH_FAILED',
+          authResult.error || 'Authentication failed',
+          message.id
+        );
+
         // Close connection after failed auth
         setTimeout(() => {
           this.closeConnection(clientId, 'AUTH_FAILED', 'Authentication failed');
@@ -359,7 +369,10 @@ export class WebSocketManager {
     });
   }
 
-  broadcast(message: Omit<WebSocketMessage, 'timestamp'>, filter?: (client: WebSocketClient) => boolean): number {
+  broadcast(
+    message: Omit<WebSocketMessage, 'timestamp'>,
+    filter?: (client: WebSocketClient) => boolean
+  ): number {
     let sentCount = 0;
 
     this.clients.forEach((client, clientId) => {

@@ -1,21 +1,19 @@
-import { Command } from 'commander';
+import type { Command } from 'commander';
 import inquirer from 'inquirer';
-import { ConfigManager } from '../config';
-import { ApiClient } from '../client';
-import { OutputFormatter } from '../formatter';
+import type { ConfigManager } from '../config';
+import type { ApiClient } from '../client';
+import type { OutputFormatter } from '../formatter';
 
 export function registerBoardCommands(program: Command): void {
-  const boardCmd = program
-    .command('board')
-    .alias('b')
-    .description('Manage boards');
+  const boardCmd = program.command('board').alias('b').description('Manage boards');
 
   // Get global components
-  const getComponents = () => (global as any).cliComponents as {
-    config: ConfigManager;
-    apiClient: ApiClient;
-    formatter: OutputFormatter;
-  };
+  const getComponents = () =>
+    (global as any).cliComponents as {
+      config: ConfigManager;
+      apiClient: ApiClient;
+      formatter: OutputFormatter;
+    };
 
   boardCmd
     .command('list')
@@ -23,12 +21,12 @@ export function registerBoardCommands(program: Command): void {
     .description('List boards')
     .option('--active', 'show only active boards')
     .option('--archived', 'show only archived boards')
-    .action(async (options) => {
+    .action(async options => {
       const { apiClient, formatter } = getComponents();
 
       try {
         const boards = await apiClient.getBoards();
-        
+
         if (!boards || boards.length === 0) {
           formatter.info('No boards found');
           return;
@@ -47,7 +45,9 @@ export function registerBoardCommands(program: Command): void {
           headers: ['ID', 'Name', 'Description', 'Archived', 'Created'],
         });
       } catch (error) {
-        formatter.error(`Failed to list boards: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to list boards: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });
@@ -62,7 +62,7 @@ export function registerBoardCommands(program: Command): void {
 
       try {
         const board = await apiClient.getBoard(id);
-        
+
         if (!board) {
           formatter.error(`Board ${id} not found`);
           process.exit(1);
@@ -88,7 +88,9 @@ export function registerBoardCommands(program: Command): void {
           }
         }
       } catch (error) {
-        formatter.error(`Failed to get board: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to get board: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });
@@ -100,7 +102,7 @@ export function registerBoardCommands(program: Command): void {
     .option('-n, --name <name>', 'board name')
     .option('-d, --description <desc>', 'board description')
     .option('-i, --interactive', 'interactive mode')
-    .action(async (options) => {
+    .action(async options => {
       const { config, apiClient, formatter } = getComponents();
 
       let boardData: any = {};
@@ -151,7 +153,9 @@ export function registerBoardCommands(program: Command): void {
           formatter.info(`Set as default board`);
         }
       } catch (error) {
-        formatter.error(`Failed to create board: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to create board: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });
@@ -206,7 +210,9 @@ export function registerBoardCommands(program: Command): void {
         formatter.success('Board updated successfully');
         formatter.output(updatedBoard);
       } catch (error) {
-        formatter.error(`Failed to update board: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to update board: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });
@@ -245,7 +251,9 @@ export function registerBoardCommands(program: Command): void {
         await apiClient.deleteBoard(id);
         formatter.success(`Board ${id} deleted successfully`);
       } catch (error) {
-        formatter.error(`Failed to delete board: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to delete board: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });
@@ -267,7 +275,9 @@ export function registerBoardCommands(program: Command): void {
         config.setDefaultBoard(id);
         formatter.success(`Default board set to "${board.name}" (${id})`);
       } catch (error) {
-        formatter.error(`Failed to set default board: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to set default board: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });
@@ -282,7 +292,9 @@ export function registerBoardCommands(program: Command): void {
         await apiClient.updateBoard(id, { archived: true });
         formatter.success(`Board ${id} archived successfully`);
       } catch (error) {
-        formatter.error(`Failed to archive board: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to archive board: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });
@@ -297,7 +309,9 @@ export function registerBoardCommands(program: Command): void {
         await apiClient.updateBoard(id, { archived: false });
         formatter.success(`Board ${id} unarchived successfully`);
       } catch (error) {
-        formatter.error(`Failed to unarchive board: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to unarchive board: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });

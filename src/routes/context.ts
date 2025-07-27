@@ -11,7 +11,7 @@ import { NotFoundError } from '@/utils/errors';
 
 export async function contextRoutes() {
   const router = Router();
-  
+
   const boardService = new BoardService(dbConnection);
   const taskService = new TaskService(dbConnection);
   const noteService = new NoteService(dbConnection);
@@ -28,10 +28,7 @@ export async function contextRoutes() {
   router.get('/projects/:id', requirePermission('read'), async (req, res, next) => {
     try {
       const { id } = req.params;
-      const {
-        includeCompletedTasks = false,
-        maxTasks = 100,
-      } = req.query;
+      const { includeCompletedTasks = false, maxTasks = 100 } = req.query;
 
       const options = {
         include_completed: includeCompletedTasks === 'true',
@@ -42,14 +39,14 @@ export async function contextRoutes() {
       };
 
       const context = await contextService.getProjectContext(options);
-      
+
       if (!context) {
         throw new NotFoundError('Project', id);
       }
 
-      res.apiSuccess(context);
+      return res.apiSuccess(context);
     } catch (error) {
-      next(error);
+      return next(error);
     }
   });
 
@@ -57,9 +54,7 @@ export async function contextRoutes() {
   router.get('/tasks/:id', requirePermission('read'), async (req, res, next) => {
     try {
       const { id } = req.params;
-      const {
-        maxRelatedTasks = 10,
-      } = req.query;
+      const { maxRelatedTasks = 10 } = req.query;
 
       if (!id) {
         return res.status(400).json({ error: 'Task ID is required' });
@@ -74,14 +69,14 @@ export async function contextRoutes() {
       };
 
       const context = await contextService.getTaskContext(id, options);
-      
+
       if (!context) {
         throw new NotFoundError('Task', id);
       }
 
-      res.apiSuccess(context);
+      return res.apiSuccess(context);
     } catch (error) {
-      next(error);
+      return next(error);
     }
   });
 
@@ -89,10 +84,7 @@ export async function contextRoutes() {
   router.get('/boards/:id', requirePermission('read'), async (req, res, next) => {
     try {
       const { id } = req.params;
-      const {
-        includeCompletedTasks = false,
-        maxTasks = 200,
-      } = req.query;
+      const { includeCompletedTasks = false, maxTasks = 200 } = req.query;
 
       const options = {
         include_completed: includeCompletedTasks === 'true',
@@ -103,14 +95,14 @@ export async function contextRoutes() {
       };
 
       const context = await contextService.getProjectContext(options);
-      
+
       if (!context) {
         throw new NotFoundError('Board', id);
       }
 
-      res.apiSuccess(context);
+      return res.apiSuccess(context);
     } catch (error) {
-      next(error);
+      return next(error);
     }
   });
 
@@ -119,9 +111,9 @@ export async function contextRoutes() {
     try {
       const analysisData = req.body;
       const analysis = { message: 'Context analysis not implemented', data: analysisData };
-      res.apiSuccess(analysis);
+      return res.apiSuccess(analysis);
     } catch (error) {
-      next(error);
+      return next(error);
     }
   });
 
@@ -144,9 +136,9 @@ export async function contextRoutes() {
       };
 
       const insights = { message: 'Board insights not implemented', boardId: id, options };
-      res.apiSuccess(insights);
+      return res.apiSuccess(insights);
     } catch (error) {
-      next(error);
+      return next(error);
     }
   });
 
@@ -167,9 +159,9 @@ export async function contextRoutes() {
       };
 
       const insights = { message: 'Task insights not implemented', taskId: id, options };
-      res.apiSuccess(insights);
+      return res.apiSuccess(insights);
     } catch (error) {
-      next(error);
+      return next(error);
     }
   });
 
@@ -191,9 +183,9 @@ export async function contextRoutes() {
       };
 
       const summary = { message: 'System summary not implemented', options };
-      res.apiSuccess(summary);
+      return res.apiSuccess(summary);
     } catch (error) {
-      next(error);
+      return next(error);
     }
   });
 
@@ -202,15 +194,15 @@ export async function contextRoutes() {
     try {
       const exportData = req.body;
       const exportResult = { message: 'Context export not implemented', data: exportData };
-      
+
       res.set({
         'Content-Type': 'application/json',
         'Content-Disposition': `attachment; filename="context-export-${Date.now()}.json"`,
       });
-      
-      res.apiSuccess(exportResult);
+
+      return res.apiSuccess(exportResult);
     } catch (error) {
-      next(error);
+      return next(error);
     }
   });
 
@@ -219,9 +211,9 @@ export async function contextRoutes() {
     try {
       const { type } = req.query;
       const templates = { message: 'Context templates not implemented', type, templates: [] };
-      res.apiSuccess(templates);
+      return res.apiSuccess(templates);
     } catch (error) {
-      next(error);
+      return next(error);
     }
   });
 

@@ -1,6 +1,6 @@
 /**
  * Unit tests for Main Application Server
- * 
+ *
  * @description Tests for server initialization, configuration, and middleware setup
  */
 
@@ -15,8 +15,8 @@ jest.mock('@/utils/logger', () => ({
     info: jest.fn(),
     warn: jest.fn(),
     error: jest.fn(),
-    debug: jest.fn()
-  }
+    debug: jest.fn(),
+  },
 }));
 
 // Mock config
@@ -25,18 +25,18 @@ jest.mock('@/config', () => ({
     server: {
       port: 3001,
       host: '0.0.0.0',
-      nodeEnv: 'test'
+      nodeEnv: 'test',
     },
     api: {
       corsOrigin: true,
       corsCredentials: true,
       keySecret: 'test-secret',
-      keys: ['test-key']
+      keys: ['test-key'],
     },
     rateLimit: {
       windowMs: 900000,
       maxRequests: 1000,
-      skipSuccessfulRequests: false
+      skipSuccessfulRequests: false,
     },
     database: {
       path: './data/kanban-test.db',
@@ -44,7 +44,7 @@ jest.mock('@/config', () => ({
       walMode: true,
       memoryLimit: 268435456,
       timeout: 30000,
-      verbose: false
+      verbose: false,
     },
     websocket: {
       port: 3002,
@@ -59,19 +59,19 @@ jest.mock('@/config', () => ({
       maxMessagesPerMinute: 100,
       maxSubscriptionsPerClient: 50,
       compression: true,
-      maxPayload: 1048576
+      maxPayload: 1048576,
     },
     logging: {
       level: 'info',
       format: 'combined',
-      toFile: false
+      toFile: false,
     },
     performance: {
       maxRequestSize: '10mb',
       compression: true,
-      compressionLevel: 6
-    }
-  }
+      compressionLevel: 6,
+    },
+  },
 }));
 
 // Mock database connection
@@ -79,16 +79,16 @@ jest.mock('@/database/connection', () => ({
   dbConnection: {
     initialize: jest.fn().mockResolvedValue(undefined),
     isConnected: jest.fn().mockReturnValue(true),
-    close: jest.fn().mockResolvedValue(undefined)
-  }
+    close: jest.fn().mockResolvedValue(undefined),
+  },
 }));
 
 // Mock WebSocket manager
 jest.mock('@/websocket', () => ({
   webSocketManager: {
     start: jest.fn().mockResolvedValue(undefined),
-    stop: jest.fn().mockResolvedValue(undefined)
-  }
+    stop: jest.fn().mockResolvedValue(undefined),
+  },
 }));
 
 // Mock middleware
@@ -96,14 +96,14 @@ jest.mock('@/middleware', () => ({
   createApiMiddleware: jest.fn().mockReturnValue((req: any, res: any, next: any) => {
     req.requestId = 'test-request-id';
     next();
-  })
+  }),
 }));
 
 // Mock error handler
 jest.mock('@/utils/errors', () => ({
   globalErrorHandler: jest.fn().mockReturnValue((err: any, req: any, res: any, next: any) => {
     res.status(500).json({ error: 'Internal server error' });
-  })
+  }),
 }));
 
 describe('Application Server', () => {
@@ -128,7 +128,7 @@ describe('Application Server', () => {
     it('should include security headers', async () => {
       const response = await request(app)
         .get('/api/health')
-        .expect((res) => {
+        .expect(res => {
           // Check for helmet security headers
           expect(res.headers).toHaveProperty('x-content-type-options');
           expect(res.headers).toHaveProperty('x-frame-options');
@@ -148,9 +148,7 @@ describe('Application Server', () => {
     });
 
     it('should compress responses', async () => {
-      const response = await request(app)
-        .get('/api/health')
-        .set('Accept-Encoding', 'gzip');
+      const response = await request(app).get('/api/health').set('Accept-Encoding', 'gzip');
 
       // The response should either be compressed or compression should be available
       expect(response.headers['content-encoding'] || 'gzip').toBeDefined();
@@ -159,33 +157,25 @@ describe('Application Server', () => {
 
   describe('API Routes', () => {
     it('should respond to health check', async () => {
-      const response = await request(app)
-        .get('/api/health')
-        .expect(200);
+      const response = await request(app).get('/api/health').expect(200);
 
       expect(response.body).toBeDefined();
     });
 
     it('should respond to ready check', async () => {
-      const response = await request(app)
-        .get('/api/ready')
-        .expect(200);
+      const response = await request(app).get('/api/ready').expect(200);
 
       expect(response.body).toBeDefined();
     });
 
     it('should respond to live check', async () => {
-      const response = await request(app)
-        .get('/api/live')
-        .expect(200);
+      const response = await request(app).get('/api/live').expect(200);
 
       expect(response.body).toBeDefined();
     });
 
     it('should handle 404 for unknown routes', async () => {
-      const response = await request(app)
-        .get('/api/nonexistent')
-        .expect(404);
+      const response = await request(app).get('/api/nonexistent').expect(404);
 
       expect(response.body.error).toContain('not found');
     });
@@ -194,12 +184,12 @@ describe('Application Server', () => {
   describe('Request Processing', () => {
     it('should parse JSON bodies', async () => {
       const testData = { test: 'data' };
-      
+
       // This will likely fail with 404 but should parse JSON
       await request(app)
         .post('/api/test')
         .send(testData)
-        .expect((res) => {
+        .expect(res => {
           // The request should have been parsed (even if route doesn't exist)
           expect(res.status).toBeDefined();
         });
@@ -210,7 +200,7 @@ describe('Application Server', () => {
         .post('/api/test')
         .send('key=value')
         .set('Content-Type', 'application/x-www-form-urlencoded')
-        .expect((res) => {
+        .expect(res => {
           expect(res.status).toBeDefined();
         });
     });
@@ -221,7 +211,7 @@ describe('Application Server', () => {
       const response = await request(app)
         .post('/api/test')
         .send({ data: largeData })
-        .expect((res) => {
+        .expect(res => {
           // Should either reject large payload or handle it
           expect([413, 404]).toContain(res.status);
         });
@@ -235,7 +225,7 @@ describe('Application Server', () => {
         .post('/api/test')
         .set('Content-Type', 'application/json')
         .send('{ invalid json }')
-        .expect((res) => {
+        .expect(res => {
           expect([400, 404]).toContain(res.status);
         });
     });
@@ -244,7 +234,7 @@ describe('Application Server', () => {
       // This test checks that the server doesn't crash on errors
       const response = await request(app)
         .get('/api/health')
-        .expect((res) => {
+        .expect(res => {
           expect(res.status).toBeLessThan(600); // Valid HTTP status
         });
     });
@@ -256,7 +246,7 @@ describe('Application Server', () => {
       for (let i = 0; i < 5; i++) {
         await request(app)
           .get('/api/health')
-          .expect((res) => {
+          .expect(res => {
             expect(res.status).toBeLessThan(500);
           });
       }
@@ -265,7 +255,7 @@ describe('Application Server', () => {
     it('should include rate limit headers', async () => {
       const response = await request(app)
         .get('/api/health')
-        .expect((res) => {
+        .expect(res => {
           // Rate limit headers might be present
           if (res.headers['x-ratelimit-limit']) {
             expect(res.headers['x-ratelimit-remaining']).toBeDefined();
@@ -279,7 +269,7 @@ describe('Application Server', () => {
       const response = await request(app)
         .get('/api/health')
         .set('Accept', 'application/json')
-        .expect((res) => {
+        .expect(res => {
           expect(res.headers['content-type']).toMatch(/json/);
         });
     });
@@ -289,7 +279,7 @@ describe('Application Server', () => {
         .post('/api/test')
         .set('Content-Type', 'application/xml')
         .send('<xml>test</xml>')
-        .expect((res) => {
+        .expect(res => {
           // Should either reject or handle gracefully
           expect(res.status).toBeDefined();
         });
@@ -299,9 +289,8 @@ describe('Application Server', () => {
   describe('Logging and Monitoring', () => {
     it('should log requests', async () => {
       const loggerSpy = jest.spyOn(logger, 'info');
-      
-      await request(app)
-        .get('/api/health');
+
+      await request(app).get('/api/health');
 
       // Logger should have been called for request processing
       expect(loggerSpy).toHaveBeenCalled();
@@ -310,12 +299,10 @@ describe('Application Server', () => {
     it('should assign request IDs', async () => {
       const response = await request(app)
         .get('/api/health')
-        .expect((res) => {
+        .expect(res => {
           // Request ID should be in headers or response
           expect(
-            res.headers['x-request-id'] || 
-            res.body?.meta?.requestId ||
-            true // Fallback - at least middleware ran
+            res.headers['x-request-id'] || res.body?.meta?.requestId || true // Fallback - at least middleware ran
           ).toBeDefined();
         });
     });
@@ -325,7 +312,7 @@ describe('Application Server', () => {
     it('should serve API documentation', async () => {
       const response = await request(app)
         .get('/api-docs')
-        .expect((res) => {
+        .expect(res => {
           // Should either serve docs or redirect
           expect([200, 301, 302, 404]).toContain(res.status);
         });
@@ -334,7 +321,7 @@ describe('Application Server', () => {
     it('should serve OpenAPI spec', async () => {
       const response = await request(app)
         .get('/api-docs/swagger.json')
-        .expect((res) => {
+        .expect(res => {
           // Should either serve spec or return 404
           expect([200, 404]).toContain(res.status);
         });
@@ -344,9 +331,7 @@ describe('Application Server', () => {
   describe('WebSocket Integration', () => {
     it('should not interfere with WebSocket setup', async () => {
       // This test ensures HTTP server doesn't conflict with WebSocket
-      const response = await request(app)
-        .get('/api/health')
-        .expect(200);
+      const response = await request(app).get('/api/health').expect(200);
 
       expect(response.body).toBeDefined();
     });

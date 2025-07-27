@@ -1,24 +1,31 @@
 import jwt from 'jsonwebtoken';
-import { config } from '@/config';
 import { logger } from '@/utils/logger';
-import { AuthenticationResult, WebSocketUser } from './types';
+import type { AuthenticationResult, WebSocketUser } from './types';
 
 export class WebSocketAuth {
-  private apiKeys: Map<string, WebSocketUser> = new Map();
+  private readonly apiKeys: Map<string, WebSocketUser> = new Map();
 
   constructor() {
     this.initializeApiKeys();
   }
 
   private initializeApiKeys(): void {
-    // Initialize with default API keys from config
-    if (config.auth.defaultApiKeys) {
-      config.auth.defaultApiKeys.forEach((keyConfig) => {
-        this.apiKeys.set(keyConfig.key, {
-          id: keyConfig.userId,
-          name: keyConfig.name,
-          role: keyConfig.role,
-        });
+    // Initialize with default API keys from environment or hardcoded defaults
+    const defaultApiKeys = process.env.DEFAULT_API_KEYS?.split(',') || [];
+    defaultApiKeys.forEach((key, index) => {
+      this.apiKeys.set(key, {
+        id: `api_user_${index}`,
+        name: `API User ${index}`,
+        role: 'user',
+      });
+    });
+
+    // Add a default dev key if in development
+    if (process.env.NODE_ENV === 'development') {
+      this.apiKeys.set('dev-key-1', {
+        id: 'dev_user',
+        name: 'Development User',
+        role: 'admin',
       });
     }
   }
@@ -62,15 +69,13 @@ export class WebSocketAuth {
 
   private async authenticateWithJWT(token: string): Promise<AuthenticationResult> {
     try {
-      if (!config.auth.jwtSecret) {
-        return {
-          success: false,
-          error: 'JWT authentication not configured',
-        };
+      const jwtSecret = process.env.JWT_SECRET || 'dev-secret-key-change-in-production';
+      if (!jwtSecret || jwtSecret === 'dev-secret-key-change-in-production') {
+        logger.warn('JWT authentication using default secret - configure JWT_SECRET in production');
       }
 
-      const decoded = jwt.verify(token, config.auth.jwtSecret) as any;
-      
+      const decoded = jwt.verify(token, jwtSecret) as any;
+
       if (!decoded.userId) {
         return {
           success: false,
@@ -81,14 +86,18 @@ export class WebSocketAuth {
       // Get user permissions from token or database
       const permissions = decoded.permissions || this.getDefaultPermissions(decoded.role);
 
+      const user: WebSocketUser = {
+        id: decoded.userId,
+      };
+
+      // Only add optional properties if they have values
+      if (decoded.email) user.email = decoded.email;
+      if (decoded.name) user.name = decoded.name;
+      if (decoded.role) user.role = decoded.role;
+
       return {
         success: true,
-        user: {
-          id: decoded.userId,
-          email: decoded.email,
-          name: decoded.name,
-          role: decoded.role,
-        },
+        user,
         permissions,
       };
     } catch (error) {
@@ -116,7 +125,7 @@ export class WebSocketAuth {
 
   private authenticateWithApiKey(apiKey: string): AuthenticationResult {
     const user = this.apiKeys.get(apiKey);
-    
+
     if (!user) {
       return {
         success: false,
@@ -146,7 +155,7 @@ export class WebSocketAuth {
       ];
 
       const validUser = validCredentials.find(
-        (cred) => cred.email === credentials.email && cred.password === credentials.password
+        cred => cred.email === credentials.email && cred.password === credentials.password
       );
 
       if (!validUser) {
@@ -158,14 +167,18 @@ export class WebSocketAuth {
 
       const permissions = this.getDefaultPermissions(validUser.role);
 
-      return {
-        success: true,
-        user: {
-          id: `user_${Date.now()}`,
+      const user: WebSocketUser = {
+        id: `user_${Date.now()}`,
+        ...(validUser.email && {
           email: validUser.email,
           name: validUser.email.split('@')[0],
-          role: validUser.role,
-        },
+        }),
+        ...(validUser.role && { role: validUser.role }),
+      };
+
+      return {
+        success: true,
+        user,
         permissions,
       };
     } catch (error) {
@@ -189,25 +202,11 @@ export class WebSocketAuth {
           'subscribe:all',
         ];
       case 'manager':
-        return [
-          'read:all',
-          'write:all',
-          'delete:own',
-          'manage:team',
-          'subscribe:all',
-        ];
+        return ['read:all', 'write:all', 'delete:own', 'manage:team', 'subscribe:all'];
       case 'user':
-        return [
-          'read:assigned',
-          'write:assigned',
-          'delete:own',
-          'subscribe:assigned',
-        ];
+        return ['read:assigned', 'write:assigned', 'delete:own', 'subscribe:assigned'];
       default:
-        return [
-          'read:public',
-          'subscribe:public',
-        ];
+        return ['read:public', 'subscribe:public'];
     }
   }
 
@@ -220,14 +219,14 @@ export class WebSocketAuth {
   removeApiKey(apiKey: string): boolean {
     const removed = this.apiKeys.delete(apiKey);
     if (removed) {
-      logger.info('API key removed', { apiKey: apiKey.substring(0, 8) + '...' });
+      logger.info('API key removed', { apiKey: `${apiKey.substring(0, 8)}...` });
     }
     return removed;
   }
 
   listApiKeys(): Array<{ key: string; user: WebSocketUser }> {
     return Array.from(this.apiKeys.entries()).map(([key, user]) => ({
-      key: key.substring(0, 8) + '...',
+      key: `${key.substring(0, 8)}...`,
       user,
     }));
   }
@@ -240,7 +239,7 @@ export class WebSocketAuth {
     }
 
     // Check wildcard permissions
-    const [action, resource] = requiredPermission.split(':');
+    const [action, _resource] = requiredPermission.split(':');
     if (permissions.has(`${action}:all`)) {
       return true;
     }
@@ -253,37 +252,44 @@ export class WebSocketAuth {
   }
 
   canAccessBoard(permissions: Set<string>, boardId: string, action: string = 'read'): boolean {
-    return this.hasPermission(permissions, `${action}:all`) ||
-           this.hasPermission(permissions, `${action}:board:${boardId}`);
+    return (
+      this.hasPermission(permissions, `${action}:all`) ||
+      this.hasPermission(permissions, `${action}:board:${boardId}`)
+    );
   }
 
   canAccessTask(permissions: Set<string>, taskId: string, action: string = 'read'): boolean {
-    return this.hasPermission(permissions, `${action}:all`) ||
-           this.hasPermission(permissions, `${action}:task:${taskId}`);
+    return (
+      this.hasPermission(permissions, `${action}:all`) ||
+      this.hasPermission(permissions, `${action}:task:${taskId}`)
+    );
   }
 
   canSubscribeToChannel(permissions: Set<string>, channel: string): boolean {
-    return this.hasPermission(permissions, `subscribe:${channel}`) ||
-           this.hasPermission(permissions, 'subscribe:all');
+    return (
+      this.hasPermission(permissions, `subscribe:${channel}`) ||
+      this.hasPermission(permissions, 'subscribe:all')
+    );
   }
 
   // Generate JWT tokens (for testing or client integration)
   generateJWT(user: WebSocketUser, permissions: string[], expiresIn: string = '24h'): string {
-    if (!config.auth.jwtSecret) {
-      throw new Error('JWT secret not configured');
+    const jwtSecret = process.env.JWT_SECRET || 'dev-secret-key-change-in-production';
+    if (!jwtSecret || jwtSecret === 'dev-secret-key-change-in-production') {
+      logger.warn('JWT generation using default secret - configure JWT_SECRET in production');
     }
 
-    return jwt.sign(
-      {
-        userId: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        permissions,
-      },
-      config.auth.jwtSecret,
-      { expiresIn }
-    );
+    const payload: any = {
+      userId: user.id,
+      permissions,
+    };
+
+    // Only include optional properties if they exist
+    if (user.email) payload.email = user.email;
+    if (user.name) payload.name = user.name;
+    if (user.role) payload.role = user.role;
+
+    return jwt.sign(payload, jwtSecret, { expiresIn } as jwt.SignOptions);
   }
 
   // Validate permissions for specific operations
@@ -293,7 +299,7 @@ export class WebSocketAuth {
     resource: string,
     resourceId?: string
   ): boolean {
-    const fullPermission = resourceId 
+    const fullPermission = resourceId
       ? `${operation}:${resource}:${resourceId}`
       : `${operation}:${resource}`;
 

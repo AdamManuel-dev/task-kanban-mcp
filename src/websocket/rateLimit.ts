@@ -16,9 +16,12 @@ export interface RateLimitConfig {
 }
 
 export class RateLimiter {
-  private connectionLimits = new Map<string, RateLimitEntry>();
-  private messageLimits = new Map<string, RateLimitEntry>();
+  private readonly connectionLimits = new Map<string, RateLimitEntry>();
+
+  private readonly messageLimits = new Map<string, RateLimitEntry>();
+
   private cleanupInterval: NodeJS.Timeout | null = null;
+
   private config: RateLimitConfig;
 
   constructor() {
@@ -130,7 +133,7 @@ export class RateLimiter {
   } {
     const entry = this.connectionLimits.get(ip);
     const now = Date.now();
-    
+
     if (!entry) {
       return {
         requests: 0,
@@ -162,7 +165,7 @@ export class RateLimiter {
   } {
     const entry = this.messageLimits.get(clientId);
     const now = Date.now();
-    
+
     if (!entry) {
       return {
         messages: 0,
@@ -246,10 +249,10 @@ export class RateLimiter {
   clearAllLimits(): void {
     const connectionCount = this.connectionLimits.size;
     const messageCount = this.messageLimits.size;
-    
+
     this.connectionLimits.clear();
     this.messageLimits.clear();
-    
+
     logger.info('All rate limits cleared', {
       clearedConnections: connectionCount,
       clearedMessages: messageCount,
@@ -300,8 +303,9 @@ export class RateLimiter {
   }
 
   // Whitelist/blacklist functionality
-  private whitelist = new Set<string>();
-  private blacklist = new Set<string>();
+  private readonly whitelist = new Set<string>();
+
+  private readonly blacklist = new Set<string>();
 
   addToWhitelist(ip: string): void {
     this.whitelist.add(ip);
@@ -332,7 +336,7 @@ export class RateLimiter {
   }
 
   // Enhanced check that considers whitelist/blacklist
-  checkEnhancedLimit(ip: string, clientId?: string): boolean {
+  checkEnhancedLimit(ip: string, _clientId?: string): boolean {
     // Check blacklist first
     if (this.isBlacklisted(ip)) {
       logger.warn('Blocked request from blacklisted IP', { ip });

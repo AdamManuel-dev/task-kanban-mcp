@@ -1,33 +1,31 @@
-import { Command } from 'commander';
-import { ConfigManager } from '../config';
-import { ApiClient } from '../client';
-import { OutputFormatter } from '../formatter';
+import type { Command } from 'commander';
+import type { ConfigManager } from '../config';
+import type { ApiClient } from '../client';
+import type { OutputFormatter } from '../formatter';
 
 export function registerContextCommands(program: Command): void {
-  const contextCmd = program
-    .command('context')
-    .alias('ctx')
-    .description('AI context and insights');
+  const contextCmd = program.command('context').alias('ctx').description('AI context and insights');
 
   // Get global components
-  const getComponents = () => (global as any).cliComponents as {
-    config: ConfigManager;
-    apiClient: ApiClient;
-    formatter: OutputFormatter;
-  };
+  const getComponents = () =>
+    (global as any).cliComponents as {
+      config: ConfigManager;
+      apiClient: ApiClient;
+      formatter: OutputFormatter;
+    };
 
   contextCmd
     .command('show')
     .description('Show current work context')
     .option('-d, --detailed', 'show detailed context information')
     .option('--format <type>', 'output format: summary, detailed, raw', 'summary')
-    .action(async (options) => {
+    .action(async options => {
       const { apiClient, formatter } = getComponents();
 
       try {
         formatter.info('Generating current work context...');
         const context = await apiClient.getContext();
-        
+
         if (!context) {
           formatter.info('No context available');
           return;
@@ -38,7 +36,7 @@ export function registerContextCommands(program: Command): void {
         } else if (options.format === 'detailed' || options.detailed) {
           // Display detailed context
           formatter.success('Current Work Context');
-          
+
           if (context.activeTasks) {
             console.log('\n--- Active Tasks ---');
             formatter.output(context.activeTasks, {
@@ -72,11 +70,11 @@ export function registerContextCommands(program: Command): void {
         } else {
           // Summary format
           console.log('📋 Current Work Context Summary\n');
-          
+
           if (context.summary) {
             console.log(context.summary);
           }
-          
+
           if (context.statistics) {
             console.log('\n📊 Statistics:');
             Object.entries(context.statistics).forEach(([key, value]) => {
@@ -92,7 +90,9 @@ export function registerContextCommands(program: Command): void {
           }
         }
       } catch (error) {
-        formatter.error(`Failed to get context: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to get context: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });
@@ -103,20 +103,20 @@ export function registerContextCommands(program: Command): void {
     .description('Get project summary')
     .option('--include-metrics', 'include performance metrics')
     .option('--timeframe <days>', 'timeframe for analysis (days)', '30')
-    .action(async (options) => {
+    .action(async options => {
       const { apiClient, formatter } = getComponents();
 
       try {
         formatter.info('Generating project summary...');
         const summary = await apiClient.getProjectSummary();
-        
+
         if (!summary) {
           formatter.info('No project summary available');
           return;
         }
 
         console.log('📊 Project Summary\n');
-        
+
         if (summary.overview) {
           console.log(summary.overview);
           console.log('');
@@ -150,7 +150,9 @@ export function registerContextCommands(program: Command): void {
           });
         }
       } catch (error) {
-        formatter.error(`Failed to get project summary: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to get project summary: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });
@@ -166,14 +168,14 @@ export function registerContextCommands(program: Command): void {
       try {
         formatter.info(`Generating context for task ${id}...`);
         const taskContext = await apiClient.getTaskContext(id);
-        
+
         if (!taskContext) {
           formatter.error(`No context available for task ${id}`);
           process.exit(1);
         }
 
         console.log(`🎯 Task Context: ${taskContext.title || id}\n`);
-        
+
         if (taskContext.description) {
           console.log(taskContext.description);
           console.log('');
@@ -227,7 +229,9 @@ export function registerContextCommands(program: Command): void {
           });
         }
       } catch (error) {
-        formatter.error(`Failed to get task context: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to get task context: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });
@@ -237,14 +241,14 @@ export function registerContextCommands(program: Command): void {
     .description('Get AI insights about work patterns')
     .option('--productivity', 'focus on productivity insights')
     .option('--bottlenecks', 'identify bottlenecks')
-    .action(async (options) => {
+    .action(async options => {
       const { apiClient, formatter } = getComponents();
 
       try {
         formatter.info('Analyzing work patterns...');
         const context = await apiClient.getContext();
-        
-        if (!context || !context.insights) {
+
+        if (!context?.insights) {
           formatter.info('No insights available');
           return;
         }
@@ -279,7 +283,9 @@ export function registerContextCommands(program: Command): void {
           });
         }
       } catch (error) {
-        formatter.error(`Failed to get insights: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to get insights: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });

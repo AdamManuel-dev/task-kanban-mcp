@@ -1,21 +1,19 @@
-import { Command } from 'commander';
+import type { Command } from 'commander';
 import inquirer from 'inquirer';
-import { ConfigManager } from '../config';
-import { ApiClient } from '../client';
-import { OutputFormatter } from '../formatter';
+import type { ConfigManager } from '../config';
+import type { ApiClient } from '../client';
+import type { OutputFormatter } from '../formatter';
 
 export function registerTaskCommands(program: Command): void {
-  const taskCmd = program
-    .command('task')
-    .alias('t')
-    .description('Manage tasks');
+  const taskCmd = program.command('task').alias('t').description('Manage tasks');
 
   // Get global components
-  const getComponents = () => (global as any).cliComponents as {
-    config: ConfigManager;
-    apiClient: ApiClient;
-    formatter: OutputFormatter;
-  };
+  const getComponents = () =>
+    (global as any).cliComponents as {
+      config: ConfigManager;
+      apiClient: ApiClient;
+      formatter: OutputFormatter;
+    };
 
   taskCmd
     .command('list')
@@ -27,7 +25,7 @@ export function registerTaskCommands(program: Command): void {
     .option('-l, --limit <number>', 'limit number of results', '20')
     .option('--sort <field>', 'sort by field', 'priority')
     .option('--order <direction>', 'sort order (asc/desc)', 'desc')
-    .action(async (options) => {
+    .action(async options => {
       const { config, apiClient, formatter } = getComponents();
 
       try {
@@ -37,9 +35,9 @@ export function registerTaskCommands(program: Command): void {
           order: options.order,
         };
 
-        if (options.board) params['board'] = options.board;
-        if (options.status) params['status'] = options.status;
-        if (options.tags) params['tags'] = options.tags;
+        if (options.board) params.board = options.board;
+        if (options.status) params.status = options.status;
+        if (options.tags) params.tags = options.tags;
 
         // Use default board if no board specified
         if (!options.board && config.getDefaultBoard()) {
@@ -47,7 +45,7 @@ export function registerTaskCommands(program: Command): void {
         }
 
         const tasks = await apiClient.getTasks(params);
-        
+
         if (!tasks || tasks.length === 0) {
           formatter.info('No tasks found');
           return;
@@ -58,7 +56,9 @@ export function registerTaskCommands(program: Command): void {
           headers: ['ID', 'Title', 'Status', 'Priority', 'Due Date', 'Created'],
         });
       } catch (error) {
-        formatter.error(`Failed to list tasks: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to list tasks: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });
@@ -72,7 +72,7 @@ export function registerTaskCommands(program: Command): void {
 
       try {
         const task = await apiClient.getTask(id);
-        
+
         if (!task) {
           formatter.error(`Task ${id} not found`);
           process.exit(1);
@@ -91,7 +91,9 @@ export function registerTaskCommands(program: Command): void {
           }
         }
       } catch (error) {
-        formatter.error(`Failed to get task: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to get task: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });
@@ -108,7 +110,7 @@ export function registerTaskCommands(program: Command): void {
     .option('--due <date>', 'due date (YYYY-MM-DD)')
     .option('--tags <tags>', 'tags (comma-separated)')
     .option('-i, --interactive', 'interactive mode')
-    .action(async (options) => {
+    .action(async options => {
       const { config, apiClient, formatter } = getComponents();
 
       let taskData: any = {};
@@ -149,7 +151,8 @@ export function registerTaskCommands(program: Command): void {
             name: 'priority',
             message: 'Priority (1-10):',
             default: 5,
-            validate: (input: number) => (input >= 1 && input <= 10) || 'Priority must be between 1 and 10',
+            validate: (input: number) =>
+              (input >= 1 && input <= 10) || 'Priority must be between 1 and 10',
           });
         }
 
@@ -184,7 +187,7 @@ export function registerTaskCommands(program: Command): void {
       taskData.boardId = options.board || taskData.board || config.getDefaultBoard();
       taskData.columnId = options.column || taskData.column;
       taskData.priority = parseInt(options.priority || taskData.priority, 10);
-      
+
       if (options.due || taskData.dueDate) {
         taskData.dueDate = options.due || taskData.dueDate;
       }
@@ -196,7 +199,9 @@ export function registerTaskCommands(program: Command): void {
 
       try {
         if (!taskData.boardId) {
-          formatter.error('Board ID is required. Set default board with "kanban config set defaults.board <id>"');
+          formatter.error(
+            'Board ID is required. Set default board with "kanban config set defaults.board <id>"'
+          );
           process.exit(1);
         }
 
@@ -204,7 +209,9 @@ export function registerTaskCommands(program: Command): void {
         formatter.success(`Task created successfully: ${task.id}`);
         formatter.output(task);
       } catch (error) {
-        formatter.error(`Failed to create task: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to create task: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });
@@ -257,7 +264,8 @@ export function registerTaskCommands(program: Command): void {
               name: 'priority',
               message: 'Priority (1-10):',
               default: currentTask.priority || 5,
-              validate: (input: number) => (input >= 1 && input <= 10) || 'Priority must be between 1 and 10',
+              validate: (input: number) =>
+                (input >= 1 && input <= 10) || 'Priority must be between 1 and 10',
             },
           ]);
           updates = answers;
@@ -279,7 +287,9 @@ export function registerTaskCommands(program: Command): void {
         formatter.success('Task updated successfully');
         formatter.output(updatedTask);
       } catch (error) {
-        formatter.error(`Failed to update task: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to update task: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });
@@ -318,7 +328,9 @@ export function registerTaskCommands(program: Command): void {
         await apiClient.deleteTask(id);
         formatter.success(`Task ${id} deleted successfully`);
       } catch (error) {
-        formatter.error(`Failed to delete task: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to delete task: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });
@@ -335,7 +347,9 @@ export function registerTaskCommands(program: Command): void {
         await apiClient.moveTask(id, columnId, position);
         formatter.success(`Task ${id} moved to column ${columnId}`);
       } catch (error) {
-        formatter.error(`Failed to move task: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to move task: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });

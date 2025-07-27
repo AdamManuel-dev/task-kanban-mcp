@@ -1,10 +1,10 @@
-import { Tool } from '@modelcontextprotocol/sdk/types.js';
+import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { logger } from '@/utils/logger';
-import { TaskService } from '@/services/TaskService';
-import { BoardService } from '@/services/BoardService';
-import { NoteService } from '@/services/NoteService';
-import { TagService } from '@/services/TagService';
-import { ContextService } from '@/services/ContextService';
+import type { TaskService } from '@/services/TaskService';
+import type { BoardService } from '@/services/BoardService';
+import type { NoteService } from '@/services/NoteService';
+import type { TagService } from '@/services/TagService';
+import type { ContextService } from '@/services/ContextService';
 
 export interface MCPServices {
   taskService: TaskService;
@@ -15,7 +15,7 @@ export interface MCPServices {
 }
 
 export class MCPToolRegistry {
-  private services: MCPServices;
+  private readonly services: MCPServices;
 
   constructor(services: MCPServices) {
     this.services = services;
@@ -33,14 +33,23 @@ export class MCPToolRegistry {
             description: { type: 'string', description: 'Task description' },
             board_id: { type: 'string', description: 'Board ID where task will be created' },
             column_id: { type: 'string', description: 'Column ID for task placement' },
-            priority: { type: 'number', description: 'Task priority (1-5)', minimum: 1, maximum: 5 },
-            status: { 
-              type: 'string', 
+            priority: {
+              type: 'number',
+              description: 'Task priority (1-5)',
+              minimum: 1,
+              maximum: 5,
+            },
+            status: {
+              type: 'string',
               enum: ['todo', 'in_progress', 'done', 'blocked', 'archived'],
-              description: 'Task status'
+              description: 'Task status',
             },
             assignee: { type: 'string', description: 'User ID of assignee' },
-            due_date: { type: 'string', format: 'date-time', description: 'Due date in ISO format' },
+            due_date: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Due date in ISO format',
+            },
             tags: { type: 'array', items: { type: 'string' }, description: 'Array of tag IDs' },
           },
           required: ['title', 'board_id'],
@@ -55,15 +64,29 @@ export class MCPToolRegistry {
             task_id: { type: 'string', description: 'Task ID to update' },
             title: { type: 'string', description: 'New task title' },
             description: { type: 'string', description: 'New task description' },
-            priority: { type: 'number', description: 'Task priority (1-5)', minimum: 1, maximum: 5 },
-            status: { 
-              type: 'string', 
+            priority: {
+              type: 'number',
+              description: 'Task priority (1-5)',
+              minimum: 1,
+              maximum: 5,
+            },
+            status: {
+              type: 'string',
               enum: ['todo', 'in_progress', 'done', 'blocked', 'archived'],
-              description: 'Task status'
+              description: 'Task status',
             },
             assignee: { type: 'string', description: 'User ID of assignee' },
-            due_date: { type: 'string', format: 'date-time', description: 'Due date in ISO format' },
-            progress: { type: 'number', description: 'Progress percentage (0-100)', minimum: 0, maximum: 100 },
+            due_date: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Due date in ISO format',
+            },
+            progress: {
+              type: 'number',
+              description: 'Progress percentage (0-100)',
+              minimum: 0,
+              maximum: 100,
+            },
           },
           required: ['task_id'],
         },
@@ -75,10 +98,26 @@ export class MCPToolRegistry {
           type: 'object',
           properties: {
             task_id: { type: 'string', description: 'Task ID to retrieve' },
-            include_subtasks: { type: 'boolean', description: 'Include subtasks in response', default: false },
-            include_dependencies: { type: 'boolean', description: 'Include dependencies in response', default: false },
-            include_notes: { type: 'boolean', description: 'Include notes in response', default: false },
-            include_tags: { type: 'boolean', description: 'Include tags in response', default: false },
+            include_subtasks: {
+              type: 'boolean',
+              description: 'Include subtasks in response',
+              default: false,
+            },
+            include_dependencies: {
+              type: 'boolean',
+              description: 'Include dependencies in response',
+              default: false,
+            },
+            include_notes: {
+              type: 'boolean',
+              description: 'Include notes in response',
+              default: false,
+            },
+            include_tags: {
+              type: 'boolean',
+              description: 'Include tags in response',
+              default: false,
+            },
           },
           required: ['task_id'],
         },
@@ -91,10 +130,10 @@ export class MCPToolRegistry {
           properties: {
             board_id: { type: 'string', description: 'Filter by board ID' },
             column_id: { type: 'string', description: 'Filter by column ID' },
-            status: { 
-              type: 'string', 
+            status: {
+              type: 'string',
               enum: ['todo', 'in_progress', 'done', 'blocked', 'archived'],
-              description: 'Filter by status'
+              description: 'Filter by status',
             },
             assignee: { type: 'string', description: 'Filter by assignee' },
             priority_min: { type: 'number', description: 'Minimum priority level' },
@@ -103,7 +142,12 @@ export class MCPToolRegistry {
             limit: { type: 'number', description: 'Maximum number of results', default: 50 },
             offset: { type: 'number', description: 'Offset for pagination', default: 0 },
             sort_by: { type: 'string', description: 'Sort field', default: 'updated_at' },
-            sort_order: { type: 'string', enum: ['asc', 'desc'], description: 'Sort order', default: 'desc' },
+            sort_order: {
+              type: 'string',
+              enum: ['asc', 'desc'],
+              description: 'Sort order',
+              default: 'desc',
+            },
           },
           required: [],
         },
@@ -139,8 +183,16 @@ export class MCPToolRegistry {
           type: 'object',
           properties: {
             board_id: { type: 'string', description: 'Board ID to retrieve' },
-            include_columns: { type: 'boolean', description: 'Include columns in response', default: false },
-            include_tasks: { type: 'boolean', description: 'Include tasks in response', default: false },
+            include_columns: {
+              type: 'boolean',
+              description: 'Include columns in response',
+              default: false,
+            },
+            include_tasks: {
+              type: 'boolean',
+              description: 'Include tasks in response',
+              default: false,
+            },
           },
           required: ['board_id'],
         },
@@ -167,11 +219,11 @@ export class MCPToolRegistry {
           properties: {
             task_id: { type: 'string', description: 'Task ID to add note to' },
             content: { type: 'string', description: 'Note content' },
-            category: { 
-              type: 'string', 
+            category: {
+              type: 'string',
               enum: ['general', 'progress', 'blocker', 'decision', 'question'],
               description: 'Note category',
-              default: 'general'
+              default: 'general',
             },
             pinned: { type: 'boolean', description: 'Pin the note', default: false },
           },
@@ -187,10 +239,10 @@ export class MCPToolRegistry {
             query: { type: 'string', description: 'Search query' },
             task_id: { type: 'string', description: 'Filter by task ID' },
             board_id: { type: 'string', description: 'Filter by board ID' },
-            category: { 
-              type: 'string', 
+            category: {
+              type: 'string',
               enum: ['general', 'progress', 'blocker', 'decision', 'question'],
-              description: 'Filter by category'
+              description: 'Filter by category',
             },
             limit: { type: 'number', description: 'Maximum number of results', default: 50 },
           },
@@ -230,7 +282,11 @@ export class MCPToolRegistry {
           type: 'object',
           properties: {
             board_id: { type: 'string', description: 'Board ID to generate context for' },
-            include_completed: { type: 'boolean', description: 'Include completed tasks', default: false },
+            include_completed: {
+              type: 'boolean',
+              description: 'Include completed tasks',
+              default: false,
+            },
             include_notes: { type: 'boolean', description: 'Include task notes', default: true },
             include_tags: { type: 'boolean', description: 'Include tags', default: true },
             max_tasks: { type: 'number', description: 'Maximum tasks to include', default: 100 },
@@ -247,10 +303,18 @@ export class MCPToolRegistry {
           properties: {
             task_id: { type: 'string', description: 'Task ID to generate context for' },
             include_subtasks: { type: 'boolean', description: 'Include subtasks', default: true },
-            include_dependencies: { type: 'boolean', description: 'Include dependencies', default: true },
+            include_dependencies: {
+              type: 'boolean',
+              description: 'Include dependencies',
+              default: true,
+            },
             include_notes: { type: 'boolean', description: 'Include notes', default: true },
             include_tags: { type: 'boolean', description: 'Include tags', default: true },
-            include_related: { type: 'boolean', description: 'Include related tasks', default: false },
+            include_related: {
+              type: 'boolean',
+              description: 'Include related tasks',
+              default: false,
+            },
           },
           required: ['task_id'],
         },
@@ -262,10 +326,26 @@ export class MCPToolRegistry {
           type: 'object',
           properties: {
             board_id: { type: 'string', description: 'Board ID to analyze' },
-            timeframe_days: { type: 'number', description: 'Analysis timeframe in days', default: 30 },
-            include_recommendations: { type: 'boolean', description: 'Include improvement recommendations', default: true },
-            include_blockers: { type: 'boolean', description: 'Include blocker analysis', default: true },
-            include_metrics: { type: 'boolean', description: 'Include performance metrics', default: true },
+            timeframe_days: {
+              type: 'number',
+              description: 'Analysis timeframe in days',
+              default: 30,
+            },
+            include_recommendations: {
+              type: 'boolean',
+              description: 'Include improvement recommendations',
+              default: true,
+            },
+            include_blockers: {
+              type: 'boolean',
+              description: 'Include blocker analysis',
+              default: true,
+            },
+            include_metrics: {
+              type: 'boolean',
+              description: 'Include performance metrics',
+              default: true,
+            },
           },
           required: ['board_id'],
         },
@@ -357,7 +437,7 @@ export class MCPToolRegistry {
 
   private async getTask(args: any): Promise<any> {
     const { task_id, include_subtasks, include_dependencies, include_notes, include_tags } = args;
-    
+
     let task;
     if (include_subtasks) {
       task = await this.services.taskService.getTaskWithSubtasks(task_id);
@@ -373,7 +453,7 @@ export class MCPToolRegistry {
 
     // Add additional data if requested
     const result: any = { success: true, task };
-    
+
     if (include_notes) {
       const notes = await this.services.noteService.getTaskNotes(task_id, { limit: 100 });
       result.notes = notes;
@@ -405,7 +485,7 @@ export class MCPToolRegistry {
 
   private async getBoard(args: any): Promise<any> {
     const { board_id, include_columns, include_tasks } = args;
-    
+
     let board;
     if (include_columns) {
       board = await this.services.boardService.getBoardWithColumns(board_id);
@@ -418,7 +498,7 @@ export class MCPToolRegistry {
     }
 
     const result: any = { success: true, board };
-    
+
     if (include_tasks) {
       const tasks = await this.services.taskService.getTasks({ board_id, limit: 1000 });
       result.tasks = tasks;

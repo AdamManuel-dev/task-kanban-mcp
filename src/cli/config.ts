@@ -42,7 +42,8 @@ const DEFAULT_CONFIG: ConfigData = {
 };
 
 export class ConfigManager {
-  private configPath: string;
+  private readonly configPath: string;
+
   private config: ConfigData;
 
   constructor() {
@@ -68,7 +69,7 @@ export class ConfigManager {
     try {
       const data = readFileSync(this.configPath, 'utf8');
       const loaded = JSON.parse(data);
-      
+
       // Merge with defaults to ensure all fields exist
       return {
         server: { ...DEFAULT_CONFIG.server, ...loaded.server },
@@ -94,7 +95,9 @@ export class ConfigManager {
 
       writeFileSync(this.configPath, JSON.stringify(this.config, null, 2));
     } catch (error) {
-      throw new Error(`Failed to save config: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to save config: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -124,13 +127,17 @@ export class ConfigManager {
 
     for (let i = 0; i < parts.length - 1; i++) {
       const part = parts[i];
+      if (!part) continue;
       if (!(part in current) || typeof current[part] !== 'object') {
         current[part] = {};
       }
       current = current[part];
     }
 
-    current[parts[parts.length - 1]] = value;
+    const lastPart = parts[parts.length - 1];
+    if (lastPart) {
+      current[lastPart] = value;
+    }
   }
 
   /**

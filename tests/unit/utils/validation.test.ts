@@ -1,6 +1,6 @@
 /**
  * Unit tests for Validation Utilities
- * 
+ *
  * @description Tests for Zod schemas, validation functions, business rules, and input validation
  */
 
@@ -16,7 +16,7 @@ import {
   validateOptionalInput,
   BusinessRules,
   CommonValidations,
-  createValidatedService
+  createValidatedService,
 } from '@/utils/validation';
 
 describe('Validation Utilities', () => {
@@ -26,7 +26,7 @@ describe('Validation Utilities', () => {
         const validData = {
           name: 'Test Board',
           description: 'A test board',
-          color: '#FF6B6B'
+          color: '#FF6B6B',
         };
 
         const result = BoardValidation.create.parse(validData);
@@ -35,7 +35,7 @@ describe('Validation Utilities', () => {
 
       it('should require board name', () => {
         const invalidData = {
-          description: 'A test board'
+          description: 'A test board',
         };
 
         expect(() => BoardValidation.create.parse(invalidData)).toThrow();
@@ -44,7 +44,7 @@ describe('Validation Utilities', () => {
       it('should reject empty board name', () => {
         const invalidData = {
           name: '',
-          description: 'A test board'
+          description: 'A test board',
         };
 
         expect(() => BoardValidation.create.parse(invalidData)).toThrow('Board name is required');
@@ -53,7 +53,7 @@ describe('Validation Utilities', () => {
       it('should reject board name that is too long', () => {
         const invalidData = {
           name: 'a'.repeat(101),
-          description: 'A test board'
+          description: 'A test board',
         };
 
         expect(() => BoardValidation.create.parse(invalidData)).toThrow('Board name too long');
@@ -62,7 +62,7 @@ describe('Validation Utilities', () => {
       it('should reject description that is too long', () => {
         const invalidData = {
           name: 'Test Board',
-          description: 'a'.repeat(501)
+          description: 'a'.repeat(501),
         };
 
         expect(() => BoardValidation.create.parse(invalidData)).toThrow('Description too long');
@@ -71,7 +71,7 @@ describe('Validation Utilities', () => {
       it('should reject invalid color format', () => {
         const invalidData = {
           name: 'Test Board',
-          color: 'red'
+          color: 'red',
         };
 
         expect(() => BoardValidation.create.parse(invalidData)).toThrow('Invalid color format');
@@ -79,7 +79,7 @@ describe('Validation Utilities', () => {
 
       it('should accept valid hex colors', () => {
         const validColors = ['#FF6B6B', '#ff6b6b', '#123ABC'];
-        
+
         validColors.forEach(color => {
           const data = { name: 'Test Board', color };
           expect(() => BoardValidation.create.parse(data)).not.toThrow();
@@ -88,7 +88,7 @@ describe('Validation Utilities', () => {
 
       it('should make description and color optional', () => {
         const minimalData = { name: 'Test Board' };
-        
+
         const result = BoardValidation.create.parse(minimalData);
         expect(result.name).toBe('Test Board');
         expect(result.description).toBeUndefined();
@@ -100,7 +100,7 @@ describe('Validation Utilities', () => {
       it('should validate valid board update data', () => {
         const validData = {
           name: 'Updated Board',
-          archived: true
+          archived: true,
         };
 
         const result = BoardValidation.update.parse(validData);
@@ -109,7 +109,7 @@ describe('Validation Utilities', () => {
 
       it('should make all fields optional', () => {
         const emptyData = {};
-        
+
         const result = BoardValidation.update.parse(emptyData);
         expect(result).toEqual({});
       });
@@ -137,7 +137,7 @@ describe('Validation Utilities', () => {
       due_date: new Date('2024-12-31'),
       estimated_hours: 8,
       parent_task_id: '123e4567-e89b-12d3-a456-426614174002',
-      metadata: '{"key": "value"}'
+      metadata: '{"key": "value"}',
     };
 
     describe('create schema', () => {
@@ -150,10 +150,10 @@ describe('Validation Utilities', () => {
       it('should require title, board_id, and column_id', () => {
         const missingTitle = { ...validTaskData };
         delete missingTitle.title;
-        
+
         const missingBoardId = { ...validTaskData };
         delete missingBoardId.board_id;
-        
+
         const missingColumnId = { ...validTaskData };
         delete missingColumnId.column_id;
 
@@ -169,7 +169,9 @@ describe('Validation Utilities', () => {
 
         expect(() => TaskValidation.create.parse(invalidBoardId)).toThrow('Invalid board ID');
         expect(() => TaskValidation.create.parse(invalidColumnId)).toThrow('Invalid column ID');
-        expect(() => TaskValidation.create.parse(invalidParentId)).toThrow('Invalid parent task ID');
+        expect(() => TaskValidation.create.parse(invalidParentId)).toThrow(
+          'Invalid parent task ID'
+        );
       });
 
       it('should validate priority range', () => {
@@ -239,7 +241,7 @@ describe('Validation Utilities', () => {
         const dependencyData = {
           task_id: '123e4567-e89b-12d3-a456-426614174000',
           depends_on_task_id: '123e4567-e89b-12d3-a456-426614174001',
-          dependency_type: 'blocks' as const
+          dependency_type: 'blocks' as const,
         };
 
         const result = TaskValidation.dependency.parse(dependencyData);
@@ -248,10 +250,10 @@ describe('Validation Utilities', () => {
 
       it('should require both task IDs', () => {
         const missingTaskId = {
-          depends_on_task_id: '123e4567-e89b-12d3-a456-426614174001'
+          depends_on_task_id: '123e4567-e89b-12d3-a456-426614174001',
         };
         const missingDependencyId = {
-          task_id: '123e4567-e89b-12d3-a456-426614174000'
+          task_id: '123e4567-e89b-12d3-a456-426614174000',
         };
 
         expect(() => TaskValidation.dependency.parse(missingTaskId)).toThrow();
@@ -263,14 +265,14 @@ describe('Validation Utilities', () => {
         const invalidType = {
           task_id: '123e4567-e89b-12d3-a456-426614174000',
           depends_on_task_id: '123e4567-e89b-12d3-a456-426614174001',
-          dependency_type: 'invalid'
+          dependency_type: 'invalid',
         };
 
         validTypes.forEach(type => {
           const data = {
             task_id: '123e4567-e89b-12d3-a456-426614174000',
             depends_on_task_id: '123e4567-e89b-12d3-a456-426614174001',
-            dependency_type: type
+            dependency_type: type,
           };
           expect(() => TaskValidation.dependency.parse(data)).not.toThrow();
         });
@@ -285,7 +287,7 @@ describe('Validation Utilities', () => {
       task_id: '123e4567-e89b-12d3-a456-426614174000',
       content: 'This is a test note',
       category: 'general' as const,
-      pinned: false
+      pinned: false,
     };
 
     describe('create schema', () => {
@@ -297,7 +299,7 @@ describe('Validation Utilities', () => {
       it('should require task_id and content', () => {
         const missingTaskId = { ...validNoteData };
         delete missingTaskId.task_id;
-        
+
         const missingContent = { ...validNoteData };
         delete missingContent.content;
 
@@ -335,7 +337,7 @@ describe('Validation Utilities', () => {
           pinned_only: true,
           highlight: true,
           limit: 10,
-          offset: 0
+          offset: 0,
         };
 
         const result = NoteValidation.search.parse(searchData);
@@ -344,7 +346,7 @@ describe('Validation Utilities', () => {
 
       it('should require search query', () => {
         const missingQuery = {
-          task_id: '123e4567-e89b-12d3-a456-426614174000'
+          task_id: '123e4567-e89b-12d3-a456-426614174000',
         };
 
         expect(() => NoteValidation.search.parse(missingQuery)).toThrow();
@@ -365,7 +367,7 @@ describe('Validation Utilities', () => {
       name: 'test-tag',
       color: '#FF6B6B',
       description: 'A test tag',
-      parent_tag_id: '123e4567-e89b-12d3-a456-426614174000'
+      parent_tag_id: '123e4567-e89b-12d3-a456-426614174000',
     };
 
     describe('create schema', () => {
@@ -399,7 +401,7 @@ describe('Validation Utilities', () => {
       it('should validate tag assignment data', () => {
         const assignmentData = {
           task_id: '123e4567-e89b-12d3-a456-426614174000',
-          tag_id: '123e4567-e89b-12d3-a456-426614174001'
+          tag_id: '123e4567-e89b-12d3-a456-426614174001',
         };
 
         const result = TagValidation.assignment.parse(assignmentData);
@@ -408,10 +410,10 @@ describe('Validation Utilities', () => {
 
       it('should require both task_id and tag_id', () => {
         const missingTaskId = {
-          tag_id: '123e4567-e89b-12d3-a456-426614174001'
+          tag_id: '123e4567-e89b-12d3-a456-426614174001',
         };
         const missingTagId = {
-          task_id: '123e4567-e89b-12d3-a456-426614174000'
+          task_id: '123e4567-e89b-12d3-a456-426614174000',
         };
 
         expect(() => TagValidation.assignment.parse(missingTaskId)).toThrow();
@@ -426,7 +428,7 @@ describe('Validation Utilities', () => {
         limit: 25,
         offset: 50,
         sortBy: 'created_at',
-        sortOrder: 'desc' as const
+        sortOrder: 'desc' as const,
       };
 
       const result = PaginationValidation.parse(paginationData);
@@ -460,7 +462,7 @@ describe('Validation Utilities', () => {
     it('should validate filter parameters', () => {
       const filterData = {
         archived: true,
-        search: 'test query'
+        search: 'test query',
       };
 
       const result = FilterValidation.parse(filterData);
@@ -528,7 +530,7 @@ describe('Validation Utilities', () => {
       const schema = {
         parse: () => {
           throw new Error('Custom error');
-        }
+        },
       };
 
       expect(() => validateInput(schema as any, {})).toThrow('Custom error');
@@ -717,7 +719,7 @@ describe('Validation Utilities', () => {
             ['in_progress', 'done'],
             ['done', 'todo'],
             ['blocked', 'in_progress'],
-            ['archived', 'todo']
+            ['archived', 'todo'],
           ];
 
           validTransitions.forEach(([from, to]) => {
@@ -728,7 +730,7 @@ describe('Validation Utilities', () => {
         it('should reject invalid status transitions', () => {
           const invalidTransitions = [
             ['todo', 'done'], // Can't go directly from todo to done
-            ['done', 'blocked'] // Can't go from done to blocked
+            ['done', 'blocked'], // Can't go from done to blocked
           ];
 
           invalidTransitions.forEach(([from, to]) => {
@@ -930,7 +932,7 @@ describe('Validation Utilities', () => {
       validDates.forEach(date => {
         expect(() => CommonValidations.dateString.parse(date)).not.toThrow();
       });
-      
+
       expect(() => CommonValidations.dateString.parse(invalidDate)).toThrow();
     });
 
@@ -991,7 +993,7 @@ describe('Validation Utilities', () => {
       const dangerousStrings = [
         '<script>alert("xss")</script>',
         'javascript:alert("xss")',
-        '<div onclick="alert()">test</div>'
+        '<div onclick="alert()">test</div>',
       ];
 
       safeStrings.forEach(str => {
@@ -1006,15 +1008,15 @@ describe('Validation Utilities', () => {
 
   describe('createValidatedService', () => {
     const mockService = {
-      createBoard: jest.fn().mockImplementation((data) => ({ id: 'board-1', ...data })),
-      updateBoard: jest.fn().mockImplementation((data) => ({ id: 'board-1', ...data })),
+      createBoard: jest.fn().mockImplementation(data => ({ id: 'board-1', ...data })),
+      updateBoard: jest.fn().mockImplementation(data => ({ id: 'board-1', ...data })),
       deleteBoard: jest.fn().mockImplementation(() => ({ success: true })),
-      nonValidatedMethod: jest.fn().mockReturnValue('test')
+      nonValidatedMethod: jest.fn().mockReturnValue('test'),
     };
 
     const validationConfig = {
       createBoard: BoardValidation.create,
-      updateBoard: BoardValidation.update
+      updateBoard: BoardValidation.update,
     };
 
     beforeEach(() => {
@@ -1052,7 +1054,7 @@ describe('Validation Utilities', () => {
     it('should return non-function properties as-is', () => {
       const serviceWithProps = {
         ...mockService,
-        config: { timeout: 5000 }
+        config: { timeout: 5000 },
       };
 
       const validatedService = createValidatedService(serviceWithProps, validationConfig);
@@ -1080,7 +1082,9 @@ describe('Validation Utilities', () => {
     it('should preserve method context', () => {
       const contextService = {
         name: 'TestService',
-        getName: function() { return this.name; }
+        getName() {
+          return this.name;
+        },
       };
 
       const validatedService = createValidatedService(contextService, {});

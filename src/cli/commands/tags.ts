@@ -1,20 +1,19 @@
-import { Command } from 'commander';
+import type { Command } from 'commander';
 import inquirer from 'inquirer';
-import { ConfigManager } from '../config';
-import { ApiClient } from '../client';
-import { OutputFormatter } from '../formatter';
+import type { ConfigManager } from '../config';
+import type { ApiClient } from '../client';
+import type { OutputFormatter } from '../formatter';
 
 export function registerTagCommands(program: Command): void {
-  const tagCmd = program
-    .command('tag')
-    .description('Manage tags');
+  const tagCmd = program.command('tag').description('Manage tags');
 
   // Get global components
-  const getComponents = () => (global as any).cliComponents as {
-    config: ConfigManager;
-    apiClient: ApiClient;
-    formatter: OutputFormatter;
-  };
+  const getComponents = () =>
+    (global as any).cliComponents as {
+      config: ConfigManager;
+      apiClient: ApiClient;
+      formatter: OutputFormatter;
+    };
 
   tagCmd
     .command('list')
@@ -23,12 +22,12 @@ export function registerTagCommands(program: Command): void {
     .option('--usage', 'include usage statistics')
     .option('--tree', 'show hierarchical tree structure')
     .option('-l, --limit <number>', 'limit number of results', '50')
-    .action(async (options) => {
+    .action(async options => {
       const { apiClient, formatter } = getComponents();
 
       try {
         const tags = await apiClient.getTags();
-        
+
         if (!tags || tags.length === 0) {
           formatter.info('No tags found');
           return;
@@ -41,10 +40,10 @@ export function registerTagCommands(program: Command): void {
           displayTagTree(rootTags, tags, formatter, 0);
         } else {
           // Regular table display
-          const fields = options.usage 
+          const fields = options.usage
             ? ['id', 'name', 'color', 'description', 'taskCount', 'parentId']
             : ['id', 'name', 'color', 'description', 'parentId'];
-          
+
           const headers = options.usage
             ? ['ID', 'Name', 'Color', 'Description', 'Task Count', 'Parent']
             : ['ID', 'Name', 'Color', 'Description', 'Parent'];
@@ -55,7 +54,9 @@ export function registerTagCommands(program: Command): void {
           });
         }
       } catch (error) {
-        formatter.error(`Failed to list tags: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to list tags: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });
@@ -69,7 +70,7 @@ export function registerTagCommands(program: Command): void {
 
       try {
         const tag = await apiClient.getTag(id);
-        
+
         if (!tag) {
           formatter.error(`Tag ${id} not found`);
           process.exit(1);
@@ -85,7 +86,9 @@ export function registerTagCommands(program: Command): void {
           });
         }
       } catch (error) {
-        formatter.error(`Failed to get tag: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to get tag: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });
@@ -142,7 +145,9 @@ export function registerTagCommands(program: Command): void {
         formatter.success(`Tag created successfully: ${tag.id}`);
         formatter.output(tag);
       } catch (error) {
-        formatter.error(`Failed to create tag: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to create tag: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });
@@ -211,7 +216,9 @@ export function registerTagCommands(program: Command): void {
         formatter.success('Tag updated successfully');
         formatter.output(updatedTag);
       } catch (error) {
-        formatter.error(`Failed to update tag: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to update tag: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });
@@ -250,7 +257,9 @@ export function registerTagCommands(program: Command): void {
         await apiClient.deleteTag(id);
         formatter.success(`Tag ${id} deleted successfully`);
       } catch (error) {
-        formatter.error(`Failed to delete tag: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to delete tag: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });
@@ -265,7 +274,9 @@ export function registerTagCommands(program: Command): void {
         await apiClient.addTagsToTask(taskId, tags);
         formatter.success(`Added tags [${tags.join(', ')}] to task ${taskId}`);
       } catch (error) {
-        formatter.error(`Failed to add tags: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to add tags: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });
@@ -281,7 +292,9 @@ export function registerTagCommands(program: Command): void {
         await apiClient.removeTagFromTask(taskId, tag);
         formatter.success(`Removed tag "${tag}" from task ${taskId}`);
       } catch (error) {
-        formatter.error(`Failed to remove tag: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to remove tag: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });
@@ -296,7 +309,7 @@ export function registerTagCommands(program: Command): void {
 
       try {
         const tags = await apiClient.searchTags(query);
-        
+
         if (!tags || tags.length === 0) {
           formatter.info(`No tags found matching "${query}"`);
           return;
@@ -307,7 +320,9 @@ export function registerTagCommands(program: Command): void {
           headers: ['ID', 'Name', 'Color', 'Description'],
         });
       } catch (error) {
-        formatter.error(`Failed to search tags: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to search tags: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });
@@ -323,7 +338,7 @@ export function registerTagCommands(program: Command): void {
         if (!options.force) {
           const fromTag = await apiClient.getTag(fromId);
           const toTag = await apiClient.getTag(toId);
-          
+
           if (!fromTag || !toTag) {
             formatter.error('One or both tags not found');
             process.exit(1);
@@ -347,19 +362,26 @@ export function registerTagCommands(program: Command): void {
         await apiClient.mergeTags(fromId, toId);
         formatter.success(`Merged tag ${fromId} into ${toId}`);
       } catch (error) {
-        formatter.error(`Failed to merge tags: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to merge tags: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });
 }
 
 // Helper function to display tag tree
-function displayTagTree(tags: any[], allTags: any[], formatter: OutputFormatter, depth: number): void {
+function displayTagTree(
+  tags: any[],
+  allTags: any[],
+  formatter: OutputFormatter,
+  depth: number
+): void {
   tags.forEach(tag => {
     const indent = '  '.repeat(depth);
     const name = tag.color ? `${tag.name} (${tag.color})` : tag.name;
     console.log(`${indent}${depth > 0 ? '└─ ' : ''}${name} (${tag.id})`);
-    
+
     // Find and display children
     const children = allTags.filter((t: any) => t.parentId === tag.id);
     if (children.length > 0) {

@@ -1,9 +1,9 @@
-import { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import { logger } from '@/utils/logger';
 
 export function requestLoggingMiddleware(req: Request, res: Response, next: NextFunction) {
   const startTime = Date.now();
-  
+
   // Log incoming request
   logger.info('HTTP request started', {
     requestId: req.requestId,
@@ -16,9 +16,9 @@ export function requestLoggingMiddleware(req: Request, res: Response, next: Next
 
   // Override res.end to log response
   const originalEnd = res.end.bind(res);
-  (res.end as any) = function(this: Response, ...args: any[]) {
+  (res.end as any) = function (this: Response, ...args: any[]) {
     const duration = Date.now() - startTime;
-    
+
     logger.info('HTTP request completed', {
       requestId: req.requestId,
       method: req.method,

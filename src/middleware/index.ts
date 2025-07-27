@@ -1,10 +1,10 @@
 import { Router } from 'express';
+import { apiRoutes } from '@/routes';
 import { authenticationMiddleware } from './auth';
 import { requestLoggingMiddleware } from './logging';
 import { requestValidationMiddleware } from './validation';
 import { responseFormattingMiddleware } from './response';
 import { requestIdMiddleware } from './requestId';
-import { apiRoutes } from '@/routes';
 
 export async function createApiMiddleware() {
   const router = Router();

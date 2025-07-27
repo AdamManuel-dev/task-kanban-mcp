@@ -1,6 +1,6 @@
 /**
  * Unit tests for TaskService
- * 
+ *
  * @description Comprehensive test suite covering all TaskService functionality
  * including CRUD operations, dependencies, priorities, and edge cases.
  */
@@ -16,8 +16,8 @@ jest.mock('@/utils/logger', () => ({
     info: jest.fn(),
     warn: jest.fn(),
     error: jest.fn(),
-    debug: jest.fn()
-  }
+    debug: jest.fn(),
+  },
 }));
 
 describe('TaskService', () => {
@@ -30,14 +30,14 @@ describe('TaskService', () => {
     // Force a new database instance for testing
     (DatabaseConnection as any).instance = null;
     dbConnection = DatabaseConnection.getInstance();
-    
+
     if (dbConnection.isConnected()) {
       await dbConnection.close();
     }
-    
+
     // Use test-specific database file
     process.env.DATABASE_PATH = './data/kanban-test.db';
-    
+
     await dbConnection.initialize();
     taskService = new TaskService(dbConnection);
 
@@ -46,10 +46,11 @@ describe('TaskService', () => {
     columnId = 'todo';
 
     // Create test board and column
-    await dbConnection.execute(
-      'INSERT INTO boards (id, name, description) VALUES (?, ?, ?)',
-      [boardId, 'Test Board', 'Test board for TaskService tests']
-    );
+    await dbConnection.execute('INSERT INTO boards (id, name, description) VALUES (?, ?, ?)', [
+      boardId,
+      'Test Board',
+      'Test board for TaskService tests',
+    ]);
 
     await dbConnection.execute(
       'INSERT INTO columns (id, board_id, name, position) VALUES (?, ?, ?, ?)',
@@ -70,7 +71,7 @@ describe('TaskService', () => {
       }
       await dbConnection.close();
     }
-    
+
     // Clean up test database
     const fs = require('fs');
     const testDbPath = './data/kanban-test.db';
@@ -90,7 +91,7 @@ describe('TaskService', () => {
         description: 'Test task description',
         board_id: boardId,
         column_id: columnId,
-        priority: 5
+        priority: 5,
       };
 
       const task = await taskService.createTask(taskData);
@@ -112,7 +113,7 @@ describe('TaskService', () => {
       const taskData = {
         title: 'Minimal Task',
         board_id: boardId,
-        column_id: columnId
+        column_id: columnId,
       };
 
       const task = await taskService.createTask(taskData);
@@ -131,7 +132,7 @@ describe('TaskService', () => {
       await taskService.createTask({
         title: 'First Task',
         board_id: boardId,
-        column_id: columnId
+        column_id: columnId,
       });
 
       // Create second task with specific position
@@ -139,7 +140,7 @@ describe('TaskService', () => {
         title: 'Second Task',
         board_id: boardId,
         column_id: columnId,
-        position: 1 // Should be inserted at position 1, moving first task to position 2
+        position: 1, // Should be inserted at position 1, moving first task to position 2
       });
 
       expect(task.position).toBe(1);
@@ -147,10 +148,10 @@ describe('TaskService', () => {
       // Verify positions were updated correctly
       const tasks = await taskService.getTasks({ board_id: boardId, column_id: columnId });
       expect(tasks.length).toBe(2);
-      
+
       const firstTask = tasks.find(t => t.title === 'First Task');
       const secondTask = tasks.find(t => t.title === 'Second Task');
-      
+
       expect(firstTask?.position).toBe(2);
       expect(secondTask?.position).toBe(1);
     });
@@ -159,7 +160,7 @@ describe('TaskService', () => {
       const taskData = {
         title: 'Invalid Task',
         board_id: 'invalid-board',
-        column_id: columnId
+        column_id: columnId,
       };
 
       await expect(taskService.createTask(taskData)).rejects.toThrow();
@@ -169,7 +170,7 @@ describe('TaskService', () => {
       const taskData = {
         title: 'Invalid Task',
         board_id: boardId,
-        column_id: 'invalid-column'
+        column_id: 'invalid-column',
       };
 
       await expect(taskService.createTask(taskData)).rejects.toThrow();
@@ -180,7 +181,7 @@ describe('TaskService', () => {
       const parentTask = await taskService.createTask({
         title: 'Parent Task',
         board_id: boardId,
-        column_id: columnId
+        column_id: columnId,
       });
 
       // Create subtask
@@ -188,11 +189,11 @@ describe('TaskService', () => {
         title: 'Subtask',
         board_id: boardId,
         column_id: columnId,
-        parent_task_id: parentTask.id
+        parent_task_id: parentTask.id,
       });
 
       expect(subtask.parent_task_id).toBe(parentTask.id);
-      
+
       // Verify subtask relationship
       const subtasks = await taskService.getSubtasks(parentTask.id);
       expect(subtasks).toHaveLength(1);
@@ -209,7 +210,7 @@ describe('TaskService', () => {
         board_id: boardId,
         column_id: columnId,
         priority: 5,
-        status: 'in_progress'
+        status: 'in_progress',
       });
 
       await taskService.createTask({
@@ -218,7 +219,7 @@ describe('TaskService', () => {
         board_id: boardId,
         column_id: columnId,
         priority: 3,
-        status: 'todo'
+        status: 'todo',
       });
     });
 
@@ -268,20 +269,20 @@ describe('TaskService', () => {
         await taskService.createTask({
           title: `Task ${i}`,
           board_id: boardId,
-          column_id: columnId
+          column_id: columnId,
         });
       }
 
-      const firstPage = await taskService.getTasks({ 
+      const firstPage = await taskService.getTasks({
         board_id: boardId,
         limit: 2,
-        offset: 0
+        offset: 0,
       });
 
       const secondPage = await taskService.getTasks({
         board_id: boardId,
         limit: 2,
-        offset: 2
+        offset: 2,
       });
 
       expect(firstPage).toHaveLength(2);
@@ -290,10 +291,10 @@ describe('TaskService', () => {
     });
 
     it('should sort tasks by priority', async () => {
-      const tasks = await taskService.getTasks({ 
+      const tasks = await taskService.getTasks({
         board_id: boardId,
         sort_by: 'priority',
-        sort_order: 'desc'
+        sort_order: 'desc',
       });
 
       expect(tasks).toHaveLength(2);
@@ -311,19 +312,19 @@ describe('TaskService', () => {
         board_id: boardId,
         column_id: columnId,
         priority: 3,
-        status: 'todo'
+        status: 'todo',
       });
       taskId = task.id;
     });
 
     it('should update task title', async () => {
       const updatedTask = await taskService.updateTask(taskId, {
-        title: 'Updated Title'
+        title: 'Updated Title',
       });
 
       expect(updatedTask.title).toBe('Updated Title');
       expect(updatedTask.id).toBe(taskId);
-      
+
       // Verify in database
       const dbTask = await taskService.getTaskById(taskId);
       expect(dbTask?.title).toBe('Updated Title');
@@ -331,7 +332,7 @@ describe('TaskService', () => {
 
     it('should update task status', async () => {
       const updatedTask = await taskService.updateTask(taskId, {
-        status: 'done'
+        status: 'done',
       });
 
       expect(updatedTask.status).toBe('done');
@@ -340,7 +341,7 @@ describe('TaskService', () => {
 
     it('should update task priority', async () => {
       const updatedTask = await taskService.updateTask(taskId, {
-        priority: 8
+        priority: 8,
       });
 
       expect(updatedTask.priority).toBe(8);
@@ -348,9 +349,9 @@ describe('TaskService', () => {
 
     it('should handle partial updates', async () => {
       const originalTask = await taskService.getTaskById(taskId);
-      
+
       const updatedTask = await taskService.updateTask(taskId, {
-        description: 'Updated description only'
+        description: 'Updated description only',
       });
 
       expect(updatedTask.description).toBe('Updated description only');
@@ -363,32 +364,38 @@ describe('TaskService', () => {
       expect(originalTask).toBeDefined();
       const originalUpdatedAt = originalTask!.updated_at;
       expect(originalUpdatedAt).toBeDefined();
-      
+
       // Ensure we have a valid timestamp
-      const originalTime = originalUpdatedAt instanceof Date ? 
-        originalUpdatedAt.getTime() : new Date(originalUpdatedAt).getTime();
+      const originalTime =
+        originalUpdatedAt instanceof Date
+          ? originalUpdatedAt.getTime()
+          : new Date(originalUpdatedAt).getTime();
       expect(originalTime).not.toBeNaN();
 
       // Wait a bit to ensure timestamp difference
       await new Promise(resolve => setTimeout(resolve, 10));
 
       const updatedTask = await taskService.updateTask(taskId, {
-        title: 'New timestamp test'
+        title: 'New timestamp test',
       });
 
       expect(updatedTask.updated_at).not.toBe(originalUpdatedAt);
-      
-      const updatedTime = updatedTask.updated_at instanceof Date ? 
-        updatedTask.updated_at.getTime() : new Date(updatedTask.updated_at).getTime();
-      
+
+      const updatedTime =
+        updatedTask.updated_at instanceof Date
+          ? updatedTask.updated_at.getTime()
+          : new Date(updatedTask.updated_at).getTime();
+
       expect(updatedTime).not.toBeNaN();
       expect(updatedTime).toBeGreaterThan(originalTime);
     });
 
     it('should throw error for non-existent task', async () => {
-      await expect(taskService.updateTask('non-existent-id', {
-        title: 'Should fail'
-      })).rejects.toThrow();
+      await expect(
+        taskService.updateTask('non-existent-id', {
+          title: 'Should fail',
+        })
+      ).rejects.toThrow();
     });
   });
 
@@ -399,43 +406,43 @@ describe('TaskService', () => {
         title: 'Task 1',
         board_id: boardId,
         column_id: columnId,
-        position: 1
+        position: 1,
       });
 
       await taskService.createTask({
         title: 'Task 2',
         board_id: boardId,
         column_id: columnId,
-        position: 2
+        position: 2,
       });
 
       await taskService.createTask({
         title: 'Task 3',
         board_id: boardId,
         column_id: columnId,
-        position: 3
+        position: 3,
       });
     });
 
     it.skip('should move task to new position within same column', async () => {
-      const tasks = await taskService.getTasks({ 
-        board_id: boardId, 
+      const tasks = await taskService.getTasks({
+        board_id: boardId,
         column_id: columnId,
-        sort_by: 'position'
+        sort_by: 'position',
       });
 
       // Move task from position 3 to position 1
       const movedTask = await taskService.updateTask(tasks[2].id, {
-        position: 1
+        position: 1,
       });
 
       expect(movedTask.position).toBe(1);
 
       // Verify all positions are correct
-      const updatedTasks = await taskService.getTasks({ 
-        board_id: boardId, 
+      const updatedTasks = await taskService.getTasks({
+        board_id: boardId,
         column_id: columnId,
-        sort_by: 'position'
+        sort_by: 'position',
       });
 
       expect(updatedTasks[0].title).toBe('Task 3'); // Moved to position 1
@@ -452,7 +459,7 @@ describe('TaskService', () => {
         title: 'Parent Task',
         description: 'Task with subtasks',
         board_id: boardId,
-        column_id: columnId
+        column_id: columnId,
       });
       parentTaskId = parentTask.id;
     });
@@ -462,7 +469,7 @@ describe('TaskService', () => {
         title: 'Subtask 1',
         board_id: boardId,
         column_id: columnId,
-        parent_task_id: parentTaskId
+        parent_task_id: parentTaskId,
       });
 
       expect(subtask.parent_task_id).toBe(parentTaskId);
@@ -477,14 +484,14 @@ describe('TaskService', () => {
         title: 'Subtask 1',
         board_id: boardId,
         column_id: columnId,
-        parent_task_id: parentTaskId
+        parent_task_id: parentTaskId,
       });
 
       await taskService.createTask({
         title: 'Subtask 2',
         board_id: boardId,
         column_id: columnId,
-        parent_task_id: parentTaskId
+        parent_task_id: parentTaskId,
       });
 
       const subtasks = await taskService.getSubtasks(parentTaskId);
@@ -507,21 +514,21 @@ describe('TaskService', () => {
       const task1 = await taskService.createTask({
         title: 'Task 1',
         board_id: boardId,
-        column_id: columnId
+        column_id: columnId,
       });
       task1Id = task1.id;
 
       const task2 = await taskService.createTask({
         title: 'Task 2',
         board_id: boardId,
-        column_id: columnId
+        column_id: columnId,
       });
       task2Id = task2.id;
 
       const task3 = await taskService.createTask({
         title: 'Task 3',
         board_id: boardId,
-        column_id: columnId
+        column_id: columnId,
       });
       task3Id = task3.id;
     });
@@ -549,12 +556,12 @@ describe('TaskService', () => {
 
     it('should remove task dependency', async () => {
       await taskService.addTaskDependency(task2Id, task1Id);
-      
+
       let dependencies = await taskService.getTaskDependencies(task2Id);
       expect(dependencies).toHaveLength(1);
 
       await taskService.removeTaskDependency(task2Id, task1Id);
-      
+
       dependencies = await taskService.getTaskDependencies(task2Id);
       expect(dependencies).toHaveLength(0);
     });
@@ -578,21 +585,21 @@ describe('TaskService', () => {
         title: 'Implement authentication system',
         description: 'Add JWT-based authentication',
         board_id: boardId,
-        column_id: columnId
+        column_id: columnId,
       });
 
       await taskService.createTask({
         title: 'Design user interface',
         description: 'Create mockups and wireframes',
         board_id: boardId,
-        column_id: columnId
+        column_id: columnId,
       });
 
       await taskService.createTask({
         title: 'Setup database schema',
         description: 'Design and implement database structure',
         board_id: boardId,
-        column_id: columnId
+        column_id: columnId,
       });
     });
 
@@ -630,7 +637,7 @@ describe('TaskService', () => {
       const task = await taskService.createTask({
         title: 'Delete Test Task',
         board_id: boardId,
-        column_id: columnId
+        column_id: columnId,
       });
       taskId = task.id;
     });
@@ -652,7 +659,7 @@ describe('TaskService', () => {
         title: 'Subtask to be orphaned',
         board_id: boardId,
         column_id: columnId,
-        parent_task_id: taskId
+        parent_task_id: taskId,
       });
 
       await taskService.deleteTask(taskId);
@@ -677,23 +684,27 @@ describe('TaskService', () => {
     });
 
     it('should validate required fields', async () => {
-      await expect(taskService.createTask({
-        title: '',
-        board_id: boardId,
-        column_id: columnId
-      })).rejects.toThrow();
+      await expect(
+        taskService.createTask({
+          title: '',
+          board_id: boardId,
+          column_id: columnId,
+        })
+      ).rejects.toThrow();
     });
 
     it('should handle invalid status values', async () => {
       const task = await taskService.createTask({
         title: 'Test Task',
         board_id: boardId,
-        column_id: columnId
+        column_id: columnId,
       });
 
-      await expect(taskService.updateTask(task.id, {
-        status: 'invalid_status' as any
-      })).rejects.toThrow();
+      await expect(
+        taskService.updateTask(task.id, {
+          status: 'invalid_status' as any,
+        })
+      ).rejects.toThrow();
     });
   });
 });

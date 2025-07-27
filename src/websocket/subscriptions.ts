@@ -1,6 +1,7 @@
 import { logger } from '@/utils/logger';
-import { WebSocketClient, SubscriptionChannel, SubscriptionFilter } from './types';
-import { WebSocketManager } from './server';
+import type { WebSocketClient, SubscriptionFilter } from './types';
+import { SubscriptionChannel } from './types';
+import type { WebSocketManager } from './server';
 
 export interface Subscription {
   id: string;
@@ -12,10 +13,13 @@ export interface Subscription {
 }
 
 export class SubscriptionManager {
-  private subscriptions = new Map<string, Subscription>();
-  private clientSubscriptions = new Map<string, Set<string>>();
-  private channelSubscriptions = new Map<SubscriptionChannel, Set<string>>();
-  private webSocketManager: WebSocketManager;
+  private readonly subscriptions = new Map<string, Subscription>();
+
+  private readonly clientSubscriptions = new Map<string, Set<string>>();
+
+  private readonly channelSubscriptions = new Map<SubscriptionChannel, Set<string>>();
+
+  private readonly webSocketManager: WebSocketManager;
 
   constructor(webSocketManager: WebSocketManager) {
     this.webSocketManager = webSocketManager;
@@ -34,13 +38,14 @@ export class SubscriptionManager {
       }
 
       // Check permissions
-      if (!this.webSocketManager['auth'].canSubscribeToChannel(client.permissions, channel)) {
+      if (!this.webSocketManager.auth.canSubscribeToChannel(client.permissions, channel)) {
         return { success: false, error: 'Insufficient permissions' };
       }
 
       // Check subscription limits
       const currentSubscriptions = this.clientSubscriptions.get(clientId) || new Set();
-      if (currentSubscriptions.size >= 50) { // Max 50 subscriptions per client
+      if (currentSubscriptions.size >= 50) {
+        // Max 50 subscriptions per client
         return { success: false, error: 'Subscription limit exceeded' };
       }
 
@@ -186,15 +191,17 @@ export class SubscriptionManager {
       }
 
       // Send message
-      if (this.webSocketManager.sendToClient(subscription.clientId, {
-        type: 'channel_message',
-        id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        payload: {
-          channel,
-          subscriptionId,
-          data: message,
-        },
-      })) {
+      if (
+        this.webSocketManager.sendToClient(subscription.clientId, {
+          type: 'channel_message',
+          id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          payload: {
+            channel,
+            subscriptionId,
+            data: message,
+          },
+        })
+      ) {
         sentCount++;
         subscription.lastActivity = new Date();
       }
@@ -208,9 +215,7 @@ export class SubscriptionManager {
     return this.publishToChannel(
       SubscriptionChannel.BOARD,
       message,
-      (subscription) => {
-        return !subscription.filters.boardId || subscription.filters.boardId === boardId;
-      }
+      subscription => !subscription.filters.boardId || subscription.filters.boardId === boardId
     );
   }
 
@@ -222,25 +227,25 @@ export class SubscriptionManager {
     count += this.publishToChannel(
       SubscriptionChannel.TASK,
       message,
-      (subscription) => {
-        return !subscription.filters.taskId || subscription.filters.taskId === taskId;
-      }
+      subscription => !subscription.filters.taskId || subscription.filters.taskId === taskId
     );
 
     // Send to board subscribers
     count += this.publishToChannel(
       SubscriptionChannel.BOARD,
       message,
-      (subscription) => {
-        return !subscription.filters.boardId || subscription.filters.boardId === boardId;
-      }
+      subscription => !subscription.filters.boardId || subscription.filters.boardId === boardId
     );
 
     return count;
   }
 
   // Publish user presence updates
-  publishUserPresence(userId: string, status: 'online' | 'offline' | 'away', context?: any): number {
+  publishUserPresence(
+    userId: string,
+    status: 'online' | 'offline' | 'away',
+    context?: any
+  ): number {
     return this.publishToChannel(
       SubscriptionChannel.USER_PRESENCE,
       {
@@ -249,9 +254,7 @@ export class SubscriptionManager {
         timestamp: new Date().toISOString(),
         ...context,
       },
-      (subscription) => {
-        return !subscription.filters.userId || subscription.filters.userId === userId;
-      }
+      subscription => !subscription.filters.userId || subscription.filters.userId === userId
     );
   }
 
@@ -295,7 +298,7 @@ export class SubscriptionManager {
     averageSubscriptionsPerClient: number;
   } {
     const channelStats: Record<string, number> = {};
-    
+
     for (const [channel, subs] of this.channelSubscriptions) {
       channelStats[channel] = subs.size;
     }
@@ -312,7 +315,8 @@ export class SubscriptionManager {
   }
 
   // Clean up expired subscriptions
-  cleanupExpiredSubscriptions(maxIdleTime: number = 30 * 60 * 1000): number { // 30 minutes
+  cleanupExpiredSubscriptions(maxIdleTime: number = 30 * 60 * 1000): number {
+    // 30 minutes
     const now = new Date();
     const expiredSubscriptions: string[] = [];
 
@@ -348,7 +352,7 @@ export class SubscriptionManager {
       if (value === undefined || value === null) continue;
 
       const messageValue = this.getNestedProperty(message, key);
-      
+
       if (Array.isArray(value)) {
         if (!value.includes(messageValue)) return false;
       } else if (messageValue !== value) {
@@ -360,9 +364,12 @@ export class SubscriptionManager {
   }
 
   private getNestedProperty(obj: any, path: string): any {
-    return path.split('.').reduce((current, key) => {
-      return current && current[key] !== undefined ? current[key] : undefined;
-    }, obj);
+    return path
+      .split('.')
+      .reduce(
+        (current, key) => (current && current[key] !== undefined ? current[key] : undefined),
+        obj
+      );
   }
 
   // Message type specific publishing methods

@@ -1,21 +1,19 @@
-import { Command } from 'commander';
+import type { Command } from 'commander';
 import inquirer from 'inquirer';
-import { ConfigManager } from '../config';
-import { ApiClient } from '../client';
-import { OutputFormatter } from '../formatter';
+import type { ConfigManager } from '../config';
+import type { ApiClient } from '../client';
+import type { OutputFormatter } from '../formatter';
 
 export function registerNoteCommands(program: Command): void {
-  const noteCmd = program
-    .command('note')
-    .alias('n')
-    .description('Manage notes');
+  const noteCmd = program.command('note').alias('n').description('Manage notes');
 
   // Get global components
-  const getComponents = () => (global as any).cliComponents as {
-    config: ConfigManager;
-    apiClient: ApiClient;
-    formatter: OutputFormatter;
-  };
+  const getComponents = () =>
+    (global as any).cliComponents as {
+      config: ConfigManager;
+      apiClient: ApiClient;
+      formatter: OutputFormatter;
+    };
 
   noteCmd
     .command('list')
@@ -27,7 +25,7 @@ export function registerNoteCommands(program: Command): void {
     .option('-l, --limit <number>', 'limit number of results', '20')
     .option('--sort <field>', 'sort by field', 'createdAt')
     .option('--order <direction>', 'sort order (asc/desc)', 'desc')
-    .action(async (options) => {
+    .action(async options => {
       const { apiClient, formatter } = getComponents();
 
       try {
@@ -42,7 +40,7 @@ export function registerNoteCommands(program: Command): void {
         if (options.pinned) params.pinned = 'true';
 
         const notes = await apiClient.getNotes(params);
-        
+
         if (!notes || notes.length === 0) {
           formatter.info('No notes found');
           return;
@@ -53,7 +51,9 @@ export function registerNoteCommands(program: Command): void {
           headers: ['ID', 'Title', 'Category', 'Pinned', 'Task ID', 'Created'],
         });
       } catch (error) {
-        formatter.error(`Failed to list notes: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to list notes: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });
@@ -66,7 +66,7 @@ export function registerNoteCommands(program: Command): void {
 
       try {
         const note = await apiClient.getNote(id);
-        
+
         if (!note) {
           formatter.error(`Note ${id} not found`);
           process.exit(1);
@@ -74,7 +74,9 @@ export function registerNoteCommands(program: Command): void {
 
         formatter.output(note);
       } catch (error) {
-        formatter.error(`Failed to get note: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to get note: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });
@@ -89,7 +91,7 @@ export function registerNoteCommands(program: Command): void {
     .option('--task <taskId>', 'link to task ID')
     .option('--pin', 'pin the note')
     .option('-i, --interactive', 'interactive mode')
-    .action(async (options) => {
+    .action(async options => {
       const { apiClient, formatter } = getComponents();
 
       let noteData: any = {};
@@ -157,7 +159,9 @@ export function registerNoteCommands(program: Command): void {
         formatter.success(`Note created successfully: ${note.id}`);
         formatter.output(note);
       } catch (error) {
-        formatter.error(`Failed to create note: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to create note: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });
@@ -233,7 +237,9 @@ export function registerNoteCommands(program: Command): void {
         formatter.success('Note updated successfully');
         formatter.output(updatedNote);
       } catch (error) {
-        formatter.error(`Failed to update note: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to update note: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });
@@ -272,7 +278,9 @@ export function registerNoteCommands(program: Command): void {
         await apiClient.deleteNote(id);
         formatter.success(`Note ${id} deleted successfully`);
       } catch (error) {
-        formatter.error(`Failed to delete note: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to delete note: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });
@@ -292,7 +300,7 @@ export function registerNoteCommands(program: Command): void {
         if (options.limit) searchParams.limit = options.limit;
 
         const notes = await apiClient.searchNotes(query);
-        
+
         if (!notes || notes.length === 0) {
           formatter.info(`No notes found matching "${query}"`);
           return;
@@ -303,7 +311,9 @@ export function registerNoteCommands(program: Command): void {
           headers: ['ID', 'Title', 'Category', 'Content'],
         });
       } catch (error) {
-        formatter.error(`Failed to search notes: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to search notes: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });
@@ -318,7 +328,9 @@ export function registerNoteCommands(program: Command): void {
         await apiClient.updateNote(id, { pinned: true });
         formatter.success(`Note ${id} pinned successfully`);
       } catch (error) {
-        formatter.error(`Failed to pin note: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to pin note: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });
@@ -333,7 +345,9 @@ export function registerNoteCommands(program: Command): void {
         await apiClient.updateNote(id, { pinned: false });
         formatter.success(`Note ${id} unpinned successfully`);
       } catch (error) {
-        formatter.error(`Failed to unpin note: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to unpin note: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });

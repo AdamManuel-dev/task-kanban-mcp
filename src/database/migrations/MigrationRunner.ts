@@ -1,21 +1,19 @@
-import { Database } from 'sqlite3';
+import type { Database } from 'sqlite3';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { promisify } from 'util';
 import { logger } from '../../utils/logger';
-import {
-  Migration,
-  MigrationFile,
-  AppliedMigration,
-  MigrationOptions,
-} from './types';
+import type { Migration, MigrationFile, AppliedMigration, MigrationOptions } from './types';
 
 export class MigrationRunner {
-  private db: Database;
-  private migrationsPath: string;
-  private tableName: string;
-  private validateChecksums: boolean;
+  private readonly db: Database;
+
+  private readonly migrationsPath: string;
+
+  private readonly tableName: string;
+
+  private readonly validateChecksums: boolean;
 
   constructor(db: Database, options: MigrationOptions = {}) {
     this.db = db;
@@ -29,7 +27,7 @@ export class MigrationRunner {
    */
   async initialize(): Promise<void> {
     const run = promisify(this.db.run.bind(this.db));
-    
+
     await run(`
       CREATE TABLE IF NOT EXISTS ${this.tableName} (
         id TEXT PRIMARY KEY,
@@ -37,7 +35,7 @@ export class MigrationRunner {
         checksum TEXT NOT NULL
       )
     `);
-    
+
     logger.info('Migration table initialized');
   }
 
@@ -46,11 +44,11 @@ export class MigrationRunner {
    */
   async getAppliedMigrations(): Promise<AppliedMigration[]> {
     const all = promisify(this.db.all.bind(this.db));
-    
-    const result = await all(
+
+    const result = (await all(
       `SELECT id, applied_at, checksum FROM ${this.tableName} ORDER BY id`
-    ) as AppliedMigration[];
-    
+    )) as AppliedMigration[];
+
     return result || [];
   }
 
@@ -66,7 +64,7 @@ export class MigrationRunner {
         if (file.endsWith('.ts') && file !== 'types.ts' && file !== 'MigrationRunner.ts') {
           const filePath = path.join(this.migrationsPath, file);
           const content = await fs.readFile(filePath, 'utf-8');
-          
+
           // Extract migration info from filename (e.g., 001_create_initial_schema.ts)
           const match = file.match(/^(\d{3})_(.+)\.ts$/);
           if (!match) {
@@ -79,7 +77,7 @@ export class MigrationRunner {
             logger.warn(`Invalid migration filename format: ${file}`);
             continue;
           }
-          
+
           const id = `${number}_${description}`;
           const checksum = this.calculateChecksum(content);
 
@@ -110,7 +108,7 @@ export class MigrationRunner {
   async loadMigration(file: MigrationFile): Promise<Migration> {
     const filename = `${file.id}.ts`;
     const filePath = path.join(this.migrationsPath, filename);
-    
+
     // Dynamic import of the migration file
     const migrationModule = await import(filePath);
     const migration = migrationModule.default || migrationModule;
@@ -137,7 +135,7 @@ export class MigrationRunner {
     const applied = await this.getAppliedMigrations();
     const appliedIds = new Set(applied.map(m => m.id));
     const files = await this.getMigrationFiles();
-    
+
     let migrationsRun = 0;
 
     for (const file of files) {
@@ -148,8 +146,8 @@ export class MigrationRunner {
           if (appliedMigration && appliedMigration.checksum !== file.checksum) {
             throw new Error(
               `Migration ${file.id} has been modified after being applied. ` +
-              `Expected checksum: ${appliedMigration.checksum}, ` +
-              `Current checksum: ${file.checksum}`
+                `Expected checksum: ${appliedMigration.checksum}, ` +
+                `Current checksum: ${file.checksum}`
             );
           }
         }
@@ -161,9 +159,9 @@ export class MigrationRunner {
       }
 
       logger.info(`Running migration: ${file.id} - ${file.description}`);
-      
+
       const migration = await this.loadMigration(file);
-      
+
       try {
         await this.runMigration(migration, file.checksum, 'up');
         migrationsRun++;
@@ -192,7 +190,7 @@ export class MigrationRunner {
     const applied = await this.getAppliedMigrations();
     const files = await this.getMigrationFiles();
     const fileMap = new Map(files.map(f => [f.id, f]));
-    
+
     let migrationsRolledBack = 0;
 
     // Process in reverse order
@@ -201,7 +199,7 @@ export class MigrationRunner {
       if (!appliedMigration) {
         continue;
       }
-      
+
       if (target && appliedMigration.id <= target) {
         break;
       }
@@ -214,9 +212,9 @@ export class MigrationRunner {
       }
 
       logger.info(`Rolling back migration: ${file.id} - ${file.description}`);
-      
+
       const migration = await this.loadMigration(file);
-      
+
       try {
         await this.rollbackMigration(migration);
         migrationsRolledBack++;
@@ -249,10 +247,8 @@ export class MigrationRunner {
     const applied = await this.getAppliedMigrations();
     const appliedIds = new Set(applied.map(m => m.id));
     const files = await this.getMigrationFiles();
-    
-    const pending = files
-      .filter(f => !appliedIds.has(f.id))
-      .map(f => f.id);
+
+    const pending = files.filter(f => !appliedIds.has(f.id)).map(f => f.id);
 
     return {
       applied: applied.map(m => m.id),
@@ -269,29 +265,30 @@ export class MigrationRunner {
     checksum: string,
     direction: 'up' | 'down'
   ): Promise<void> {
-    const run = promisify(this.db.run.bind(this.db)) as (sql: string, ...params: any[]) => Promise<any>;
-    
+    const run = promisify(this.db.run.bind(this.db)) as (
+      sql: string,
+      ...params: any[]
+    ) => Promise<any>;
+
     // Start transaction
     await run('BEGIN TRANSACTION');
-    
+
     try {
       // Run the migration
       await migration[direction](this.db);
-      
+
       if (direction === 'up') {
         // Record the migration
         await run(
           `INSERT INTO ${this.tableName} (id, checksum) VALUES (?, ?)`,
-          migration.id, checksum
+          migration.id,
+          checksum
         );
       } else {
         // Remove the migration record
-        await run(
-          `DELETE FROM ${this.tableName} WHERE id = ?`,
-          migration.id
-        );
+        await run(`DELETE FROM ${this.tableName} WHERE id = ?`, migration.id);
       }
-      
+
       // Commit transaction
       await run('COMMIT');
     } catch (error) {
@@ -318,12 +315,11 @@ export class MigrationRunner {
   /**
    * Create a new migration file
    */
-  static async createMigration(
-    name: string,
-    migrationsPath: string
-  ): Promise<string> {
+  static async createMigration(name: string, migrationsPath: string): Promise<string> {
     const timestamp = Date.now();
-    const number = String(Math.floor(timestamp / 1000)).slice(-3).padStart(3, '0');
+    const number = String(Math.floor(timestamp / 1000))
+      .slice(-3)
+      .padStart(3, '0');
     const filename = `${number}_${name.replace(/\s+/g, '_').toLowerCase()}.ts`;
     const filePath = path.join(migrationsPath, filename);
 
@@ -354,7 +350,7 @@ export async function down(db: Database): Promise<void> {
 
     await fs.writeFile(filePath, template);
     logger.info(`Created migration: ${filename}`);
-    
+
     return filename;
   }
 }

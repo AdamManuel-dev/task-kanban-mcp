@@ -33,7 +33,7 @@ describe('MigrationRunner', () => {
     }
   });
 
-  afterEach((done) => {
+  afterEach(done => {
     db.close(done);
   });
 
@@ -97,7 +97,7 @@ export async function down(db) {
       );
 
       const files = await migrationRunner.getMigrationFiles();
-      
+
       expect(files).toHaveLength(2);
       expect(files[0].id).toBe('001_create_users');
       expect(files[0].description).toBe('create users');
@@ -226,7 +226,7 @@ export async function down(db) {
       );
 
       await migrationRunner.initialize();
-      
+
       // Run migration twice
       const count1 = await migrationRunner.up();
       const count2 = await migrationRunner.up();
@@ -276,7 +276,7 @@ export async function down(db) {
       );
 
       await migrationRunner.initialize();
-      
+
       // Run only up to first migration
       const count = await migrationRunner.up('001_create_users');
       expect(count).toBe(1);
@@ -357,13 +357,10 @@ export async function down(db) {
 
       // Check that no table was created
       const tables = await new Promise<any[]>((resolve, reject) => {
-        db.all(
-          "SELECT name FROM sqlite_master WHERE type='table' AND name='test'",
-          (err, rows) => {
-            if (err) reject(err);
-            else resolve(rows);
-          }
-        );
+        db.all("SELECT name FROM sqlite_master WHERE type='table' AND name='test'", (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        });
       });
 
       expect(tables).toHaveLength(0);
@@ -373,15 +370,15 @@ export async function down(db) {
   describe('static methods', () => {
     it('should create migration file with correct template', async () => {
       const filename = await MigrationRunner.createMigration('test_migration', tempDir);
-      
+
       expect(filename).toMatch(/^\d{3}_test_migration\.ts$/);
-      
+
       const filePath = path.join(tempDir, filename);
       const content = await fs.readFile(filePath, 'utf-8');
-      
+
       expect(content).toContain('export async function up(db: Database)');
       expect(content).toContain('export async function down(db: Database)');
-      expect(content).toContain('import { Database } from \'sqlite3\'');
+      expect(content).toContain("import { Database } from 'sqlite3'");
     });
   });
 });

@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -39,7 +39,7 @@ declare global {
 
 export function responseFormattingMiddleware(req: Request, res: Response, next: NextFunction) {
   // Add success response helper
-  res.apiSuccess = function<T>(data: T, meta?: Partial<ApiResponse['meta']>) {
+  res.apiSuccess = function <T>(data: T, meta?: Partial<ApiResponse['meta']>) {
     const response: ApiResponse<T> = {
       success: true,
       data,
@@ -54,7 +54,7 @@ export function responseFormattingMiddleware(req: Request, res: Response, next: 
   };
 
   // Add error response helper
-  res.apiError = function(code: string, message: string, statusCode = 500, details?: any) {
+  res.apiError = function (code: string, message: string, statusCode = 500, details?: any) {
     const response: ApiResponse = {
       success: false,
       error: {
@@ -72,7 +72,7 @@ export function responseFormattingMiddleware(req: Request, res: Response, next: 
   };
 
   // Add pagination response helper
-  res.apiPagination = function<T>(
+  res.apiPagination = function <T>(
     data: T[],
     page: number,
     limit: number,
@@ -104,4 +104,37 @@ export function responseFormattingMiddleware(req: Request, res: Response, next: 
   };
 
   next();
+}
+
+/**
+ * Format success response
+ */
+export function formatSuccessResponse<T>(data: T, message?: string): ApiResponse<T> {
+  return {
+    success: true,
+    data,
+    meta: {
+      timestamp: new Date().toISOString(),
+      requestId: '', // Will be set by middleware if available
+      ...(message && { message }),
+    },
+  };
+}
+
+/**
+ * Format error response
+ */
+export function formatErrorResponse(message: string, details?: any): ApiResponse {
+  return {
+    success: false,
+    error: {
+      code: 'ERROR',
+      message,
+      details,
+    },
+    meta: {
+      timestamp: new Date().toISOString(),
+      requestId: '', // Will be set by middleware if available
+    },
+  };
 }

@@ -1,20 +1,20 @@
 /**
  * Database maintenance utilities for SQLite optimization and cleanup
- * 
+ *
  * @module database/maintenance
  * @description This module provides utilities for database maintenance operations
  * including vacuum, analyze, integrity checks, and performance optimization.
  * These operations help maintain database performance and ensure data integrity.
- * 
+ *
  * @example
  * ```typescript
  * import { MaintenanceManager } from '@/database/maintenance';
- * 
+ *
  * const maintenance = new MaintenanceManager(dbConnection);
- * 
+ *
  * // Run full maintenance
  * await maintenance.performFullMaintenance();
- * 
+ *
  * // Run specific operations
  * await maintenance.vacuum();
  * await maintenance.analyze();
@@ -64,7 +64,7 @@ export interface MaintenanceResult {
 
 /**
  * Database maintenance manager for SQLite operations
- * 
+ *
  * @class MaintenanceManager
  * @description Provides comprehensive database maintenance capabilities including
  * vacuum operations, analyze statistics updates, integrity checks, and automated
@@ -72,6 +72,7 @@ export interface MaintenanceResult {
  */
 export class MaintenanceManager {
   private readonly db: DatabaseConnection;
+
   private readonly config: MaintenanceConfig;
 
   constructor(db: DatabaseConnection, config: Partial<MaintenanceConfig> = {}) {
@@ -88,29 +89,31 @@ export class MaintenanceManager {
 
   /**
    * Perform VACUUM operation to reclaim free space and optimize database
-   * 
+   *
    * @param {Object} options - Vacuum options
    * @param {boolean} [options.incremental=false] - Use incremental vacuum
    * @param {number} [options.pages] - Number of pages to vacuum (incremental only)
    * @returns {Promise<MaintenanceResult>} Operation result
-   * 
+   *
    * @example
    * ```typescript
    * // Full vacuum
    * const result = await maintenance.vacuum();
    * console.log(`Reclaimed ${result.spaceReclaimed} bytes`);
-   * 
+   *
    * // Incremental vacuum
    * await maintenance.vacuum({ incremental: true, pages: 1000 });
    * ```
    */
-  public async vacuum(options: {
-    incremental?: boolean;
-    pages?: number;
-  } = {}): Promise<MaintenanceResult> {
+  public async vacuum(
+    options: {
+      incremental?: boolean;
+      pages?: number;
+    } = {}
+  ): Promise<MaintenanceResult> {
     const startTime = Date.now();
     const operation = options.incremental ? 'incremental_vacuum' : 'vacuum';
-    
+
     try {
       if (this.config.enableLogging) {
         logger.info('Starting vacuum operation', { operation, options });
@@ -143,7 +146,8 @@ export class MaintenanceManager {
         spaceReclaimed,
         details: {
           pagesFreed: Math.floor(spaceReclaimed / statsAfter.pageSize),
-          percentageReduced: sizeBefore > 0 ? (spaceReclaimed / sizeBefore * 100).toFixed(2) : '0',
+          percentageReduced:
+            sizeBefore > 0 ? ((spaceReclaimed / sizeBefore) * 100).toFixed(2) : '0',
         },
       };
 
@@ -151,7 +155,7 @@ export class MaintenanceManager {
         logger.info('Vacuum operation completed', {
           duration: `${duration}ms`,
           spaceReclaimed: `${(spaceReclaimed / 1024 / 1024).toFixed(2)}MB`,
-          percentageReduced: `${result.details?.['percentageReduced']}%`,
+          percentageReduced: `${result.details?.percentageReduced}%`,
         });
       }
 
@@ -179,23 +183,25 @@ export class MaintenanceManager {
 
   /**
    * Perform ANALYZE operation to update query planner statistics
-   * 
+   *
    * @param {Object} options - Analyze options
    * @param {string[]} [options.tables] - Specific tables to analyze (default: all)
    * @returns {Promise<MaintenanceResult>} Operation result
-   * 
+   *
    * @example
    * ```typescript
    * // Analyze all tables
    * await maintenance.analyze();
-   * 
+   *
    * // Analyze specific tables
    * await maintenance.analyze({ tables: ['tasks', 'boards'] });
    * ```
    */
-  public async analyze(options: {
-    tables?: string[];
-  } = {}): Promise<MaintenanceResult> {
+  public async analyze(
+    options: {
+      tables?: string[];
+    } = {}
+  ): Promise<MaintenanceResult> {
     const startTime = Date.now();
     const operation = 'analyze';
 
@@ -204,7 +210,7 @@ export class MaintenanceManager {
         logger.info('Starting analyze operation', { options });
       }
 
-      const tables = options.tables || await this.getAllTableNames();
+      const tables = options.tables || (await this.getAllTableNames());
       const analyzedTables: string[] = [];
 
       for (const table of tables) {
@@ -265,9 +271,9 @@ export class MaintenanceManager {
 
   /**
    * Optimize database by running PRAGMA optimize
-   * 
+   *
    * @returns {Promise<MaintenanceResult>} Operation result
-   * 
+   *
    * @example
    * ```typescript
    * const result = await maintenance.optimize();
@@ -325,9 +331,9 @@ export class MaintenanceManager {
 
   /**
    * Check and defragment WAL file if needed
-   * 
+   *
    * @returns {Promise<MaintenanceResult>} Operation result
-   * 
+   *
    * @example
    * ```typescript
    * const result = await maintenance.checkpointWal();
@@ -406,21 +412,21 @@ export class MaintenanceManager {
 
   /**
    * Perform comprehensive database maintenance
-   * 
+   *
    * @param {Object} options - Maintenance options
    * @param {boolean} [options.includeVacuum=true] - Include vacuum operation
    * @param {boolean} [options.includeAnalyze=true] - Include analyze operation
    * @param {boolean} [options.includeOptimize=true] - Include optimize operation
    * @param {boolean} [options.includeWalCheckpoint=true] - Include WAL checkpoint
    * @returns {Promise<MaintenanceResult[]>} Array of operation results
-   * 
+   *
    * @example
    * ```typescript
    * // Full maintenance
    * const results = await maintenance.performFullMaintenance();
    * const successful = results.filter(r => r.success).length;
    * console.log(`${successful}/${results.length} operations successful`);
-   * 
+   *
    * // Selective maintenance
    * const results = await maintenance.performFullMaintenance({
    *   includeVacuum: false,
@@ -428,12 +434,14 @@ export class MaintenanceManager {
    * });
    * ```
    */
-  public async performFullMaintenance(options: {
-    includeVacuum?: boolean;
-    includeAnalyze?: boolean;
-    includeOptimize?: boolean;
-    includeWalCheckpoint?: boolean;
-  } = {}): Promise<MaintenanceResult[]> {
+  public async performFullMaintenance(
+    options: {
+      includeVacuum?: boolean;
+      includeAnalyze?: boolean;
+      includeOptimize?: boolean;
+      includeWalCheckpoint?: boolean;
+    } = {}
+  ): Promise<MaintenanceResult[]> {
     const {
       includeVacuum = true,
       includeAnalyze = true,
@@ -506,9 +514,9 @@ export class MaintenanceManager {
 
   /**
    * Get maintenance recommendations based on database statistics
-   * 
+   *
    * @returns {Promise<{recommendations: string[], stats: any}>} Maintenance recommendations
-   * 
+   *
    * @example
    * ```typescript
    * const { recommendations, stats } = await maintenance.getRecommendations();
@@ -538,7 +546,9 @@ export class MaintenanceManager {
     try {
       const walMode = await this.db.queryOne<{ journal_mode: string }>('PRAGMA journal_mode');
       if (walMode?.journal_mode === 'wal') {
-        const walInfo = await this.db.queryOne<{ wal_size: number }>('PRAGMA wal_checkpoint(PASSIVE)');
+        const walInfo = await this.db.queryOne<{ wal_size: number }>(
+          'PRAGMA wal_checkpoint(PASSIVE)'
+        );
         if (walInfo && walInfo.wal_size > 1000) {
           recommendations.push('WAL file is large. Consider running WAL checkpoint.');
         }
@@ -552,7 +562,7 @@ export class MaintenanceManager {
       const lastAnalyze = await this.db.queryOne<{ value: string }>(`
         SELECT value FROM pragma_stats WHERE name = 'analyze_last_run'
       `);
-      
+
       if (!lastAnalyze) {
         recommendations.push('Statistics may be outdated. Run ANALYZE to update query planner.');
       }
@@ -562,7 +572,9 @@ export class MaintenanceManager {
 
     // General recommendations
     if (recommendations.length === 0) {
-      recommendations.push('Database appears to be in good condition. Regular maintenance recommended.');
+      recommendations.push(
+        'Database appears to be in good condition. Regular maintenance recommended.'
+      );
     }
 
     return {
@@ -579,7 +591,7 @@ export class MaintenanceManager {
 
   /**
    * Get all table names in the database
-   * 
+   *
    * @private
    * @returns {Promise<string[]>} Array of table names
    */
@@ -590,23 +602,23 @@ export class MaintenanceManager {
       AND name NOT LIKE 'sqlite_%'
       ORDER BY name
     `);
-    
+
     return tables.map(table => table.name);
   }
 }
 
 /**
  * Create a maintenance manager instance with database connection
- * 
+ *
  * @param {DatabaseConnection} db - Database connection instance
  * @param {Partial<MaintenanceConfig>} [config] - Optional configuration
  * @returns {MaintenanceManager} Configured maintenance manager
- * 
+ *
  * @example
  * ```typescript
  * import { dbConnection } from '@/database/connection';
  * import { createMaintenanceManager } from '@/database/maintenance';
- * 
+ *
  * const maintenance = createMaintenanceManager(dbConnection, {
  *   autoVacuum: true,
  *   vacuumThreshold: 20 // 20MB threshold

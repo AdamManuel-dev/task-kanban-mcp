@@ -1,13 +1,19 @@
 /**
  * BoardService Test Suite
- * 
+ *
  * Comprehensive tests for board management functionality including CRUD operations,
  * statistics, archiving, duplication, and column management.
  */
 
 import { BoardService } from '../../../src/services/BoardService';
 import { DatabaseConnection } from '../../../src/database/connection';
-import type { Board, BoardWithColumns, BoardWithStats, CreateBoardRequest, UpdateBoardRequest } from '../../../src/types';
+import type {
+  Board,
+  BoardWithColumns,
+  BoardWithStats,
+  CreateBoardRequest,
+  UpdateBoardRequest,
+} from '../../../src/types';
 
 describe('BoardService', () => {
   let boardService: BoardService;
@@ -35,7 +41,7 @@ describe('BoardService', () => {
       const boardData: CreateBoardRequest = {
         name: 'Test Board',
         description: 'A test board for unit testing',
-        color: '#2196F3'
+        color: '#2196F3',
       };
 
       const board = await boardService.createBoard(boardData);
@@ -52,7 +58,7 @@ describe('BoardService', () => {
 
     it('should create board with minimal required fields', async () => {
       const boardData: CreateBoardRequest = {
-        name: 'Minimal Test Board'
+        name: 'Minimal Test Board',
       };
 
       const board = await boardService.createBoard(boardData);
@@ -65,7 +71,7 @@ describe('BoardService', () => {
 
     it('should create default columns when creating a board', async () => {
       const boardData: CreateBoardRequest = {
-        name: 'Board with Columns Test'
+        name: 'Board with Columns Test',
       };
 
       const board = await boardService.createBoard(boardData);
@@ -73,7 +79,7 @@ describe('BoardService', () => {
 
       expect(boardWithColumns).toBeDefined();
       expect(boardWithColumns!.columns).toHaveLength(3);
-      
+
       const columnNames = boardWithColumns!.columns.map(col => col.name);
       expect(columnNames).toContain('Todo');
       expect(columnNames).toContain('In Progress');
@@ -81,14 +87,16 @@ describe('BoardService', () => {
     });
 
     it('should throw error for empty board name', async () => {
-      await expect(boardService.createBoard({
-        name: ''
-      })).rejects.toThrow();
+      await expect(
+        boardService.createBoard({
+          name: '',
+        })
+      ).rejects.toThrow();
     });
 
     it('should handle board creation with duplicate names', async () => {
       const boardData: CreateBoardRequest = {
-        name: 'Duplicate Name Board'
+        name: 'Duplicate Name Board',
       };
 
       // Create first board
@@ -109,7 +117,7 @@ describe('BoardService', () => {
       const board = await boardService.createBoard({
         name: 'Retrieval Test Board',
         description: 'Used for testing board retrieval operations',
-        color: '#4CAF50'
+        color: '#4CAF50',
       });
       testBoardId = board.id;
     });
@@ -136,7 +144,7 @@ describe('BoardService', () => {
       expect(boardWithColumns!.id).toBe(testBoardId);
       expect(boardWithColumns!.columns).toBeDefined();
       expect(boardWithColumns!.columns.length).toBeGreaterThan(0);
-      
+
       // Should have default columns
       const columnNames = boardWithColumns!.columns.map(col => col.name);
       expect(columnNames).toContain('Todo');
@@ -190,9 +198,9 @@ describe('BoardService', () => {
       await boardService.createBoard({ name: 'Z Board' });
       await boardService.createBoard({ name: 'A Board' });
 
-      const boards = await boardService.getBoards({ 
+      const boards = await boardService.getBoards({
         sort_by: 'name',
-        sort_order: 'asc'
+        sort_order: 'asc',
       });
 
       const names = boards.map(board => board.name);
@@ -208,14 +216,14 @@ describe('BoardService', () => {
       const board = await boardService.createBoard({
         name: 'Update Test Board',
         description: 'Original description',
-        color: '#FF5722'
+        color: '#FF5722',
       });
       testBoardId = board.id;
     });
 
     it('should update board name', async () => {
       const updatedBoard = await boardService.updateBoard(testBoardId, {
-        name: 'Updated Board Name'
+        name: 'Updated Board Name',
       });
 
       expect(updatedBoard.name).toBe('Updated Board Name');
@@ -228,7 +236,7 @@ describe('BoardService', () => {
 
     it('should update board description', async () => {
       const updatedBoard = await boardService.updateBoard(testBoardId, {
-        description: 'Updated description with more details'
+        description: 'Updated description with more details',
       });
 
       expect(updatedBoard.description).toBe('Updated description with more details');
@@ -236,7 +244,7 @@ describe('BoardService', () => {
 
     it('should update board color', async () => {
       const updatedBoard = await boardService.updateBoard(testBoardId, {
-        color: '#9C27B0'
+        color: '#9C27B0',
       });
 
       expect(updatedBoard.color).toBe('#9C27B0');
@@ -244,9 +252,9 @@ describe('BoardService', () => {
 
     it('should handle partial updates', async () => {
       const originalBoard = await boardService.getBoardById(testBoardId);
-      
+
       const updatedBoard = await boardService.updateBoard(testBoardId, {
-        color: '#E91E63'
+        color: '#E91E63',
       });
 
       expect(updatedBoard.name).toBe(originalBoard?.name); // Should remain unchanged
@@ -262,16 +270,18 @@ describe('BoardService', () => {
       await new Promise(resolve => setTimeout(resolve, 10));
 
       const updatedBoard = await boardService.updateBoard(testBoardId, {
-        name: 'Timestamp Test'
+        name: 'Timestamp Test',
       });
 
       expect(updatedBoard.updated_at).not.toBe(originalBoard!.updated_at);
     });
 
     it('should throw error for non-existent board', async () => {
-      await expect(boardService.updateBoard('non-existent-id', {
-        name: 'Should fail'
-      })).rejects.toThrow();
+      await expect(
+        boardService.updateBoard('non-existent-id', {
+          name: 'Should fail',
+        })
+      ).rejects.toThrow();
     });
   });
 
@@ -280,7 +290,7 @@ describe('BoardService', () => {
 
     beforeEach(async () => {
       const board = await boardService.createBoard({
-        name: 'Archive Test Board'
+        name: 'Archive Test Board',
       });
       testBoardId = board.id;
     });
@@ -328,7 +338,7 @@ describe('BoardService', () => {
       const board = await boardService.createBoard({
         name: 'Source Board for Duplication',
         description: 'This board will be duplicated',
-        color: '#FF9800'
+        color: '#FF9800',
       });
       sourceBoardId = board.id;
     });
@@ -356,7 +366,9 @@ describe('BoardService', () => {
       const duplicatedBoardWithColumns = await boardService.getBoardWithColumns(duplicatedBoard.id);
 
       expect(duplicatedBoardWithColumns).toBeDefined();
-      expect(duplicatedBoardWithColumns!.columns).toHaveLength(originalBoardWithColumns!.columns.length);
+      expect(duplicatedBoardWithColumns!.columns).toHaveLength(
+        originalBoardWithColumns!.columns.length
+      );
 
       // Column names should match
       const originalColumnNames = originalBoardWithColumns!.columns.map(col => col.name);
@@ -374,7 +386,7 @@ describe('BoardService', () => {
 
     beforeEach(async () => {
       const board = await boardService.createBoard({
-        name: 'Delete Test Board'
+        name: 'Delete Test Board',
       });
       testBoardId = board.id;
     });
@@ -410,7 +422,7 @@ describe('BoardService', () => {
       const mockDb = {
         query: jest.fn().mockRejectedValue(new Error('Database connection lost')),
         execute: jest.fn().mockRejectedValue(new Error('Database connection lost')),
-        transaction: jest.fn().mockRejectedValue(new Error('Database connection lost'))
+        transaction: jest.fn().mockRejectedValue(new Error('Database connection lost')),
       };
 
       const errorBoardService = new BoardService(mockDb as any);
@@ -419,16 +431,18 @@ describe('BoardService', () => {
     });
 
     it('should validate board name is not empty', async () => {
-      await expect(boardService.createBoard({
-        name: '   ' // Only whitespace
-      })).rejects.toThrow();
+      await expect(
+        boardService.createBoard({
+          name: '   ', // Only whitespace
+        })
+      ).rejects.toThrow();
     });
 
     it('should handle invalid color formats gracefully', async () => {
       // Service should accept any string as color (validation can be done at API layer)
       const board = await boardService.createBoard({
         name: 'Invalid Color Test',
-        color: 'not-a-valid-color'
+        color: 'not-a-valid-color',
       });
 
       expect(board.color).toBe('not-a-valid-color');
@@ -440,7 +454,7 @@ describe('BoardService', () => {
 
     beforeEach(async () => {
       const board = await boardService.createBoard({
-        name: 'Integration Test Board'
+        name: 'Integration Test Board',
       });
       testBoardId = board.id;
     });
@@ -448,9 +462,9 @@ describe('BoardService', () => {
     it('should maintain referential integrity when deleting boards with tasks', async () => {
       // This test would need TaskService integration
       // For now, we'll test that the board can be deleted even if it had tasks
-      
+
       await boardService.deleteBoard(testBoardId);
-      
+
       const deletedBoard = await boardService.getBoardById(testBoardId);
       expect(deletedBoard).toBeNull();
     });

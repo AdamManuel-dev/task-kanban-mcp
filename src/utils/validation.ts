@@ -1,27 +1,27 @@
 /**
  * Validation utilities and schemas for MCP Kanban
- * 
+ *
  * @module utils/validation
  * @description Provides comprehensive input validation using Zod schemas and business rules.
  * Includes validation schemas for all entity types, common validation patterns, business rule
  * enforcement, and error handling utilities. Ensures data integrity and provides clear
  * validation error messages for API consumers.
- * 
+ *
  * @example
  * ```typescript
  * import { BoardValidation, validateInput, BusinessRules } from '@/utils/validation';
- * 
+ *
  * // Validate board creation data
  * const boardData = validateInput(BoardValidation.create, {
  *   name: 'Project Board',
  *   description: 'Main project tracking',
  *   color: '#2196F3'
  * });
- * 
+ *
  * // Apply business rules
  * BusinessRules.board.validateName(boardData.name);
  * BusinessRules.board.validateColor(boardData.color);
- * 
+ *
  * // Validate task data
  * const taskData = validateInput(TaskValidation.create, {
  *   title: 'Implement feature',
@@ -36,7 +36,7 @@ import type { ServiceError } from '@/types';
 
 /**
  * Board validation schemas
- * 
+ *
  * @constant {Object} BoardValidation
  * @description Zod validation schemas for board operations including creation and updates
  */
@@ -44,20 +44,26 @@ export const BoardValidation = {
   create: z.object({
     name: z.string().min(1, 'Board name is required').max(100, 'Board name too long'),
     description: z.string().max(500, 'Description too long').optional(),
-    color: z.string().regex(/^#[0-9A-F]{6}$/i, 'Invalid color format').optional(),
+    color: z
+      .string()
+      .regex(/^#[0-9A-F]{6}$/i, 'Invalid color format')
+      .optional(),
   }),
 
   update: z.object({
     name: z.string().min(1, 'Board name is required').max(100, 'Board name too long').optional(),
     description: z.string().max(500, 'Description too long').optional(),
-    color: z.string().regex(/^#[0-9A-F]{6}$/i, 'Invalid color format').optional(),
+    color: z
+      .string()
+      .regex(/^#[0-9A-F]{6}$/i, 'Invalid color format')
+      .optional(),
     archived: z.boolean().optional(),
   }),
 };
 
 /**
  * Task validation schemas
- * 
+ *
  * @constant {Object} TaskValidation
  * @description Zod validation schemas for task operations including creation, updates, and dependencies
  */
@@ -101,7 +107,7 @@ export const TaskValidation = {
 
 /**
  * Note validation schemas
- * 
+ *
  * @constant {Object} NoteValidation
  * @description Zod validation schemas for note operations including creation, updates, and search
  */
@@ -133,21 +139,27 @@ export const NoteValidation = {
 
 /**
  * Tag validation schemas
- * 
+ *
  * @constant {Object} TagValidation
  * @description Zod validation schemas for tag operations including creation, updates, and assignments
  */
 export const TagValidation = {
   create: z.object({
     name: z.string().min(1, 'Tag name is required').max(50, 'Tag name too long'),
-    color: z.string().regex(/^#[0-9A-F]{6}$/i, 'Invalid color format').optional(),
+    color: z
+      .string()
+      .regex(/^#[0-9A-F]{6}$/i, 'Invalid color format')
+      .optional(),
     description: z.string().max(200, 'Description too long').optional(),
     parent_tag_id: z.string().uuid('Invalid parent tag ID').optional(),
   }),
 
   update: z.object({
     name: z.string().min(1, 'Tag name is required').max(50, 'Tag name too long').optional(),
-    color: z.string().regex(/^#[0-9A-F]{6}$/i, 'Invalid color format').optional(),
+    color: z
+      .string()
+      .regex(/^#[0-9A-F]{6}$/i, 'Invalid color format')
+      .optional(),
     description: z.string().max(200, 'Description too long').optional(),
     parent_tag_id: z.string().uuid('Invalid parent tag ID').optional(),
   }),
@@ -160,7 +172,7 @@ export const TagValidation = {
 
 /**
  * Pagination validation schema
- * 
+ *
  * @constant {z.ZodSchema} PaginationValidation
  * @description Validates pagination parameters for list operations
  */
@@ -173,7 +185,7 @@ export const PaginationValidation = z.object({
 
 /**
  * Filter validation schema
- * 
+ *
  * @constant {z.ZodSchema} FilterValidation
  * @description Validates filtering parameters for search and list operations
  */
@@ -184,7 +196,7 @@ export const FilterValidation = z.object({
 
 /**
  * Custom validation error class
- * 
+ *
  * @class ValidationError
  * @extends Error
  * @implements ServiceError
@@ -192,12 +204,14 @@ export const FilterValidation = z.object({
  */
 export class ValidationError extends Error implements ServiceError {
   public readonly code = 'VALIDATION_ERROR';
+
   public readonly statusCode = 400;
+
   public readonly details: any;
 
   /**
    * Create a validation error
-   * 
+   *
    * @param {string} message - Error message
    * @param {any} [details] - Additional error details (e.g., Zod error array)
    */
@@ -210,13 +224,13 @@ export class ValidationError extends Error implements ServiceError {
 
 /**
  * Validate input data against a Zod schema
- * 
+ *
  * @template T - Expected return type after validation
  * @param {z.ZodSchema<T>} schema - Zod schema to validate against
  * @param {unknown} data - Input data to validate
  * @returns {T} Validated and typed data
  * @throws {ValidationError} If validation fails with detailed error information
- * 
+ *
  * @example
  * ```typescript
  * const boardData = validateInput(BoardValidation.create, {
@@ -240,13 +254,13 @@ export function validateInput<T>(schema: z.ZodSchema<T>, data: unknown): T {
 
 /**
  * Validate optional input data against a Zod schema
- * 
+ *
  * @template T - Expected return type after validation
  * @param {z.ZodSchema<T>} schema - Zod schema to validate against
  * @param {unknown} data - Input data to validate (may be null/undefined)
  * @returns {T | undefined} Validated data or undefined if input was null/undefined
  * @throws {ValidationError} If validation fails
- * 
+ *
  * @example
  * ```typescript
  * const updateData = validateOptionalInput(BoardValidation.update, requestBody);
@@ -264,7 +278,7 @@ export function validateOptionalInput<T>(schema: z.ZodSchema<T>, data: unknown):
 
 /**
  * Business rules and domain-specific validation functions
- * 
+ *
  * @constant {Object} BusinessRules
  * @description Collection of business rule validators organized by entity type.
  * These enforce domain-specific constraints beyond basic schema validation.
@@ -276,7 +290,7 @@ export const BusinessRules = {
   board: {
     /**
      * Validate board name format and content
-     * 
+     *
      * @param {string} name - Board name to validate
      * @throws {ValidationError} If name format is invalid
      */
@@ -291,13 +305,21 @@ export const BusinessRules = {
 
     /**
      * Validate board color against recommended palette
-     * 
+     *
      * @param {string} color - Hex color code to validate
      */
     validateColor: (color: string): void => {
       const validColors = [
-        '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
-        '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'
+        '#FF6B6B',
+        '#4ECDC4',
+        '#45B7D1',
+        '#96CEB4',
+        '#FFEAA7',
+        '#DDA0DD',
+        '#98D8C8',
+        '#F7DC6F',
+        '#BB8FCE',
+        '#85C1E9',
       ];
       if (!validColors.includes(color.toUpperCase())) {
         // Allow any valid hex color, but warn about recommended colors
@@ -311,7 +333,7 @@ export const BusinessRules = {
   task: {
     /**
      * Validate task title format and length
-     * 
+     *
      * @param {string} title - Task title to validate
      * @throws {ValidationError} If title format is invalid
      */
@@ -326,7 +348,7 @@ export const BusinessRules = {
 
     /**
      * Validate task priority value
-     * 
+     *
      * @param {number} priority - Priority value to validate (0-10)
      * @throws {ValidationError} If priority is invalid
      */
@@ -341,7 +363,7 @@ export const BusinessRules = {
 
     /**
      * Validate estimated hours value
-     * 
+     *
      * @param {number} hours - Estimated hours to validate
      * @throws {ValidationError} If hours value is invalid
      */
@@ -356,14 +378,14 @@ export const BusinessRules = {
 
     /**
      * Validate due date constraints
-     * 
+     *
      * @param {Date} dueDate - Due date to validate
      * @throws {ValidationError} If due date is invalid
      */
     validateDueDate: (dueDate: Date): void => {
       const now = new Date();
       const oneYearFromNow = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate());
-      
+
       if (dueDate < now) {
         // Allow past due dates for historical tasks
       }
@@ -374,25 +396,26 @@ export const BusinessRules = {
 
     /**
      * Validate task status transitions
-     * 
+     *
      * @param {string} currentStatus - Current task status
      * @param {string} newStatus - Target status
      * @throws {ValidationError} If transition is invalid
      */
     validateStatusTransition: (currentStatus: string, newStatus: string): void => {
       const validTransitions: Record<string, string[]> = {
-        'todo': ['in_progress', 'blocked', 'archived'],
-        'in_progress': ['done', 'todo', 'blocked', 'archived'],
-        'done': ['todo', 'in_progress', 'archived'],
-        'blocked': ['todo', 'in_progress', 'archived'],
-        'archived': ['todo', 'in_progress', 'done', 'blocked'],
+        todo: ['in_progress', 'blocked', 'archived'],
+        in_progress: ['done', 'todo', 'blocked', 'archived'],
+        done: ['todo', 'in_progress', 'archived'],
+        blocked: ['todo', 'in_progress', 'archived'],
+        archived: ['todo', 'in_progress', 'done', 'blocked'],
       };
 
       if (!validTransitions[currentStatus]?.includes(newStatus)) {
-        throw new ValidationError(`Invalid status transition from ${currentStatus} to ${newStatus}`);
+        throw new ValidationError(
+          `Invalid status transition from ${currentStatus} to ${newStatus}`
+        );
       }
     },
-
   },
 
   /**
@@ -401,7 +424,7 @@ export const BusinessRules = {
   note: {
     /**
      * Validate note content format
-     * 
+     *
      * @param {string} content - Note content to validate
      * @throws {ValidationError} If content format is invalid
      */
@@ -416,7 +439,7 @@ export const BusinessRules = {
 
     /**
      * Validate note category
-     * 
+     *
      * @param {string} category - Note category to validate
      * @throws {ValidationError} If category is invalid
      */
@@ -434,7 +457,7 @@ export const BusinessRules = {
   tag: {
     /**
      * Validate tag name format and characters
-     * 
+     *
      * @param {string} name - Tag name to validate
      * @throws {ValidationError} If name format is invalid
      */
@@ -446,13 +469,15 @@ export const BusinessRules = {
         throw new ValidationError('Tag name cannot contain spaces');
       }
       if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
-        throw new ValidationError('Tag name can only contain letters, numbers, underscores, and hyphens');
+        throw new ValidationError(
+          'Tag name can only contain letters, numbers, underscores, and hyphens'
+        );
       }
     },
 
     /**
      * Validate tag hierarchy depth
-     * 
+     *
      * @param {number} depth - Hierarchy depth to validate
      * @throws {ValidationError} If depth exceeds limit
      */
@@ -469,7 +494,7 @@ export const BusinessRules = {
   context: {
     /**
      * Validate lookback days parameter
-     * 
+     *
      * @param {number} days - Number of days to validate
      * @throws {ValidationError} If days value is invalid
      */
@@ -484,7 +509,7 @@ export const BusinessRules = {
 
     /**
      * Validate maximum items parameter
-     * 
+     *
      * @param {number} maxItems - Maximum items count to validate
      * @throws {ValidationError} If maxItems value is invalid
      */
@@ -501,37 +526,37 @@ export const BusinessRules = {
 
 /**
  * Common validation patterns and reusable schemas
- * 
+ *
  * @constant {Object} CommonValidations
  * @description Collection of commonly used validation patterns for consistent validation across the application
  */
 export const CommonValidations = {
   /** UUID validation schema */
   uuid: z.string().uuid('Invalid UUID format'),
-  
+
   /** Positive integer validation schema */
   positiveInteger: z.number().int().positive('Must be a positive integer'),
-  
+
   /** Non-negative integer validation schema */
   nonNegativeInteger: z.number().int().min(0, 'Must be non-negative'),
-  
+
   /** Date string validation schema */
-  dateString: z.string().refine((date) => !isNaN(Date.parse(date)), 'Invalid date format'),
-  
+  dateString: z.string().refine(date => !isNaN(Date.parse(date)), 'Invalid date format'),
+
   /** Email validation schema */
   email: z.string().email('Invalid email format'),
-  
+
   /** URL validation schema */
   url: z.string().url('Invalid URL format'),
-  
+
   /** Hex color validation schema */
   color: z.string().regex(/^#[0-9A-F]{6}$/i, 'Invalid hex color format'),
-  
+
   /** URL slug validation schema */
   slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Invalid slug format'),
-  
+
   /** Sanitized string validation schema (prevents XSS) */
-  sanitizedString: z.string().refine((str) => {
+  sanitizedString: z.string().refine(str => {
     // Check for potential XSS/injection patterns
     const dangerousPatterns = [
       /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
@@ -544,19 +569,19 @@ export const CommonValidations = {
 
 /**
  * Create a validated service proxy that automatically validates method inputs
- * 
+ *
  * @template T - Service type
  * @param {T} service - Service instance to wrap with validation
  * @param {Record<string, z.ZodSchema>} validationConfig - Mapping of method names to validation schemas
  * @returns {T} Proxied service with automatic validation
- * 
+ *
  * @example
  * ```typescript
  * const validatedBoardService = createValidatedService(boardService, {
  *   createBoard: BoardValidation.create,
  *   updateBoard: BoardValidation.update
  * });
- * 
+ *
  * // Calls will be automatically validated
  * const board = await validatedBoardService.createBoard({
  *   name: 'Test Board'
@@ -570,7 +595,7 @@ export function createValidatedService<T extends object>(
   return new Proxy(service, {
     get(target, propKey) {
       const originalMethod = (target as any)[propKey];
-      
+
       if (typeof originalMethod !== 'function') {
         return originalMethod;
       }
@@ -585,7 +610,7 @@ export function createValidatedService<T extends object>(
         if (args.length > 0 && args[0] !== undefined) {
           validateInput(validationSchema, args[0]);
         }
-        
+
         return originalMethod.apply(this, args);
       };
     },

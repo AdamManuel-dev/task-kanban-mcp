@@ -1,25 +1,25 @@
 /**
  * Board Service - Core business logic for board management
- * 
+ *
  * @module services/BoardService
  * @description Provides comprehensive board management functionality including CRUD operations,
  * board statistics, archiving, duplication, and column management. Handles board lifecycle
  * and maintains referential integrity with associated tasks and columns.
- * 
+ *
  * @example
  * ```typescript
  * import { BoardService } from '@/services/BoardService';
  * import { dbConnection } from '@/database/connection';
- * 
+ *
  * const boardService = new BoardService(dbConnection);
- * 
+ *
  * // Create a new board with default columns
  * const board = await boardService.createBoard({
  *   name: 'Sprint Planning',
  *   description: 'Q4 feature development',
  *   color: '#2196F3'
  * });
- * 
+ *
  * // Get board with statistics
  * const stats = await boardService.getBoardWithStats(board.id);
  * console.log(`Tasks: ${stats.taskCount}, Completion: ${stats.completedTasks}/${stats.taskCount}`);
@@ -43,22 +43,22 @@ import type {
 
 /**
  * Board Service - Manages kanban board operations and lifecycle
- * 
+ *
  * @class BoardService
  * @description Provides comprehensive board management including creation, retrieval,
  * updates, archiving, and deletion. Automatically creates default columns (Todo, In Progress, Done)
  * for new boards and maintains referential integrity across related entities.
- * 
+ *
  * @example
  * ```typescript
  * const boardService = new BoardService(dbConnection);
- * 
+ *
  * // Create board with automatic column setup
  * const board = await boardService.createBoard({
  *   name: 'Project Alpha',
  *   description: 'Main project board'
  * });
- * 
+ *
  * // Get comprehensive board data
  * const boardWithColumns = await boardService.getBoardWithColumns(board.id);
  * ```
@@ -66,21 +66,21 @@ import type {
 export class BoardService {
   /**
    * Initialize BoardService with database connection
-   * 
+   *
    * @param {DatabaseConnection} db - Database connection instance
    */
-  constructor(private db: DatabaseConnection) {}
+  constructor(private readonly db: DatabaseConnection) {}
 
   /**
    * Create a new board with default columns
-   * 
+   *
    * @param {CreateBoardRequest} data - Board creation data
    * @param {string} data.name - Board name (required)
    * @param {string} [data.description] - Board description
    * @param {string} [data.color='#2196F3'] - Board color in hex format
    * @returns {Promise<Board>} Created board with generated ID and timestamps
    * @throws {ServiceError} If board creation fails
-   * 
+   *
    * @example
    * ```typescript
    * const board = await boardService.createBoard({
@@ -99,7 +99,7 @@ export class BoardService {
 
     const id = uuidv4();
     const now = new Date();
-    
+
     const board: Board = {
       id,
       name: data.name,
@@ -111,11 +111,22 @@ export class BoardService {
     };
 
     try {
-      await this.db.transaction(async (db) => {
-        await db.run(`
+      await this.db.transaction(async db => {
+        await db.run(
+          `
           INSERT INTO boards (id, name, description, color, created_at, updated_at, archived)
           VALUES (?, ?, ?, ?, ?, ?, ?)
-        `, [board.id, board.name, board.description, board.color, board.created_at, board.updated_at, board.archived]);
+        `,
+          [
+            board.id,
+            board.name,
+            board.description,
+            board.color,
+            board.created_at,
+            board.updated_at,
+            board.archived,
+          ]
+        );
 
         const defaultColumns = [
           { name: 'Todo', position: 0 },
@@ -125,10 +136,13 @@ export class BoardService {
 
         for (const col of defaultColumns) {
           const columnId = uuidv4();
-          await db.run(`
+          await db.run(
+            `
             INSERT INTO columns (id, board_id, name, position, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?)
-          `, [columnId, board.id, col.name, col.position, now, now]);
+          `,
+            [columnId, board.id, col.name, col.position, now, now]
+          );
         }
       });
 
@@ -142,11 +156,11 @@ export class BoardService {
 
   /**
    * Get a board by its ID
-   * 
+   *
    * @param {string} id - Board ID (UUID)
    * @returns {Promise<Board | null>} Board object or null if not found
    * @throws {ServiceError} If database query fails
-   * 
+   *
    * @example
    * ```typescript
    * const board = await boardService.getBoardById('board-123');
@@ -159,9 +173,12 @@ export class BoardService {
    */
   async getBoardById(id: string): Promise<Board | null> {
     try {
-      const board = await this.db.queryOne<Board>(`
+      const board = await this.db.queryOne<Board>(
+        `
         SELECT * FROM boards WHERE id = ? AND archived = FALSE
-      `, [id]);
+      `,
+        [id]
+      );
 
       if (board) {
         board.created_at = new Date(board.created_at);
@@ -177,11 +194,11 @@ export class BoardService {
 
   /**
    * Get a board with its associated columns
-   * 
+   *
    * @param {string} id - Board ID (UUID)
    * @returns {Promise<BoardWithColumns | null>} Board with columns array or null if not found
    * @throws {ServiceError} If database query fails
-   * 
+   *
    * @example
    * ```typescript
    * const boardWithColumns = await boardService.getBoardWithColumns('board-123');
@@ -198,11 +215,14 @@ export class BoardService {
       const board = await this.getBoardById(id);
       if (!board) return null;
 
-      const columns = await this.db.query<Column>(`
+      const columns = await this.db.query<Column>(
+        `
         SELECT * FROM columns 
         WHERE board_id = ? 
         ORDER BY position ASC
-      `, [id]);
+      `,
+        [id]
+      );
 
       columns.forEach(col => {
         col.created_at = new Date(col.created_at);
@@ -221,11 +241,11 @@ export class BoardService {
 
   /**
    * Get a board with comprehensive statistics
-   * 
+   *
    * @param {string} id - Board ID (UUID)
    * @returns {Promise<BoardWithStats | null>} Board with task statistics or null if not found
    * @throws {ServiceError} If database query fails
-   * 
+   *
    * @example
    * ```typescript
    * const stats = await boardService.getBoardWithStats('board-123');
@@ -250,7 +270,8 @@ export class BoardService {
           completed: number;
           in_progress: number;
           todo: number;
-        }>(`
+        }>(
+          `
           SELECT 
             COUNT(*) as total,
             SUM(CASE WHEN status = 'done' THEN 1 ELSE 0 END) as completed,
@@ -258,10 +279,15 @@ export class BoardService {
             SUM(CASE WHEN status = 'todo' THEN 1 ELSE 0 END) as todo
           FROM tasks 
           WHERE board_id = ? AND archived = FALSE
-        `, [id]),
-        this.db.queryOne<{ count: number }>(`
+        `,
+          [id]
+        ),
+        this.db.queryOne<{ count: number }>(
+          `
           SELECT COUNT(*) as count FROM columns WHERE board_id = ?
-        `, [id])
+        `,
+          [id]
+        ),
       ]);
 
       return {
@@ -280,7 +306,7 @@ export class BoardService {
 
   /**
    * Get multiple boards with filtering and pagination
-   * 
+   *
    * @param {PaginationOptions & FilterOptions} [options={}] - Query options
    * @param {number} [options.limit=50] - Maximum number of boards to return
    * @param {number} [options.offset=0] - Number of boards to skip
@@ -290,7 +316,7 @@ export class BoardService {
    * @param {string} [options.search] - Search term for name/description
    * @returns {Promise<Board[]>} Array of boards matching criteria
    * @throws {ServiceError} If database query fails
-   * 
+   *
    * @example
    * ```typescript
    * // Get recent active boards
@@ -299,7 +325,7 @@ export class BoardService {
    *   sortBy: 'updated_at',
    *   sortOrder: 'desc'
    * });
-   * 
+   *
    * // Search boards
    * const searchResults = await boardService.getBoards({
    *   search: 'development',
@@ -330,7 +356,7 @@ export class BoardService {
       params.push(limit, offset);
 
       const boards = await this.db.query<Board>(query, params);
-      
+
       boards.forEach(board => {
         board.created_at = new Date(board.created_at);
         board.updated_at = new Date(board.updated_at);
@@ -345,7 +371,7 @@ export class BoardService {
 
   /**
    * Update an existing board
-   * 
+   *
    * @param {string} id - Board ID (UUID)
    * @param {UpdateBoardRequest} data - Update data
    * @param {string} [data.name] - New board name
@@ -354,7 +380,7 @@ export class BoardService {
    * @param {boolean} [data.archived] - Archive status
    * @returns {Promise<Board>} Updated board
    * @throws {ServiceError} If board not found or update fails
-   * 
+   *
    * @example
    * ```typescript
    * const updatedBoard = await boardService.updateBoard('board-123', {
@@ -401,11 +427,14 @@ export class BoardService {
 
       params.push(id);
 
-      await this.db.execute(`
+      await this.db.execute(
+        `
         UPDATE boards 
         SET ${updates.join(', ')}
         WHERE id = ?
-      `, params);
+      `,
+        params
+      );
 
       const updatedBoard = await this.getBoardById(id);
       if (!updatedBoard) {
@@ -425,11 +454,11 @@ export class BoardService {
 
   /**
    * Permanently delete a board and all associated data
-   * 
+   *
    * @param {string} id - Board ID (UUID)
    * @returns {Promise<void>}
    * @throws {ServiceError} If board not found or deletion fails
-   * 
+   *
    * @example
    * ```typescript
    * // WARNING: This permanently deletes the board and all its data
@@ -444,10 +473,19 @@ export class BoardService {
         throw this.createError('BOARD_NOT_FOUND', 'Board not found', { id });
       }
 
-      await this.db.transaction(async (db) => {
-        await db.run('DELETE FROM task_dependencies WHERE task_id IN (SELECT id FROM tasks WHERE board_id = ?)', [id]);
-        await db.run('DELETE FROM notes WHERE task_id IN (SELECT id FROM tasks WHERE board_id = ?)', [id]);
-        await db.run('DELETE FROM task_tags WHERE task_id IN (SELECT id FROM tasks WHERE board_id = ?)', [id]);
+      await this.db.transaction(async db => {
+        await db.run(
+          'DELETE FROM task_dependencies WHERE task_id IN (SELECT id FROM tasks WHERE board_id = ?)',
+          [id]
+        );
+        await db.run(
+          'DELETE FROM notes WHERE task_id IN (SELECT id FROM tasks WHERE board_id = ?)',
+          [id]
+        );
+        await db.run(
+          'DELETE FROM task_tags WHERE task_id IN (SELECT id FROM tasks WHERE board_id = ?)',
+          [id]
+        );
         await db.run('DELETE FROM tasks WHERE board_id = ?', [id]);
         await db.run('DELETE FROM columns WHERE board_id = ?', [id]);
         await db.run('DELETE FROM boards WHERE id = ?', [id]);
@@ -465,11 +503,11 @@ export class BoardService {
 
   /**
    * Archive a board (soft delete)
-   * 
+   *
    * @param {string} id - Board ID (UUID)
    * @returns {Promise<Board>} Archived board
    * @throws {ServiceError} If board not found or archiving fails
-   * 
+   *
    * @example
    * ```typescript
    * const archivedBoard = await boardService.archiveBoard('board-123');
@@ -482,11 +520,11 @@ export class BoardService {
 
   /**
    * Unarchive a board (restore from soft delete)
-   * 
+   *
    * @param {string} id - Board ID (UUID)
    * @returns {Promise<Board>} Unarchived board
    * @throws {ServiceError} If board not found or unarchiving fails
-   * 
+   *
    * @example
    * ```typescript
    * const restoredBoard = await boardService.unarchiveBoard('board-123');
@@ -499,18 +537,18 @@ export class BoardService {
 
   /**
    * Create a duplicate of an existing board with its columns
-   * 
+   *
    * @param {string} id - Source board ID (UUID)
    * @param {string} [newName] - Name for the duplicated board (defaults to "Original Name (Copy)")
    * @returns {Promise<Board>} Newly created duplicate board
    * @throws {ServiceError} If source board not found or duplication fails
-   * 
+   *
    * @example
    * ```typescript
    * // Duplicate with auto-generated name
    * const duplicate = await boardService.duplicateBoard('board-123');
    * console.log(`Created duplicate: ${duplicate.name}`);
-   * 
+   *
    * // Duplicate with custom name
    * const namedDuplicate = await boardService.duplicateBoard('board-123', 'Sprint 2 Board');
    * ```
@@ -528,15 +566,26 @@ export class BoardService {
         color: originalBoard.color,
       });
 
-      await this.db.transaction(async (db) => {
+      await this.db.transaction(async db => {
         await db.run('DELETE FROM columns WHERE board_id = ?', [duplicatedBoard.id]);
 
         for (const column of originalBoard.columns) {
           const newColumnId = uuidv4();
-          await db.run(`
+          await db.run(
+            `
             INSERT INTO columns (id, board_id, name, position, wip_limit, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-          `, [newColumnId, duplicatedBoard.id, column.name, column.position, column.wip_limit, new Date(), new Date()]);
+          `,
+            [
+              newColumnId,
+              duplicatedBoard.id,
+              column.name,
+              column.position,
+              column.wip_limit,
+              new Date(),
+              new Date(),
+            ]
+          );
         }
       });
 
@@ -553,7 +602,7 @@ export class BoardService {
 
   /**
    * Create a standardized service error
-   * 
+   *
    * @private
    * @param {string} code - Error code for categorization
    * @param {string} message - Human-readable error message
@@ -570,7 +619,7 @@ export class BoardService {
 
   /**
    * Map error codes to appropriate HTTP status codes
-   * 
+   *
    * @private
    * @param {string} code - Error code
    * @returns {number} HTTP status code

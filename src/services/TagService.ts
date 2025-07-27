@@ -1,13 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '@/utils/logger';
 import type { DatabaseConnection } from '@/database/connection';
-import type {
-  Tag,
-  TaskTag,
-  ServiceError,
-  PaginationOptions,
-  FilterOptions,
-} from '@/types';
+import type { Tag, TaskTag, ServiceError, PaginationOptions, FilterOptions } from '@/types';
 
 export interface CreateTagRequest {
   name: string;
@@ -54,12 +48,12 @@ export interface TagUsageStats {
 }
 
 export class TagService {
-  constructor(private db: DatabaseConnection) {}
+  constructor(private readonly db: DatabaseConnection) {}
 
   async createTag(data: CreateTagRequest): Promise<Tag> {
     const id = uuidv4();
     const now = new Date();
-    
+
     const tag: Tag = {
       id,
       name: data.name,
@@ -70,14 +64,16 @@ export class TagService {
     };
 
     try {
-      await this.db.transaction(async (db) => {
+      await this.db.transaction(async db => {
         const existingTag = await db.get('SELECT id FROM tags WHERE name = ?', [data.name]);
         if (existingTag) {
           throw new Error('Tag with this name already exists');
         }
 
         if (data.parent_tag_id) {
-          const parentExists = await db.get('SELECT id FROM tags WHERE id = ?', [data.parent_tag_id]);
+          const parentExists = await db.get('SELECT id FROM tags WHERE id = ?', [
+            data.parent_tag_id,
+          ]);
           if (!parentExists) {
             throw new Error('Parent tag not found');
           }
@@ -87,10 +83,13 @@ export class TagService {
           }
         }
 
-        await db.run(`
+        await db.run(
+          `
           INSERT INTO tags (id, name, color, description, parent_tag_id, created_at)
           VALUES (?, ?, ?, ?, ?, ?)
-        `, [tag.id, tag.name, tag.color, tag.description, tag.parent_tag_id, tag.created_at]);
+        `,
+          [tag.id, tag.name, tag.color, tag.description, tag.parent_tag_id, tag.created_at]
+        );
       });
 
       logger.info('Tag created successfully', { tagId: tag.id, name: tag.name });
@@ -103,9 +102,12 @@ export class TagService {
 
   async getTagById(id: string): Promise<Tag | null> {
     try {
-      const tag = await this.db.queryOne<Tag>(`
+      const tag = await this.db.queryOne<Tag>(
+        `
         SELECT * FROM tags WHERE id = ?
-      `, [id]);
+      `,
+        [id]
+      );
 
       if (tag) {
         tag.created_at = new Date(tag.created_at);
@@ -120,9 +122,12 @@ export class TagService {
 
   async getTagByName(name: string): Promise<Tag | null> {
     try {
-      const tag = await this.db.queryOne<Tag>(`
+      const tag = await this.db.queryOne<Tag>(
+        `
         SELECT * FROM tags WHERE name = ?
-      `, [name]);
+      `,
+        [name]
+      );
 
       if (tag) {
         tag.created_at = new Date(tag.created_at);
@@ -193,7 +198,7 @@ export class TagService {
       params.push(limit, offset);
 
       const tags = await this.db.query<Tag>(query, params);
-      tags.forEach(tag => tag.created_at = new Date(tag.created_at));
+      tags.forEach(tag => (tag.created_at = new Date(tag.created_at)));
 
       return tags;
     } catch (error) {
@@ -212,8 +217,8 @@ export class TagService {
 
   async getTagHierarchy(rootTagId?: string): Promise<TagHierarchy[]> {
     try {
-      const rootTags = rootTagId 
-        ? [await this.getTagById(rootTagId)].filter(Boolean) as Tag[]
+      const rootTags = rootTagId
+        ? ([await this.getTagById(rootTagId)].filter(Boolean) as Tag[])
         : await this.getRootTags();
 
       const hierarchies: TagHierarchy[] = [];
@@ -236,23 +241,32 @@ export class TagService {
       if (!tag) return null;
 
       const [taskCount, childCount, usageStats] = await Promise.all([
-        this.db.queryOne<{ count: number }>(`
+        this.db.queryOne<{ count: number }>(
+          `
           SELECT COUNT(DISTINCT task_id) as count 
           FROM task_tags 
           WHERE tag_id = ?
-        `, [id]),
-        this.db.queryOne<{ count: number }>(`
+        `,
+          [id]
+        ),
+        this.db.queryOne<{ count: number }>(
+          `
           SELECT COUNT(*) as count 
           FROM tags 
           WHERE parent_tag_id = ?
-        `, [id]),
-        this.db.queryOne<{ count: number; last_used: string }>(`
+        `,
+          [id]
+        ),
+        this.db.queryOne<{ count: number; last_used: string }>(
+          `
           SELECT 
             COUNT(*) as count,
             MAX(tt.created_at) as last_used
           FROM task_tags tt
           WHERE tt.tag_id = ?
-        `, [id])
+        `,
+          [id]
+        ),
       ]);
 
       const tagWithStats: TagWithStats = {
@@ -262,7 +276,7 @@ export class TagService {
         child_count: childCount?.count || 0,
         ...(usageStats?.last_used ? { last_used: new Date(usageStats.last_used) } : {}),
       };
-      
+
       return tagWithStats;
     } catch (error) {
       logger.error('Failed to get tag with stats', { error, id });
@@ -322,11 +336,14 @@ export class TagService {
 
       params.push(id);
 
-      await this.db.execute(`
+      await this.db.execute(
+        `
         UPDATE tags 
         SET ${updates.join(', ')}
         WHERE id = ?
-      `, params);
+      `,
+        params
+      );
 
       const updatedTag = await this.getTagById(id);
       if (!updatedTag) {
@@ -359,13 +376,16 @@ export class TagService {
         }
       }
 
-      await this.db.transaction(async (db) => {
+      await this.db.transaction(async db => {
         if (reassignToParent) {
-          await db.run(`
+          await db.run(
+            `
             UPDATE tags 
             SET parent_tag_id = ? 
             WHERE parent_tag_id = ?
-          `, [tag.parent_tag_id, id]);
+          `,
+            [tag.parent_tag_id, id]
+          );
         }
 
         await db.run('DELETE FROM task_tags WHERE tag_id = ?', [id]);
@@ -387,11 +407,11 @@ export class TagService {
     const now = new Date();
 
     try {
-      await this.db.transaction(async (db) => {
+      await this.db.transaction(async db => {
         const [taskExists, tagExists, existingRelation] = await Promise.all([
           db.get('SELECT id FROM tasks WHERE id = ?', [taskId]),
           db.get('SELECT id FROM tags WHERE id = ?', [tagId]),
-          db.get('SELECT task_id FROM task_tags WHERE task_id = ? AND tag_id = ?', [taskId, tagId])
+          db.get('SELECT task_id FROM task_tags WHERE task_id = ? AND tag_id = ?', [taskId, tagId]),
         ]);
 
         if (!taskExists) {
@@ -404,10 +424,13 @@ export class TagService {
           throw new Error('Tag already assigned to task');
         }
 
-        await db.run(`
+        await db.run(
+          `
           INSERT INTO task_tags (task_id, tag_id, created_at)
           VALUES (?, ?, ?)
-        `, [taskId, tagId, now]);
+        `,
+          [taskId, tagId, now]
+        );
       });
 
       const taskTag: TaskTag = {
@@ -427,10 +450,13 @@ export class TagService {
 
   async removeTagFromTask(taskId: string, tagId: string): Promise<void> {
     try {
-      const result = await this.db.execute(`
+      const result = await this.db.execute(
+        `
         DELETE FROM task_tags 
         WHERE task_id = ? AND tag_id = ?
-      `, [taskId, tagId]);
+      `,
+        [taskId, tagId]
+      );
 
       if (result.changes === 0) {
         throw this.createError('TAG_ASSIGNMENT_NOT_FOUND', 'Tag assignment not found');
@@ -448,14 +474,17 @@ export class TagService {
 
   async getTaskTags(taskId: string): Promise<Tag[]> {
     try {
-      const tags = await this.db.query<Tag>(`
+      const tags = await this.db.query<Tag>(
+        `
         SELECT t.* FROM tags t
         INNER JOIN task_tags tt ON t.id = tt.tag_id
         WHERE tt.task_id = ?
         ORDER BY t.name ASC
-      `, [taskId]);
+      `,
+        [taskId]
+      );
 
-      tags.forEach(tag => tag.created_at = new Date(tag.created_at));
+      tags.forEach(tag => (tag.created_at = new Date(tag.created_at)));
       return tags;
     } catch (error) {
       logger.error('Failed to get task tags', { error, taskId });
@@ -466,17 +495,20 @@ export class TagService {
   async getTaggedTasks(tagId: string, includeChildren: boolean = false): Promise<string[]> {
     try {
       let tagIds = [tagId];
-      
+
       if (includeChildren) {
         const childTagIds = await this.getAllChildTagIds(tagId);
         tagIds = tagIds.concat(childTagIds);
       }
 
       const placeholders = tagIds.map(() => '?').join(',');
-      const taskIds = await this.db.query<{ task_id: string }>(`
+      const taskIds = await this.db.query<{ task_id: string }>(
+        `
         SELECT DISTINCT task_id FROM task_tags 
         WHERE tag_id IN (${placeholders})
-      `, tagIds);
+      `,
+        tagIds
+      );
 
       return taskIds.map(row => row.task_id);
     } catch (error) {
@@ -485,7 +517,9 @@ export class TagService {
     }
   }
 
-  async getTagUsageStats(options: { days?: number; limit?: number } = {}): Promise<TagUsageStats[]> {
+  async getTagUsageStats(
+    options: { days?: number; limit?: number } = {}
+  ): Promise<TagUsageStats[]> {
     const { days = 30, limit = 50 } = options;
 
     try {
@@ -499,7 +533,8 @@ export class TagService {
         unique_tasks: number;
         first_used: string;
         last_used: string;
-      }>(`
+      }>(
+        `
         SELECT 
           t.id as tag_id,
           t.name as tag_name,
@@ -513,7 +548,9 @@ export class TagService {
         GROUP BY t.id, t.name
         ORDER BY usage_count DESC
         LIMIT ?
-      `, [dateThreshold, limit]);
+      `,
+        [dateThreshold, limit]
+      );
 
       return stats.map(stat => ({
         tag_id: stat.tag_id,
@@ -530,11 +567,223 @@ export class TagService {
     }
   }
 
+  async getTagWithChildren(id: string): Promise<TagHierarchy | null> {
+    try {
+      const tag = await this.getTagById(id);
+      if (!tag) return null;
+
+      return await this.buildTagHierarchy(tag, 0);
+    } catch (error) {
+      logger.error('Failed to get tag with children', { error, id });
+      throw this.createError('TAG_FETCH_FAILED', 'Failed to fetch tag with children', error);
+    }
+  }
+
+  async getTagPath(id: string): Promise<Tag[]> {
+    try {
+      const path: Tag[] = [];
+      let currentId: string | null | undefined = id;
+
+      while (currentId) {
+        const tag = await this.getTagById(currentId);
+        if (!tag) break;
+
+        path.unshift(tag); // Add to beginning for root-to-leaf order
+        currentId = tag.parent_tag_id;
+      }
+
+      return path;
+    } catch (error) {
+      logger.error('Failed to get tag path', { error, id });
+      throw this.createError('TAG_PATH_FAILED', 'Failed to get tag path', error);
+    }
+  }
+
+  async getTagTree(includeUsageCount: boolean = false): Promise<TagHierarchy[]> {
+    try {
+      const rootTags = await this.getRootTags();
+      const hierarchies: TagHierarchy[] = [];
+
+      for (const rootTag of rootTags) {
+        const hierarchy = await this.buildTagHierarchy(rootTag, 0);
+
+        if (includeUsageCount) {
+          // Add usage count to the hierarchy
+          const addUsageCount = async (node: TagHierarchy): Promise<void> => {
+            const stats = await this.getTagWithStats(node.id);
+            if (stats) {
+              node.task_count = stats.task_count;
+            }
+
+            for (const child of node.children) {
+              await addUsageCount(child);
+            }
+          };
+
+          await addUsageCount(hierarchy);
+        }
+
+        hierarchies.push(hierarchy);
+      }
+
+      return hierarchies;
+    } catch (error) {
+      logger.error('Failed to get tag tree', { error });
+      throw this.createError('TAG_TREE_FAILED', 'Failed to get tag tree', error);
+    }
+  }
+
+  async getPopularTags(
+    options: { limit?: number; board_id?: string; days?: number } = {}
+  ): Promise<TagWithStats[]> {
+    const { limit = 20, board_id, days = 30 } = options;
+
+    try {
+      const dateThreshold = new Date();
+      dateThreshold.setDate(dateThreshold.getDate() - days);
+
+      let query = `
+        SELECT 
+          t.*,
+          COUNT(DISTINCT tt.task_id) as task_count,
+          COUNT(tt.task_id) as usage_count,
+          MAX(tt.created_at) as last_used,
+          (SELECT COUNT(*) FROM tags WHERE parent_tag_id = t.id) as child_count
+        FROM tags t
+        LEFT JOIN task_tags tt ON t.id = tt.tag_id
+      `;
+
+      const params: any[] = [];
+      const conditions: string[] = [];
+
+      if (board_id) {
+        query += ' LEFT JOIN tasks task ON tt.task_id = task.id';
+        conditions.push('task.board_id = ?');
+        params.push(board_id);
+      }
+
+      conditions.push('(tt.created_at >= ? OR tt.created_at IS NULL)');
+      params.push(dateThreshold);
+
+      if (conditions.length > 0) {
+        query += ` WHERE ${conditions.join(' AND ')}`;
+      }
+
+      query += `
+        GROUP BY t.id
+        ORDER BY usage_count DESC
+        LIMIT ?
+      `;
+      params.push(limit);
+
+      const popularTags = await this.db.query<TagWithStats & { last_used: string | null }>(
+        query,
+        params
+      );
+
+      return popularTags.map(tag => {
+        const result: TagWithStats = {
+          ...tag,
+          created_at: new Date(tag.created_at),
+        };
+        if (tag.last_used) {
+          result.last_used = new Date(tag.last_used);
+        }
+        return result;
+      });
+    } catch (error) {
+      logger.error('Failed to get popular tags', { error, options });
+      throw this.createError('POPULAR_TAGS_FAILED', 'Failed to get popular tags', error);
+    }
+  }
+
+  async getTagStats(boardId?: string): Promise<{
+    total: number;
+    root_tags: number;
+    leaf_tags: number;
+    max_depth: number;
+    avg_tasks_per_tag: number;
+    most_used: TagWithStats[];
+  }> {
+    try {
+      let baseQuery = '';
+      const params: any[] = [];
+
+      if (boardId) {
+        baseQuery = `
+          FROM tags t
+          WHERE EXISTS (
+            SELECT 1 FROM task_tags tt
+            JOIN tasks task ON tt.task_id = task.id
+            WHERE tt.tag_id = t.id AND task.board_id = ?
+          )
+        `;
+        params.push(boardId);
+      } else {
+        baseQuery = 'FROM tags t';
+      }
+
+      const [totalResult, rootResult, leafResult, depthResult, avgTasksResult] = await Promise.all([
+        this.db.queryOne<{ count: number }>(`SELECT COUNT(*) as count ${baseQuery}`, params),
+        this.db.queryOne<{ count: number }>(
+          `SELECT COUNT(*) as count ${baseQuery} WHERE parent_tag_id IS NULL`,
+          params
+        ),
+        this.db.queryOne<{ count: number }>(
+          `
+          SELECT COUNT(*) as count ${baseQuery} 
+          WHERE NOT EXISTS (SELECT 1 FROM tags child WHERE child.parent_tag_id = t.id)
+        `,
+          params
+        ),
+        this.db.queryOne<{ max_depth: number }>(
+          `
+          WITH RECURSIVE tag_depth AS (
+            SELECT id, parent_tag_id, 0 as depth FROM tags WHERE parent_tag_id IS NULL
+            UNION ALL
+            SELECT t.id, t.parent_tag_id, td.depth + 1
+            FROM tags t
+            JOIN tag_depth td ON t.parent_tag_id = td.id
+          )
+          SELECT MAX(depth) as max_depth FROM tag_depth
+        `,
+          []
+        ),
+        this.db.queryOne<{ avg_tasks: number }>(
+          `
+          SELECT AVG(task_count) as avg_tasks FROM (
+            SELECT COUNT(DISTINCT tt.task_id) as task_count
+            ${baseQuery}
+            LEFT JOIN task_tags tt ON t.id = tt.tag_id
+            GROUP BY t.id
+          )
+        `,
+          params
+        ),
+      ]);
+
+      const mostUsedOptions = boardId ? { board_id: boardId, limit: 5 } : { limit: 5 };
+      const most_used = await this.getPopularTags(mostUsedOptions);
+
+      return {
+        total: totalResult?.count || 0,
+        root_tags: rootResult?.count || 0,
+        leaf_tags: leafResult?.count || 0,
+        max_depth: depthResult?.max_depth || 0,
+        avg_tasks_per_tag: avgTasksResult?.avg_tasks || 0,
+        most_used,
+      };
+    } catch (error) {
+      logger.error('Failed to get tag stats', { error, boardId });
+      throw this.createError('TAG_STATS_FAILED', 'Failed to get tag statistics', error);
+    }
+  }
+
   async mergeTags(sourceTagId: string, targetTagId: string): Promise<void> {
     try {
       const [sourceTag, targetTag] = await Promise.all([
         this.getTagById(sourceTagId),
-        this.getTagById(targetTagId)
+        this.getTagById(targetTagId),
       ]);
 
       if (!sourceTag) {
@@ -544,23 +793,32 @@ export class TagService {
         throw this.createError('TARGET_TAG_NOT_FOUND', 'Target tag not found');
       }
 
-      await this.db.transaction(async (db) => {
-        await db.run(`
+      await this.db.transaction(async db => {
+        await db.run(
+          `
           UPDATE OR IGNORE task_tags 
           SET tag_id = ? 
           WHERE tag_id = ?
-        `, [targetTagId, sourceTagId]);
+        `,
+          [targetTagId, sourceTagId]
+        );
 
-        await db.run(`
+        await db.run(
+          `
           DELETE FROM task_tags 
           WHERE tag_id = ?
-        `, [sourceTagId]);
+        `,
+          [sourceTagId]
+        );
 
-        await db.run(`
+        await db.run(
+          `
           UPDATE tags 
           SET parent_tag_id = ? 
           WHERE parent_tag_id = ?
-        `, [targetTagId, sourceTagId]);
+        `,
+          [targetTagId, sourceTagId]
+        );
 
         await db.run('DELETE FROM tags WHERE id = ?', [sourceTagId]);
       });
@@ -594,25 +852,28 @@ export class TagService {
   }
 
   private async getTaskCount(tagId: string): Promise<number> {
-    const result = await this.db.queryOne<{ count: number }>(`
+    const result = await this.db.queryOne<{ count: number }>(
+      `
       SELECT COUNT(DISTINCT task_id) as count 
       FROM task_tags 
       WHERE tag_id = ?
-    `, [tagId]);
-    
+    `,
+      [tagId]
+    );
+
     return result?.count || 0;
   }
 
   private async getAllChildTagIds(tagId: string): Promise<string[]> {
     const childIds: string[] = [];
     const directChildren = await this.getChildTags(tagId);
-    
+
     for (const child of directChildren) {
       childIds.push(child.id);
       const grandChildIds = await this.getAllChildTagIds(child.id);
       childIds.push(...grandChildIds);
     }
-    
+
     return childIds;
   }
 
@@ -622,7 +883,7 @@ export class TagService {
 
     while (stack.length > 0) {
       const currentId = stack.pop()!;
-      
+
       if (currentId === childId) {
         return true;
       }

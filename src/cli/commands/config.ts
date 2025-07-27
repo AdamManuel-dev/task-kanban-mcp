@@ -1,26 +1,25 @@
-import { Command } from 'commander';
+import type { Command } from 'commander';
 import inquirer from 'inquirer';
-import { ConfigManager } from '../config';
-import { ApiClient } from '../client';
-import { OutputFormatter } from '../formatter';
+import type { ConfigManager } from '../config';
+import type { ApiClient } from '../client';
+import type { OutputFormatter } from '../formatter';
 
 export function registerConfigCommands(program: Command): void {
-  const configCmd = program
-    .command('config')
-    .description('Manage CLI configuration');
+  const configCmd = program.command('config').description('Manage CLI configuration');
 
   // Get global components
-  const getComponents = () => (global as any).cliComponents as {
-    config: ConfigManager;
-    apiClient: ApiClient;
-    formatter: OutputFormatter;
-  };
+  const getComponents = () =>
+    (global as any).cliComponents as {
+      config: ConfigManager;
+      apiClient: ApiClient;
+      formatter: OutputFormatter;
+    };
 
   configCmd
     .command('show')
     .description('Show current configuration')
     .option('--path', 'show config file path')
-    .action(async (options) => {
+    .action(async options => {
       const { config, formatter } = getComponents();
 
       if (options.path) {
@@ -55,7 +54,7 @@ export function registerConfigCommands(program: Command): void {
       try {
         // Parse value based on type
         let parsedValue: any = value;
-        
+
         if (value === 'true') parsedValue = true;
         else if (value === 'false') parsedValue = false;
         else if (/^\d+$/.test(value)) parsedValue = parseInt(value, 10);
@@ -78,7 +77,9 @@ export function registerConfigCommands(program: Command): void {
           validation.errors.forEach(error => formatter.error(error));
         }
       } catch (error) {
-        formatter.error(`Failed to set configuration: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to set configuration: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });
@@ -107,7 +108,7 @@ export function registerConfigCommands(program: Command): void {
     .command('init')
     .description('Initialize configuration interactively')
     .option('--force', 'overwrite existing configuration')
-    .action(async (options) => {
+    .action(async options => {
       const { config, formatter, apiClient } = getComponents();
 
       if (config.exists() && !options.force) {
@@ -194,11 +195,15 @@ export function registerConfigCommands(program: Command): void {
               formatter.warn('Could not connect to server');
             }
           } catch (error) {
-            formatter.warn(`Connection test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            formatter.warn(
+              `Connection test failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+            );
           }
         }
       } catch (error) {
-        formatter.error(`Failed to save configuration: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to save configuration: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });
@@ -215,7 +220,7 @@ export function registerConfigCommands(program: Command): void {
       }
 
       const validation = config.validate();
-      
+
       if (validation.valid) {
         formatter.success('Configuration is valid');
       } else {
@@ -229,7 +234,7 @@ export function registerConfigCommands(program: Command): void {
     .command('reset')
     .description('Reset configuration to defaults')
     .option('--force', 'skip confirmation')
-    .action(async (options) => {
+    .action(async options => {
       const { config, formatter } = getComponents();
 
       if (!options.force) {
@@ -253,7 +258,9 @@ export function registerConfigCommands(program: Command): void {
         config.save();
         formatter.success('Configuration reset to defaults');
       } catch (error) {
-        formatter.error(`Failed to reset configuration: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Failed to reset configuration: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });
@@ -280,10 +287,10 @@ export function registerConfigCommands(program: Command): void {
 
       try {
         const connected = await apiClient.testConnection();
-        
+
         if (connected) {
           formatter.success('✓ Connection successful');
-          
+
           // Get detailed health info
           try {
             const health = await apiClient.getHealth();
@@ -297,7 +304,9 @@ export function registerConfigCommands(program: Command): void {
           process.exit(1);
         }
       } catch (error) {
-        formatter.error(`✗ Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `✗ Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });

@@ -11,8 +11,8 @@ jest.mock('@/utils/logger', () => ({
     info: jest.fn(),
     warn: jest.fn(),
     error: jest.fn(),
-    debug: jest.fn()
-  }
+    debug: jest.fn(),
+  },
 }));
 
 describe('Schema Debug Tests', () => {
@@ -22,14 +22,14 @@ describe('Schema Debug Tests', () => {
     // Force a new database instance for testing
     (DatabaseConnection as any).instance = null;
     dbConnection = DatabaseConnection.getInstance();
-    
+
     if (dbConnection.isConnected()) {
       await dbConnection.close();
     }
-    
+
     // Use test-specific database file
     process.env.DATABASE_PATH = './data/kanban-test.db';
-    
+
     await dbConnection.initialize();
   });
 
@@ -37,7 +37,7 @@ describe('Schema Debug Tests', () => {
     if (dbConnection.isConnected()) {
       await dbConnection.close();
     }
-    
+
     // Clean up test database
     const fs = require('fs');
     const testDbPath = './data/kanban-test.db';
@@ -51,7 +51,7 @@ describe('Schema Debug Tests', () => {
     const tables = await dbConnection.query(
       "SELECT name FROM sqlite_master WHERE type='table' AND name='tasks'"
     );
-    
+
     // Use fail to force output
     if (tables.length === 0) {
       fail('SCHEMA DEBUG: No tasks table found - schema not created');
@@ -59,7 +59,7 @@ describe('Schema Debug Tests', () => {
 
     if (tables.length > 0) {
       // Get schema for tasks table
-      const schema = await dbConnection.query("PRAGMA table_info(tasks)");
+      const schema = await dbConnection.query('PRAGMA table_info(tasks)');
       console.log('Tasks table schema:');
       schema.forEach((col: any) => {
         console.log(`  ${col.name}: ${col.type} (${col.notnull ? 'NOT NULL' : 'NULLABLE'})`);
@@ -83,14 +83,14 @@ describe('Schema Debug Tests', () => {
     if (!schemaExists) {
       console.log('Creating schema...');
       await schemaManager.createSchema();
-      
+
       // Re-check tasks table
       const tablesAfter = await dbConnection.query(
         "SELECT name FROM sqlite_master WHERE type='table' AND name='tasks'"
       );
       console.log('Tables after schema creation:', tablesAfter);
     }
-    
+
     console.log('=== SCHEMA DEBUG END ===');
   });
 });

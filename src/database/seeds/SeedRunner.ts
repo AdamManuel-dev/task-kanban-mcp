@@ -1,15 +1,17 @@
-import { Database } from 'sqlite';
-import { Database as SQLiteDB } from 'sqlite3';
+import type { Database } from 'sqlite';
+import type { Database as SQLiteDB } from 'sqlite3';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { logger } from '../../utils/logger';
-import { Seed, SeedOptions, AppliedSeed } from './types';
+import type { Seed, SeedOptions, AppliedSeed } from './types';
 
 export class SeedRunner {
-  private db: Database<SQLiteDB>;
-  private seedsPath: string;
-  private seedsTable: string;
+  private readonly db: Database<SQLiteDB>;
+
+  private readonly seedsPath: string;
+
+  private readonly seedsTable: string;
 
   constructor(db: Database<SQLiteDB>, options: SeedOptions = {}) {
     this.db = db;
@@ -28,7 +30,7 @@ export class SeedRunner {
         checksum TEXT NOT NULL
       )
     `);
-    
+
     logger.info('Seed tracking table initialized');
   }
 
@@ -48,7 +50,9 @@ export class SeedRunner {
     try {
       const files = await fs.readdir(this.seedsPath);
       return files
-        .filter(file => file.endsWith('.ts') && !['types.ts', 'SeedRunner.ts', 'index.ts'].includes(file))
+        .filter(
+          file => file.endsWith('.ts') && !['types.ts', 'SeedRunner.ts', 'index.ts'].includes(file)
+        )
         .sort();
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
@@ -64,7 +68,7 @@ export class SeedRunner {
    */
   async loadSeed(filename: string): Promise<Seed> {
     const filePath = path.join(this.seedsPath, filename);
-    
+
     // Dynamic import of the seed file
     const seedModule = await import(filePath);
     const seed = seedModule.default || seedModule;
@@ -89,19 +93,19 @@ export class SeedRunner {
     const applied = await this.getAppliedSeeds();
     const appliedSet = new Set(applied.map(s => s.name));
     const seedFiles = await this.getSeedFiles();
-    
+
     let seedsRun = 0;
 
     for (const filename of seedFiles) {
       const seed = await this.loadSeed(filename);
-      
+
       if (appliedSet.has(seed.name) && !options.force) {
         logger.debug(`Seed already applied: ${seed.name}`);
         continue;
       }
 
       logger.info(`Running seed: ${seed.name} - ${seed.description}`);
-      
+
       try {
         await this.runSeed(seed, filename, options.force);
         seedsRun++;
@@ -134,13 +138,13 @@ export class SeedRunner {
     const applied = await this.getAppliedSeeds();
     const appliedSet = new Set(applied.map(s => s.name));
     const seedFiles = await this.getSeedFiles();
-    
+
     const allSeeds: string[] = [];
     for (const filename of seedFiles) {
       const seed = await this.loadSeed(filename);
       allSeeds.push(seed.name);
     }
-    
+
     const pending = allSeeds.filter(name => !appliedSet.has(name));
 
     return {
@@ -165,14 +169,14 @@ export class SeedRunner {
   private async runSeed(seed: Seed, filename: string, force = false): Promise<void> {
     const content = await fs.readFile(path.join(this.seedsPath, filename), 'utf-8');
     const checksum = this.calculateChecksum(content);
-    
+
     // Start transaction
     await this.db.run('BEGIN TRANSACTION');
-    
+
     try {
       // Run the seed
       await seed.run(this.db);
-      
+
       if (force) {
         // Update existing record
         await this.db.run(
@@ -181,12 +185,12 @@ export class SeedRunner {
         );
       } else {
         // Insert new record
-        await this.db.run(
-          `INSERT INTO ${this.seedsTable} (name, checksum) VALUES (?, ?)`,
-          [seed.name, checksum]
-        );
+        await this.db.run(`INSERT INTO ${this.seedsTable} (name, checksum) VALUES (?, ?)`, [
+          seed.name,
+          checksum,
+        ]);
       }
-      
+
       // Commit transaction
       await this.db.run('COMMIT');
     } catch (error) {
@@ -230,7 +234,7 @@ export async function run(db: Database<SQLiteDB>): Promise<void> {
 
     await fs.writeFile(filePath, template);
     logger.info(`Created seed: ${filename}`);
-    
+
     return filename;
   }
 }

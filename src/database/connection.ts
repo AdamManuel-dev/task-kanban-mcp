@@ -1,22 +1,22 @@
 /**
  * SQLite database connection module
  * Handles database initialization, connection management, and configuration
- * 
+ *
  * @module database/connection
  * @description This module provides a singleton database connection manager for SQLite.
  * It handles connection lifecycle, query execution, transactions, and health monitoring.
  * The connection is configured with optimal settings for performance and reliability.
- * 
+ *
  * @example
  * ```typescript
  * import { dbConnection } from '@/database/connection';
- * 
+ *
  * // Initialize connection
  * await dbConnection.initialize();
- * 
+ *
  * // Execute queries
  * const users = await dbConnection.query('SELECT * FROM users WHERE active = ?', [true]);
- * 
+ *
  * // Use transactions
  * await dbConnection.transaction(async (db) => {
  *   await db.run('INSERT INTO tasks (title) VALUES (?)', ['New Task']);
@@ -37,7 +37,7 @@ import { SeedRunner } from './seeds';
 
 /**
  * Configuration options for database connection
- * 
+ *
  * @interface DatabaseConfig
  * @property {string} path - Path to the SQLite database file
  * @property {boolean} walMode - Enable Write-Ahead Logging for better concurrency
@@ -55,17 +55,17 @@ export interface DatabaseConfig {
 
 /**
  * Singleton database connection manager for SQLite
- * 
+ *
  * @class DatabaseConnection
  * @description Manages a single SQLite database connection with optimal settings,
  * transaction support, and health monitoring. Uses the singleton pattern to ensure
  * only one connection exists throughout the application lifecycle.
- * 
+ *
  * @example
  * ```typescript
  * const db = DatabaseConnection.getInstance();
  * await db.initialize();
- * 
+ *
  * // Check health
  * const health = await db.healthCheck();
  * console.log('Database healthy:', health.responsive);
@@ -73,10 +73,15 @@ export interface DatabaseConfig {
  */
 export class DatabaseConnection {
   private static instance: DatabaseConnection;
+
   private db: Database<sqlite3.Database, sqlite3.Statement> | null = null;
+
   private readonly config: DatabaseConfig;
+
   private schemaManager: SchemaManager | null = null;
+
   private migrationRunner: MigrationRunner | null = null;
+
   private seedRunner: SeedRunner | null = null;
 
   private constructor() {
@@ -91,9 +96,9 @@ export class DatabaseConnection {
 
   /**
    * Gets the singleton instance of DatabaseConnection
-   * 
+   *
    * @returns {DatabaseConnection} The singleton database connection instance
-   * 
+   *
    * @example
    * ```typescript
    * const db = DatabaseConnection.getInstance();
@@ -108,17 +113,17 @@ export class DatabaseConnection {
 
   /**
    * Initialize database connection and configure SQLite
-   * 
+   *
    * @param {Object} options - Initialization options
    * @param {boolean} [options.skipSchema=false] - Skip automatic schema creation/validation
    * @returns {Promise<void>}
    * @throws {Error} If database initialization fails
-   * 
+   *
    * @example
    * ```typescript
    * // Normal initialization with schema
    * await db.initialize();
-   * 
+   *
    * // Skip schema for testing
    * await db.initialize({ skipSchema: true });
    * ```
@@ -175,10 +180,10 @@ export class DatabaseConnection {
 
   /**
    * Get the underlying SQLite database instance
-   * 
+   *
    * @returns {Database} The SQLite database instance
    * @throws {Error} If database is not initialized
-   * 
+   *
    * @example
    * ```typescript
    * const database = db.getDatabase();
@@ -194,10 +199,10 @@ export class DatabaseConnection {
 
   /**
    * Get the schema manager instance
-   * 
+   *
    * @returns {SchemaManager} The schema manager for database operations
    * @throws {Error} If schema manager is not initialized
-   * 
+   *
    * @example
    * ```typescript
    * const schema = db.getSchemaManager();
@@ -213,9 +218,9 @@ export class DatabaseConnection {
 
   /**
    * Check if database connection is active
-   * 
+   *
    * @returns {boolean} True if connected, false otherwise
-   * 
+   *
    * @example
    * ```typescript
    * if (db.isConnected()) {
@@ -229,9 +234,9 @@ export class DatabaseConnection {
 
   /**
    * Close the database connection
-   * 
+   *
    * @returns {Promise<void>}
-   * 
+   *
    * @example
    * ```typescript
    * // Graceful shutdown
@@ -252,24 +257,24 @@ export class DatabaseConnection {
 
   /**
    * Execute a query and return all results
-   * 
+   *
    * @template T - The expected result type
    * @param {string} sql - SQL query to execute
    * @param {any[]} [params=[]] - Query parameters for prepared statement
    * @returns {Promise<T[]>} Array of results
    * @throws {Error} If query execution fails
-   * 
+   *
    * @example
    * ```typescript
    * // Simple query
    * const boards = await db.query<{id: string, name: string}>('SELECT * FROM boards');
-   * 
+   *
    * // Parameterized query
    * const tasks = await db.query<Task>(
    *   'SELECT * FROM tasks WHERE board_id = ? AND archived = ?',
    *   ['board-123', false]
    * );
-   * 
+   *
    * // With type inference
    * interface User {
    *   id: string;
@@ -294,18 +299,18 @@ export class DatabaseConnection {
 
   /**
    * Execute a query and return the first result
-   * 
+   *
    * @template T - The expected result type
    * @param {string} sql - SQL query to execute
    * @param {any[]} [params=[]] - Query parameters for prepared statement
    * @returns {Promise<T | undefined>} First result or undefined if no results
    * @throws {Error} If query execution fails
-   * 
+   *
    * @example
    * ```typescript
    * // Get single result
    * const board = await db.queryOne<Board>('SELECT * FROM boards WHERE id = ?', ['board-123']);
-   * 
+   *
    * // Check existence
    * const exists = await db.queryOne<{count: number}>('SELECT COUNT(*) as count FROM tasks WHERE title = ?', ['My Task']);
    * if (exists?.count > 0) {
@@ -328,12 +333,12 @@ export class DatabaseConnection {
 
   /**
    * Execute a data modification statement (INSERT, UPDATE, DELETE)
-   * 
+   *
    * @param {string} sql - SQL statement to execute
    * @param {any[]} [params=[]] - Statement parameters for prepared statement
    * @returns {Promise<sqlite3.RunResult>} Result containing lastID and changes
    * @throws {Error} If statement execution fails
-   * 
+   *
    * @example
    * ```typescript
    * // Insert with auto-generated ID
@@ -342,14 +347,14 @@ export class DatabaseConnection {
    *   ['New Task', 'Task description']
    * );
    * console.log('New task ID:', result.lastID);
-   * 
+   *
    * // Update with affected rows
    * const updateResult = await db.execute(
    *   'UPDATE tasks SET archived = ? WHERE created_at < ?',
    *   [true, new Date('2024-01-01')]
    * );
    * console.log('Archived tasks:', updateResult.changes);
-   * 
+   *
    * // Delete
    * const deleteResult = await db.execute('DELETE FROM tasks WHERE id = ?', ['task-123']);
    * if (deleteResult.changes === 0) {
@@ -357,14 +362,17 @@ export class DatabaseConnection {
    * }
    * ```
    */
-  public async execute(sql: string, params: any[] = []): Promise<{ lastID?: number | undefined; changes: number }> {
+  public async execute(
+    sql: string,
+    params: any[] = []
+  ): Promise<{ lastID?: number | undefined; changes: number }> {
     const db = this.getDatabase();
     try {
       logger.debug('Executing statement', { sql, params });
       const result = await db.run(sql, params);
-      logger.debug('Statement executed successfully', { 
-        lastID: result.lastID, 
-        changes: result.changes 
+      logger.debug('Statement executed successfully', {
+        lastID: result.lastID,
+        changes: result.changes,
       });
       return {
         lastID: result.lastID,
@@ -378,12 +386,12 @@ export class DatabaseConnection {
 
   /**
    * Execute multiple statements in a transaction with automatic rollback on error
-   * 
+   *
    * @template T - The return type of the transaction callback
    * @param {Function} callback - Async function that performs database operations
    * @returns {Promise<T>} The result returned by the callback
    * @throws {Error} If any operation in the transaction fails
-   * 
+   *
    * @example
    * ```typescript
    * // Simple transaction
@@ -391,20 +399,20 @@ export class DatabaseConnection {
    *   await database.run('INSERT INTO boards (id, name) VALUES (?, ?)', ['b1', 'My Board']);
    *   await database.run('INSERT INTO columns (id, board_id, name) VALUES (?, ?, ?)', ['c1', 'b1', 'Todo']);
    * });
-   * 
+   *
    * // Transaction with return value
    * const taskId = await db.transaction(async (database) => {
    *   const result = await database.run('INSERT INTO tasks (title) VALUES (?)', ['New Task']);
    *   await database.run('INSERT INTO task_history (task_id, action) VALUES (?, ?)', [result.lastID, 'created']);
    *   return result.lastID;
    * });
-   * 
+   *
    * // Transaction with error handling (automatic rollback)
    * try {
    *   await db.transaction(async (database) => {
    *     await database.run('UPDATE accounts SET balance = balance - ? WHERE id = ?', [100, 'acc1']);
    *     await database.run('UPDATE accounts SET balance = balance + ? WHERE id = ?', [100, 'acc2']);
-   *     
+   *
    *     // This will cause rollback if balance goes negative
    *     const account = await database.get('SELECT balance FROM accounts WHERE id = ?', ['acc1']);
    *     if (account.balance < 0) {
@@ -423,9 +431,9 @@ export class DatabaseConnection {
     try {
       logger.debug('Starting transaction');
       await db.exec('BEGIN TRANSACTION');
-      
+
       const result = await callback(db);
-      
+
       await db.exec('COMMIT');
       logger.debug('Transaction committed successfully');
       return result;
@@ -438,14 +446,14 @@ export class DatabaseConnection {
 
   /**
    * Get comprehensive database statistics
-   * 
+   *
    * @returns {Promise<Object>} Database statistics
    * @returns {number} returns.size - Database file size in bytes
    * @returns {number} returns.pageCount - Number of database pages
    * @returns {number} returns.pageSize - Size of each page in bytes
    * @returns {boolean} returns.walMode - Whether WAL mode is enabled
    * @returns {number} returns.tables - Number of user tables
-   * 
+   *
    * @example
    * ```typescript
    * const stats = await db.getStats();
@@ -462,10 +470,10 @@ export class DatabaseConnection {
     tables: number;
   }> {
     const db = this.getDatabase();
-    
+
     const [_pragmaInfo, tableCount] = await Promise.all([
-      db.all("PRAGMA database_list"),
-      db.get<{ count: number }>("SELECT COUNT(*) as count FROM sqlite_master WHERE type='table'")
+      db.all('PRAGMA database_list'),
+      db.get<{ count: number }>("SELECT COUNT(*) as count FROM sqlite_master WHERE type='table'"),
     ]);
 
     const stats = await db.get(`
@@ -476,7 +484,7 @@ export class DatabaseConnection {
       FROM pragma_page_count(), pragma_page_size()
     `);
 
-    const walMode = await db.get<{ journal_mode: string }>("PRAGMA journal_mode");
+    const walMode = await db.get<{ journal_mode: string }>('PRAGMA journal_mode');
 
     return {
       size: stats?.size || 0,
@@ -489,17 +497,17 @@ export class DatabaseConnection {
 
   /**
    * Perform a comprehensive health check on the database connection
-   * 
+   *
    * @returns {Promise<Object>} Health check results
    * @returns {boolean} returns.connected - Whether database is connected
    * @returns {boolean} returns.responsive - Whether database responds within timeout
    * @returns {Object|null} returns.stats - Database statistics if healthy
    * @returns {string} [returns.error] - Error message if unhealthy
-   * 
+   *
    * @example
    * ```typescript
    * const health = await db.healthCheck();
-   * 
+   *
    * if (!health.connected) {
    *   console.error('Database disconnected:', health.error);
    * } else if (!health.responsive) {
@@ -523,7 +531,7 @@ export class DatabaseConnection {
 
       // Test responsiveness with a simple query
       const start = Date.now();
-      await this.queryOne("SELECT 1 as test");
+      await this.queryOne('SELECT 1 as test');
       const responseTime = Date.now() - start;
 
       const stats = await this.getStats();
@@ -571,25 +579,25 @@ export class DatabaseConnection {
     const pragmas = [
       // Enable foreign key constraints
       'PRAGMA foreign_keys = ON',
-      
+
       // Set journal mode (WAL for better concurrency)
       `PRAGMA journal_mode = ${this.config.walMode ? 'WAL' : 'DELETE'}`,
-      
+
       // Set synchronous mode for performance vs durability balance
       'PRAGMA synchronous = NORMAL',
-      
+
       // Set memory-mapped I/O size
       `PRAGMA mmap_size = ${this.config.memoryLimit}`,
-      
+
       // Set temp store to memory for better performance
       'PRAGMA temp_store = MEMORY',
-      
+
       // Set busy timeout
       `PRAGMA busy_timeout = ${this.config.timeout}`,
-      
+
       // Optimize for read-heavy workload
       'PRAGMA cache_size = -64000', // 64MB cache
-      
+
       // Enable auto-vacuum for automatic cleanup
       'PRAGMA auto_vacuum = INCREMENTAL',
     ];
@@ -609,10 +617,10 @@ export class DatabaseConnection {
    */
   private async testConnection(): Promise<void> {
     if (!this.db) return;
-    
-    const result = await this.db.get("SELECT sqlite_version() as version");
-    logger.info('Database connection test successful', { 
-      sqliteVersion: result?.version 
+
+    const result = await this.db.get('SELECT sqlite_version() as version');
+    logger.info('Database connection test successful', {
+      sqliteVersion: result?.version,
     });
   }
 
@@ -624,7 +632,7 @@ export class DatabaseConnection {
 
     try {
       const schemaExists = await this.schemaManager.schemaExists();
-      
+
       if (!schemaExists) {
         logger.info('Database schema not found, creating...');
         await this.schemaManager.createSchema();
@@ -632,15 +640,15 @@ export class DatabaseConnection {
       } else {
         logger.debug('Database schema exists, validating...');
         const validation = await this.schemaManager.validateSchema();
-        
+
         if (!validation.isValid) {
           logger.warn('Database schema validation failed', {
             missingTables: validation.missingTables,
             missingIndexes: validation.missingIndexes,
             missingViews: validation.missingViews,
-            errors: validation.errors
+            errors: validation.errors,
           });
-          
+
           // For now, just log the issues. In production, you might want to
           // run migrations or recreate the schema
           logger.info('Schema validation issues detected but continuing...');
@@ -656,7 +664,7 @@ export class DatabaseConnection {
 
   /**
    * Get the migration runner instance
-   * 
+   *
    * @returns {MigrationRunner} The migration runner instance
    * @throws {Error} If migration runner is not initialized
    */
@@ -669,16 +677,16 @@ export class DatabaseConnection {
 
   /**
    * Run pending migrations
-   * 
+   *
    * @param {string} [target] - Optional target migration ID to migrate up to
    * @returns {Promise<number>} Number of migrations run
-   * 
+   *
    * @example
    * ```typescript
    * // Run all pending migrations
    * const count = await db.runMigrations();
    * console.log(`Ran ${count} migrations`);
-   * 
+   *
    * // Run migrations up to specific target
    * await db.runMigrations('002_add_user_preferences');
    * ```
@@ -690,15 +698,15 @@ export class DatabaseConnection {
 
   /**
    * Rollback migrations
-   * 
+   *
    * @param {string} [target] - Optional target migration ID to rollback to
    * @returns {Promise<number>} Number of migrations rolled back
-   * 
+   *
    * @example
    * ```typescript
    * // Rollback last migration
    * await db.rollbackMigrations();
-   * 
+   *
    * // Rollback to specific migration
    * await db.rollbackMigrations('001_initial_schema');
    * ```
@@ -710,9 +718,9 @@ export class DatabaseConnection {
 
   /**
    * Get migration status
-   * 
+   *
    * @returns {Promise<{applied: string[], pending: string[], total: number}>} Migration status
-   * 
+   *
    * @example
    * ```typescript
    * const status = await db.getMigrationStatus();
@@ -730,7 +738,7 @@ export class DatabaseConnection {
 
   /**
    * Get the seed runner instance
-   * 
+   *
    * @returns {SeedRunner} The seed runner instance
    * @throws {Error} If seed runner is not initialized
    */
@@ -743,17 +751,17 @@ export class DatabaseConnection {
 
   /**
    * Run database seeds
-   * 
+   *
    * @param {Object} options - Seed options
    * @param {boolean} [options.force] - Force re-run seeds that have already been applied
    * @returns {Promise<number>} Number of seeds run
-   * 
+   *
    * @example
    * ```typescript
    * // Run all pending seeds
    * const count = await db.runSeeds();
    * console.log(`Ran ${count} seeds`);
-   * 
+   *
    * // Force re-run all seeds
    * await db.runSeeds({ force: true });
    * ```
@@ -765,9 +773,9 @@ export class DatabaseConnection {
 
   /**
    * Get seed status
-   * 
+   *
    * @returns {Promise<{applied: string[], pending: string[], total: number}>} Seed status
-   * 
+   *
    * @example
    * ```typescript
    * const status = await db.getSeedStatus();
@@ -785,9 +793,9 @@ export class DatabaseConnection {
 
   /**
    * Reset all seed records
-   * 
+   *
    * @returns {Promise<void>}
-   * 
+   *
    * @example
    * ```typescript
    * // Clear all seed tracking records (seeds can be re-run)
@@ -802,18 +810,18 @@ export class DatabaseConnection {
 
 /**
  * Pre-configured singleton database connection instance
- * 
+ *
  * @constant {DatabaseConnection} dbConnection
  * @description This is the primary way to interact with the database throughout the application.
  * The connection is lazily initialized on first use.
- * 
+ *
  * @example
  * ```typescript
  * import { dbConnection } from '@/database/connection';
- * 
+ *
  * // Initialize at app startup
  * await dbConnection.initialize();
- * 
+ *
  * // Use throughout the app
  * const tasks = await dbConnection.query('SELECT * FROM tasks');
  * ```

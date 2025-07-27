@@ -51,11 +51,11 @@ beforeEach(async () => {
   // Setup test database
   (DatabaseConnection as any).instance = null;
   testDb = DatabaseConnection.getInstance();
-  
+
   if (testDb.isConnected()) {
     await testDb.close();
   }
-  
+
   process.env.DATABASE_PATH = './data/kanban-context-focused-test.db';
   await testDb.initialize();
 
@@ -147,12 +147,14 @@ describe('ContextService - Core Functionality', () => {
       mockTaskService.getTasks.mockResolvedValue([testTask]);
 
       const queryMock = jest.spyOn(testDb, 'query').mockResolvedValue([]);
-      const queryOneMock = jest.spyOn(testDb, 'queryOne').mockImplementation(async (query: string) => {
-        if (query.includes('board_id = ?')) {
-          return { count: 2 }; // Recent activity
-        }
-        return { total: 5, completed: 2, count: 0, avg_days: 3 };
-      });
+      const queryOneMock = jest
+        .spyOn(testDb, 'queryOne')
+        .mockImplementation(async (query: string) => {
+          if (query.includes('board_id = ?')) {
+            return { count: 2 }; // Recent activity
+          }
+          return { total: 5, completed: 2, count: 0, avg_days: 3 };
+        });
 
       const context = await contextService.getProjectContext();
 
@@ -168,7 +170,9 @@ describe('ContextService - Core Functionality', () => {
     it('should handle database errors gracefully', async () => {
       mockBoardService.getBoards.mockRejectedValue(new Error('Database connection failed'));
 
-      await expect(contextService.getProjectContext()).rejects.toThrow('Failed to generate project context');
+      await expect(contextService.getProjectContext()).rejects.toThrow(
+        'Failed to generate project context'
+      );
     });
   });
 
@@ -185,7 +189,7 @@ describe('ContextService - Core Functionality', () => {
           pinned: false,
           created_at: new Date(),
           updated_at: new Date(),
-        }
+        },
       ];
       const testTags = [
         {
@@ -195,7 +199,7 @@ describe('ContextService - Core Functionality', () => {
           parent_tag_id: null,
           created_at: new Date(),
           updated_at: new Date(),
-        }
+        },
       ];
 
       mockTaskService.getTaskById.mockResolvedValue(testTask);
@@ -227,7 +231,9 @@ describe('ContextService - Core Functionality', () => {
     it('should handle task not found', async () => {
       mockTaskService.getTaskById.mockResolvedValue(null);
 
-      await expect(contextService.getTaskContext('nonexistent')).rejects.toThrow('Failed to generate task context');
+      await expect(contextService.getTaskContext('nonexistent')).rejects.toThrow(
+        'Failed to generate task context'
+      );
     });
 
     it('should generate recommendations for overdue tasks', async () => {
@@ -259,8 +265,18 @@ describe('ContextService - Core Functionality', () => {
   describe('Current Work Context', () => {
     it('should generate work context with active tasks', async () => {
       const activeTasks = [
-        createTestTask({ id: 'task-1', status: 'in_progress', estimated_hours: 4, actual_hours: 2 }),
-        createTestTask({ id: 'task-2', status: 'in_progress', estimated_hours: 6, actual_hours: 1 }),
+        createTestTask({
+          id: 'task-1',
+          status: 'in_progress',
+          estimated_hours: 4,
+          actual_hours: 2,
+        }),
+        createTestTask({
+          id: 'task-2',
+          status: 'in_progress',
+          estimated_hours: 6,
+          actual_hours: 1,
+        }),
       ];
 
       mockTaskService.getTasks.mockResolvedValue(activeTasks);
@@ -280,7 +296,7 @@ describe('ContextService - Core Functionality', () => {
     });
 
     it('should recommend reducing WIP for many active tasks', async () => {
-      const manyActiveTasks = Array.from({ length: 5 }, (_, i) => 
+      const manyActiveTasks = Array.from({ length: 5 }, (_, i) =>
         createTestTask({ id: `task-${i}`, status: 'in_progress' })
       );
 
@@ -297,7 +313,9 @@ describe('ContextService - Core Functionality', () => {
     it('should handle service errors gracefully', async () => {
       mockTaskService.getTasks.mockRejectedValue(new Error('Service unavailable'));
 
-      await expect(contextService.getCurrentWorkContext()).rejects.toThrow('Failed to generate work context');
+      await expect(contextService.getCurrentWorkContext()).rejects.toThrow(
+        'Failed to generate work context'
+      );
     });
   });
 
@@ -314,12 +332,14 @@ describe('ContextService - Core Functionality', () => {
       mockTaskService.getBlockedTasks.mockResolvedValue([]);
 
       const queryMock = jest.spyOn(testDb, 'query').mockResolvedValue([]);
-      const queryOneMock = jest.spyOn(testDb, 'queryOne').mockImplementation(async (query: string) => {
-        if (query.includes('depends_on_task_id = ?')) {
-          return { count: 1 }; // Blocks 1 task
-        }
-        return { total: 1, completed: 0, count: 0, avg_days: 1 };
-      });
+      const queryOneMock = jest
+        .spyOn(testDb, 'queryOne')
+        .mockImplementation(async (query: string) => {
+          if (query.includes('depends_on_task_id = ?')) {
+            return { count: 1 }; // Blocks 1 task
+          }
+          return { total: 1, completed: 0, count: 0, avg_days: 1 };
+        });
 
       const context = await contextService.getProjectContext({ max_items: 5 });
 
@@ -338,13 +358,17 @@ describe('ContextService - Core Functionality', () => {
     it('should handle board service failures', async () => {
       mockBoardService.getBoards.mockRejectedValue(new Error('BoardService error'));
 
-      await expect(contextService.getProjectContext()).rejects.toThrow('Failed to generate project context');
+      await expect(contextService.getProjectContext()).rejects.toThrow(
+        'Failed to generate project context'
+      );
     });
 
     it('should handle task service failures in task context', async () => {
       mockTaskService.getTaskById.mockRejectedValue(new Error('TaskService error'));
 
-      await expect(contextService.getTaskContext('task-123')).rejects.toThrow('Failed to generate task context');
+      await expect(contextService.getTaskContext('task-123')).rejects.toThrow(
+        'Failed to generate task context'
+      );
     });
   });
 });

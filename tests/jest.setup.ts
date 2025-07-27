@@ -64,14 +64,14 @@ global.testUtils = {
     boardId: 'test-board-1',
     createdAt: new Date().toISOString(),
   }),
-  
+
   createTestBoard: () => ({
     id: 'test-board-1',
     name: 'Test Board',
     columns: ['todo', 'in-progress', 'done'],
     createdAt: new Date().toISOString(),
   }),
-  
+
   cleanupTestData: async () => {
     // TODO: Implement test data cleanup
   },

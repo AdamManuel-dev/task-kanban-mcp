@@ -26,10 +26,11 @@ export interface TransactionOptions {
 }
 
 export class TransactionManager {
-  private activeTransactions = new Map<string, TransactionContext>();
+  private readonly activeTransactions = new Map<string, TransactionContext>();
+
   private transactionCounter = 0;
 
-  constructor(private db: DatabaseConnection) {}
+  constructor(private readonly db: DatabaseConnection) {}
 
   async executeTransaction<T>(
     operations: (context: TransactionContext) => Promise<T>,
@@ -49,7 +50,7 @@ export class TransactionManager {
     try {
       logger.info('Starting transaction', { transactionId, options });
 
-      const result = await this.db.transaction(async (db) => {
+      const result = await this.db.transaction(async db => {
         // Set isolation level if specified
         if (options.isolationLevel) {
           await this.setIsolationLevel(db, options.isolationLevel);
@@ -63,10 +64,7 @@ export class TransactionManager {
             }, options.timeout);
           });
 
-          return Promise.race([
-            operations(context),
-            timeoutPromise
-          ]) as Promise<T>;
+          return Promise.race([operations(context), timeoutPromise]) as Promise<T>;
         }
 
         return operations(context);
@@ -113,11 +111,7 @@ export class TransactionManager {
     }
   }
 
-  addOperation(
-    transactionId: string,
-    service: string,
-    method: string
-  ): void {
+  addOperation(transactionId: string, service: string, method: string): void {
     const context = this.activeTransactions.get(transactionId);
     if (!context) {
       throw new BaseServiceError('INVALID_TRANSACTION', 'Transaction context not found');
@@ -131,10 +125,7 @@ export class TransactionManager {
     });
   }
 
-  addRollbackAction(
-    transactionId: string,
-    action: () => Promise<void>
-  ): void {
+  addRollbackAction(transactionId: string, action: () => Promise<void>): void {
     const context = this.activeTransactions.get(transactionId);
     if (!context) {
       throw new BaseServiceError('INVALID_TRANSACTION', 'Transaction context not found');
@@ -201,7 +192,7 @@ export class TransactionManager {
 }
 
 export class ServiceTransactionCoordinator {
-  private transactionManager: TransactionManager;
+  private readonly transactionManager: TransactionManager;
 
   constructor(db: DatabaseConnection) {
     this.transactionManager = new TransactionManager(db);
@@ -211,7 +202,7 @@ export class ServiceTransactionCoordinator {
     operations: ServiceOperation[],
     options?: TransactionOptions
   ): Promise<T[]> {
-    return this.transactionManager.executeTransaction(async (context) => {
+    return this.transactionManager.executeTransaction(async context => {
       const results: T[] = [];
 
       for (const operation of operations) {
@@ -248,17 +239,16 @@ export class ServiceTransactionCoordinator {
     initialTasks: any[] = [],
     initialTags: any[] = []
   ): Promise<{ board: any; tasks: any[]; tags: any[] }> {
-    return this.transactionManager.executeTransaction(async (_context) => {
+    return this.transactionManager.executeTransaction(async _context => {
       const operations: ServiceOperation[] = [];
 
       // Create board
       operations.push({
         serviceName: 'BoardService',
         methodName: 'createBoard',
-        execute: async () => {
+        execute: async () =>
           // This would call the actual BoardService method
-          return { id: 'board-1', ...boardData };
-        },
+          ({ id: 'board-1', ...boardData }),
       });
 
       // Create initial tasks
@@ -266,9 +256,7 @@ export class ServiceTransactionCoordinator {
         operations.push({
           serviceName: 'TaskService',
           methodName: 'createTask',
-          execute: async () => {
-            return { id: `task-${Math.random()}`, ...taskData };
-          },
+          execute: async () => ({ id: `task-${Math.random()}`, ...taskData }),
         });
       }
 
@@ -277,14 +265,12 @@ export class ServiceTransactionCoordinator {
         operations.push({
           serviceName: 'TagService',
           methodName: 'createTag',
-          execute: async () => {
-            return { id: `tag-${Math.random()}`, ...tagData };
-          },
+          execute: async () => ({ id: `tag-${Math.random()}`, ...tagData }),
         });
       }
 
       const results = await this.coordinateMultiServiceOperation(operations);
-      
+
       return {
         board: results[0],
         tasks: results.slice(1, 1 + initialTasks.length),
@@ -298,38 +284,32 @@ export class ServiceTransactionCoordinator {
     newColumnId: string,
     newPosition: number
   ): Promise<{ movedTask: any; updatedDependencies: any[] }> {
-    return this.transactionManager.executeTransaction(async (_context) => {
+    return this.transactionManager.executeTransaction(async _context => {
       const operations: ServiceOperation[] = [];
 
       // Get task dependencies
       operations.push({
         serviceName: 'TaskService',
         methodName: 'getTaskWithDependencies',
-        execute: async () => {
-          return { dependencies: [], dependents: [] }; // Mock
-        },
+        execute: async () => ({ dependencies: [], dependents: [] }), // Mock
       });
 
       // Move the task
       operations.push({
         serviceName: 'TaskService',
         methodName: 'updateTask',
-        execute: async () => {
-          return { id: taskId, column_id: newColumnId, position: newPosition };
-        },
+        execute: async () => ({ id: taskId, column_id: newColumnId, position: newPosition }),
       });
 
       // Update dependent tasks if needed
       operations.push({
         serviceName: 'TaskService',
         methodName: 'updateDependentTasks',
-        execute: async () => {
-          return []; // Mock updated dependencies
-        },
+        execute: async () => [], // Mock updated dependencies
       });
 
       const results = await this.coordinateMultiServiceOperation(operations);
-      
+
       return {
         movedTask: results[1],
         updatedDependencies: results[2] as any[],
@@ -343,74 +323,60 @@ export class ServiceTransactionCoordinator {
     removedDependencies: any[];
     deletedNotes: any[];
   }> {
-    return this.transactionManager.executeTransaction(async (_context) => {
+    return this.transactionManager.executeTransaction(async _context => {
       const operations: ServiceOperation[] = [];
 
       // Get task with all relations
       operations.push({
         serviceName: 'TaskService',
         methodName: 'getTaskWithSubtasks',
-        execute: async () => {
-          return { id: taskId, subtasks: [] }; // Mock
-        },
+        execute: async () => ({ id: taskId, subtasks: [] }), // Mock
       });
 
       // Get task dependencies
       operations.push({
         serviceName: 'TaskService',
         methodName: 'getTaskWithDependencies',
-        execute: async () => {
-          return { dependencies: [], dependents: [] }; // Mock
-        },
+        execute: async () => ({ dependencies: [], dependents: [] }), // Mock
       });
 
       // Get task notes
       operations.push({
         serviceName: 'NoteService',
         methodName: 'getTaskNotes',
-        execute: async () => {
-          return []; // Mock
-        },
+        execute: async () => [], // Mock
       });
 
       // Delete notes
       operations.push({
         serviceName: 'NoteService',
         methodName: 'deleteTaskNotes',
-        execute: async () => {
-          return []; // Mock deleted notes
-        },
+        execute: async () => [], // Mock deleted notes
       });
 
       // Remove dependencies
       operations.push({
         serviceName: 'TaskService',
         methodName: 'removeDependencies',
-        execute: async () => {
-          return []; // Mock removed dependencies
-        },
+        execute: async () => [], // Mock removed dependencies
       });
 
       // Handle subtasks (orphan or delete)
       operations.push({
         serviceName: 'TaskService',
         methodName: 'handleOrphanedSubtasks',
-        execute: async () => {
-          return []; // Mock orphaned subtasks
-        },
+        execute: async () => [], // Mock orphaned subtasks
       });
 
       // Delete the task
       operations.push({
         serviceName: 'TaskService',
         methodName: 'deleteTask',
-        execute: async () => {
-          return { id: taskId }; // Mock deleted task
-        },
+        execute: async () => ({ id: taskId }), // Mock deleted task
       });
 
       const results = await this.coordinateMultiServiceOperation(operations);
-      
+
       return {
         deletedTask: results[6],
         orphanedSubtasks: results[5] as any[],
@@ -424,7 +390,7 @@ export class ServiceTransactionCoordinator {
     tasksData: any[],
     options?: { assignTags?: string[]; createDependencies?: boolean }
   ): Promise<{ tasks: any[]; assignedTags: any[]; createdDependencies: any[] }> {
-    return this.transactionManager.executeTransaction(async (_context) => {
+    return this.transactionManager.executeTransaction(async _context => {
       const operations: ServiceOperation[] = [];
       const createdTasks: any[] = [];
 
@@ -448,9 +414,7 @@ export class ServiceTransactionCoordinator {
             operations.push({
               serviceName: 'TagService',
               methodName: 'addTagToTask',
-              execute: async () => {
-                return { task_id: task.id, tag_id: tagId };
-              },
+              execute: async () => ({ task_id: task.id, tag_id: tagId }),
             });
           }
         }
@@ -463,18 +427,16 @@ export class ServiceTransactionCoordinator {
           operations.push({
             serviceName: 'TaskService',
             methodName: 'addDependency',
-            execute: async () => {
-              return {
-                task_id: createdTasks[i].id,
-                depends_on_task_id: createdTasks[i - 1].id,
-              };
-            },
+            execute: async () => ({
+              task_id: createdTasks[i].id,
+              depends_on_task_id: createdTasks[i - 1].id,
+            }),
           });
         }
       }
 
       const results = await this.coordinateMultiServiceOperation(operations);
-      
+
       const taskResults = results.slice(0, tasksData.length);
       const tagResults = results.slice(tasksData.length, -createdTasks.length + 1);
       const dependencyResults = results.slice(-createdTasks.length + 1);
@@ -493,17 +455,13 @@ export class ServiceTransactionCoordinator {
     avgOperationsPerTransaction: number;
   } {
     const activeTransactions = this.transactionManager.getActiveTransactions();
-    const totalOperations = activeTransactions.reduce(
-      (sum, tx) => sum + tx.operations.length, 
-      0
-    );
+    const totalOperations = activeTransactions.reduce((sum, tx) => sum + tx.operations.length, 0);
 
     return {
       activeTransactions: activeTransactions.length,
       totalOperations,
-      avgOperationsPerTransaction: activeTransactions.length > 0 
-        ? totalOperations / activeTransactions.length 
-        : 0,
+      avgOperationsPerTransaction:
+        activeTransactions.length > 0 ? totalOperations / activeTransactions.length : 0,
     };
   }
 }
@@ -524,8 +482,8 @@ export function createTransactionDecorator(coordinator: ServiceTransactionCoordi
     const originalMethod = descriptor.value;
 
     descriptor.value = async function (...args: any[]) {
-      const isAlreadyInTransaction = args.some(arg => 
-        arg && typeof arg === 'object' && arg.transactionId
+      const isAlreadyInTransaction = args.some(
+        arg => arg && typeof arg === 'object' && arg.transactionId
       );
 
       if (isAlreadyInTransaction) {
@@ -534,11 +492,13 @@ export function createTransactionDecorator(coordinator: ServiceTransactionCoordi
       }
 
       // Wrap in transaction
-      return (coordinator as any).transactionManager.executeTransaction(async (context) => {
-        // Add transaction context to args
-        const argsWithContext = [...args, { transactionId: context.id }];
-        return originalMethod.apply(this, argsWithContext);
-      });
+      return (coordinator as any).transactionManager.executeTransaction(
+        async (context: TransactionContext) => {
+          // Add transaction context to args
+          const argsWithContext = [...args, { transactionId: context.id }];
+          return originalMethod.apply(this, argsWithContext);
+        }
+      );
     };
 
     return descriptor;

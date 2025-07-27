@@ -1,21 +1,21 @@
 /**
  * Database statistics collection and monitoring utilities
- * 
+ *
  * @module database/stats
  * @description This module provides comprehensive database statistics collection,
  * performance monitoring, and health metrics for SQLite databases. It tracks
  * query performance, table statistics, index usage, and system metrics.
- * 
+ *
  * @example
  * ```typescript
  * import { StatisticsCollector } from '@/database/stats';
- * 
+ *
  * const stats = new StatisticsCollector(dbConnection);
- * 
+ *
  * // Get comprehensive stats
  * const summary = await stats.getStatsSummary();
  * console.log('Database health:', summary.health.score);
- * 
+ *
  * // Monitor query performance
  * stats.startQueryMonitoring();
  * ```
@@ -144,7 +144,7 @@ interface QueryRecord {
 
 /**
  * Database statistics collector and monitor
- * 
+ *
  * @class StatisticsCollector
  * @description Collects comprehensive database statistics including performance
  * metrics, table information, index usage, and health indicators. Provides
@@ -152,8 +152,11 @@ interface QueryRecord {
  */
 export class StatisticsCollector {
   private readonly db: DatabaseConnection;
+
   private readonly config: StatsConfig;
+
   private queryHistory: QueryRecord[] = [];
+
   private monitoringActive = false;
 
   constructor(db: DatabaseConnection, config: Partial<StatsConfig> = {}) {
@@ -171,9 +174,9 @@ export class StatisticsCollector {
 
   /**
    * Get comprehensive database statistics summary
-   * 
+   *
    * @returns {Promise<DatabaseStats>} Complete database statistics
-   * 
+   *
    * @example
    * ```typescript
    * const stats = await collector.getStatsSummary();
@@ -228,12 +231,13 @@ export class StatisticsCollector {
 
   /**
    * Get basic database information
-   * 
+   *
    * @returns {Promise<DatabaseStats['database']>} Database file information
    */
   public async getDatabaseInfo(): Promise<DatabaseStats['database']> {
     const stats = await this.db.getStats();
-    const utilization = stats.pageCount > 0 ? (stats.size / (stats.pageCount * stats.pageSize)) * 100 : 0;
+    const utilization =
+      stats.pageCount > 0 ? (stats.size / (stats.pageCount * stats.pageSize)) * 100 : 0;
 
     return {
       size: stats.size,
@@ -246,7 +250,7 @@ export class StatisticsCollector {
 
   /**
    * Get statistics for all tables
-   * 
+   *
    * @returns {Promise<TableStats[]>} Array of table statistics
    */
   public async getTableStatistics(): Promise<TableStats[]> {
@@ -264,18 +268,24 @@ export class StatisticsCollector {
       try {
         const [rowCountResult, sizeResult, indexCountResult] = await Promise.all([
           this.db.queryOne<{ count: number }>(`SELECT COUNT(*) as count FROM "${table.name}"`),
-          this.db.queryOne<{ size: number }>(`
+          this.db.queryOne<{ size: number }>(
+            `
             SELECT SUM(pgsize) as size 
             FROM dbstat 
             WHERE name = ?
-          `, [table.name]),
-          this.db.queryOne<{ count: number }>(`
+          `,
+            [table.name]
+          ),
+          this.db.queryOne<{ count: number }>(
+            `
             SELECT COUNT(*) as count 
             FROM sqlite_master 
             WHERE type = 'index' 
             AND tbl_name = ?
             AND name NOT LIKE 'sqlite_%'
-          `, [table.name]),
+          `,
+            [table.name]
+          ),
         ]);
 
         const rowCount = rowCountResult?.count || 0;
@@ -288,11 +298,15 @@ export class StatisticsCollector {
         try {
           const timestampColumns = ['updated_at', 'modified_at', 'created_at'];
           for (const col of timestampColumns) {
-            const result = await this.db.queryOne<{ max_time: string }>(`
+            const result = await this.db
+              .queryOne<{ max_time: string }>(
+                `
               SELECT MAX("${col}") as max_time 
               FROM "${table.name}"
-            `).catch(() => null);
-            
+            `
+              )
+              .catch(() => null);
+
             if (result?.max_time) {
               lastModified = new Date(result.max_time);
               break;
@@ -310,11 +324,11 @@ export class StatisticsCollector {
           averageRowSize,
           indexCount,
         };
-        
+
         if (lastModified) {
           tableStatRecord.lastModified = lastModified;
         }
-        
+
         tableStats.push(tableStatRecord);
       } catch (error) {
         logger.warn('Failed to get statistics for table', {
@@ -329,7 +343,7 @@ export class StatisticsCollector {
 
   /**
    * Get index usage statistics
-   * 
+   *
    * @returns {Promise<IndexStats[]>} Array of index statistics
    */
   public async getIndexStatistics(): Promise<IndexStats[]> {
@@ -352,17 +366,20 @@ export class StatisticsCollector {
       try {
         // Parse columns from CREATE INDEX statement
         const columns = this.parseIndexColumns(index.sql);
-        
+
         // Get index usage statistics (if available)
-        let usageCount = 0;
+        const usageCount = 0;
         let efficiency = 0;
-        
+
         try {
           // Try to get usage statistics from sqlite_stat1 if available
-          const usageResult = await this.db.queryOne<{ stat: string }>(`
+          const usageResult = await this.db.queryOne<{ stat: string }>(
+            `
             SELECT stat FROM sqlite_stat1 WHERE tbl = ? AND idx = ?
-          `, [index.tbl_name, index.name]);
-          
+          `,
+            [index.tbl_name, index.name]
+          );
+
           if (usageResult?.stat) {
             // Parse stat string to estimate efficiency
             const statParts = usageResult.stat.split(' ');
@@ -399,7 +416,7 @@ export class StatisticsCollector {
 
   /**
    * Get query performance statistics
-   * 
+   *
    * @returns {Promise<QueryStats>} Query performance metrics
    */
   public async getQueryStatistics(): Promise<QueryStats> {
@@ -423,18 +440,23 @@ export class StatisticsCollector {
     const successfulQueries = this.queryHistory.filter(q => q.success);
     const totalQueries = this.queryHistory.length;
     const totalDuration = successfulQueries.reduce((sum, q) => sum + q.duration, 0);
-    const averageExecutionTime = successfulQueries.length > 0 ? totalDuration / successfulQueries.length : 0;
+    const averageExecutionTime =
+      successfulQueries.length > 0 ? totalDuration / successfulQueries.length : 0;
 
     // Find slowest and fastest queries
-    const slowest = successfulQueries.length > 0 
-      ? successfulQueries.reduce((slowest, current) => 
-          current.duration > slowest.duration ? current : slowest)
-      : undefined;
-    
-    const fastest = successfulQueries.length > 0 
-      ? successfulQueries.reduce((fastest, current) => 
-          current.duration < fastest.duration ? current : fastest)
-      : undefined;
+    const slowest =
+      successfulQueries.length > 0
+        ? successfulQueries.reduce((slowest, current) =>
+            current.duration > slowest.duration ? current : slowest
+          )
+        : undefined;
+
+    const fastest =
+      successfulQueries.length > 0
+        ? successfulQueries.reduce((fastest, current) =>
+            current.duration < fastest.duration ? current : fastest
+          )
+        : undefined;
 
     // Calculate error rate
     const errorCount = this.queryHistory.filter(q => !q.success).length;
@@ -467,16 +489,20 @@ export class StatisticsCollector {
     return {
       totalQueries,
       averageExecutionTime: Math.round(averageExecutionTime * 100) / 100,
-      slowestQuery: slowest ? {
-        sql: slowest.sql.substring(0, 100) + (slowest.sql.length > 100 ? '...' : ''),
-        duration: slowest.duration,
-        timestamp: slowest.timestamp,
-      } : null,
-      fastestQuery: fastest ? {
-        sql: fastest.sql.substring(0, 100) + (fastest.sql.length > 100 ? '...' : ''),
-        duration: fastest.duration,
-        timestamp: fastest.timestamp,
-      } : null,
+      slowestQuery: slowest
+        ? {
+            sql: slowest.sql.substring(0, 100) + (slowest.sql.length > 100 ? '...' : ''),
+            duration: slowest.duration,
+            timestamp: slowest.timestamp,
+          }
+        : null,
+      fastestQuery: fastest
+        ? {
+            sql: fastest.sql.substring(0, 100) + (fastest.sql.length > 100 ? '...' : ''),
+            duration: fastest.duration,
+            timestamp: fastest.timestamp,
+          }
+        : null,
       errorRate: Math.round(errorRate * 100) / 100,
       queryTypes,
     };
@@ -484,7 +510,7 @@ export class StatisticsCollector {
 
   /**
    * Get system health metrics
-   * 
+   *
    * @returns {Promise<HealthMetrics>} Health assessment
    */
   public async getHealthMetrics(): Promise<HealthMetrics> {
@@ -511,7 +537,7 @@ export class StatisticsCollector {
       // Check database size and fragmentation
       const stats = await this.db.getStats();
       const sizeMB = stats.size / 1024 / 1024;
-      
+
       if (sizeMB > 500) {
         issues.push('Large database size');
         recommendations.push('Consider archiving old data or partitioning');
@@ -528,7 +554,7 @@ export class StatisticsCollector {
       // Check query performance
       if (this.config.enableQueryMonitoring && this.queryHistory.length > 0) {
         const queryStats = await this.getQueryStatistics();
-        
+
         if (queryStats.errorRate > 5) {
           issues.push(`High query error rate: ${queryStats.errorRate}%`);
           recommendations.push('Review and fix failing queries');
@@ -574,15 +600,15 @@ export class StatisticsCollector {
 
   /**
    * Start monitoring query performance
-   * 
+   *
    * @example
    * ```typescript
    * // Start monitoring
    * collector.startQueryMonitoring();
-   * 
+   *
    * // Run some queries...
    * await db.query('SELECT * FROM tasks');
-   * 
+   *
    * // Get performance stats
    * const stats = await collector.getQueryStatistics();
    * ```
@@ -611,7 +637,7 @@ export class StatisticsCollector {
 
   /**
    * Record a query execution for monitoring
-   * 
+   *
    * @param {string} sql - SQL query that was executed
    * @param {number} duration - Execution time in milliseconds
    * @param {boolean} success - Whether the query succeeded
@@ -626,7 +652,7 @@ export class StatisticsCollector {
       timestamp: new Date(),
       success,
     };
-    
+
     if (error !== undefined) {
       record.error = error;
     }
@@ -661,7 +687,7 @@ export class StatisticsCollector {
 
   /**
    * Export statistics to JSON
-   * 
+   *
    * @returns {Promise<string>} JSON string of statistics
    */
   public async exportStats(): Promise<string> {
@@ -671,7 +697,7 @@ export class StatisticsCollector {
 
   /**
    * Parse columns from CREATE INDEX SQL statement
-   * 
+   *
    * @private
    * @param {string} sql - CREATE INDEX SQL statement
    * @returns {string[]} Array of column names
@@ -682,7 +708,7 @@ export class StatisticsCollector {
     try {
       // Extract column list from CREATE INDEX statement
       const match = sql.match(/\((.*?)\)/);
-      if (match && match[1]) {
+      if (match?.[1]) {
         return match[1]
           .split(',')
           .map(col => col.trim().replace(/["`\[\]]/g, ''))
@@ -697,34 +723,34 @@ export class StatisticsCollector {
 
   /**
    * Format bytes to human-readable string
-   * 
+   *
    * @private
    * @param {number} bytes - Number of bytes
    * @returns {string} Formatted string
    */
   private formatBytes(bytes: number): string {
     if (bytes === 0) return '0 B';
-    
+
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+
+    return `${parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
   }
 }
 
 /**
  * Create a statistics collector instance
- * 
+ *
  * @param {DatabaseConnection} db - Database connection
  * @param {Partial<StatsConfig>} [config] - Optional configuration
  * @returns {StatisticsCollector} Configured statistics collector
- * 
+ *
  * @example
  * ```typescript
  * import { dbConnection } from '@/database/connection';
  * import { createStatsCollector } from '@/database/stats';
- * 
+ *
  * const collector = createStatsCollector(dbConnection, {
  *   enableQueryMonitoring: true,
  *   slowQueryThreshold: 500

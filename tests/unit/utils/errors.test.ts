@@ -1,9 +1,10 @@
 /**
  * Unit tests for Error Utilities
- * 
+ *
  * @description Tests for custom error classes and error handling utilities
  */
 
+import type { ErrorContext } from '@/utils/errors';
 import {
   BaseServiceError,
   ValidationError,
@@ -14,14 +15,13 @@ import {
   RateLimitError,
   DatabaseError,
   ExternalServiceError,
-  ErrorContext,
   ErrorHandlerManager,
   globalErrorHandler,
   createServiceErrorHandler,
   withErrorContext,
   withRetry,
   createCircuitBreaker,
-  ErrorCodes
+  ErrorCodes,
 } from '@/utils/errors';
 import { logger } from '@/utils/logger';
 
@@ -31,8 +31,8 @@ jest.mock('@/utils/logger', () => ({
     info: jest.fn(),
     warn: jest.fn(),
     error: jest.fn(),
-    debug: jest.fn()
-  }
+    debug: jest.fn(),
+  },
 }));
 
 describe('Error Utilities', () => {
@@ -41,7 +41,7 @@ describe('Error Utilities', () => {
     method: 'testMethod',
     userId: 'user-123',
     requestId: 'req-456',
-    metadata: { extra: 'data' }
+    metadata: { extra: 'data' },
   };
 
   beforeEach(() => {
@@ -50,7 +50,13 @@ describe('Error Utilities', () => {
 
   describe('BaseServiceError', () => {
     it('should create error with all properties', () => {
-      const error = new BaseServiceError('TEST_CODE', 'Test message', 400, { detail: 'test' }, mockContext);
+      const error = new BaseServiceError(
+        'TEST_CODE',
+        'Test message',
+        400,
+        { detail: 'test' },
+        mockContext
+      );
 
       expect(error.code).toBe('TEST_CODE');
       expect(error.message).toBe('Test message');
@@ -68,7 +74,13 @@ describe('Error Utilities', () => {
     });
 
     it('should create proper JSON representation', () => {
-      const error = new BaseServiceError('TEST_CODE', 'Test message', 400, { detail: 'test' }, mockContext);
+      const error = new BaseServiceError(
+        'TEST_CODE',
+        'Test message',
+        400,
+        { detail: 'test' },
+        mockContext
+      );
       const json = error.toJSON();
 
       expect(json).toHaveProperty('name', 'BaseServiceError');
@@ -131,7 +143,11 @@ describe('Error Utilities', () => {
 
   describe('ConflictError', () => {
     it('should create conflict error correctly', () => {
-      const error = new ConflictError('Resource already exists', { existingId: '123' }, mockContext);
+      const error = new ConflictError(
+        'Resource already exists',
+        { existingId: '123' },
+        mockContext
+      );
 
       expect(error.code).toBe('CONFLICT');
       expect(error.statusCode).toBe(409);
@@ -142,7 +158,11 @@ describe('Error Utilities', () => {
 
   describe('ForbiddenError', () => {
     it('should create forbidden error correctly', () => {
-      const error = new ForbiddenError('Access denied', { reason: 'insufficient permissions' }, mockContext);
+      const error = new ForbiddenError(
+        'Access denied',
+        { reason: 'insufficient permissions' },
+        mockContext
+      );
 
       expect(error.code).toBe('FORBIDDEN');
       expect(error.statusCode).toBe(403);
@@ -178,7 +198,11 @@ describe('Error Utilities', () => {
     });
 
     it('should create rate limit error with custom details', () => {
-      const error = new RateLimitError('Too many requests', { limit: 100, window: '1h' }, mockContext);
+      const error = new RateLimitError(
+        'Too many requests',
+        { limit: 100, window: '1h' },
+        mockContext
+      );
 
       expect(error.message).toBe('Too many requests');
       expect(error.details).toEqual({ limit: 100, window: '1h' });
@@ -205,7 +229,12 @@ describe('Error Utilities', () => {
 
   describe('ExternalServiceError', () => {
     it('should create external service error correctly', () => {
-      const error = new ExternalServiceError('GitHub API', 'Rate limit exceeded', { remaining: 0 }, mockContext);
+      const error = new ExternalServiceError(
+        'GitHub API',
+        'Rate limit exceeded',
+        { remaining: 0 },
+        mockContext
+      );
 
       expect(error.code).toBe('EXTERNAL_SERVICE_ERROR');
       expect(error.statusCode).toBe(502);
@@ -216,7 +245,7 @@ describe('Error Utilities', () => {
 
   describe('ErrorHandlerManager', () => {
     let errorHandler: ErrorHandlerManager;
-    
+
     beforeEach(() => {
       errorHandler = new ErrorHandlerManager();
     });
@@ -224,14 +253,14 @@ describe('Error Utilities', () => {
     it('should return BaseServiceError as-is', () => {
       const error = new ValidationError('Test error');
       const result = errorHandler.handleError(error);
-      
+
       expect(result).toBe(error);
     });
 
     it('should handle UNIQUE constraint errors', () => {
       const error = new Error('UNIQUE constraint failed: table.column');
       const result = errorHandler.handleError(error);
-      
+
       expect(result).toBeInstanceOf(ConflictError);
       expect(result.code).toBe('CONFLICT');
       expect(result.message).toBe('Resource already exists');
@@ -240,7 +269,7 @@ describe('Error Utilities', () => {
     it('should handle FOREIGN KEY constraint errors', () => {
       const error = new Error('FOREIGN KEY constraint failed');
       const result = errorHandler.handleError(error);
-      
+
       expect(result).toBeInstanceOf(ValidationError);
       expect(result.code).toBe('VALIDATION_ERROR');
       expect(result.message).toBe('Invalid reference to related resource');
@@ -249,7 +278,7 @@ describe('Error Utilities', () => {
     it('should handle NOT NULL constraint errors', () => {
       const error = new Error('NOT NULL constraint failed: table.column');
       const result = errorHandler.handleError(error);
-      
+
       expect(result).toBeInstanceOf(ValidationError);
       expect(result.code).toBe('VALIDATION_ERROR');
       expect(result.message).toBe('Required field is missing');
@@ -258,7 +287,7 @@ describe('Error Utilities', () => {
     it('should handle CHECK constraint errors', () => {
       const error = new Error('CHECK constraint failed: table');
       const result = errorHandler.handleError(error);
-      
+
       expect(result).toBeInstanceOf(ValidationError);
       expect(result.code).toBe('VALIDATION_ERROR');
       expect(result.message).toBe('Invalid field value');
@@ -267,7 +296,7 @@ describe('Error Utilities', () => {
     it('should handle database locked errors', () => {
       const error = new Error('database is locked');
       const result = errorHandler.handleError(error);
-      
+
       expect(result).toBeInstanceOf(BaseServiceError);
       expect(result.code).toBe('DATABASE_BUSY');
       expect(result.statusCode).toBe(503);
@@ -276,7 +305,7 @@ describe('Error Utilities', () => {
     it('should handle schema errors', () => {
       const error = new Error('no such table: nonexistent');
       const result = errorHandler.handleError(error);
-      
+
       expect(result).toBeInstanceOf(BaseServiceError);
       expect(result.code).toBe('DATABASE_SCHEMA_ERROR');
       expect(result.statusCode).toBe(500);
@@ -285,7 +314,7 @@ describe('Error Utilities', () => {
     it('should handle generic errors', () => {
       const error = new Error('Unknown error');
       const result = errorHandler.handleError(error);
-      
+
       expect(result).toBeInstanceOf(BaseServiceError);
       expect(result.code).toBe('INTERNAL_ERROR');
       expect(result.statusCode).toBe(500);
@@ -294,17 +323,17 @@ describe('Error Utilities', () => {
     it('should register and use custom handlers', () => {
       const customHandler = jest.fn().mockReturnValue(new ValidationError('Custom error'));
       errorHandler.registerHandler('CustomError', customHandler);
-      
+
       class CustomError extends Error {
         constructor(message: string) {
           super(message);
           this.name = 'CustomError';
         }
       }
-      
+
       const error = new CustomError('Test');
       const result = errorHandler.handleError(error);
-      
+
       expect(customHandler).toHaveBeenCalledWith(error, undefined);
       expect(result.message).toBe('Custom error');
     });
@@ -314,29 +343,31 @@ describe('Error Utilities', () => {
     it('should handle ZodError correctly', () => {
       class ZodError extends Error {
         errors: any[];
-        
+
         constructor(message: string, errors: any[]) {
           super(message);
           this.name = 'ZodError';
           this.errors = errors;
         }
       }
-      
+
       const zodError = new ZodError('Validation error', [
         { path: ['field1'], message: 'Required' },
-        { path: ['field2', 'nested'], message: 'Invalid type' }
+        { path: ['field2', 'nested'], message: 'Invalid type' },
       ]);
-      
+
       const result = globalErrorHandler.handleError(zodError);
-      
+
       expect(result).toBeInstanceOf(ValidationError);
-      expect(result.message).toBe('Validation failed: field1: Required, field2.nested: Invalid type');
+      expect(result.message).toBe(
+        'Validation failed: field1: Required, field2.nested: Invalid type'
+      );
     });
 
     it('should handle TypeError with property access', () => {
       const error = new TypeError("Cannot read property 'test' of undefined");
       const result = globalErrorHandler.handleError(error);
-      
+
       expect(result).toBeInstanceOf(BaseServiceError);
       expect(result.code).toBe('INVALID_INPUT');
       expect(result.statusCode).toBe(400);
@@ -345,7 +376,7 @@ describe('Error Utilities', () => {
     it('should handle generic TypeError', () => {
       const error = new TypeError('Type error');
       const result = globalErrorHandler.handleError(error);
-      
+
       expect(result).toBeInstanceOf(BaseServiceError);
       expect(result.code).toBe('TYPE_ERROR');
       expect(result.statusCode).toBe(500);
@@ -356,47 +387,50 @@ describe('Error Utilities', () => {
     it('should create a decorator that handles errors', async () => {
       const serviceName = 'TestService';
       const decorator = createServiceErrorHandler(serviceName);
-      
+
       class TestClass {
         async testMethod() {
           throw new Error('Test error');
         }
       }
-      
+
       const descriptor = {
-        value: TestClass.prototype.testMethod
+        value: TestClass.prototype.testMethod,
       };
-      
+
       decorator(TestClass.prototype, 'testMethod', descriptor);
-      
+
       const instance = new TestClass();
-      
+
       await expect(descriptor.value.call(instance)).rejects.toBeInstanceOf(BaseServiceError);
-      expect(logger.error).toHaveBeenCalledWith('Service method error', expect.objectContaining({
-        service: serviceName,
-        method: 'testMethod'
-      }));
+      expect(logger.error).toHaveBeenCalledWith(
+        'Service method error',
+        expect.objectContaining({
+          service: serviceName,
+          method: 'testMethod',
+        })
+      );
     });
 
     it('should pass through successful method calls', async () => {
       const serviceName = 'TestService';
       const decorator = createServiceErrorHandler(serviceName);
-      
+
       class TestClass {
         async testMethod() {
           return 'success';
         }
       }
-      
+
       const descriptor = {
-        value: TestClass.prototype.testMethod
+        value: TestClass.prototype.testMethod,
       };
-      
+
       decorator(TestClass.prototype, 'testMethod', descriptor);
-      
+
       const instance = new TestClass();
       const result = await descriptor.value.call(instance);
-      
+
       expect(result).toBe('success');
     });
   });
@@ -407,27 +441,29 @@ describe('Error Utilities', () => {
     it('should handle synchronous functions', () => {
       const fn = jest.fn().mockReturnValue('success');
       const wrappedFn = withErrorContext(fn, context);
-      
+
       const result = wrappedFn('arg1', 'arg2');
-      
+
       expect(result).toBe('success');
       expect(fn).toHaveBeenCalledWith('arg1', 'arg2');
     });
 
     it('should handle synchronous errors', () => {
       const error = new Error('Sync error');
-      const fn = jest.fn().mockImplementation(() => { throw error; });
+      const fn = jest.fn().mockImplementation(() => {
+        throw error;
+      });
       const wrappedFn = withErrorContext(fn, context);
-      
+
       expect(() => wrappedFn()).toThrow(BaseServiceError);
     });
 
     it('should handle async functions', async () => {
       const fn = jest.fn().mockResolvedValue('async success');
       const wrappedFn = withErrorContext(fn, context);
-      
+
       const result = await wrappedFn('arg1');
-      
+
       expect(result).toBe('async success');
       expect(fn).toHaveBeenCalledWith('arg1');
     });
@@ -436,7 +472,7 @@ describe('Error Utilities', () => {
       const error = new Error('Async error');
       const fn = jest.fn().mockRejectedValue(error);
       const wrappedFn = withErrorContext(fn, context);
-      
+
       await expect(wrappedFn()).rejects.toBeInstanceOf(BaseServiceError);
     });
   });
@@ -444,21 +480,22 @@ describe('Error Utilities', () => {
   describe('withRetry', () => {
     it('should succeed on first attempt', async () => {
       const operation = jest.fn().mockResolvedValue('success');
-      
+
       const result = await withRetry(operation);
-      
+
       expect(result).toBe('success');
       expect(operation).toHaveBeenCalledTimes(1);
     });
 
     it('should retry on retryable errors', async () => {
-      const operation = jest.fn()
+      const operation = jest
+        .fn()
         .mockRejectedValueOnce(new Error('database is locked'))
         .mockRejectedValueOnce(new Error('database is locked'))
         .mockResolvedValue('success');
-      
+
       const result = await withRetry(operation, { maxAttempts: 3, baseDelay: 10 });
-      
+
       expect(result).toBe('success');
       expect(operation).toHaveBeenCalledTimes(3);
       expect(logger.warn).toHaveBeenCalledTimes(2);
@@ -466,36 +503,42 @@ describe('Error Utilities', () => {
 
     it('should not retry non-retryable errors', async () => {
       const operation = jest.fn().mockRejectedValue(new ValidationError('Bad input'));
-      
+
       await expect(withRetry(operation)).rejects.toBeInstanceOf(ValidationError);
       expect(operation).toHaveBeenCalledTimes(1);
     });
 
     it('should throw after max attempts', async () => {
       const operation = jest.fn().mockRejectedValue(new Error('database is locked'));
-      
-      await expect(withRetry(operation, { maxAttempts: 2, baseDelay: 10 })).rejects.toBeInstanceOf(BaseServiceError);
+
+      await expect(withRetry(operation, { maxAttempts: 2, baseDelay: 10 })).rejects.toBeInstanceOf(
+        BaseServiceError
+      );
       expect(operation).toHaveBeenCalledTimes(2);
     });
 
     it('should handle exponential backoff with jitter', async () => {
-      const operation = jest.fn()
+      const operation = jest
+        .fn()
         .mockRejectedValueOnce(new Error('timeout'))
         .mockResolvedValue('success');
-      
-      const result = await withRetry(operation, { 
-        maxAttempts: 2, 
-        baseDelay: 100, 
-        exponentialBase: 2,
-        jitter: false 
-      });
-      
-      expect(result).toBe('success');
-      expect(logger.warn).toHaveBeenCalledWith('Operation failed, retrying', expect.objectContaining({
-        attempt: 1,
+
+      const result = await withRetry(operation, {
         maxAttempts: 2,
-        delay: 100
-      }));
+        baseDelay: 100,
+        exponentialBase: 2,
+        jitter: false,
+      });
+
+      expect(result).toBe('success');
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Operation failed, retrying',
+        expect.objectContaining({
+          attempt: 1,
+          maxAttempts: 2,
+          delay: 100,
+        })
+      );
     });
   });
 
@@ -504,13 +547,13 @@ describe('Error Utilities', () => {
       const circuitBreaker = createCircuitBreaker('test', {
         threshold: 3,
         timeout: 1000,
-        resetTimeout: 5000
+        resetTimeout: 5000,
       });
-      
+
       const operation = jest.fn().mockResolvedValue('success');
-      
+
       const result = await circuitBreaker(operation);
-      
+
       expect(result).toBe('success');
       expect(operation).toHaveBeenCalledTimes(1);
     });
@@ -519,57 +562,58 @@ describe('Error Utilities', () => {
       const circuitBreaker = createCircuitBreaker('test', {
         threshold: 2,
         timeout: 1000,
-        resetTimeout: 5000
+        resetTimeout: 5000,
       });
-      
+
       const operation = jest.fn().mockRejectedValue(new Error('Service unavailable'));
-      
+
       // First failure
       await expect(circuitBreaker(operation)).rejects.toThrow('Service unavailable');
-      
+
       // Second failure - should open circuit
       await expect(circuitBreaker(operation)).rejects.toThrow('Service unavailable');
-      
+
       // Third call - circuit should be open
       await expect(circuitBreaker(operation)).rejects.toThrow('Circuit breaker test is open');
-      
+
       expect(operation).toHaveBeenCalledTimes(2);
       expect(logger.error).toHaveBeenCalledWith('Circuit breaker opened', {
         name: 'test',
         failures: 2,
-        threshold: 2
+        threshold: 2,
       });
     });
 
     it('should transition to half-open after reset timeout', async () => {
       jest.useFakeTimers();
-      
+
       const circuitBreaker = createCircuitBreaker('test', {
         threshold: 1,
         timeout: 1000,
-        resetTimeout: 1000
+        resetTimeout: 1000,
       });
-      
-      const operation = jest.fn()
+
+      const operation = jest
+        .fn()
         .mockRejectedValueOnce(new Error('Failure'))
         .mockResolvedValue('success');
-      
+
       // Fail and open circuit
       await expect(circuitBreaker(operation)).rejects.toThrow('Failure');
-      
+
       // Circuit should be open
       await expect(circuitBreaker(operation)).rejects.toThrow('Circuit breaker test is open');
-      
+
       // Advance time past reset timeout
       jest.advanceTimersByTime(1001);
-      
+
       // Should now allow operation (half-open) and succeed
       const result = await circuitBreaker(operation);
       expect(result).toBe('success');
-      
+
       expect(logger.info).toHaveBeenCalledWith('Circuit breaker half-open', { name: 'test' });
       expect(logger.info).toHaveBeenCalledWith('Circuit breaker closed', { name: 'test' });
-      
+
       jest.useRealTimers();
     });
   });
@@ -591,7 +635,7 @@ describe('Error Utilities', () => {
       expect(() => {
         (ErrorCodes as any).NEW_CODE = 'NEW_CODE';
       }).not.toThrow();
-      
+
       // But the original values should be immutable
       expect(ErrorCodes.VALIDATION_ERROR).toBe('VALIDATION_ERROR');
     });

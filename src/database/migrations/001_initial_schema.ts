@@ -1,4 +1,4 @@
-import { Database } from 'sqlite3';
+import type { Database } from 'sqlite3';
 import { promisify } from 'util';
 
 /**
@@ -8,7 +8,7 @@ import { promisify } from 'util';
 
 export async function up(db: Database): Promise<void> {
   const run = promisify(db.run.bind(db));
-  
+
   // Create core tables
   await run(`
     CREATE TABLE IF NOT EXISTS boards (
@@ -180,8 +180,12 @@ export async function up(db: Database): Promise<void> {
   await run(`CREATE INDEX IF NOT EXISTS idx_tasks_parent_task_id ON tasks(parent_task_id)`);
   await run(`CREATE INDEX IF NOT EXISTS idx_tasks_created_at ON tasks(created_at)`);
   await run(`CREATE INDEX IF NOT EXISTS idx_tasks_updated_at ON tasks(updated_at)`);
-  await run(`CREATE INDEX IF NOT EXISTS idx_task_dependencies_task_id ON task_dependencies(task_id)`);
-  await run(`CREATE INDEX IF NOT EXISTS idx_task_dependencies_depends_on ON task_dependencies(depends_on_task_id)`);
+  await run(
+    `CREATE INDEX IF NOT EXISTS idx_task_dependencies_task_id ON task_dependencies(task_id)`
+  );
+  await run(
+    `CREATE INDEX IF NOT EXISTS idx_task_dependencies_depends_on ON task_dependencies(depends_on_task_id)`
+  );
   await run(`CREATE INDEX IF NOT EXISTS idx_notes_task_id ON notes(task_id)`);
   await run(`CREATE INDEX IF NOT EXISTS idx_notes_category ON notes(category)`);
   await run(`CREATE INDEX IF NOT EXISTS idx_notes_pinned ON notes(pinned)`);
@@ -193,7 +197,9 @@ export async function up(db: Database): Promise<void> {
   await run(`CREATE INDEX IF NOT EXISTS idx_task_history_task_id ON task_history(task_id)`);
   await run(`CREATE INDEX IF NOT EXISTS idx_task_history_changed_at ON task_history(changed_at)`);
   await run(`CREATE INDEX IF NOT EXISTS idx_time_entries_task_id ON task_time_entries(task_id)`);
-  await run(`CREATE INDEX IF NOT EXISTS idx_time_entries_start_time ON task_time_entries(start_time)`);
+  await run(
+    `CREATE INDEX IF NOT EXISTS idx_time_entries_start_time ON task_time_entries(start_time)`
+  );
 
   // Create full-text search virtual tables
   await run(`
@@ -362,7 +368,7 @@ export async function up(db: Database): Promise<void> {
 
 export async function down(db: Database): Promise<void> {
   const run = promisify(db.run.bind(db));
-  
+
   // Drop triggers
   await run(`DROP TRIGGER IF EXISTS boards_updated_at`);
   await run(`DROP TRIGGER IF EXISTS columns_updated_at`);

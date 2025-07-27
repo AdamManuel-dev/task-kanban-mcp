@@ -1,6 +1,6 @@
 /**
  * Unit tests for NoteService
- * 
+ *
  * @description Comprehensive test suite covering all NoteService functionality
  * including CRUD operations, search, filtering, and edge cases.
  */
@@ -16,8 +16,8 @@ jest.mock('@/utils/logger', () => ({
     info: jest.fn(),
     warn: jest.fn(),
     error: jest.fn(),
-    debug: jest.fn()
-  }
+    debug: jest.fn(),
+  },
 }));
 
 describe('NoteService', () => {
@@ -31,14 +31,14 @@ describe('NoteService', () => {
     // Force a new database instance for testing
     (DatabaseConnection as any).instance = null;
     dbConnection = DatabaseConnection.getInstance();
-    
+
     if (dbConnection.isConnected()) {
       await dbConnection.close();
     }
-    
+
     // Use test-specific database file
     process.env.DATABASE_PATH = './data/kanban-test.db';
-    
+
     await dbConnection.initialize();
     noteService = new NoteService(dbConnection);
 
@@ -48,10 +48,11 @@ describe('NoteService', () => {
     secondTaskId = 'test-task-2';
 
     // Create test board
-    await dbConnection.execute(
-      'INSERT INTO boards (id, name, description) VALUES (?, ?, ?)',
-      [boardId, 'Test Board', 'Test board description']
-    );
+    await dbConnection.execute('INSERT INTO boards (id, name, description) VALUES (?, ?, ?)', [
+      boardId,
+      'Test Board',
+      'Test board description',
+    ]);
 
     // Create test column
     await dbConnection.execute(
@@ -83,7 +84,7 @@ describe('NoteService', () => {
         task_id: taskId,
         content: 'Test note content',
         category: 'general' as const,
-        pinned: false
+        pinned: false,
       };
 
       const note = await noteService.createNote(noteData);
@@ -101,7 +102,7 @@ describe('NoteService', () => {
     it('should create a note with default values', async () => {
       const noteData = {
         task_id: taskId,
-        content: 'Test note with defaults'
+        content: 'Test note with defaults',
       };
 
       const note = await noteService.createNote(noteData);
@@ -115,7 +116,7 @@ describe('NoteService', () => {
         task_id: taskId,
         content: 'Pinned note',
         category: 'decision' as const,
-        pinned: true
+        pinned: true,
       };
 
       const note = await noteService.createNote(noteData);
@@ -127,7 +128,7 @@ describe('NoteService', () => {
     it('should throw error when task does not exist', async () => {
       const noteData = {
         task_id: 'non-existent-task',
-        content: 'Test note content'
+        content: 'Test note content',
       };
 
       await expect(noteService.createNote(noteData)).rejects.toThrow('Failed to create note');
@@ -139,7 +140,7 @@ describe('NoteService', () => {
 
       const noteData = {
         task_id: taskId,
-        content: 'Test note content'
+        content: 'Test note content',
       };
 
       await expect(noteService.createNote(noteData)).rejects.toThrow();
@@ -153,7 +154,7 @@ describe('NoteService', () => {
       createdNote = await noteService.createNote({
         task_id: taskId,
         content: 'Test note for retrieval',
-        category: 'progress'
+        category: 'progress',
       });
     });
 
@@ -186,21 +187,21 @@ describe('NoteService', () => {
         task_id: taskId,
         content: 'General note',
         category: 'general',
-        pinned: false
+        pinned: false,
       });
 
       await noteService.createNote({
         task_id: taskId,
         content: 'Progress update',
         category: 'progress',
-        pinned: true
+        pinned: true,
       });
 
       await noteService.createNote({
         task_id: secondTaskId,
         content: 'Blocker information',
         category: 'blocker',
-        pinned: false
+        pinned: false,
       });
     });
 
@@ -256,9 +257,9 @@ describe('NoteService', () => {
     });
 
     it('should sort notes by different fields', async () => {
-      const notesByContent = await noteService.getNotes({ 
-        sortBy: 'content', 
-        sortOrder: 'asc' 
+      const notesByContent = await noteService.getNotes({
+        sortBy: 'content',
+        sortOrder: 'asc',
       });
 
       expect(notesByContent[0].content <= notesByContent[1].content).toBe(true);
@@ -272,7 +273,7 @@ describe('NoteService', () => {
 
       const notes = await noteService.getNotes({
         date_from: yesterday,
-        date_to: tomorrow
+        date_to: tomorrow,
       });
 
       expect(notes).toHaveLength(3);
@@ -283,17 +284,17 @@ describe('NoteService', () => {
     beforeEach(async () => {
       await noteService.createNote({
         task_id: taskId,
-        content: 'Task 1 note 1'
+        content: 'Task 1 note 1',
       });
 
       await noteService.createNote({
         task_id: taskId,
-        content: 'Task 1 note 2'
+        content: 'Task 1 note 2',
       });
 
       await noteService.createNote({
         task_id: secondTaskId,
-        content: 'Task 2 note 1'
+        content: 'Task 2 note 1',
       });
     });
 
@@ -316,19 +317,19 @@ describe('NoteService', () => {
       await noteService.createNote({
         task_id: taskId,
         content: 'Pinned note 1',
-        pinned: true
+        pinned: true,
       });
 
       await noteService.createNote({
         task_id: taskId,
         content: 'Regular note',
-        pinned: false
+        pinned: false,
       });
 
       await noteService.createNote({
         task_id: secondTaskId,
         content: 'Pinned note 2',
-        pinned: true
+        pinned: true,
       });
     });
 
@@ -356,13 +357,13 @@ describe('NoteService', () => {
         task_id: taskId,
         content: 'Original content',
         category: 'general',
-        pinned: false
+        pinned: false,
       });
     });
 
     it('should update note content', async () => {
       const updatedNote = await noteService.updateNote(createdNote.id, {
-        content: 'Updated content'
+        content: 'Updated content',
       });
 
       expect(updatedNote.content).toBe('Updated content');
@@ -372,7 +373,7 @@ describe('NoteService', () => {
 
     it('should update note category', async () => {
       const updatedNote = await noteService.updateNote(createdNote.id, {
-        category: 'decision'
+        category: 'decision',
       });
 
       expect(updatedNote.category).toBe('decision');
@@ -381,7 +382,7 @@ describe('NoteService', () => {
 
     it('should update pinned status', async () => {
       const updatedNote = await noteService.updateNote(createdNote.id, {
-        pinned: true
+        pinned: true,
       });
 
       expect(Boolean(updatedNote.pinned)).toBe(true);
@@ -391,7 +392,7 @@ describe('NoteService', () => {
       const updatedNote = await noteService.updateNote(createdNote.id, {
         content: 'New content',
         category: 'blocker',
-        pinned: true
+        pinned: true,
       });
 
       expect(updatedNote.content).toBe('New content');
@@ -421,7 +422,7 @@ describe('NoteService', () => {
     beforeEach(async () => {
       createdNote = await noteService.createNote({
         task_id: taskId,
-        content: 'Note to delete'
+        content: 'Note to delete',
       });
     });
 
@@ -433,9 +434,9 @@ describe('NoteService', () => {
     });
 
     it('should throw error for non-existent note', async () => {
-      await expect(
-        noteService.deleteNote('non-existent-id')
-      ).rejects.toThrow('Failed to delete note');
+      await expect(noteService.deleteNote('non-existent-id')).rejects.toThrow(
+        'Failed to delete note'
+      );
     });
   });
 
@@ -444,20 +445,20 @@ describe('NoteService', () => {
       await noteService.createNote({
         task_id: taskId,
         content: 'This is a test note about JavaScript development',
-        category: 'general'
+        category: 'general',
       });
 
       await noteService.createNote({
         task_id: taskId,
         content: 'Progress update on JavaScript refactoring',
         category: 'progress',
-        pinned: true
+        pinned: true,
       });
 
       await noteService.createNote({
         task_id: secondTaskId,
         content: 'Bug found in the Python module',
-        category: 'blocker'
+        category: 'blocker',
       });
     });
 
@@ -474,9 +475,9 @@ describe('NoteService', () => {
     });
 
     it('should highlight search terms', async () => {
-      const results = await noteService.searchNotes({ 
+      const results = await noteService.searchNotes({
         query: 'JavaScript',
-        highlight: true 
+        highlight: true,
       });
 
       expect(results[0].highlighted_content).toContain('<mark>JavaScript</mark>');
@@ -489,9 +490,9 @@ describe('NoteService', () => {
     });
 
     it('should filter search results by category', async () => {
-      const results = await noteService.searchNotes({ 
+      const results = await noteService.searchNotes({
         query: 'JavaScript',
-        category: 'progress'
+        category: 'progress',
       });
 
       expect(results).toHaveLength(1);
@@ -499,9 +500,9 @@ describe('NoteService', () => {
     });
 
     it('should filter search results by task_id', async () => {
-      const results = await noteService.searchNotes({ 
+      const results = await noteService.searchNotes({
         query: 'JavaScript',
-        task_id: taskId
+        task_id: taskId,
       });
 
       expect(results).toHaveLength(2);
@@ -509,9 +510,9 @@ describe('NoteService', () => {
     });
 
     it('should filter search results to pinned only', async () => {
-      const results = await noteService.searchNotes({ 
+      const results = await noteService.searchNotes({
         query: 'JavaScript',
-        pinned_only: true
+        pinned_only: true,
       });
 
       expect(results).toHaveLength(1);
@@ -519,9 +520,9 @@ describe('NoteService', () => {
     });
 
     it('should apply pagination to search results', async () => {
-      const results = await noteService.searchNotes({ 
+      const results = await noteService.searchNotes({
         query: 'JavaScript',
-        limit: 1
+        limit: 1,
       });
 
       expect(results).toHaveLength(1);
@@ -533,22 +534,22 @@ describe('NoteService', () => {
       // Create notes with different dates
       await noteService.createNote({
         task_id: taskId,
-        content: 'Recent note'
+        content: 'Recent note',
       });
 
       // Create an older note by manually updating its created_at
       const oldNote = await noteService.createNote({
         task_id: taskId,
-        content: 'Old note'
+        content: 'Old note',
       });
 
       const oldDate = new Date();
       oldDate.setDate(oldDate.getDate() - 10);
 
-      await dbConnection.execute(
-        'UPDATE notes SET created_at = ? WHERE id = ?',
-        [oldDate, oldNote.id]
-      );
+      await dbConnection.execute('UPDATE notes SET created_at = ? WHERE id = ?', [
+        oldDate,
+        oldNote.id,
+      ]);
     });
 
     it('should get recent notes within default 7 days', async () => {
@@ -572,19 +573,19 @@ describe('NoteService', () => {
       await noteService.createNote({
         task_id: taskId,
         content: 'General note',
-        category: 'general'
+        category: 'general',
       });
 
       await noteService.createNote({
         task_id: taskId,
         content: 'Progress note',
-        category: 'progress'
+        category: 'progress',
       });
 
       await noteService.createNote({
         task_id: taskId,
         content: 'Another progress note',
-        category: 'progress'
+        category: 'progress',
       });
     });
 
@@ -611,10 +612,11 @@ describe('NoteService', () => {
       otherTaskId = 'other-task';
 
       // Create another board and task
-      await dbConnection.execute(
-        'INSERT INTO boards (id, name, description) VALUES (?, ?, ?)',
-        [otherBoardId, 'Other Board', 'Other board']
-      );
+      await dbConnection.execute('INSERT INTO boards (id, name, description) VALUES (?, ?, ?)', [
+        otherBoardId,
+        'Other Board',
+        'Other board',
+      ]);
 
       await dbConnection.execute(
         'INSERT INTO columns (id, board_id, name, position) VALUES (?, ?, ?, ?)',
@@ -629,12 +631,12 @@ describe('NoteService', () => {
       // Create notes for different boards
       await noteService.createNote({
         task_id: taskId,
-        content: 'Note for test board'
+        content: 'Note for test board',
       });
 
       await noteService.createNote({
         task_id: otherTaskId,
-        content: 'Note for other board'
+        content: 'Note for other board',
       });
     });
 
@@ -649,11 +651,11 @@ describe('NoteService', () => {
       await noteService.createNote({
         task_id: taskId,
         content: 'Progress note for test board',
-        category: 'progress'
+        category: 'progress',
       });
 
       const progressNotes = await noteService.getNotesForBoard(boardId, {
-        category: 'progress'
+        category: 'progress',
       });
 
       expect(progressNotes).toHaveLength(1);
@@ -668,7 +670,7 @@ describe('NoteService', () => {
       createdNote = await noteService.createNote({
         task_id: taskId,
         content: 'Note to pin/unpin',
-        pinned: false
+        pinned: false,
       });
     });
 
@@ -697,7 +699,7 @@ describe('NoteService', () => {
         task_id: taskId,
         content: 'Original note content',
         category: 'decision',
-        pinned: true
+        pinned: true,
       });
     });
 
@@ -721,9 +723,9 @@ describe('NoteService', () => {
     });
 
     it('should throw error for non-existent note', async () => {
-      await expect(
-        noteService.duplicateNote('non-existent-id')
-      ).rejects.toThrow('Failed to duplicate note');
+      await expect(noteService.duplicateNote('non-existent-id')).rejects.toThrow(
+        'Failed to duplicate note'
+      );
     });
   });
 
@@ -734,44 +736,44 @@ describe('NoteService', () => {
         task_id: taskId,
         content: 'General note 1',
         category: 'general',
-        pinned: false
+        pinned: false,
       });
 
       await noteService.createNote({
         task_id: taskId,
         content: 'General note 2',
         category: 'general',
-        pinned: true
+        pinned: true,
       });
 
       await noteService.createNote({
         task_id: taskId,
         content: 'Progress note',
         category: 'progress',
-        pinned: false
+        pinned: false,
       });
 
       await noteService.createNote({
         task_id: secondTaskId,
         content: 'Blocker note',
         category: 'blocker',
-        pinned: true
+        pinned: true,
       });
 
       // Create an old note
       const oldNote = await noteService.createNote({
         task_id: taskId,
         content: 'Old note',
-        category: 'decision'
+        category: 'decision',
       });
 
       const oldDate = new Date();
       oldDate.setDate(oldDate.getDate() - 10);
 
-      await dbConnection.execute(
-        'UPDATE notes SET created_at = ? WHERE id = ?',
-        [oldDate, oldNote.id]
-      );
+      await dbConnection.execute('UPDATE notes SET created_at = ? WHERE id = ?', [
+        oldDate,
+        oldNote.id,
+      ]);
     });
 
     it('should get overall note statistics', async () => {
@@ -814,7 +816,7 @@ describe('NoteService', () => {
       await dbConnection.close();
 
       await expect(noteService.getNotes()).rejects.toMatchObject({
-        code: 'NOTES_FETCH_FAILED'
+        code: 'NOTES_FETCH_FAILED',
       });
     });
 
@@ -835,7 +837,7 @@ describe('NoteService', () => {
     beforeEach(async () => {
       createdNote = await noteService.createNote({
         task_id: taskId,
-        content: 'Test note for private methods'
+        content: 'Test note for private methods',
       });
     });
 
@@ -849,12 +851,12 @@ describe('NoteService', () => {
     it('should highlight search terms correctly', async () => {
       await noteService.createNote({
         task_id: taskId,
-        content: 'This contains special characters like [brackets] and (parentheses)'
+        content: 'This contains special characters like [brackets] and (parentheses)',
       });
 
-      const results = await noteService.searchNotes({ 
+      const results = await noteService.searchNotes({
         query: '[brackets]',
-        highlight: true 
+        highlight: true,
       });
 
       expect(results[0].highlighted_content).toContain('<mark>[brackets]</mark>');

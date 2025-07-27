@@ -1,6 +1,6 @@
-import { Resource } from '@modelcontextprotocol/sdk/types.js';
+import type { Resource } from '@modelcontextprotocol/sdk/types.js';
 import { logger } from '@/utils/logger';
-import { MCPServices } from './tools';
+import type { MCPServices } from './tools';
 
 export interface ResourceContent {
   text: string;
@@ -8,7 +8,7 @@ export interface ResourceContent {
 }
 
 export class MCPResourceRegistry {
-  private services: MCPServices;
+  private readonly services: MCPServices;
 
   constructor(services: MCPServices) {
     this.services = services;
@@ -43,7 +43,8 @@ export class MCPResourceRegistry {
       {
         uri: 'kanban://tasks/{task_id}',
         name: 'Task Details',
-        description: 'Detailed information about a specific task including subtasks, dependencies, notes, and tags',
+        description:
+          'Detailed information about a specific task including subtasks, dependencies, notes, and tags',
         mimeType: 'application/json',
       },
       {
@@ -132,7 +133,7 @@ export class MCPResourceRegistry {
 
     try {
       const parsedUri = this.parseUri(uri);
-      
+
       switch (parsedUri.type) {
         case 'boards':
           return await this.readBoards(parsedUri);
@@ -159,27 +160,32 @@ export class MCPResourceRegistry {
     }
   }
 
-  private parseUri(uri: string): { type: string; action?: string; id: string; params?: Record<string, string> } {
+  private parseUri(uri: string): {
+    type: string;
+    action?: string;
+    id: string;
+    params?: Record<string, string>;
+  } {
     const url = new URL(uri);
     const pathParts = url.pathname.split('/').filter(Boolean);
-    
+
     const [type, action, id] = pathParts;
     const params: Record<string, string> = {};
-    
+
     url.searchParams.forEach((value, key) => {
       params[key] = value;
     });
 
-    const result: { type: string; action?: string; id: string; params?: Record<string, string> } = { 
-      type: type || '', 
-      id: id || '', 
-      params 
+    const result: { type: string; action?: string; id: string; params?: Record<string, string> } = {
+      type: type || '',
+      id: id || '',
+      params,
     };
-    
+
     if (action) {
       result.action = action;
     }
-    
+
     return result;
   }
 
@@ -194,48 +200,58 @@ export class MCPResourceRegistry {
 
       if (parsedUri.action === 'tasks') {
         // Board tasks
-        const tasks = await this.services.taskService.getTasks({ 
-          board_id: parsedUri.id, 
-          limit: 1000 
+        const tasks = await this.services.taskService.getTasks({
+          board_id: parsedUri.id,
+          limit: 1000,
         });
-        
+
         return {
-          text: JSON.stringify({
-            board_id: parsedUri.id,
-            board_name: board.name,
-            tasks,
-            count: tasks.length,
-          }, null, 2),
-          mimeType: 'application/json',
-        };
-      } else {
-        // Board details
-        const tasks = await this.services.taskService.getTasks({ 
-          board_id: parsedUri.id, 
-          limit: 100 
-        });
-        
-        return {
-          text: JSON.stringify({
-            ...board,
-            tasks: tasks.slice(0, 10), // Include only first 10 tasks for overview
-            task_count: tasks.length,
-          }, null, 2),
+          text: JSON.stringify(
+            {
+              board_id: parsedUri.id,
+              board_name: board.name,
+              tasks,
+              count: tasks.length,
+            },
+            null,
+            2
+          ),
           mimeType: 'application/json',
         };
       }
-    } else {
-      // All boards
-      const boards = await this.services.boardService.getBoards({ limit: 100 });
-      
+      // Board details
+      const tasks = await this.services.taskService.getTasks({
+        board_id: parsedUri.id,
+        limit: 100,
+      });
+
       return {
-        text: JSON.stringify({
-          boards,
-          count: boards.length,
-        }, null, 2),
+        text: JSON.stringify(
+          {
+            ...board,
+            tasks: tasks.slice(0, 10), // Include only first 10 tasks for overview
+            task_count: tasks.length,
+          },
+          null,
+          2
+        ),
         mimeType: 'application/json',
       };
     }
+    // All boards
+    const boards = await this.services.boardService.getBoards({ limit: 100 });
+
+    return {
+      text: JSON.stringify(
+        {
+          boards,
+          count: boards.length,
+        },
+        null,
+        2
+      ),
+      mimeType: 'application/json',
+    };
   }
 
   private async readTasks(parsedUri: any): Promise<ResourceContent> {
@@ -251,38 +267,51 @@ export class MCPResourceRegistry {
       const tags = await this.services.tagService.getTaskTags(parsedUri.id);
 
       return {
-        text: JSON.stringify({
-          ...task,
-          notes,
-          tags,
-        }, null, 2),
+        text: JSON.stringify(
+          {
+            ...task,
+            notes,
+            tags,
+          },
+          null,
+          2
+        ),
         mimeType: 'application/json',
       };
-    } else if (parsedUri.action) {
+    }
+    if (parsedUri.action) {
       // Task collections
       switch (parsedUri.action) {
         case 'blocked':
           const blockedTasks = await this.services.taskService.getBlockedTasks();
           return {
-            text: JSON.stringify({
-              type: 'blocked_tasks',
-              tasks: blockedTasks,
-              count: blockedTasks.length,
-            }, null, 2),
+            text: JSON.stringify(
+              {
+                type: 'blocked_tasks',
+                tasks: blockedTasks,
+                count: blockedTasks.length,
+              },
+              null,
+              2
+            ),
             mimeType: 'application/json',
           };
-          
+
         case 'overdue':
           const overdueTasks = await this.services.taskService.getOverdueTasks();
           return {
-            text: JSON.stringify({
-              type: 'overdue_tasks',
-              tasks: overdueTasks,
-              count: overdueTasks.length,
-            }, null, 2),
+            text: JSON.stringify(
+              {
+                type: 'overdue_tasks',
+                tasks: overdueTasks,
+                count: overdueTasks.length,
+              },
+              null,
+              2
+            ),
             mimeType: 'application/json',
           };
-          
+
         case 'priority':
           if (!parsedUri.id) {
             throw new Error('Priority level required');
@@ -294,27 +323,35 @@ export class MCPResourceRegistry {
             limit: 200,
           });
           return {
-            text: JSON.stringify({
-              type: 'priority_tasks',
-              priority_level: priority,
-              tasks: priorityTasks,
-              count: priorityTasks.length,
-            }, null, 2),
+            text: JSON.stringify(
+              {
+                type: 'priority_tasks',
+                priority_level: priority,
+                tasks: priorityTasks,
+                count: priorityTasks.length,
+              },
+              null,
+              2
+            ),
             mimeType: 'application/json',
           };
-          
+
         default:
           throw new Error(`Unknown task action: ${parsedUri.action}`);
       }
     } else {
       // All tasks
       const tasks = await this.services.taskService.getTasks({ limit: 500 });
-      
+
       return {
-        text: JSON.stringify({
-          tasks,
-          count: tasks.length,
-        }, null, 2),
+        text: JSON.stringify(
+          {
+            tasks,
+            count: tasks.length,
+          },
+          null,
+          2
+        ),
         mimeType: 'application/json',
       };
     }
@@ -326,70 +363,83 @@ export class MCPResourceRegistry {
       if (!query) {
         throw new Error('Search query required');
       }
-      
+
       const notes = await this.services.noteService.searchNotes({ query, limit: 100 });
-      
+
       return {
-        text: JSON.stringify({
-          type: 'search_results',
-          query,
-          notes,
-          count: notes.length,
-        }, null, 2),
-        mimeType: 'application/json',
-      };
-    } else {
-      // All notes
-      const notes = await this.services.noteService.getNotes({ limit: 500 });
-      
-      return {
-        text: JSON.stringify({
-          notes,
-          count: notes.length,
-        }, null, 2),
+        text: JSON.stringify(
+          {
+            type: 'search_results',
+            query,
+            notes,
+            count: notes.length,
+          },
+          null,
+          2
+        ),
         mimeType: 'application/json',
       };
     }
+    // All notes
+    const notes = await this.services.noteService.getNotes({ limit: 500 });
+
+    return {
+      text: JSON.stringify(
+        {
+          notes,
+          count: notes.length,
+        },
+        null,
+        2
+      ),
+      mimeType: 'application/json',
+    };
   }
 
   private async readTags(parsedUri: any): Promise<ResourceContent> {
     if (parsedUri.action === 'hierarchy') {
       const tagTree = await this.services.tagService.getTagHierarchy();
-      
+
       return {
-        text: JSON.stringify({
-          type: 'tag_hierarchy',
-          tree: tagTree,
-        }, null, 2),
-        mimeType: 'application/json',
-      };
-    } else {
-      // All tags
-      const tags = await this.services.tagService.getTags({ 
-        limit: 200,
-      });
-      
-      return {
-        text: JSON.stringify({
-          tags,
-          count: tags.length,
-        }, null, 2),
+        text: JSON.stringify(
+          {
+            type: 'tag_hierarchy',
+            tree: tagTree,
+          },
+          null,
+          2
+        ),
         mimeType: 'application/json',
       };
     }
+    // All tags
+    const tags = await this.services.tagService.getTags({
+      limit: 200,
+    });
+
+    return {
+      text: JSON.stringify(
+        {
+          tags,
+          count: tags.length,
+        },
+        null,
+        2
+      ),
+      mimeType: 'application/json',
+    };
   }
 
   private async readAnalytics(parsedUri: any): Promise<ResourceContent> {
     if (parsedUri.action === 'boards' && parsedUri.id) {
       const analytics = await this.services.boardService.getBoardWithStats(parsedUri.id);
-      
+
       return {
         text: JSON.stringify(analytics, null, 2),
         mimeType: 'application/json',
       };
-    } else {
-      throw new Error('Board ID required for analytics');
     }
+    throw new Error('Board ID required for analytics');
   }
 
   private async readContext(parsedUri: any): Promise<ResourceContent> {
@@ -401,12 +451,13 @@ export class MCPResourceRegistry {
         include_metrics: true,
         detail_level: 'detailed',
       });
-      
+
       return {
         text: JSON.stringify(context, null, 2),
         mimeType: 'application/json',
       };
-    } else if (parsedUri.action === 'task' && parsedUri.id) {
+    }
+    if (parsedUri.action === 'task' && parsedUri.id) {
       const context = await this.services.contextService.getTaskContext(parsedUri.id, {
         include_completed: true,
         days_back: 30,
@@ -414,14 +465,13 @@ export class MCPResourceRegistry {
         include_metrics: true,
         detail_level: 'detailed',
       });
-      
+
       return {
         text: JSON.stringify(context, null, 2),
         mimeType: 'application/json',
       };
-    } else {
-      throw new Error('Invalid context resource URI');
     }
+    throw new Error('Invalid context resource URI');
   }
 
   private async readReports(parsedUri: any): Promise<ResourceContent> {
@@ -434,17 +484,17 @@ export class MCPResourceRegistry {
           include_metrics: true,
           detail_level: 'summary',
         });
-        
+
         return {
           text: JSON.stringify(summary, null, 2),
           mimeType: 'application/json',
         };
-        
+
       case 'workload':
         // Get all tasks grouped by assignee
         const allTasks = await this.services.taskService.getTasks({ limit: 1000 });
         const workloadMap: Record<string, any> = {};
-        
+
         allTasks.forEach(task => {
           const assignee = task.assignee || 'unassigned';
           if (!workloadMap[assignee]) {
@@ -459,28 +509,32 @@ export class MCPResourceRegistry {
               high_priority: 0,
             };
           }
-          
+
           workloadMap[assignee].total_tasks++;
           workloadMap[assignee][task.status]++;
-          
+
           if (task.priority >= 4) {
             workloadMap[assignee].high_priority++;
           }
-          
+
           if (task.due_date && new Date(task.due_date) < new Date() && task.status !== 'done') {
             workloadMap[assignee].overdue++;
           }
         });
-        
+
         return {
-          text: JSON.stringify({
-            type: 'workload_report',
-            workload: Object.values(workloadMap),
-            generated_at: new Date().toISOString(),
-          }, null, 2),
+          text: JSON.stringify(
+            {
+              type: 'workload_report',
+              workload: Object.values(workloadMap),
+              generated_at: new Date().toISOString(),
+            },
+            null,
+            2
+          ),
           mimeType: 'application/json',
         };
-        
+
       default:
         throw new Error(`Unknown report type: ${parsedUri.action}`);
     }
@@ -492,38 +546,44 @@ export class MCPResourceRegistry {
       if (!board) {
         throw new Error(`Board not found: ${parsedUri.id}`);
       }
-      
-      const tasks = await this.services.taskService.getTasks({ board_id: parsedUri.id, limit: 10000 });
+
+      const tasks = await this.services.taskService.getTasks({
+        board_id: parsedUri.id,
+        limit: 10000,
+      });
       const allNotes = [];
       const allTags = [];
-      
+
       // Get all notes and tags for tasks
       for (const task of tasks) {
         const notes = await this.services.noteService.getTaskNotes(task.id, { limit: 100 });
         const tags = await this.services.tagService.getTaskTags(task.id);
-        
+
         allNotes.push(...notes);
         allTags.push(...tags);
       }
-      
+
       return {
-        text: JSON.stringify({
-          export_type: 'board_complete',
-          board,
-          tasks,
-          notes: allNotes,
-          tags: allTags,
-          exported_at: new Date().toISOString(),
-          counts: {
-            tasks: tasks.length,
-            notes: allNotes.length,
-            tags: allTags.length,
+        text: JSON.stringify(
+          {
+            export_type: 'board_complete',
+            board,
+            tasks,
+            notes: allNotes,
+            tags: allTags,
+            exported_at: new Date().toISOString(),
+            counts: {
+              tasks: tasks.length,
+              notes: allNotes.length,
+              tags: allTags.length,
+            },
           },
-        }, null, 2),
+          null,
+          2
+        ),
         mimeType: 'application/json',
       };
-    } else {
-      throw new Error('Board ID required for export');
     }
+    throw new Error('Board ID required for export');
   }
 }
