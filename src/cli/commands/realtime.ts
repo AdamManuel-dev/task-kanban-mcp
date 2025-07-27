@@ -1,3 +1,4 @@
+import { logger } from '@/utils/logger';
 import type { Command } from 'commander';
 import * as WebSocket from 'ws';
 import type { CliComponents } from '../types';
@@ -14,7 +15,7 @@ export function registerRealtimeCommands(program: Command): void {
     .option('-t, --task <id>', 'watch specific task')
     .option('--events <types>', 'event types to watch (comma-separated)')
     .option('--format <format>', 'output format (json|table|compact)', 'compact')
-    .action(async options => {
+    .action((options: { board?: string; task?: string; events?: string; format?: string }) => {
       const { config, formatter } = getComponents();
 
       try {
@@ -32,13 +33,13 @@ export function registerRealtimeCommands(program: Command): void {
 
         formatter.info('Connecting to real-time updates...');
 
-        const ws = new (WebSocket as any)(wsEndpoint);
+        const ws = new WebSocket.WebSocket(wsEndpoint);
 
         ws.on('open', () => {
           formatter.success('Connected to real-time updates');
 
           // Subscribe to events based on options
-          const subscriptions: any = {};
+          const subscriptions: Record<string, unknown> = {};
 
           if (options.board) {
             subscriptions.board = options.board;
@@ -72,31 +73,31 @@ export function registerRealtimeCommands(program: Command): void {
               const timestamp = new Date().toLocaleTimeString();
 
               if (options.format === 'json') {
-                logger.log(JSON.stringify({ timestamp, ...event }, null, 2));
+                logger.info(JSON.stringify({ timestamp, ...event }, null, 2));
               } else if (options.format === 'table') {
                 formatter.output([{ timestamp, ...event }]);
               } else {
                 // Compact format
                 const icon = getEventIcon(event.type);
                 const color = getEventColor(event.type);
-                logger.log(
-                  `${String(timestamp)} ${String(icon)} ${String(String(color(event.type)))}: ${String(String(event.message ?? formatEventMessage(event)))}`
+                logger.info(
+                  `${String(timestamp)} ${String(icon)} ${String(color(event.type))}: ${String(event.message ?? formatEventMessage(event))}`
                 );
               }
             } else if (message.type === 'error') {
-              formatter.error(`WebSocket error: ${String(String(message.data.message))}`);
+              formatter.error(`WebSocket error: ${String(message.data.message)}`);
             }
           } catch (error) {
             formatter.warn(`Failed to parse message: ${String(data)}`);
           }
         });
 
-        ws.on('error', (error: any) => {
-          formatter.error(`WebSocket error: ${String(String(error.message))}`);
+        ws.on('error', (error: Error) => {
+          formatter.error(`WebSocket error: ${String(error.message)}`);
           process.exit(1);
         });
 
-        ws.on('close', (code: any, reason: any) => {
+        ws.on('close', (code: number, reason: Buffer) => {
           if (code === 1000) {
             formatter.info('Connection closed normally');
           } else {
@@ -145,14 +146,19 @@ export function registerRealtimeCommands(program: Command): void {
 
           const streamLogs = async () => {
             try {
-              const logs = (await apiClient.request('/api/logs/stream', { params })) as any;
+              const logs = (await apiClient.request(
+                'GET',
+                '/api/logs/stream',
+                undefined,
+                params
+              )) as any;
 
               if (logs && logs.length > 0) {
                 logs.forEach((log: any) => {
                   const timestamp = new Date(log.timestamp).toLocaleTimeString();
                   const level = log.level.toUpperCase().padEnd(5);
                   const component = log.component ? `[${String(String(log.component))}]` : '';
-                  logger.log(
+                  logger.info(
                     `${String(timestamp)} ${String(level)} ${String(component)} ${String(String(log.message))}`
                   );
                 });
@@ -163,7 +169,11 @@ export function registerRealtimeCommands(program: Command): void {
           };
 
           // Poll for new logs every second
-          const interval = setInterval(streamLogs, 1000);
+          const interval = setInterval(() => {
+            streamLogs().catch(error => 
+              console.error('Failed to stream logs:', error)
+            );
+          }, 1000);
 
           // Handle graceful shutdown
           process.on('SIGINT', () => {
@@ -176,9 +186,9 @@ export function registerRealtimeCommands(program: Command): void {
           await streamLogs();
         } else {
           // One-time log fetch
-          const logs = (await apiClient.request('/api/logs', { params })) as any;
+          const logs = (await apiClient.request('GET', '/api/logs', undefined, params)) as any;
 
-          if (!logs ?? logs.length === 0) {
+          if (!logs || logs.length === 0) {
             formatter.info('No logs found');
             return;
           }

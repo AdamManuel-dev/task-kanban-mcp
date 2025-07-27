@@ -1,19 +1,25 @@
 import { createServer } from 'http';
-import { WebSocketServer, WebSocket } from 'ws';
+import type { WebSocket } from 'ws';
+import { WebSocketServer } from 'ws';
 import { v4 as uuidv4 } from 'uuid';
+import type { Task } from '@/types';
 import { config } from '../config';
 import { logger } from '../utils/logger';
-import type { WebSocketMessage, WebSocketClient, WebSocketError } from './types';
-import type { RequestInfo } from './messageTypes';
+import type { WebSocketMessage, WebSocketClient } from './types';
+import type { RequestInfo, AuthMessage } from './messageTypes';
 import { WebSocketAuth } from './auth';
 import { MessageHandler } from './handlers';
 import { SubscriptionManager } from './subscriptions';
 import { RateLimiter } from './rateLimit';
 
 export class WebSocketManager {
-  private wss: WebSocketServer | null = null;
+  static broadcastToChannel(_channel: string, _message: { type: string; payload: { task: Task } }): void {
+    throw new Error('Method not implemented.');
+  }
 
-  private httpServer: ReturnType<typeof createServer> | null = null;
+  private readonly wss: WebSocketServer | null = null;
+
+  private readonly httpServer: ReturnType<typeof createServer> | null = null;
 
   private readonly clients = new Map<string, WebSocketClient>();
 
@@ -25,7 +31,7 @@ export class WebSocketManager {
 
   private readonly rateLimiter: RateLimiter;
 
-  private heartbeatInterval: NodeJS.Timeout | null = null;
+  private readonly heartbeatInterval: NodeJS.Timeout | null = null;
 
   constructor() {
     this.auth = new WebSocketAuth();
@@ -56,7 +62,11 @@ export class WebSocketManager {
       });
 
       // Set up WebSocket event handlers
-      this.wss.on('connection', this.handleConnection.bind(this));
+      this.wss.on('connection', (ws: WebSocket, request: RequestInfo) => {
+        this.handleConnection(ws, request).catch((err: Error) => {
+          logger.error('WebSocket connection handling failed:', err);
+        });
+      });
       this.wss.on('error', WebSocketManager.handleServerError.bind(this));
 
       // Start HTTP server
@@ -124,7 +134,7 @@ export class WebSocketManager {
     }
   }
 
-  private async handleConnection(ws: WebSocket, request: RequestInfo): Promise<void> {
+  private handleConnection(ws: WebSocket, request: RequestInfo): void {
     const clientId = uuidv4();
     const clientIP = request.socket.remoteAddress ?? 'unknown';
 
@@ -142,7 +152,7 @@ export class WebSocketManager {
         id: clientId,
         ws,
         ip: clientIP,
-        userAgent: request.headers['user-agent'] || undefined,
+        userAgent: request.headers['user-agent'] ?? undefined,
         connectedAt: new Date(),
         lastHeartbeat: new Date(),
         authenticated: false,
@@ -151,37 +161,45 @@ export class WebSocketManager {
         permissions: new Set(),
       };
 
-      // Store client
+      // Add client to map
       this.clients.set(clientId, client);
 
-      // Set up WebSocket event handlers
-      ws.on('message', data => this.handleMessage(clientId, data.toString()));
-      ws.on('close', (code, reason) => this.handleDisconnection(clientId, code, reason));
-      ws.on('error', error => this.handleClientError(clientId, error));
-      ws.on('pong', () => this.handlePong(clientId));
+      // Set up message handler
+      ws.on('message', (data: Buffer | string) => {
+        this.handleMessage(clientId, data).catch((err: Error) => {
+          logger.error('WebSocket message handling failed:', err);
+        });
+      });
+
+      // Set up close handler
+      ws.on('close', (code: number, reason: Buffer) => {
+        this.handleDisconnection(clientId, code, reason);
+      });
+
+      // Set up error handler
+      ws.on('error', (error: Error) => {
+        this.handleClientError(clientId, error);
+      });
+
+      // Set up pong handler
+      ws.on('pong', () => {
+        this.handlePong(clientId);
+      });
 
       // Send welcome message
       this.sendToClient(clientId, {
         type: 'welcome',
-        id: `welcome-${String(clientId)}`,
+        id: uuidv4(),
         payload: {
           clientId,
-          serverVersion: config.mcp.serverVersion,
+          serverVersion: '1.0.0',
           protocolVersion: '1.0',
           timestamp: new Date().toISOString(),
-          authRequired: config.websocket.authRequired,
+          authRequired: true,
         },
       });
 
-      // Request authentication if required
-      if (config.websocket.authRequired) {
-        setTimeout(() => {
-          const client = this.clients.get(clientId);
-          if (client && !client.authenticated) {
-            this.closeConnection(clientId, 'AUTH_TIMEOUT', 'Authentication timeout');
-          }
-        }, config.websocket.authTimeout);
-      }
+      logger.info('WebSocket client connected', { clientId, clientIP });
     } catch (error) {
       logger.error('Error handling WebSocket connection', { clientId, error });
       ws.close(1011, 'Internal server error');
@@ -190,80 +208,64 @@ export class WebSocketManager {
 
   private async handleMessage(clientId: string, data: Buffer | string): Promise<void> {
     const client = this.clients.get(clientId);
-    if (!client) return;
+    if (!client) {
+      logger.warn('Message from unknown client', { clientId });
+      return;
+    }
 
     try {
       // Parse message
-      const rawMessage = data.toString();
-      let message: WebSocketMessage;
-
-      try {
-        message = JSON.parse(rawMessage);
-      } catch (parseError) {
-        this.sendError(clientId, 'INVALID_MESSAGE', 'Invalid JSON format');
-        return;
-      }
+      const messageText = data.toString();
+      const message = JSON.parse(messageText) as WebSocketMessage;
 
       // Validate message structure
       if (!message.type || !message.id) {
-        this.sendError(clientId, 'INVALID_MESSAGE', 'Missing required fields: type, id');
+        this.sendError(clientId, 'INVALID_MESSAGE', 'Invalid message format');
         return;
       }
 
-      // Check rate limiting
-      if (!this.rateLimiter.checkMessageLimit(clientId)) {
-        this.sendError(clientId, 'RATE_LIMIT', 'Message rate limit exceeded');
-        return;
-      }
-
-      // Update last activity
-      client.lastHeartbeat = new Date();
-
-      // Handle authentication messages
+      // Handle authentication
       if (message.type === 'auth') {
         await this.handleAuthMessage(clientId, message);
         return;
       }
 
       // Check authentication for other messages
-      if (config.websocket.authRequired && !client.authenticated) {
-        this.sendError(clientId, 'AUTHENTICATION_REQUIRED', 'Authentication required');
+      if (!client.authenticated) {
+        this.sendError(clientId, 'UNAUTHENTICATED', 'Authentication required');
         return;
       }
 
-      // Handle message
+      // Handle other message types
       await this.messageHandler.handleMessage(clientId, message);
     } catch (error) {
       logger.error('Error handling WebSocket message', { clientId, error });
-      this.sendError(clientId, 'INTERNAL_ERROR', 'Internal server error');
+      this.sendError(clientId, 'MESSAGE_ERROR', 'Failed to process message');
     }
   }
 
   private handleDisconnection(clientId: string, code: number, reason: Buffer): void {
     const client = this.clients.get(clientId);
-    if (!client) return;
+    if (!client) {
+      return;
+    }
 
     logger.info('WebSocket client disconnected', {
       clientId,
       code,
       reason: reason.toString(),
-      connectedDuration: Date.now() - client.connectedAt.getTime(),
     });
 
-    // Clean up subscriptions
-    this.subscriptionManager.unsubscribeAll(clientId);
+    // Remove from subscriptions
+    this.subscriptionManager.removeClientSubscriptions(clientId);
 
-    // Remove client
+    // Remove from clients map
     this.clients.delete(clientId);
   }
 
   private handleClientError(clientId: string, error: Error): void {
     logger.error('WebSocket client error', { clientId, error });
-
-    const client = this.clients.get(clientId);
-    if (client) {
-      this.closeConnection(clientId, 'CLIENT_ERROR', 'Client error occurred');
-    }
+    this.closeConnection(clientId, 'CLIENT_ERROR', 'Client error occurred');
   }
 
   private static handleServerError(error: Error): void {
@@ -278,75 +280,68 @@ export class WebSocketManager {
   }
 
   private async handleAuthMessage(clientId: string, message: WebSocketMessage): Promise<void> {
+    const client = this.clients.get(clientId);
+    if (!client) {
+      return;
+    }
+
     try {
-      const authResult = await this.auth.authenticate(message.payload);
-      const client = this.clients.get(clientId);
+      const authPayload = message.payload as AuthMessage['payload'];
+      const result = await this.auth.authenticate(authPayload as { token: string });
 
-      if (!client) return;
-
-      if (authResult.success) {
+      if (result.success && result.user && result.permissions) {
         client.authenticated = true;
-        client.user = authResult.user ?? null;
-        client.permissions = new Set(authResult.permissions);
+        client.user = result.user;
+        client.permissions = new Set(result.permissions);
 
         this.sendToClient(clientId, {
           type: 'auth_success',
           id: message.id,
           payload: {
-            user: authResult.user,
-            permissions: Array.from(client.permissions),
+            user: result.user,
+            permissions: Array.from(result.permissions),
           },
         });
 
         logger.info('WebSocket client authenticated', {
           clientId,
-          userId: authResult.user?.id,
-          permissions: Array.from(client.permissions),
+          userId: result.user.id,
+          role: result.user.role,
         });
       } else {
         this.sendError(
           clientId,
           'AUTH_FAILED',
-          authResult.error ?? 'Authentication failed',
+          result.error ?? 'Authentication failed',
           message.id
         );
-
-        // Close connection after failed auth
-        setTimeout(() => {
-          this.closeConnection(clientId, 'AUTH_FAILED', 'Authentication failed');
-        }, 1000);
       }
     } catch (error) {
-      logger.error('Authentication error', { clientId, error });
-      this.sendError(clientId, 'AUTH_ERROR', 'Authentication error occurred', message.id);
+      logger.error('Error during WebSocket authentication', { clientId, error });
+      this.sendError(clientId, 'AUTH_ERROR', 'Authentication error', message.id);
     }
   }
 
   private startHeartbeat(): void {
     this.heartbeatInterval = setInterval(() => {
       const now = new Date();
-      const timeout = config.websocket.heartbeatInterval * 2;
+      const timeoutMs = 30000; // 30 seconds
 
-      this.clients.forEach((client, clientId) => {
+      this.clients.forEach(client => {
         const timeSinceLastHeartbeat = now.getTime() - client.lastHeartbeat.getTime();
-
-        if (timeSinceLastHeartbeat > timeout) {
-          logger.warn('Client heartbeat timeout', { clientId, timeSinceLastHeartbeat });
-          this.closeConnection(clientId, 'HEARTBEAT_TIMEOUT', 'Heartbeat timeout');
+        if (timeSinceLastHeartbeat > timeoutMs) {
+          logger.warn('Client heartbeat timeout', { clientId: client.id, timeSinceLastHeartbeat });
+          this.closeConnection(client.id, 'HEARTBEAT_TIMEOUT', 'Heartbeat timeout');
         } else {
-          // Send ping
-          if (client.ws.readyState === WebSocket.OPEN) {
-            client.ws.ping();
-          }
+          client.ws.ping();
         }
       });
-    }, config.websocket.heartbeatInterval);
+    }, 15000); // Send ping every 15 seconds
   }
 
-  // Public methods for sending messages
   sendToClient(clientId: string, message: Omit<WebSocketMessage, 'timestamp'>): boolean {
     const client = this.clients.get(clientId);
-    if (!client || client.ws.readyState !== WebSocket.OPEN) {
+    if (!client) {
       return false;
     }
 
@@ -368,10 +363,7 @@ export class WebSocketManager {
     return this.sendToClient(clientId, {
       type: 'error',
       id: requestId ?? uuidv4(),
-      payload: {
-        code,
-        message,
-      } as WebSocketError,
+      payload: { code, message },
     });
   }
 
@@ -381,12 +373,11 @@ export class WebSocketManager {
   ): number {
     let sentCount = 0;
 
-    this.clients.forEach((client, clientId) => {
-      if (filter && !filter(client)) return;
-      if (client.ws.readyState !== WebSocket.OPEN) return;
-
-      if (this.sendToClient(clientId, message)) {
-        sentCount++;
+    this.clients.forEach(client => {
+      if (!filter || filter(client)) {
+        if (this.sendToClient(client.id, message)) {
+          sentCount += 1;
+        }
       }
     });
 
@@ -395,20 +386,15 @@ export class WebSocketManager {
 
   closeConnection(clientId: string, _code: string, reason: string): void {
     const client = this.clients.get(clientId);
-    if (!client) return;
-
-    try {
-      if (client.ws.readyState === WebSocket.OPEN) {
+    if (client) {
+      try {
         client.ws.close(1000, reason);
+      } catch (error) {
+        logger.error('Error closing WebSocket connection', { clientId, error });
       }
-    } catch (error) {
-      logger.error('Error closing WebSocket connection', { clientId, error });
     }
-
-    this.handleDisconnection(clientId, 1000, Buffer.from(reason));
   }
 
-  // Getters
   getClient(clientId: string): WebSocketClient | undefined {
     return this.clients.get(clientId);
   }

@@ -80,7 +80,7 @@ export class ApiClient {
 
       const contentType = response.headers.get('content-type');
       if (contentType && contentType.includes('application/json')) {
-        const data = await response.json();
+        const data = (await response.json()) as unknown;
         // Handle both wrapped and unwrapped responses
         if (data && typeof data === 'object' && 'data' in data) {
           const wrappedData = data as { data: T };

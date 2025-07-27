@@ -34,7 +34,7 @@ import { NotFoundError } from '@/utils/errors';
  *
  * @returns Express router with all board endpoints configured
  */
-export async function boardRoutes(): Promise<Router> {
+export function boardRoutes(): Router {
   const router = Router();
 
   const boardService = new BoardService(dbConnection);
@@ -80,7 +80,7 @@ export async function boardRoutes(): Promise<Router> {
    * @response 403 - Insufficient permissions
    */
   // GET /api/v1/boards - List boards
-  router.get('/', requirePermission('read'), async (req, res, next) => {
+  router.get('/', requirePermission('read'), async (req, res, next): Promise<void> => {
     try {
       const {
         limit = 50,
@@ -166,7 +166,7 @@ export async function boardRoutes(): Promise<Router> {
    * @response 403 - Insufficient permissions
    */
   // POST /api/v1/boards - Create board
-  router.post('/', requirePermission('write'), async (req, res, next) => {
+  router.post('/', requirePermission('write'), async (req, res, next): Promise<void> => {
     try {
       const boardData = validateInput(BoardValidation.create, req.body);
       const board = await boardService.createBoard(boardData);
@@ -210,7 +210,7 @@ export async function boardRoutes(): Promise<Router> {
    * @response 404 - Board not found
    */
   // GET /api/v1/boards/:id - Get board details
-  router.get('/:id', requirePermission('read'), async (req, res, next) => {
+  router.get('/:id', requirePermission('read'), async (req, res, next): Promise<void> => {
     try {
       const { id } = req.params;
       const { include } = req.query;
@@ -269,7 +269,7 @@ export async function boardRoutes(): Promise<Router> {
    * @response 404 - Board not found
    */
   // PATCH /api/v1/boards/:id - Update board
-  router.patch('/:id', requirePermission('write'), async (req, res, next) => {
+  router.patch('/:id', requirePermission('write'), async (req, res, next): Promise<void> => {
     try {
       const { id } = req.params;
 
@@ -306,7 +306,7 @@ export async function boardRoutes(): Promise<Router> {
    * including columns, tasks, notes, and tags. This action cannot be undone.
    */
   // DELETE /api/v1/boards/:id - Delete board
-  router.delete('/:id', requirePermission('write'), async (req, res, next) => {
+  router.delete('/:id', requirePermission('write'), async (req, res, next): Promise<void> => {
     try {
       const { id } = req.params;
 
@@ -350,7 +350,7 @@ export async function boardRoutes(): Promise<Router> {
    * @note Archived boards can be restored using POST /api/v1/boards/:id/restore
    */
   // POST /api/v1/boards/:id/archive - Archive board
-  router.post('/:id/archive', requirePermission('write'), async (req, res, next) => {
+  router.post('/:id/archive', requirePermission('write'), async (req, res, next): Promise<void> => {
     try {
       const { id } = req.params;
 
@@ -366,7 +366,7 @@ export async function boardRoutes(): Promise<Router> {
   });
 
   // POST /api/v1/boards/:id/restore - Restore archived board
-  router.post('/:id/restore', requirePermission('write'), async (req, res, next) => {
+  router.post('/:id/restore', requirePermission('write'), async (req, res, next): Promise<void> => {
     try {
       const { id } = req.params;
 
@@ -418,7 +418,7 @@ export async function boardRoutes(): Promise<Router> {
    * @note Tasks are not duplicated, only the board structure
    */
   // POST /api/v1/boards/:id/duplicate - Duplicate board
-  router.post('/:id/duplicate', requirePermission('write'), async (req, res, next) => {
+  router.post('/:id/duplicate', requirePermission('write'), async (req, res, next): Promise<void> => {
     try {
       const { id } = req.params;
 
@@ -436,7 +436,7 @@ export async function boardRoutes(): Promise<Router> {
   });
 
   // GET /api/v1/boards/:id/columns - Get board columns
-  router.get('/:id/columns', requirePermission('read'), async (req, res, next) => {
+  router.get('/:id/columns', requirePermission('read'), async (req, res, next): Promise<void> => {
     try {
       const { id } = req.params;
 
@@ -460,7 +460,7 @@ export async function boardRoutes(): Promise<Router> {
   // These are commented out as BoardService doesn't have column management methods
   /*
   // POST /api/v1/boards/:id/columns - Create column
-  router.post('/:id/columns', requirePermission('write'), async (req, res, next) => {
+  router.post('/:id/columns', requirePermission('write'), async (req, res, next): Promise<void> => {
     try {
       const { id } = req.params;
       const columnData = validateInput(BoardValidation.column.create, {
@@ -476,7 +476,7 @@ export async function boardRoutes(): Promise<Router> {
   });
 
   // PATCH /api/v1/boards/:id/columns/:columnId - Update column
-  router.patch('/:id/columns/:columnId', requirePermission('write'), async (req, res, next) => {
+  router.patch('/:id/columns/:columnId', requirePermission('write'), async (req, res, next): Promise<void> => {
     try {
       const { columnId } = req.params;
       const updateData = validateInput(BoardValidation.column.update, req.body);
@@ -488,7 +488,7 @@ export async function boardRoutes(): Promise<Router> {
   });
 
   // DELETE /api/v1/boards/:id/columns/:columnId - Delete column
-  router.delete('/:id/columns/:columnId', requirePermission('write'), async (req, res, next) => {
+  router.delete('/:id/columns/:columnId', requirePermission('write'), async (req, res, next): Promise<void> => {
     try {
       const { columnId } = req.params;
       await boardService.deleteColumn(columnId);
@@ -544,7 +544,7 @@ export async function boardRoutes(): Promise<Router> {
    * @response 404 - Board not found
    */
   // GET /api/v1/boards/:id/tasks - Get board tasks
-  router.get('/:id/tasks', requirePermission('read'), async (req, res, next) => {
+  router.get('/:id/tasks', requirePermission('read'), async (req, res, next): Promise<void> => {
     try {
       const { id } = req.params;
 
@@ -645,7 +645,7 @@ export async function boardRoutes(): Promise<Router> {
    * @response 404 - Board not found
    */
   // GET /api/v1/boards/:id/analytics - Get board analytics
-  router.get('/:id/analytics', requirePermission('read'), async (req, res, next) => {
+  router.get('/:id/analytics', requirePermission('read'), async (req, res, next): Promise<void> => {
     try {
       const { id } = req.params;
 

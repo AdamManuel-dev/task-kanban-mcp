@@ -13,6 +13,13 @@ import { dbConnection } from '@/database/connection';
 import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs';
 import * as path from 'path';
+// Use console.log for performance tests to avoid Winston logger issues
+const logger = {
+  log: (message: string) => console.log(message),
+  info: (message: string) => console.log(message),
+  error: (message: string) => console.error(message),
+  warn: (message: string) => console.warn(message),
+};
 
 interface PerformanceBaseline {
   operation: string;
@@ -259,7 +266,7 @@ describe('Performance Regression Detection', () => {
         const report = loadPerformanceBaselines();
         const baseline = findBaseline(name, report.baselines);
 
-        logger.log(`\n📊 Testing: ${String(description)}`);
+        logger.log(`\n[TESTING] ${String(description)}`);
 
         // Measure current performance
         const metrics = await measureOperation(name, test, 10);
@@ -340,7 +347,7 @@ describe('Performance Regression Detection', () => {
     it('should generate performance report', async () => {
       const report = loadPerformanceBaselines();
 
-      logger.log('\n📈 Performance Baseline Report');
+      logger.log('\n[PERFORMANCE] Performance Baseline Report');
       logger.log('================================');
 
       if (report.baselines.length === 0) {
@@ -442,7 +449,9 @@ describe('Performance Regression Detection', () => {
       const sustainedOperations = 50;
       const operationTimes: number[] = [];
 
-      logger.log(`\n🏋️  Running sustained load test (${String(sustainedOperations)} operations)`);
+      logger.log(
+        `\n[LOAD TEST] Running sustained load test (${String(sustainedOperations)} operations)`
+      );
 
       // eslint-disable-next-line no-await-in-loop
       for (let i = 0; i < sustainedOperations; i++) {

@@ -5,13 +5,13 @@ import { requirePermission } from '@/middleware/auth';
 import { NoteValidation, validateInput } from '@/utils/validation';
 import { NotFoundError } from '@/utils/errors';
 
-export async function noteRoutes(): Promise<Router> {
+export function noteRoutes(): Router {
   const router = Router();
 
   const noteService = new NoteService(dbConnection);
 
   // GET /api/v1/notes/search - Full-text search notes (must be before generic routes)
-  router.get('/search', requirePermission('read'), async (req, res, next) => {
+  router.get('/search', requirePermission('read'), async (req, res, next): Promise<void> => {
     try {
       const { query, limit = 50, offset = 0, task_id, board_id, category, pinned } = req.query;
 
@@ -46,7 +46,7 @@ export async function noteRoutes(): Promise<Router> {
   });
 
   // GET /api/v1/notes/categories - Get note categories with counts
-  router.get('/categories', requirePermission('read'), async (req, res, next) => {
+  router.get('/categories', requirePermission('read'), async (req, res, next): Promise<void> => {
     try {
       const { task_id, board_id } = req.query;
 
@@ -63,7 +63,7 @@ export async function noteRoutes(): Promise<Router> {
   });
 
   // GET /api/v1/notes/recent - Get recently updated notes
-  router.get('/recent', requirePermission('read'), async (req, res, next) => {
+  router.get('/recent', requirePermission('read'), async (req, res, next): Promise<void> => {
     try {
       const { limit = 20, task_id, board_id, days = 7 } = req.query;
 
@@ -82,7 +82,7 @@ export async function noteRoutes(): Promise<Router> {
   });
 
   // GET /api/v1/notes/pinned - Get pinned notes
-  router.get('/pinned', requirePermission('read'), async (req, res, next) => {
+  router.get('/pinned', requirePermission('read'), async (req, res, next): Promise<void> => {
     try {
       const { limit = 50, task_id, board_id, category } = req.query;
 
@@ -102,7 +102,7 @@ export async function noteRoutes(): Promise<Router> {
   });
 
   // GET /api/v1/notes - List notes with filters
-  router.get('/', requirePermission('read'), async (req, res, next) => {
+  router.get('/', requirePermission('read'), async (req, res, next): Promise<void> => {
     try {
       const {
         limit = 50,
@@ -133,7 +133,7 @@ export async function noteRoutes(): Promise<Router> {
       const notes = await noteService.getNotes(options);
 
       // Get total count for pagination
-      const { limit, offset, ...countOptions } = options;
+      const { limit: _, offset: __, ...countOptions } = options;
       const totalNotes = await noteService.getNotes(countOptions);
       const total = totalNotes.length;
 
@@ -149,7 +149,7 @@ export async function noteRoutes(): Promise<Router> {
   });
 
   // POST /api/v1/notes - Create note
-  router.post('/', requirePermission('write'), async (req, res, next) => {
+  router.post('/', requirePermission('write'), async (req, res, next): Promise<void> => {
     try {
       const rawNoteData = validateInput(NoteValidation.create, req.body);
       const noteData: any = {
@@ -169,7 +169,7 @@ export async function noteRoutes(): Promise<Router> {
   });
 
   // GET /api/v1/notes/:id - Get note details
-  router.get('/:id', requirePermission('read'), async (req, res, next) => {
+  router.get('/:id', requirePermission('read'), async (req, res, next): Promise<void> => {
     try {
       const { id } = req.params;
 
@@ -190,7 +190,7 @@ export async function noteRoutes(): Promise<Router> {
   });
 
   // PATCH /api/v1/notes/:id - Update note
-  router.patch('/:id', requirePermission('write'), async (req, res, next) => {
+  router.patch('/:id', requirePermission('write'), async (req, res, next): Promise<void> => {
     try {
       const { id } = req.params;
 
@@ -211,7 +211,7 @@ export async function noteRoutes(): Promise<Router> {
   });
 
   // DELETE /api/v1/notes/:id - Delete note
-  router.delete('/:id', requirePermission('write'), async (req, res, next) => {
+  router.delete('/:id', requirePermission('write'), async (req, res, next): Promise<void> => {
     try {
       const { id } = req.params;
 
@@ -227,7 +227,7 @@ export async function noteRoutes(): Promise<Router> {
   });
 
   // POST /api/v1/notes/:id/pin - Pin note
-  router.post('/:id/pin', requirePermission('write'), async (req, res, next) => {
+  router.post('/:id/pin', requirePermission('write'), async (req, res, next): Promise<void> => {
     try {
       const { id } = req.params;
 
@@ -243,7 +243,7 @@ export async function noteRoutes(): Promise<Router> {
   });
 
   // DELETE /api/v1/notes/:id/pin - Unpin note
-  router.delete('/:id/pin', requirePermission('write'), async (req, res, next) => {
+  router.delete('/:id/pin', requirePermission('write'), async (req, res, next): Promise<void> => {
     try {
       const { id } = req.params;
 

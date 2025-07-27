@@ -111,30 +111,34 @@ export class OutputFormatter {
    * Output CSV format
    */
   private outputCsv<T>(data: T, options?: { headers?: string[]; fields?: string[] }): void {
+    let items: T[];
     if (!Array.isArray(data)) {
-      data = [data] as T;
+      items = [data];
+    } else {
+      items = data;
     }
 
-    const items = Array.isArray(data) ? data : [data];
-    if (items.length === 0) {
+    const processedItems = Array.isArray(items) ? items : [items];
+
+    if (processedItems.length === 0) {
       return;
     }
 
-    const fields = options?.fields ?? Object.keys(items[0]);
+    const fields = options?.fields ?? Object.keys(processedItems[0]);
     const headers = options?.headers ?? fields;
 
     // Output headers
-    logger.log(headers.join(','));
+    logger.info(headers.join(','));
 
     // Output rows
-    items.forEach((item): void => {
+    processedItems.forEach((item): void => {
       const values = fields.map((field): string => {
-        const value = this.getNestedValue(item, field);
-        const stringValue = this.formatValue(value);
+        const value = OutputFormatter.getNestedValue(item, field);
+        const stringValue = OutputFormatter.formatValue(value);
         // Escape commas and quotes in CSV
-        return `"${String(String(stringValue.replace(/"/g, '""')))}"`;
+        return `"${String(stringValue.replace(/"/g, '""'))}"`;
       });
-      logger.log(values.join(','));
+      logger.info(values.join(','));
     });
   }
 
@@ -150,15 +154,17 @@ export class OutputFormatter {
 
     const items = Array.isArray(data) ? data : [data];
     if (items.length === 0) {
-      logger.log(this.colorize('No items found', 'gray'));
+      logger.info(OutputFormatter.colorize('No items found', 'gray'));
       return;
     }
 
-    const fields = options?.fields ?? this.getTableFields(items[0]);
-    const headers = options?.headers ?? fields.map((field): string => this.formatHeader(field));
+    const fields = options?.fields ?? OutputFormatter.getTableFields(items[0]);
+    const headers =
+      options?.headers ??
+      fields.map((field: string): string => OutputFormatter.formatHeader(field));
 
     const table = new Table({
-      head: headers.map((h): string => this.colorize(h, 'cyan')),
+      head: headers.map((h: string): string => OutputFormatter.colorize(h, 'cyan')),
       style: {
         'padding-left': 1,
         'padding-right': 1,
@@ -167,14 +173,14 @@ export class OutputFormatter {
     });
 
     items.forEach((item): void => {
-      const row = fields.map((field): string => {
-        const value = this.getNestedValue(item, field);
-        return this.formatTableValue(value, field);
+      const row = fields.map((field: string): string => {
+        const value = OutputFormatter.getNestedValue(item, field);
+        return OutputFormatter.formatTableValue(value, field);
       });
       table.push(row);
     });
 
-    logger.log(table.toString());
+    logger.info(table.toString());
   }
 
   /**
@@ -190,12 +196,12 @@ export class OutputFormatter {
 
     Object.entries(obj as Record<string, unknown>).forEach(([key, value]): void => {
       table.push([
-        this.colorize(this.formatHeader(key), 'cyan'),
-        this.formatTableValue(value, key),
+        OutputFormatter.colorize(OutputFormatter.formatHeader(key), 'cyan'),
+        OutputFormatter.formatTableValue(value, key),
       ]);
     });
 
-    logger.log(table.toString());
+    logger.info(table.toString());
   }
 
   /**

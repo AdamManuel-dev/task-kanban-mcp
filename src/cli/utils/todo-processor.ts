@@ -3,6 +3,7 @@ import { Listr } from 'listr2';
 import chalk from 'chalk';
 import type { TaskGroup } from './task-runner';
 import { TaskRunner } from './task-runner';
+import { logger } from '../../utils/logger';
 
 export interface TodoItem {
   id: string;
@@ -37,6 +38,23 @@ export class TodoProcessor {
   }
 
   /**
+   * Process TODO.md file with the given options
+   */
+  async process(filePath: string, options: TodoProcessorOptions): Promise<void> {
+    const todos = await this.parseTodoFile(filePath);
+
+    if (options.groupByPhase) {
+      await this.processGroupedByPhase(todos, options);
+    } else {
+      await this.processWithDependencies(todos, options);
+    }
+
+    if (options.generateReport) {
+      await this.generateReport(todos, filePath);
+    }
+  }
+
+  /**
    * Parse TODO.md file and extract tasks
    */
   async parseTodoFile(filePath: string): Promise<Map<string, TodoItem>> {
@@ -46,15 +64,90 @@ export class TodoProcessor {
     const currentPhase = '';
 
     for (const line of lines) {
-      const todo = this.parseTodoLine(line, currentPhase);
+      const todo = TodoProcessor.parseTodoLine(line, currentPhase);
       if (todo) {
         todos.set(todo.id, todo);
       }
     }
 
-    // Note: options and todoFile are not defined in this scope
-    // This appears to be incomplete code that needs proper parameters
     return todos;
+  }
+
+  /**
+   * Parse a single TODO line
+   */
+  private static parseTodoLine(line: string, currentPhase: string): TodoItem | null {
+    // Simple TODO line parser - can be enhanced
+    const todoMatch = line.match(/^- \[([ x])\] (.+)$/);
+    if (!todoMatch) return null;
+
+    const [, completed, text] = todoMatch;
+    const id = `todo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    return {
+      id,
+      text: text?.trim() || '',
+      completed: completed === 'x',
+      priority: 'P3',
+      size: 'M',
+      value: 'M',
+      dependencies: [],
+      phase: currentPhase,
+    };
+  }
+
+  /**
+   * Group todos by phase
+   */
+  private groupByPhase(todos: Map<string, TodoItem>): Map<string, TodoItem[]> {
+    const phases = new Map<string, TodoItem[]>();
+
+    for (const todo of todos.values()) {
+      const phase = todo.phase || 'Unknown';
+      if (!phases.has(phase)) {
+        phases.set(phase, []);
+      }
+      phases.get(phase)!.push(todo);
+    }
+
+    return phases;
+  }
+
+  /**
+   * Create execution groups based on dependencies
+   */
+  private createExecutionGroups(todos: Map<string, TodoItem>): TodoItem[][] {
+    const groups: TodoItem[][] = [];
+    const visited = new Set<string>();
+    const inProgress = new Set<string>();
+
+    const visit = (todo: TodoItem): void => {
+      if (visited.has(todo.id)) return;
+      if (inProgress.has(todo.id)) return; // Circular dependency
+
+      inProgress.add(todo.id);
+
+      // Visit dependencies first
+      for (const depId of todo.dependencies) {
+        const dep = todos.get(depId);
+        if (dep) visit(dep);
+      }
+
+      inProgress.delete(todo.id);
+      visited.add(todo.id);
+
+      // Add to appropriate group
+      if (groups.length === 0) groups.push([]);
+      groups[groups.length - 1].push(todo);
+    };
+
+    for (const todo of todos.values()) {
+      if (!visited.has(todo.id)) {
+        visit(todo);
+      }
+    }
+
+    return groups;
   }
 
   /**
@@ -117,7 +210,7 @@ export class TodoProcessor {
     const listr = new Listr(
       groups.map((group, index) => ({
         title: `Execution Group ${index + 1} (${group.length} tasks)`,
-        task: async (_ctx, task) => {
+        task: (_ctx, task) => {
           const subtasks = group.map(todo => ({
             title: `${todo.id}: ${todo.text}`,
             task: async () => {
@@ -128,7 +221,7 @@ export class TodoProcessor {
             },
           }));
 
-          return task.newListr(subtasks, {
+          return new Listr(subtasks, {
             concurrent: options.concurrent ?? true,
             rendererOptions: {
               showSubtasks: true,
@@ -173,12 +266,12 @@ ${completed.map(t => `- [x] ${t.id}: ${t.text}`).join('\n')}
 ${pending.map(t => `- [ ] ${t.id}: ${t.text}`).join('\n')}
 
 ## Time Estimates
-- Completed: ${this.calculateTimeEstimate(completed)} minutes
-- Remaining: ${this.calculateTimeEstimate(pending)} minutes
+- Completed: ${TodoProcessor.calculateTimeEstimate(completed)} minutes
+- Remaining: ${TodoProcessor.calculateTimeEstimate(pending)} minutes
 `;
 
     await writeFile(reportPath, report);
-    logger.log(chalk.green(`\n✅ Report generated: ${reportPath}`));
+    logger.info(`Report generated: ${reportPath}`);
   }
 
   /**

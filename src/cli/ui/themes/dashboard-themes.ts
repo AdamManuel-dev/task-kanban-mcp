@@ -307,7 +307,7 @@ export function getThemeNames(): string[] {
  * Theme helper functions
  */
 export class ThemeHelper {
-  private theme: DashboardTheme;
+  private readonly theme: DashboardTheme;
 
   constructor(themeName: string = 'dark') {
     this.theme = getTheme(themeName);

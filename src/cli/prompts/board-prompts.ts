@@ -21,6 +21,7 @@ export interface ColumnInput {
 export async function quickBoardSetup(
   defaults?: Partial<BoardSetupInput>
 ): Promise<BoardSetupInput> {
+  // eslint-disable-next-line no-console
   console.log(chalk.cyan('\n🚀 Quick Board Setup\n'));
 
   // Board name and description
@@ -234,7 +235,7 @@ export async function selectFromList<T extends { id: string; name: string }>(
       hint: '- Space to select. Return to submit',
     });
 
-    if (!response.selected ?? response.selected.length === 0) {
+    if (!response.selected || response.selected.length === 0) {
       return null;
     }
 

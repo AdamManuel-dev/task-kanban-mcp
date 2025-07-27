@@ -1,7 +1,8 @@
 import type { Command } from 'commander';
 import inquirer from 'inquirer';
-
 import type { CliComponents } from '../types';
+import type { OutputFormatter } from '../formatter';
+import { logger } from '../../utils/logger';
 
 interface ListTagOptions {
   usage?: boolean;
@@ -34,53 +35,96 @@ interface TagData {
   updatedAt?: string;
 }
 
-export function registerTagCommands(program: Command): void {
-  const tagCmd = program.command('tag').description('Manage tags');
+interface TagsApiResponse {
+  data: TagData[];
+  success: boolean;
+  error?: string;
+}
 
-  // Get global components with proper typing
+interface TagApiResponse {
+  data: TagData;
+  success: boolean;
+  error?: string;
+}
+
+interface CreateTagPromptResult {
+  name: string;
+  description?: string;
+  color?: string;
+}
+
+interface UpdateTagOptions {
+  name?: string;
+  description?: string;
+  color?: string;
+  parent?: string;
+  interactive?: boolean;
+}
+
+interface UpdateTagPromptResult {
+  name?: string;
+  description?: string;
+  color?: string;
+  parent?: string;
+}
+
+interface DeleteTagOptions {
+  force?: boolean;
+}
+
+interface ConfirmPromptResult {
+  confirm: boolean;
+}
+
+export function registerTagCommands(program: Command): void {
   const getComponents = (): CliComponents => global.cliComponents;
+
+  const tagCmd = program.command('tags').alias('tag').description('Manage tags');
 
   tagCmd
     .command('list')
     .alias('ls')
-    .description('List tags')
-    .option('--usage', 'include usage statistics')
-    .option('--tree', 'show hierarchical tree structure')
+    .description('List all tags')
+    .option('-u, --usage', 'show usage statistics')
+    .option('-t, --tree', 'show as tree structure')
     .option('-l, --limit <number>', 'limit number of results', '50')
     .action(async (options: ListTagOptions) => {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const tags = (await apiClient.getTags()) as TagData[];
+        const tagsResponse = (await apiClient.getTags()) as TagsApiResponse;
+        const tags = tagsResponse.data;
 
-        if (!tags ?? tags.length === 0) {
+        if (!tags || tags.length === 0) {
           formatter.info('No tags found');
           return;
         }
 
         if (options.tree) {
-          // Display as hierarchical tree
-          formatter.info('Hierarchical tag structure:');
+          // Display as tree structure
           const rootTags = tags.filter((tag: TagData) => !tag.parentId);
           displayTagTree(rootTags, tags, formatter, 0);
         } else {
-          // Regular table display
-          const fields = options.usage
-            ? ['id', 'name', 'color', 'description', 'taskCount', 'parentId']
-            : ['id', 'name', 'color', 'description', 'parentId'];
+          // Display as list
+          const displayTags = options.usage
+            ? tags.map((tag: TagData) => ({
+                ...tag,
+                usage: `${String(String(tag.taskCount || 0))} tasks`,
+              }))
+            : tags;
 
-          const headers = options.usage
-            ? ['ID', 'Name', 'Color', 'Description', 'Task Count', 'Parent']
-            : ['ID', 'Name', 'Color', 'Description', 'Parent'];
-
-          formatter.output(tags.slice(0, parseInt(options.limit, 10)), {
-            fields,
-            headers,
+          formatter.output(displayTags.slice(0, parseInt(options.limit || '50', 10)), {
+            fields: options.usage
+              ? ['id', 'name', 'color', 'usage', 'description']
+              : ['id', 'name', 'color', 'description'],
+            headers: options.usage
+              ? ['ID', 'Name', 'Color', 'Usage', 'Description']
+              : ['ID', 'Name', 'Color', 'Description'],
           });
         }
       } catch (error) {
         formatter.error(
-          `Failed to list tags: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
+          `Failed to list tags: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
         process.exit(1);
       }
@@ -89,93 +133,96 @@ export function registerTagCommands(program: Command): void {
   tagCmd
     .command('show <id>')
     .description('Show tag details')
-    .option('--tasks', 'include tasks with this tag')
+    .option('-t, --tasks', 'show tasks with this tag')
+    .option('-u, --usage', 'show usage statistics')
     .action(async (id: string, options: ShowTagOptions) => {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const tag = (await apiClient.getTag(id)) as TagData;
-
+        const tagResponse = (await apiClient.getTag(id)) as TagApiResponse;
+        const tag = tagResponse.data;
         if (!tag) {
           formatter.error(`Tag ${String(id)} not found`);
           process.exit(1);
         }
 
-        formatter.output(tag);
+        formatter.output(tag, {
+          fields: options.usage
+            ? ['id', 'name', 'color', 'description', 'taskCount', 'createdAt']
+            : ['id', 'name', 'color', 'description', 'createdAt'],
+          headers: options.usage
+            ? ['ID', 'Name', 'Color', 'Description', 'Task Count', 'Created']
+            : ['ID', 'Name', 'Color', 'Description', 'Created'],
+        });
 
         if (options.tasks) {
-          formatter.info('\n--- Tasks with this tag ---');
-          // Note: tasks property not available in TagData type
-          formatter.info('Task list not available in current API response');
+          // TODO: Implement task listing for tag
+          formatter.info('Task listing for tags not yet implemented');
         }
       } catch (error) {
         formatter.error(
-          `Failed to get tag: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
+          `Failed to get tag: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
         process.exit(1);
       }
     });
 
   tagCmd
-    .command('create <name>')
-    .alias('new')
+    .command('create')
+    .alias('add')
     .description('Create a new tag')
+    .option('-n, --name <name>', 'tag name')
     .option('-d, --description <desc>', 'tag description')
     .option('-c, --color <color>', 'tag color (hex code)')
-    .option('-p, --parent <parentId>', 'parent tag ID for hierarchy')
+    .option('-p, --parent <parentId>', 'parent tag ID')
     .option('-i, --interactive', 'interactive mode')
-    .action(async (name: string, options: CreateTagOptions) => {
+    .action(async (options: CreateTagOptions) => {
       const { apiClient, formatter } = getComponents();
 
-      let tagData: Record<string, unknown> = { name };
+      let tagData: any = {};
 
-      if (options.interactive) {
-        const questions: Array<{
-          type: string;
-          name: string;
-          message: string;
-          default?: string;
-          validate?: (input: string) => boolean | string;
-        }> = [
+      if (options.interactive || !options.name) {
+        const answers = await inquirer.prompt([
+          {
+            type: 'input',
+            name: 'name',
+            message: 'Tag name:',
+            validate: (input: string) => input.length > 0 || 'Name is required',
+          },
           {
             type: 'input',
             name: 'description',
-            message: 'Tag description (optional):',
-            default: options.description ?? '',
+            message: 'Tag description:',
           },
           {
             type: 'input',
             name: 'color',
-            message: 'Tag color (hex code, optional):',
-            default: options.color ?? '#007acc',
+            message: 'Tag color (hex code):',
+            default: '#007acc',
             validate: (input: string) => {
               if (!input) return true;
               return /^#[0-9A-Fa-f]{6}$/.test(input) || 'Invalid hex color format (use #RRGGBB)';
             },
           },
-          {
-            type: 'input',
-            name: 'parentId',
-            message: 'Parent tag ID (optional, for hierarchy):',
-            default: options.parent ?? '',
-          },
-        ];
-
-        const answers = await inquirer.prompt(questions);
-        tagData = { ...tagData, ...answers };
+        ]);
+        tagData = answers;
       } else {
-        tagData.description = options.description;
-        tagData.color = options.color;
-        tagData.parentId = options.parent;
+        // Use command line options
+        tagData = {
+          name: options.name,
+          description: options.description,
+          color: options.color,
+          parentId: options.parent,
+        };
       }
 
       try {
         const tag = (await apiClient.createTag(tagData)) as any;
-        formatter.success(`Tag created successfully: ${String(String(tag.id))}`);
+        formatter.success(`Tag created successfully: ${String(tag.id)}`);
         formatter.output(tag);
       } catch (error) {
         formatter.error(
-          `Failed to create tag: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
+          `Failed to create tag: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
         process.exit(1);
       }
@@ -214,13 +261,13 @@ export function registerTagCommands(program: Command): void {
               type: 'input',
               name: 'description',
               message: 'Tag description:',
-              default: currentTag.description ?? '',
+              default: currentTag.description || '',
             },
             {
               type: 'input',
               name: 'color',
               message: 'Tag color (hex code):',
-              default: currentTag.color ?? '#007acc',
+              default: currentTag.color || '#007acc',
               validate: (input: string) => {
                 if (!input) return true;
                 return /^#[0-9A-Fa-f]{6}$/.test(input) || 'Invalid hex color format (use #RRGGBB)';
@@ -246,7 +293,7 @@ export function registerTagCommands(program: Command): void {
         formatter.output(updatedTag);
       } catch (error) {
         formatter.error(
-          `Failed to update tag: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
+          `Failed to update tag: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
         process.exit(1);
       }
@@ -272,7 +319,7 @@ export function registerTagCommands(program: Command): void {
             {
               type: 'confirm',
               name: 'confirm',
-              message: `Delete tag "${String(String(tag.name))}"? This will remove it from all tasks.`,
+              message: `Delete tag "${String(tag.name)}"?`,
               default: false,
             },
           ]);
@@ -287,44 +334,7 @@ export function registerTagCommands(program: Command): void {
         formatter.success(`Tag ${String(id)} deleted successfully`);
       } catch (error) {
         formatter.error(
-          `Failed to delete tag: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
-        );
-        process.exit(1);
-      }
-    });
-
-  tagCmd
-    .command('add <taskId> <tags...>')
-    .description('Add tags to a task')
-    .action(async (taskId: string, tags: string[]) => {
-      const { apiClient, formatter } = getComponents();
-
-      try {
-        await apiClient.addTagsToTask(taskId, tags);
-        formatter.success(
-          `Added tags [${String(String(tags.join(', ')))}] to task ${String(taskId)}`
-        );
-      } catch (error) {
-        formatter.error(
-          `Failed to add tags: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
-        );
-        process.exit(1);
-      }
-    });
-
-  tagCmd
-    .command('remove <taskId> <tag>')
-    .alias('rm-from-task')
-    .description('Remove tag from a task')
-    .action(async (taskId: string, tag: string) => {
-      const { apiClient, formatter } = getComponents();
-
-      try {
-        await apiClient.removeTagFromTask(taskId, tag);
-        formatter.success(`Removed tag "${String(tag)}" from task ${String(taskId)}`);
-      } catch (error) {
-        formatter.error(
-          `Failed to remove tag: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
+          `Failed to delete tag: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
         process.exit(1);
       }
@@ -341,7 +351,7 @@ export function registerTagCommands(program: Command): void {
       try {
         const tags = (await apiClient.searchTags(query)) as any;
 
-        if (!tags ?? tags.length === 0) {
+        if (!tags || tags.length === 0) {
           formatter.info(`No tags found matching "${String(query)}"`);
           return;
         }
@@ -352,7 +362,7 @@ export function registerTagCommands(program: Command): void {
         });
       } catch (error) {
         formatter.error(
-          `Failed to search tags: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
+          `Failed to search tags: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
         process.exit(1);
       }
@@ -370,7 +380,7 @@ export function registerTagCommands(program: Command): void {
           const fromTag = (await apiClient.getTag(fromId)) as any;
           const toTag = (await apiClient.getTag(toId)) as any;
 
-          if (!fromTag ?? !toTag) {
+          if (!fromTag || !toTag) {
             formatter.error('One or both tags not found');
             process.exit(1);
           }
@@ -379,7 +389,7 @@ export function registerTagCommands(program: Command): void {
             {
               type: 'confirm',
               name: 'confirm',
-              message: `Merge tag "${String(String(fromTag.name))}" into "${String(String(toTag.name))}"? This will delete "${String(String(fromTag.name))}".`,
+              message: `Merge tag "${String(fromTag.name)}" into "${String(toTag.name)}"? This will delete "${String(fromTag.name)}".`,
               default: false,
             },
           ]);
@@ -394,7 +404,7 @@ export function registerTagCommands(program: Command): void {
         formatter.success(`Merged tag ${String(fromId)} into ${String(toId)}`);
       } catch (error) {
         formatter.error(
-          `Failed to merge tags: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
+          `Failed to merge tags: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
         process.exit(1);
       }
@@ -410,11 +420,9 @@ function displayTagTree(
 ): void {
   tags.forEach(tag => {
     const indent = '  '.repeat(depth);
-    const name = tag.color
-      ? `${String(String(tag.name))} (${String(String(tag.color))})`
-      : tag.name;
-    logger.log(
-      `${String(indent)}${String(depth > 0 ? '└─ ' : '')}${String(name)} (${String(String(tag.id))})`
+    const name = tag.color ? `${String(tag.name)} (${String(tag.color)})` : tag.name;
+    logger.info(
+      `${String(indent)}${String(depth > 0 ? '└─ ' : '')}${String(name)} (${String(tag.id)})`
     );
 
     // Find and display children

@@ -14,11 +14,11 @@ export interface KeyboardShortcut {
 export class KeyboardHandler {
   private readonly shortcuts: Map<string, KeyboardShortcut> = new Map();
 
-  private isActive = false;
+  private readonly isActive = false;
 
-  private helpVisible = false;
+  private readonly helpVisible = false;
 
-  private refreshCallback?: () => Promise<void> | void;
+  private readonly refreshCallback?: () => Promise<void> | void;
 
   constructor() {
     this.setupDefaultShortcuts();
@@ -51,7 +51,11 @@ export class KeyboardHandler {
       process.stdin.setRawMode(true);
       process.stdin.resume();
       process.stdin.setEncoding('utf8');
-      process.stdin.on('data', this.handleKeyPress.bind(this));
+      process.stdin.on('data', (key: string) => {
+        this.handleKeyPress(key).catch(error => 
+          console.error('Failed to handle key press:', error)
+        );
+      });
     }
   }
 
@@ -191,7 +195,7 @@ export class KeyboardHandler {
     this.register({
       key: '/',
       description: 'Search/filter',
-      action: async () => {
+      action: () => {
         logger.log(chalk.cyan('🔍 Search mode (not implemented)'));
       },
       global: true,
@@ -201,7 +205,7 @@ export class KeyboardHandler {
     this.register({
       key: String.fromCharCode(14), // Ctrl+N
       description: 'Create new item',
-      action: async () => {
+      action: () => {
         logger.log(chalk.cyan('📝 Create new item (not implemented)'));
       },
       global: true,
@@ -280,7 +284,7 @@ export class ScopedKeyboardHandler {
 
   constructor(parent: KeyboardHandler, _contextName: string) {
     this.parent = parent;
-    // this.contextName = contextName;
+    // this['contextName'] = contextName;
   }
 
   /**

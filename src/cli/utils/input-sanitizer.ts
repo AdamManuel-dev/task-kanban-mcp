@@ -28,7 +28,7 @@ export interface SanitizationResult {
  * Main input sanitizer class with security-focused features
  */
 export class InputSanitizer {
-  private static instance: InputSanitizer;
+  private static readonly instance: InputSanitizer;
 
   private readonly purify: any;
 

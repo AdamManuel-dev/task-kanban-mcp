@@ -276,7 +276,7 @@ export function validateInput<T>(schema: z.ZodSchema<T>, data: unknown): T {
  * ```
  */
 export function validateOptionalInput<T>(schema: z.ZodSchema<T>, data: unknown): T | undefined {
-  if (data === undefined ?? data === null) {
+  if (data === undefined || data === null) {
     return undefined;
   }
   return validateInput(schema, data);

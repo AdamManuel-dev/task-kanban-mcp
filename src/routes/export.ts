@@ -72,7 +72,7 @@ router.get(
         return res.apiSuccess(result);
       }
       // For CSV, we need to handle file output differently
-      const filePath = `/tmp/kanban-export-${String(String(Date.now()))}.csv`;
+      const filePath = `/tmp/kanban-export-${String(Date.now())}.csv`;
       options.outputPath = filePath;
       await exportService.exportToCSV(options);
 
@@ -95,7 +95,7 @@ router.get(
 router.post(
   '/import',
   requirePermission('write'),
-  async (_req: Request, res: Response, next: NextFunction) => {
+  (_req: Request, res: Response, next: NextFunction) => {
     try {
       return res
         .status(501)
@@ -110,7 +110,7 @@ router.post(
 router.post(
   '/import/validate',
   requirePermission('read'),
-  async (_req: Request, res: Response, next: NextFunction) => {
+  (_req: Request, res: Response, next: NextFunction) => {
     try {
       return res
         .status(501)

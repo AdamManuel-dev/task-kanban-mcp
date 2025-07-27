@@ -3,83 +3,165 @@
 import { Command } from 'commander';
 import { config } from '../config';
 import { dbConnection } from '../database/connection';
+import { registerTaskCommands } from './commands/tasks';
+import { registerBoardCommands } from './commands/boards';
+import { registerContextCommands } from './commands/context';
+import { registerTagCommands } from './commands/tags';
+import { registerNoteCommands } from './commands/notes';
+import { registerExportCommands } from './commands/export';
+import { registerBackupCommands } from './commands/backup';
+import { registerRealtimeCommands } from './commands/realtime';
+import { registerSearchCommands } from './commands/search';
+import { registerPriorityCommands } from './commands/priority';
+import { registerSubtaskCommands } from './commands/subtasks';
+import { registerDatabaseCommands } from './commands/database';
+import { registerConfigCommands } from './commands/config';
+import { createTemplatesCommand } from './commands/templates';
+import { createDependenciesCommand } from './commands/dependencies';
+import { ApiClientWrapper } from './api-client-wrapper';
+import { SpinnerManager } from './utils/spinner';
+import { logger } from '../utils/logger';
+import { BoardFormatter } from './utils/board-formatter';
+import { TaskListFormatter } from './utils/task-list-formatter';
+import { OutputFormatter } from './formatter';
+import { ConfigManager } from './config';
+import type { CliComponents } from './types';
+
+// Global CLI components
+declare global {
+  var cliComponents: CliComponents;
+}
 
 const program = new Command();
 
-program.name('mcp-kanban').description('MCP Kanban CLI').version('1.0.0');
+program.name('kanban').description('MCP Kanban CLI').version('1.0.0');
 
-// Basic health check command
+// Initialize CLI components
+const initializeComponents = async (): Promise<CliComponents> => {
+  const spinner = new SpinnerManager();
+  const configManager = new ConfigManager();
+  const apiClient = new ApiClientWrapper(configManager, {
+    spinner: { defaultTimeout: 30000, showByDefault: true },
+  });
+  const boardFormatter = new BoardFormatter();
+  const taskListFormatter = new TaskListFormatter();
+  const formatter = new OutputFormatter();
+
+  // Initialize database connection
+  await dbConnection.initialize({ skipSchema: false });
+
+  return {
+    config: configManager,
+    apiClient,
+    formatter,
+  };
+};
+
+// Global error handler for CLI
+const setupGlobalErrorHandler = (): void => {
+  process.on('uncaughtException', error => {
+    logger.error('Uncaught exception in CLI', { error });
+    // eslint-disable-next-line no-console
+    console.error('\n❌ Uncaught Exception:', error);
+    process.exit(1);
+  });
+
+  process.on('unhandledRejection', (reason, promise) => {
+    logger.error('Unhandled promise rejection in CLI', { reason, promise });
+    // eslint-disable-next-line no-console
+    console.error('\n❌ Unhandled Rejection at:', promise, 'reason:', reason);
+    process.exit(1);
+  });
+
+  // Graceful shutdown handling (Ctrl+C)
+  process.on('SIGINT', () => {
+    console.log('\n\n👋 Shutting down gracefully...');
+    process.exit(0);
+  });
+
+  process.on('SIGTERM', () => {
+    console.log('\n\n👋 Shutting down gracefully...');
+    process.exit(0);
+  });
+};
+
+// Health check command
 program
   .command('health')
   .description('Check system health')
   .action(async () => {
     try {
-      console.log('🔍 Checking system health...');
+      const components = await initializeComponents();
+      const spinner = new SpinnerManager();
+
+      spinner.start('🔍 Checking system health...');
 
       // Check database connection
-      await dbConnection.initialize({
-        skipSchema: false,
-      });
-      console.log('✅ Database connection: OK');
+      await dbConnection.initialize({ skipSchema: false });
+      spinner.succeed('Database connection: OK');
+
+      // Check API server
+      try {
+        await components.apiClient.getHealth();
+        spinner.succeed('API server: OK');
+      } catch (error) {
+        spinner.warn('API server: Not available (running in standalone mode)');
+      }
 
       // Check config
-      console.log('✅ Configuration: OK');
+      spinner.succeed('Configuration: OK');
       console.log(`   Database: ${config.database.path}`);
       console.log(`   Port: ${config.server.port}`);
 
-      console.log('🎉 System is healthy!');
+      console.log('\n🎉 System is healthy!');
     } catch (error) {
+      logger.error('System health check failed', { error });
+      // eslint-disable-next-line no-console
       console.error('❌ System health check failed:', error);
       process.exit(1);
     }
   });
 
-// Basic task commands
-program
-  .command('task')
-  .description('Task management')
-  .addCommand(
-    new Command('list').description('List all tasks').action(async () => {
-      try {
-        await dbConnection.initialize({ skipSchema: false });
-        const tasks = await dbConnection.query('SELECT * FROM tasks LIMIT 10');
-        console.log('📋 Tasks:');
-        tasks.forEach((task: any) => {
-          console.log(`  - ${task.title} (${task.status})`);
-        });
-      } catch (error) {
-        console.error('❌ Failed to list tasks:', error);
-        process.exit(1);
-      }
-    })
-  )
-  .addCommand(
-    new Command('create')
-      .description('Create a new task')
-      .option('-t, --title <title>', 'Task title')
-      .option('-d, --description <description>', 'Task description')
-      .action(async options => {
-        try {
-          await dbConnection.initialize({ skipSchema: false });
+// Initialize components and register commands
+const main = async (): Promise<void> => {
+  try {
+    // Setup global error handling
+    setupGlobalErrorHandler();
 
-          if (!options.title) {
-            console.error('❌ Title is required');
-            process.exit(1);
-          }
+    // Initialize components
+    global.cliComponents = await initializeComponents();
 
-          const taskId = crypto.randomUUID();
-          await dbConnection.execute(
-            'INSERT INTO tasks (id, title, description, status, created_at) VALUES (?, ?, ?, ?, ?)',
-            [taskId, options.title, options.description ?? '', 'todo', new Date().toISOString()]
-          );
+    // Register all command modules
+    registerTaskCommands(program);
+    registerBoardCommands(program);
+    registerContextCommands(program);
+    registerTagCommands(program);
+    registerNoteCommands(program);
+    registerExportCommands(program);
+    registerBackupCommands(program);
+    registerRealtimeCommands(program);
+    registerSearchCommands(program);
+    registerPriorityCommands(program);
+    registerSubtaskCommands(program);
+    registerDatabaseCommands(program);
+    registerConfigCommands(program);
+    program.addCommand(createTemplatesCommand());
+    program.addCommand(createDependenciesCommand());
 
-          console.log('✅ Task created successfully');
-        } catch (error) {
-          console.error('❌ Failed to create task:', error);
-          process.exit(1);
-        }
-      })
-  );
+    // Parse command line arguments
+    await program.parseAsync();
+  } catch (error) {
+    logger.error('CLI initialization failed', { error });
+    // eslint-disable-next-line no-console
+    console.error('❌ CLI initialization failed:', error);
+    process.exit(1);
+  }
+};
 
-// Parse command line arguments
-program.parse();
+// Run the CLI
+main().catch(error => {
+  logger.error('CLI execution failed', { error });
+  // eslint-disable-next-line no-console
+  console.error('❌ CLI execution failed:', error);
+  process.exit(1);
+});

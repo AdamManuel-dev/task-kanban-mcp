@@ -12,6 +12,18 @@ import path from 'path';
 import { logger } from '@/utils/logger';
 import { inputSanitizer } from './input-sanitizer';
 
+/**
+ * Options for command execution with security controls
+ *
+ * @interface CommandExecutionOptions
+ * @property {string[]} [allowedCommands] - Whitelist of allowed commands
+ * @property {string[]} [allowedFlags] - Whitelist of allowed command flags
+ * @property {boolean} [restrictToWorkingDir] - Restrict file paths to current working directory
+ * @property {number} [timeout] - Command execution timeout in milliseconds
+ * @property {Record<string, string>} [env] - Additional environment variables
+ * @property {boolean} [validateArgs] - Whether to validate arguments
+ * @property {boolean} [logExecution] - Whether to log command execution
+ */
 export interface CommandExecutionOptions {
   allowedCommands?: string[];
   allowedFlags?: string[];
@@ -22,6 +34,16 @@ export interface CommandExecutionOptions {
   logExecution?: boolean;
 }
 
+/**
+ * Result of command validation with security analysis
+ *
+ * @interface CommandValidationResult
+ * @property {boolean} safe - Whether the command is safe to execute
+ * @property {string} sanitizedCommand - Sanitized command name
+ * @property {string[]} sanitizedArgs - Sanitized command arguments
+ * @property {string[]} warnings - Non-critical security warnings
+ * @property {string[]} blockedPatterns - Critical patterns that blocked execution
+ */
 export interface CommandValidationResult {
   safe: boolean;
   sanitizedCommand: string;
@@ -30,6 +52,18 @@ export interface CommandValidationResult {
   blockedPatterns: string[];
 }
 
+/**
+ * Result of safe command execution
+ *
+ * @interface ExecutionResult
+ * @property {boolean} success - Whether the command executed successfully
+ * @property {string} stdout - Standard output from the command
+ * @property {string} stderr - Standard error output from the command
+ * @property {number} exitCode - Process exit code
+ * @property {number} duration - Execution duration in milliseconds
+ * @property {string} command - The command that was executed
+ * @property {string[]} args - The arguments that were passed
+ */
 export interface ExecutionResult {
   success: boolean;
   stdout: string;
@@ -42,9 +76,25 @@ export interface ExecutionResult {
 
 /**
  * Command injection prevention class with comprehensive security measures
+ *
+ * @class CommandInjectionPrevention
+ * @description Provides robust protection against command injection attacks by
+ * validating, sanitizing, and safely executing CLI commands. Uses multiple
+ * layers of security including whitelisting, pattern detection, and path validation.
+ *
+ * @example
+ * ```typescript
+ * const cip = CommandInjectionPrevention.getInstance();
+ *
+ * // Validate a command before execution
+ * const validation = cip.validateCommand('git', ['status']);
+ * if (validation.safe) {
+ *   const result = await cip.safeExecute('git', ['status']);
+ * }
+ * ```
  */
 export class CommandInjectionPrevention {
-  private static instance: CommandInjectionPrevention;
+  private static readonly instance: CommandInjectionPrevention;
 
   private readonly dangerousCommands: Set<string>;
 
@@ -171,6 +221,17 @@ export class CommandInjectionPrevention {
     this.maxTotalArgsLength = 10000;
   }
 
+  /**
+   * Gets the singleton instance of CommandInjectionPrevention
+   *
+   * @static
+   * @returns {CommandInjectionPrevention} The singleton instance
+   *
+   * @example
+   * ```typescript
+   * const cip = CommandInjectionPrevention.getInstance();
+   * ```
+   */
   static getInstance(): CommandInjectionPrevention {
     if (!CommandInjectionPrevention.instance) {
       CommandInjectionPrevention.instance = new CommandInjectionPrevention();
@@ -179,7 +240,27 @@ export class CommandInjectionPrevention {
   }
 
   /**
-   * Validate and sanitize a command before execution
+   * Validates and sanitizes a command before execution
+   *
+   * @param {string} command - The command to validate
+   * @param {string[]} [args=[]] - Command arguments to validate
+   * @param {CommandExecutionOptions} [options={}] - Execution options with security controls
+   * @returns {CommandValidationResult} Validation result with sanitized values
+   *
+   * @description Performs comprehensive security validation including:
+   * - Command name sanitization and whitelisting
+   * - Argument length and content validation
+   * - Dangerous pattern detection (command chaining, injection attempts)
+   * - Path traversal prevention
+   * - Working directory restriction
+   *
+   * @example
+   * ```typescript
+   * const result = cip.validateCommand('ls', ['-la', '/etc/passwd']);
+   * if (!result.safe) {
+   *   console.error('Blocked:', result.blockedPatterns);
+   * }
+   * ```
    */
   validateCommand(
     command: string,
@@ -327,7 +408,27 @@ export class CommandInjectionPrevention {
   }
 
   /**
-   * Safely execute a command with comprehensive protection
+   * Safely executes a command with comprehensive protection
+   *
+   * @param {string} command - The command to execute
+   * @param {string[]} [args=[]] - Command arguments
+   * @param {CommandExecutionOptions} [options={}] - Execution options
+   * @returns {Promise<ExecutionResult>} Execution result with output and status
+   *
+   * @throws {Error} If command validation fails or is deemed unsafe
+   *
+   * @description Validates the command and arguments, then executes in a
+   * controlled environment with timeout, environment isolation, and output capture.
+   *
+   * @example
+   * ```typescript
+   * try {
+   *   const result = await cip.safeExecute('git', ['log', '--oneline', '-5']);
+   *   console.log(result.stdout);
+   * } catch (error) {
+   *   console.error('Command blocked:', error.message);
+   * }
+   * ```
    */
   async safeExecute(
     command: string,
@@ -405,7 +506,25 @@ export class CommandInjectionPrevention {
   }
 
   /**
-   * Create a safe command wrapper with predefined flags
+   * Creates a safe command wrapper with predefined flags
+   *
+   * @param {string} baseCommand - The base command to wrap
+   * @param {string[]} [allowedFlags=[]] - Allowed flags for this command
+   * @returns {Object} Command wrapper with validate and execute methods
+   *
+   * @description Creates a reusable command wrapper that enforces consistent
+   * security policies for a specific command.
+   *
+   * @example
+   * ```typescript
+   * const gitCommand = cip.createSafeCommand('git', ['status', 'log', 'diff']);
+   *
+   * // Validate arguments
+   * const validatedArgs = gitCommand.validate(['status', '-s']);
+   *
+   * // Execute safely
+   * const result = await gitCommand.execute(['status']);
+   * ```
    */
   createSafeCommand(baseCommand: string, allowedFlags: string[] = []) {
     return {
@@ -431,42 +550,100 @@ export class CommandInjectionPrevention {
   }
 
   /**
-   * Add custom command to allowed list
+   * Adds a custom command to the allowed list
+   *
+   * @param {string} command - Command name to allow
+   *
+   * @example
+   * ```typescript
+   * cip.addAllowedCommand('docker');
+   * ```
    */
   addAllowedCommand(command: string): void {
     this.allowedCommands.add(command.toLowerCase());
   }
 
   /**
-   * Remove command from allowed list
+   * Removes a command from the allowed list
+   *
+   * @param {string} command - Command name to remove
+   *
+   * @example
+   * ```typescript
+   * cip.removeAllowedCommand('rm');
+   * ```
    */
   removeAllowedCommand(command: string): void {
     this.allowedCommands.delete(command.toLowerCase());
   }
 
   /**
-   * Check if a command is in the dangerous list
+   * Checks if a command is in the dangerous list
+   *
+   * @param {string} command - Command name to check
+   * @returns {boolean} True if the command is considered dangerous
+   *
+   * @example
+   * ```typescript
+   * if (cip.isDangerousCommand('rm')) {
+   *   console.error('This command is dangerous!');
+   * }
+   * ```
    */
   isDangerousCommand(command: string): boolean {
     return this.dangerousCommands.has(command.toLowerCase());
   }
 
   /**
-   * Get list of allowed commands
+   * Gets the list of allowed commands
+   *
+   * @returns {string[]} Array of allowed command names
+   *
+   * @example
+   * ```typescript
+   * const allowed = cip.getAllowedCommands();
+   * console.log('Allowed commands:', allowed);
+   * ```
    */
   getAllowedCommands(): string[] {
     return Array.from(this.allowedCommands);
   }
 
   /**
-   * Get list of dangerous commands
+   * Gets the list of dangerous commands
+   *
+   * @returns {string[]} Array of dangerous command names
+   *
+   * @example
+   * ```typescript
+   * const dangerous = cip.getDangerousCommands();
+   * console.log('Dangerous commands:', dangerous);
+   * ```
    */
   getDangerousCommands(): string[] {
     return Array.from(this.dangerousCommands);
   }
 
   /**
-   * Validate a file path for safe access
+   * Validates a file path for safe access
+   *
+   * @param {string} filePath - The file path to validate
+   * @param {string[]} [allowedDirectories=[]] - List of allowed base directories
+   * @returns {Object} Validation result
+   * @returns {boolean} result.safe - Whether the path is safe
+   * @returns {string} result.normalizedPath - Normalized version of the path
+   * @returns {string[]} result.warnings - Any security warnings
+   *
+   * @description Validates file paths to prevent directory traversal attacks
+   * and restrict access to allowed directories.
+   *
+   * @example
+   * ```typescript
+   * const result = cip.validateFilePath('../../../etc/passwd', ['/home/user']);
+   * if (!result.safe) {
+   *   console.error('Unsafe path:', result.warnings);
+   * }
+   * ```
    */
   validateFilePath(
     filePath: string,
@@ -522,34 +699,123 @@ export class CommandInjectionPrevention {
   }
 }
 
-// Export singleton instance and utility functions
+/**
+ * Singleton instance of CommandInjectionPrevention
+ * @constant {CommandInjectionPrevention}
+ */
 export const commandInjectionPrevention = CommandInjectionPrevention.getInstance();
 
-// Convenience functions
+/**
+ * Convenience function for safe command execution
+ *
+ * @function safeExecute
+ * @param {string} command - Command to execute
+ * @param {string[]} [args=[]] - Command arguments
+ * @param {CommandExecutionOptions} [options={}] - Execution options
+ * @returns {Promise<ExecutionResult>} Execution result
+ *
+ * @example
+ * ```typescript
+ * const result = await safeExecute('ls', ['-la']);
+ * ```
+ */
 export const safeExecute = (
   command: string,
   args: string[] = [],
   options: CommandExecutionOptions = {}
 ) => commandInjectionPrevention.safeExecute(command, args, options);
 
+/**
+ * Convenience function for command validation
+ *
+ * @function validateCommand
+ * @param {string} command - Command to validate
+ * @param {string[]} [args=[]] - Command arguments
+ * @param {CommandExecutionOptions} [options={}] - Validation options
+ * @returns {CommandValidationResult} Validation result
+ *
+ * @example
+ * ```typescript
+ * const validation = validateCommand('rm', ['-rf', '/']);
+ * ```
+ */
 export const validateCommand = (
   command: string,
   args: string[] = [],
   options: CommandExecutionOptions = {}
 ) => commandInjectionPrevention.validateCommand(command, args, options);
 
+/**
+ * Convenience function for creating safe command wrappers
+ *
+ * @function createSafeCommand
+ * @param {string} baseCommand - Base command name
+ * @param {string[]} [allowedFlags=[]] - Allowed flags
+ * @returns {Object} Command wrapper
+ *
+ * @example
+ * ```typescript
+ * const git = createSafeCommand('git', ['status', 'log']);
+ * ```
+ */
 export const createSafeCommand = (baseCommand: string, allowedFlags: string[] = []) =>
   commandInjectionPrevention.createSafeCommand(baseCommand, allowedFlags);
 
+/**
+ * Convenience function for file path validation
+ *
+ * @function validateFilePath
+ * @param {string} filePath - Path to validate
+ * @param {string[]} [allowedDirectories=[]] - Allowed directories
+ * @returns {Object} Validation result
+ *
+ * @example
+ * ```typescript
+ * const validation = validateFilePath('/etc/passwd');
+ * ```
+ */
 export const validateFilePath = (filePath: string, allowedDirectories: string[] = []) =>
   commandInjectionPrevention.validateFilePath(filePath, allowedDirectories);
 
 /**
  * Safe wrapper for common CLI operations
+ *
+ * @class SafeCliOperations
+ * @description Provides pre-configured safe wrappers for common CLI operations
+ * like file reading, directory listing, and version control commands.
+ *
+ * @example
+ * ```typescript
+ * // Read a file safely
+ * const content = await SafeCliOperations.safeFileRead('./config.json');
+ *
+ * // List directory contents
+ * const files = await SafeCliOperations.safeDirectoryList('./src');
+ *
+ * // Execute git command
+ * const result = await SafeCliOperations.safeGitCommand(['status']);
+ * ```
  */
 export class SafeCliOperations {
   /**
-   * Safe file reading
+   * Safely reads a file with path validation
+   *
+   * @static
+   * @param {string} filePath - Path to the file to read
+   * @param {string[]} [allowedDirectories=[]] - Allowed base directories
+   * @returns {Promise<string>} File contents
+   *
+   * @throws {Error} If the file path is unsafe or reading fails
+   *
+   * @example
+   * ```typescript
+   * try {
+   *   const content = await SafeCliOperations.safeFileRead('./data.json', ['./']);
+   *   const data = JSON.parse(content);
+   * } catch (error) {
+   *   console.error('Failed to read file:', error.message);
+   * }
+   * ```
    */
   static async safeFileRead(filePath: string, allowedDirectories: string[] = []): Promise<string> {
     const pathValidation = validateFilePath(filePath, allowedDirectories);
@@ -570,7 +836,20 @@ export class SafeCliOperations {
   }
 
   /**
-   * Safe directory listing
+   * Safely lists directory contents
+   *
+   * @static
+   * @param {string} [dirPath='.'] - Directory path to list
+   * @param {string[]} [allowedDirectories=[]] - Allowed base directories
+   * @returns {Promise<string[]>} Array of directory entries
+   *
+   * @throws {Error} If the directory path is unsafe or listing fails
+   *
+   * @example
+   * ```typescript
+   * const files = await SafeCliOperations.safeDirectoryList('./src');
+   * files.forEach(file => console.log(file));
+   * ```
    */
   static async safeDirectoryList(
     dirPath: string = '.',
@@ -596,7 +875,23 @@ export class SafeCliOperations {
   }
 
   /**
-   * Safe Git operations
+   * Safely executes Git commands
+   *
+   * @static
+   * @param {string[]} args - Git command arguments
+   * @returns {Promise<ExecutionResult>} Command execution result
+   *
+   * @description Executes Git commands with a whitelist of safe operations
+   * including status, log, diff, branch, and other read/write operations.
+   *
+   * @example
+   * ```typescript
+   * // Get git status
+   * const status = await SafeCliOperations.safeGitCommand(['status', '--short']);
+   *
+   * // View recent commits
+   * const log = await SafeCliOperations.safeGitCommand(['log', '--oneline', '-10']);
+   * ```
    */
   static async safeGitCommand(args: string[]): Promise<ExecutionResult> {
     const allowedGitArgs = [
@@ -629,7 +924,23 @@ export class SafeCliOperations {
   }
 
   /**
-   * Safe NPM operations
+   * Safely executes NPM commands
+   *
+   * @static
+   * @param {string[]} args - NPM command arguments
+   * @returns {Promise<ExecutionResult>} Command execution result
+   *
+   * @description Executes NPM commands with a whitelist of safe operations
+   * including install, update, list, audit, and script execution.
+   *
+   * @example
+   * ```typescript
+   * // Install dependencies
+   * await SafeCliOperations.safeNpmCommand(['install']);
+   *
+   * // Run a script
+   * const result = await SafeCliOperations.safeNpmCommand(['run', 'test']);
+   * ```
    */
   static async safeNpmCommand(args: string[]): Promise<ExecutionResult> {
     const allowedNpmArgs = [

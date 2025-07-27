@@ -234,7 +234,11 @@ export function validateRows<TOutput, TInput = TOutput>(
 export function createValidatedQuery<TOutput, TInput = TOutput>(
   schema: z.ZodType<TOutput, z.ZodTypeDef, TInput>,
   queryName: string
-) {
+): {
+  validateOne: (result: unknown) => TOutput;
+  validateMany: (results: unknown[]) => TOutput[];
+  validateOptional: (result: unknown) => TOutput | null;
+} {
   return {
     /**
      * Validate a single row result
@@ -250,7 +254,7 @@ export function createValidatedQuery<TOutput, TInput = TOutput>(
      * Validate an optional single row result
      */
     validateOptional: (result: unknown): TOutput | null => {
-      if (result === null ?? result === undefined) {
+      if (result === null || result === undefined) {
         return null;
       }
       return validateRow(result, schema, queryName);

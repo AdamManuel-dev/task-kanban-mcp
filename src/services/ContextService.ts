@@ -31,7 +31,7 @@
  */
 
 import { logger } from '@/utils/logger';
-import type { DatabaseConnection } from '@/database/connection';
+import type { DatabaseConnection, QueryParameters } from '@/database/connection';
 import type { Task, Note, Tag, Board, ServiceError } from '@/types';
 import type { BoardService } from './BoardService';
 import type { TaskService } from './TaskService';
@@ -242,7 +242,7 @@ export class ContextService {
    * Generate comprehensive project context with analytics and insights
    *
    * @param {ContextOptions} [options={}] - Context generation options
-   * @param {boolean} [options.include_completed=false] - Include completed tasks in analysis
+   * @param {boolean} [options['include_completed'] = false] - Include completed tasks in analysis
    * @param {number} [options.days_back=30] - Number of days to look back for activities
    * @param {number} [options.max_items=50] - Maximum items to include in each category
    * @param {boolean} [options.include_metrics=true] - Include performance metrics
@@ -261,8 +261,8 @@ export class ContextService {
    *
    * logger.log(`Project Summary: ${String(String(context.summary))}`);
    * logger.log(`Active Boards: ${String(String(context.boards.length))}`);
-   * logger.log(`High Priority Tasks: ${String(String(context.priorities.filter(p => p.urgency_level === 'high').length))}`);
-   * logger.log(`Critical Blockers: ${String(String(context.blockers.filter(b => b.impact_level === 'high').length))}`);
+   * logger.log(`High Priority Tasks: ${String(String(context.priorities.filter(p => p['urgency_level'] = == 'high').length))}`);
+   * logger.log(`Critical Blockers: ${String(String(context.blockers.filter(b => b['impact_level'] = == 'high').length))}`);
    * ```
    */
   async getProjectContext(options: ContextOptions = {}): Promise<ProjectContext> {
@@ -331,7 +331,7 @@ export class ContextService {
    *
    * @param {string} taskId - Task ID (UUID) to analyze
    * @param {ContextOptions} [options={}] - Context generation options
-   * @param {number} [options.days_back=14] - Days to look back for task history
+   * @param {number} [options['days_back'] = 14] - Days to look back for task history
    * @param {number} [options.max_items=20] - Maximum related items to include
    * @param {'summary'|'detailed'|'comprehensive'} [options.detail_level='comprehensive'] - Analysis depth
    * @returns {Promise<TaskContext>} Detailed task analysis with recommendations
@@ -423,7 +423,7 @@ export class ContextService {
    * Get current work context with actionable recommendations
    *
    * @param {ContextOptions} [options={}] - Context generation options
-   * @param {number} [options.max_items=10] - Maximum items per category
+   * @param {number} [options['max_items'] = 10] - Maximum items per category
    * @returns {Promise<Object>} Current work context with recommendations
    * @returns {Task[]} returns.active_tasks - Currently in-progress tasks
    * @returns {PriorityInfo[]} returns.next_actions - Top priority tasks ready to start
@@ -526,7 +526,7 @@ export class ContextService {
         t.created_at as timestamp,
         'Task created: ' || t.title as description
       FROM tasks t
-      INNER JOIN boards b ON t.board_id = b.id
+      INNER JOIN boards b ON t['board_id'] = b.id
       WHERE t.created_at >= ?
       
       UNION ALL
@@ -647,7 +647,7 @@ export class ContextService {
     const dependencies = await this.db.query<Task>(
       `
       SELECT t.* FROM tasks t
-      INNER JOIN task_dependencies td ON t.id = td.depends_on_task_id
+      INNER JOIN task_dependencies td ON t['id'] = td.depends_on_task_id
       WHERE td.task_id = ?
       LIMIT ?
     `,
@@ -861,7 +861,7 @@ export class ContextService {
       ),
       this.db.queryOne<{ count: number }>(`
         SELECT COUNT(DISTINCT t.id) as count FROM tasks t
-        INNER JOIN task_dependencies td ON t.id = td.task_id
+        INNER JOIN task_dependencies td ON t['id'] = td.task_id
         INNER JOIN tasks blocking ON td.depends_on_task_id = blocking.id
         WHERE blocking.status != 'done' AND t.archived = FALSE
       `),
@@ -946,11 +946,14 @@ export class ContextService {
     return result?.count ?? 0;
   }
 
-  private static calculateBoardPriorityScore(board: any, recentActivity: number): number {
+  private static calculateBoardPriorityScore(
+    board: BoardContextInfo,
+    recentActivity: number
+  ): number {
     let score = 0;
 
     // Task count factor
-    score += Math.min(board.taskCount * 2, 20);
+    score += Math.min(board.task_count * 2, 20);
 
     // Completion rate factor (inverse - lower completion means higher priority)
     score += (100 - board.completion_rate) * 0.3;
@@ -993,7 +996,12 @@ export class ContextService {
   private static calculatePriorityScore(
     task: Task,
     blockingCount: number,
-    urgencyFactors: any
+    urgencyFactors: {
+      has_due_date: boolean;
+      overdue: boolean;
+      blocks_others: boolean;
+      high_priority: boolean;
+    }
   ): number {
     let score = task.priority * 10; // Base priority
 
@@ -1008,7 +1016,12 @@ export class ContextService {
   private static generatePriorityReasoning(
     _task: Task,
     blockingCount: number,
-    urgencyFactors: any
+    urgencyFactors: {
+      has_due_date: boolean;
+      overdue: boolean;
+      blocks_others: boolean;
+      high_priority: boolean;
+    }
   ): string[] {
     const reasons: string[] = [];
 
@@ -1022,7 +1035,12 @@ export class ContextService {
 
   private static determineUrgencyLevel(
     score: number,
-    urgencyFactors: any
+    urgencyFactors: {
+      has_due_date: boolean;
+      overdue: boolean;
+      blocks_others: boolean;
+      high_priority: boolean;
+    }
   ): 'low' | 'medium' | 'high' | 'critical' {
     if (urgencyFactors.overdue ?? score >= 100) return 'critical';
     if (score >= 70) return 'high';
@@ -1039,7 +1057,7 @@ export class ContextService {
     return 'low';
   }
 
-  private async detectCircularRisks(_taskId: string): Promise<string[]> {
+  private detectCircularRisks(_taskId: string): string[] {
     // Simplified circular dependency detection
     return []; // Implementation would check for potential circular paths
   }
@@ -1066,11 +1084,11 @@ export class ContextService {
    * @param {any} [originalError] - Original error object for debugging
    * @returns {ServiceError} Formatted service error with status code
    */
-  private static createError(code: string, message: string, originalError?: any): ServiceError {
+  private static createError(code: string, message: string, originalError?: unknown): ServiceError {
     const error = new Error(message) as ServiceError;
     error.code = code;
     error.statusCode = ContextService.getStatusCodeForError(code);
-    error.details = originalError;
+    error.details = originalError as ServiceError['details'];
     return error;
   }
 

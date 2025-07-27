@@ -149,7 +149,7 @@ export type ThemeName = keyof typeof themes;
 
 // Theme utilities
 export class ThemeManager {
-  private currentTheme: Theme = defaultTheme;
+  private readonly currentTheme: Theme = defaultTheme;
 
   setTheme(name: ThemeName): void {
     this.currentTheme = themes[name];

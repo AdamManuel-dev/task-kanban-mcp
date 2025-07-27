@@ -1,7 +1,8 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { homedir } from 'os';
 import chalk from 'chalk';
+import { logger } from '../utils/logger';
 
 interface ConfigData {
   server: {
@@ -27,17 +28,20 @@ interface ConfigData {
 const DEFAULT_CONFIG: ConfigData = {
   server: {
     url: 'http://localhost:3000',
-    port: 3000,
   },
-  auth: {},
+  auth: {
+    apiKey: undefined,
+    token: undefined,
+  },
   defaults: {
+    board: undefined,
     format: 'table',
     verbose: false,
   },
   git: {
-    enabled: true,
-    autoTag: true,
-    branchMapping: true,
+    enabled: false,
+    autoTag: false,
+    branchMapping: false,
   },
 };
 
@@ -47,8 +51,8 @@ export class ConfigManager {
   private config: ConfigData;
 
   constructor() {
-    this.configPath = join(homedir(), '.config', 'mcp-kanban', 'config.json');
-    this.config = this.load();
+    this.configPath = join(homedir(), '.mcp-kanban', 'config.json');
+    this.config = ConfigManager.load();
   }
 
   /**
@@ -62,20 +66,19 @@ export class ConfigManager {
    * Load configuration from file or return defaults
    */
   private static load(): ConfigData {
-    if (!this.exists()) {
-      return { ...DEFAULT_CONFIG };
-    }
-
     try {
-      const data = readFileSync(this.configPath, 'utf8');
-      const loaded = JSON.parse(data);
+      const configPath = join(homedir(), '.mcp-kanban', 'config.json');
+      if (!existsSync(configPath)) {
+        return { ...DEFAULT_CONFIG };
+      }
 
-      // Merge with defaults to ensure all fields exist
+      const configData = readFileSync(configPath, 'utf-8');
+      const config = JSON.parse(configData) as ConfigData;
+
+      // Merge with defaults to ensure all required fields exist
       return {
-        server: { ...DEFAULT_CONFIG.server, ...loaded.server },
-        auth: { ...DEFAULT_CONFIG.auth, ...loaded.auth },
-        defaults: { ...DEFAULT_CONFIG.defaults, ...loaded.defaults },
-        git: { ...DEFAULT_CONFIG.git, ...loaded.git },
+        ...DEFAULT_CONFIG,
+        ...config,
       };
     } catch (error) {
       logger.error(chalk.yellow('Warning: Invalid config file, using defaults'));
@@ -93,10 +96,13 @@ export class ConfigManager {
         mkdirSync(configDir, { recursive: true });
       }
 
-      writeFileSync(this.configPath, JSON.stringify(this.config, null, 2));
+      writeFileSync(
+        this.configPath,
+        JSON.stringify(this.config as unknown as Record<string, unknown>, null, 2)
+      );
     } catch (error) {
       throw new Error(
-        `Failed to save config: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
+        `Failed to save config: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
   }
@@ -104,15 +110,15 @@ export class ConfigManager {
   /**
    * Get configuration value by path
    */
-  get<T = any>(path: string): T {
+  get<T = unknown>(path: string): T {
     const parts = path.split('.');
-    let current: any = this.config;
+    let current: unknown = this.config;
 
     for (const part of parts) {
-      if (current === null ?? current === undefined ?? part === undefined) {
+      if (current === null || current === undefined || part === undefined) {
         return undefined as T;
       }
-      current = current[part];
+      current = (current as Record<string, unknown>)[part];
     }
 
     return current as T;
@@ -121,9 +127,9 @@ export class ConfigManager {
   /**
    * Set configuration value by path
    */
-  set(path: string, value: any): void {
+  set(path: string, value: unknown): void {
     const parts = path.split('.');
-    let current: any = this.config;
+    let current: Record<string, unknown> = this.config as Record<string, unknown>;
 
     for (let i = 0; i < parts.length - 1; i += 1) {
       const part = parts[i];
@@ -134,7 +140,7 @@ export class ConfigManager {
       if (!(part in current) || typeof current[part] !== 'object') {
         current[part] = {};
       }
-      current = current[part];
+      current = current[part] as Record<string, unknown>;
     }
 
     const lastPart = parts[parts.length - 1];

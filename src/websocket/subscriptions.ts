@@ -3,6 +3,7 @@ import type { WebSocketClient, SubscriptionFilter } from './types';
 import { SubscriptionChannel } from './types';
 import type { WebSocketManager } from './server';
 import type { AllWebSocketMessages, SystemNotification, PublicationContext } from './messageTypes';
+import type { Task, Note } from '../types';
 
 export interface Subscription {
   id: string;
@@ -44,14 +45,14 @@ export class SubscriptionManager {
       }
 
       // Check subscription limits
-      const currentSubscriptions = this.clientSubscriptions.get(clientId) || new Set();
+      const currentSubscriptions = this.clientSubscriptions.get(clientId) ?? new Set();
       if (currentSubscriptions.size >= 50) {
         // Max 50 subscriptions per client
         return { success: false, error: 'Subscription limit exceeded' };
       }
 
       // Create subscription ID
-      const subscriptionId = `${String(clientId)}_${String(channel)}_${String(String(Date.now()))}`;
+      const subscriptionId = `${String(clientId)}_${String(channel)}_${String(Date.now())}`;
 
       // Create subscription
       const subscription: Subscription = {
@@ -145,70 +146,65 @@ export class SubscriptionManager {
 
   // Unsubscribe client from all channels
   unsubscribeAll(clientId: string): number {
+    let unsubscribedCount = 0;
     const clientSubs = this.clientSubscriptions.get(clientId);
-    if (!clientSubs) return 0;
 
-    let count = 0;
-    const subscriptionIds = Array.from(clientSubs);
-
-    for (const subscriptionId of subscriptionIds) {
-      if (this.unsubscribe(subscriptionId)) {
-        count++;
-      }
+    if (clientSubs) {
+      const subscriptionIds = Array.from(clientSubs);
+      subscriptionIds.forEach(subscriptionId => {
+        if (this.unsubscribe(subscriptionId)) {
+          unsubscribedCount += 1;
+        }
+      });
     }
 
-    logger.info('Client unsubscribed from all channels', { clientId, count });
-    return count;
+    return unsubscribedCount;
   }
 
-  // Publish message to channel subscribers
+  // Publish message to all subscribers of a channel
   publishToChannel(
     channel: SubscriptionChannel,
     message: AllWebSocketMessages,
     filterCallback?: (subscription: Subscription, client: WebSocketClient) => boolean
   ): number {
+    let publishedCount = 0;
     const channelSubs = this.channelSubscriptions.get(channel);
-    if (!channelSubs || channelSubs.size === 0) {
+
+    if (!channelSubs) {
       return 0;
     }
 
-    let sentCount = 0;
-
-    for (const subscriptionId of channelSubs) {
+    const subscriptionIds = Array.from(channelSubs);
+    subscriptionIds.forEach(subscriptionId => {
       const subscription = this.subscriptions.get(subscriptionId);
-      if (!subscription) continue;
+      if (!subscription) {
+        return;
+      }
 
       const client = this.webSocketManager.getClient(subscription.clientId);
-      if (!client) continue;
+      if (!client) {
+        return;
+      }
 
-      // Check if client should receive this message
+      // Check if message matches subscription filters
+      if (!SubscriptionManager.matchesFilters(message, subscription.filters)) {
+        return;
+      }
+
+      // Apply custom filter if provided
       if (filterCallback && !filterCallback(subscription, client)) {
-        continue;
+        return;
       }
 
-      // Check subscription filters
-      if (!this.matchesFilters(message, subscription.filters)) {
-        continue;
-      }
-
-      // Send message
-      if (
-        this.webSocketManager.sendToClient(subscription.clientId, {
-          type: 'channel_message',
-          id: `msg_${String(String(Date.now()))}_${String(String(Math.random().toString(36).substr(2, 9)))}`,
-          payload: {
-            channel,
-            subscriptionId,
-            data: message,
-          },
-        })
-      ) {
-        sentCount++;
+      // Send message to client
+      const success = this.webSocketManager.sendToClient(subscription.clientId, message);
+      if (success) {
+        publishedCount += 1;
         subscription.lastActivity = new Date();
       }
-    }
+    });
 
-    return sentCount;
+    return publishedCount;
   }
 
   // Publish to specific board subscribers
@@ -401,7 +397,7 @@ export class SubscriptionManager {
   }
 
   // Message type specific publishing methods
-  publishTaskCreated(task: import('../types').Task, createdBy: string): number {
+  publishTaskCreated(task: Task, createdBy: string): number {
     return this.publishTaskUpdate(task.id, task.board_id, {
       type: 'task:created',
       data: {
@@ -414,7 +410,7 @@ export class SubscriptionManager {
   }
 
   publishTaskUpdated(
-    task: import('../types').Task,
+    task: Task,
     changes: Record<string, unknown>,
     updatedBy: string
   ): number {
@@ -443,7 +439,7 @@ export class SubscriptionManager {
   }
 
   publishNoteAdded(
-    note: import('../types').Note,
+    note: Note,
     taskId: string,
     boardId: string,
     addedBy: string

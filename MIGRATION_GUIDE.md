@@ -1,353 +1,249 @@
-# CLI Migration Guide: Enhanced Security & Interactive Features
+# CLI Migration Guide
 
 ## Overview
 
-This guide helps you migrate from the basic CLI to the enhanced version with new security features, interactive prompts, and improved user experience.
+This guide helps you migrate from the old CLI to the new enhanced CLI with interactive features, improved user experience, and better performance.
 
-## 🔒 Security Enhancements
+## What's New
 
-### Key Security Improvements
+### 🎯 Interactive Features
+- **Interactive Task Creation**: Guided prompts with AI-powered size estimation
+- **Interactive Board Setup**: Template-based board creation with custom columns
+- **Interactive Task Selection**: Visual task browsing with keyboard navigation
+- **Interactive Board View**: Real-time board visualization with live updates
 
-1. **Input Sanitization**: All user inputs are now automatically sanitized to prevent injection attacks
-2. **Command Injection Prevention**: Commands are validated and executed in a secure context
-3. **Enhanced Error Handling**: Better error messages with security-aware logging
+### 🚀 Enhanced User Experience
+- **Spinner Integration**: Visual feedback for all operations
+- **Rich Formatting**: Better table and list displays
+- **Error Handling**: Graceful error recovery and helpful messages
+- **Keyboard Shortcuts**: Quick access to common operations
 
-### What This Means for You
+### 📊 New Commands
+- `kanban task create --interactive` - Interactive task creation
+- `kanban board quick-setup` - Template-based board setup
+- `kanban board view --interactive` - Interactive board visualization
+- `kanban task select` - Interactive task selection
 
-- **No Breaking Changes**: Existing commands continue to work as before
-- **Safer Operations**: Your data is now protected against malicious input
-- **Better Feedback**: More informative error messages when something goes wrong
+## Migration Steps
 
-## 🎨 Interactive Features
-
-### New Interactive Commands
-
-| Old Command | New Enhanced Version | Description |
-|-------------|---------------------|-------------|
-| `kanban task create` | `kanban task create --interactive` | Interactive task creation with prompts |
-| `kanban board create` | `kanban board create --interactive` | Guided board setup with templates |
-| `kanban board view` | `kanban board view --interactive` | Live updating board view with keyboard shortcuts |
-
-### Quick Setup Commands
+### 1. Update Installation
 
 ```bash
-# NEW: Quick board setup with templates
-kanban board quick-setup --template scrum
+# Update to latest version
+npm update @mcp-kanban/server
 
-# NEW: Interactive dashboard
-kanban dashboard --interactive
-
-# NEW: Process TODO files automatically
-kanban process-todos todo.md
+# Or reinstall
+npm install @mcp-kanban/server@latest
 ```
 
-## 📋 Command Reference
+### 2. Update Command Usage
 
-### Task Management
+#### Task Creation
 
-#### Before (Still Works)
+**Old Way:**
 ```bash
-kanban task list
-kanban task create --title "My Task" --board-id 123
-kanban task update 456 --status done
+kanban task create --title "Fix bug" --description "Critical bug fix"
 ```
 
-#### Enhanced Options
+**New Way:**
 ```bash
-# Interactive mode with prompts
+# Interactive mode (recommended)
 kanban task create --interactive
 
-# Enhanced filtering and search
-kanban task list --status todo --priority P1 --interactive
-
-# Quick task operations
-kanban task quick-add "Fix bug in auth system"
+# Command line mode (still supported)
+kanban task create --title "Fix bug" --description "Critical bug fix"
 ```
 
-### Board Management
+#### Board Setup
 
-#### Before (Still Works)
+**Old Way:**
 ```bash
-kanban board list
-kanban board create --name "Project Board"
-kanban board view 123
+kanban board create --name "My Board" --columns "todo,in-progress,done"
 ```
 
-#### Enhanced Options
+**New Way:**
 ```bash
-# Interactive board creation with templates
-kanban board create --interactive --template scrum
+# Quick setup with templates
+kanban board quick-setup --template scrum --name "Sprint Board"
 
-# Live updating board view
-kanban board view --interactive --refresh 30
-
-# Quick setup wizard
+# Interactive setup
 kanban board quick-setup
 ```
 
-### Configuration
+#### Board Viewing
 
-#### Before (Still Works)
+**Old Way:**
 ```bash
-kanban config set api-url http://localhost:3000
-kanban config get api-url
+kanban board list
 ```
 
-#### Enhanced Options
+**New Way:**
 ```bash
-# Interactive configuration wizard
-kanban config setup --interactive
+# Interactive board view
+kanban board view board123 --interactive
 
-# Security-aware configuration
-kanban config validate  # NEW: Validates and sanitizes config
+# Static view (still supported)
+kanban board list
 ```
 
-## 🔧 New Features
+### 3. Configuration Updates
 
-### 1. Interactive Prompts
-
-The CLI now uses intelligent prompts that:
-- Validate input in real-time
-- Provide helpful suggestions
-- Remember your preferences
-- Guide you through complex operations
-
-### 2. Enhanced Visual Output
-
-- **Spinners**: Visual feedback during operations
-- **Progress Bars**: For long-running tasks
-- **Color Coding**: Consistent visual hierarchy
-- **Tables**: Better formatted output
-
-### 3. Keyboard Navigation
-
-In interactive modes:
-- `↑/↓` or `j/k`: Navigate lists
-- `Enter`: Select item
-- `Space`: Toggle selection
-- `Esc` or `q`: Exit
-- `?`: Show help
-
-### 4. Templates and Presets
+The new CLI uses the same configuration system but with enhanced defaults:
 
 ```bash
-# Board templates
-kanban board create --template basic|scrum|bugs|content
+# Set default board (unchanged)
+kanban config set defaults.board board123
 
-# Task templates
-kanban task create --template bug-report|feature-request
+# New: Set default format
+kanban config set defaults.format table
+
+# New: Enable verbose mode
+kanban config set defaults.verbose true
 ```
 
-## 🔄 Migration Steps
+### 4. Environment Variables
 
-### Step 1: Update Dependencies
+No changes required - all existing environment variables are still supported.
 
-If you have the CLI installed globally:
+## Breaking Changes
+
+### Minimal Breaking Changes
+
+1. **Command Aliases**: Some command aliases have been updated for consistency
+   - `kanban t` → `kanban task` (still supported)
+   - `kanban b` → `kanban board` (still supported)
+
+2. **Output Format**: Default output format is now `table` instead of `json`
+   - Use `--format json` to maintain old behavior
+
+3. **Error Messages**: Error messages are now more descriptive and include suggestions
+
+## New Features
+
+### Interactive Task Creation
+
 ```bash
-npm update -g @mcp-kanban/server
+kanban task create --interactive
 ```
 
-If using locally:
+Features:
+- AI-powered task size estimation
+- Smart priority suggestions
+- Guided prompts for all fields
+- Input validation and defaults
+
+### Template-Based Board Setup
+
 ```bash
-npm update @mcp-kanban/server
+kanban board quick-setup --template scrum
 ```
 
-### Step 2: Verify Installation
+Available templates:
+- `basic`: To Do → In Progress → Done
+- `scrum`: Backlog → To Do → In Progress → Review → Done
+- `bugs`: New → Confirmed → In Progress → Testing → Resolved
+- `content`: Ideas → Writing → Editing → Review → Published
+
+### Interactive Board View
 
 ```bash
-kanban --version
-kanban config validate
+kanban board view board123 --interactive
 ```
 
-### Step 3: Optional Configuration Update
+Features:
+- Real-time updates
+- Keyboard navigation
+- Task selection and editing
+- Column management
+- WIP limit visualization
 
-Run the new setup wizard to configure enhanced features:
-```bash
-kanban config setup --interactive
-```
+## Performance Improvements
 
-### Step 4: Test New Features
+### Build Optimizations
+- Smaller bundle sizes
+- Faster startup times
+- Better memory usage
+- Optimized dependencies
 
-Try the interactive board view:
-```bash
-kanban board view --interactive
-```
+### Runtime Improvements
+- Lazy loading of components
+- Cached API responses
+- Efficient data formatting
+- Reduced network requests
 
-## 🛠️ Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
-#### 1. Command Not Found
-```bash
-# Solution: Reinstall or check PATH
-npm install -g @mcp-kanban/server
-```
+1. **Interactive mode not working**
+   ```bash
+   # Check terminal compatibility
+   kanban health
+   
+   # Use non-interactive mode
+   kanban task create --no-interactive
+   ```
 
-#### 2. Configuration Errors
-```bash
-# Solution: Reset and reconfigure
-kanban config reset
-kanban config setup --interactive
-```
+2. **Slow performance**
+   ```bash
+   # Clear cache
+   rm -rf ~/.config/mcp-kanban/cache
+   
+   # Check system resources
+   kanban health
+   ```
 
-#### 3. Permission Issues
-```bash
-# Solution: Check file permissions
-kanban config check-permissions
-```
+3. **Configuration issues**
+   ```bash
+   # Reset configuration
+   kanban config reset
+   
+   # Recreate configuration
+   kanban config init
+   ```
 
-### Security-Related Changes
-
-#### Input Validation Errors
-
-**Before**: Commands might fail silently with malformed input
-**Now**: Clear error messages explain what's wrong and how to fix it
-
-```bash
-# Example: Invalid task title with special characters
-kanban task create --title "<script>alert('xss')</script>"
-# Output: Input sanitized, special characters escaped for security
-```
-
-#### Command Injection Prevention
-
-**Before**: Some edge cases could allow command injection
-**Now**: All commands are validated and executed securely
+### Getting Help
 
 ```bash
-# Example: Potentially dangerous input is now safely handled
-kanban task create --title "Task; rm -rf /"
-# Output: Command is safely escaped and executed
-```
-
-## 📖 New Documentation
-
-### Built-in Help
-
-```bash
-# Global help
+# General help
 kanban --help
 
 # Command-specific help
 kanban task --help
-kanban board view --help
+kanban board --help
 
-# Interactive help (in interactive modes)
-# Press '?' to show keyboard shortcuts
+# Debug mode
+kanban --debug task create
 ```
 
-### Examples and Tutorials
+## Rollback
+
+If you need to rollback to the old CLI:
 
 ```bash
-# Built-in examples
-kanban examples
-kanban examples tasks
-kanban examples boards
+# Install specific version
+npm install @mcp-kanban/server@0.0.9
 
-# Interactive tutorial
-kanban tutorial
+# Or use legacy commands
+kanban --legacy task create --title "Task"
 ```
 
-## 🔄 Backward Compatibility
+## Support
 
-### What Stays the Same
+For additional support:
+- Check the [README.md](README.md) for detailed documentation
+- Review [API.md](docs/API.md) for API changes
+- Open an issue on GitHub for bugs or feature requests
 
-- All existing commands work without modification
-- Configuration file format unchanged
-- API endpoints and data structures unchanged
-- Output formats (JSON, CSV, table) work as before
+## What's Next
 
-### What's Enhanced
-
-- Better error messages
-- Input validation and sanitization
-- Interactive options for all major commands
-- Visual improvements (colors, formatting)
-- Keyboard shortcuts in interactive modes
-
-## 🎯 Best Practices
-
-### 1. Use Interactive Mode for Setup
-
-For initial setup or complex operations:
-```bash
-kanban board create --interactive
-kanban task create --interactive
-```
-
-### 2. Leverage Templates
-
-Save time with built-in templates:
-```bash
-kanban board quick-setup --template scrum
-```
-
-### 3. Use Keyboard Shortcuts
-
-In interactive views, use:
-- `j/k` for navigation (Vim-style)
-- `?` for help
-- `r` for refresh
-
-### 4. Enable Auto-completion
-
-Add to your shell profile:
-```bash
-# For bash
-eval "$(kanban completion bash)"
-
-# For zsh
-eval "$(kanban completion zsh)"
-```
-
-## 🚀 What's Next
-
-### Planned Features
-
-- **AI-Powered Suggestions**: Smart task and board recommendations
-- **Advanced Templates**: Custom template creation
-- **Team Collaboration**: Real-time updates and notifications
-- **Performance Monitoring**: Built-in analytics and insights
-
-### Feedback
-
-We value your feedback! Report issues or suggest features:
-
-```bash
-kanban feedback --interactive
-```
-
-Or create an issue at: [GitHub Issues](https://github.com/yourusername/mcp-kanban/issues)
-
-## 📋 Quick Reference Card
-
-### Essential Commands
-
-| Task | Old Command | New Enhanced Option |
-|------|-------------|-------------------|
-| Create task | `kanban task create --title "..."` | `kanban task create --interactive` |
-| Create board | `kanban board create --name "..."` | `kanban board quick-setup` |
-| View board | `kanban board view 123` | `kanban board view 123 --interactive` |
-| List tasks | `kanban task list` | `kanban task list --interactive` |
-| Configuration | `kanban config set key value` | `kanban config setup --interactive` |
-
-### Keyboard Shortcuts (Interactive Mode)
-
-| Key | Action |
-|-----|--------|
-| `↑/↓` | Navigate up/down |
-| `j/k` | Navigate up/down (Vim) |
-| `←/→` | Navigate left/right |
-| `h/l` | Navigate left/right (Vim) |
-| `Enter` | Select/confirm |
-| `Space` | Toggle selection |
-| `Esc` | Cancel/back |
-| `q` | Quit |
-| `?` | Show help |
-| `r` | Refresh |
+The new CLI is actively developed with planned features:
+- Dashboard integration with blessed-contrib
+- Advanced analytics and reporting
+- Plugin system for custom extensions
+- Team collaboration features
+- Integration with external tools
 
 ---
 
-**Happy task managing! 🎉**
-
-For additional help: `kanban --help` or `kanban tutorial`
+**Note**: This migration guide covers the major changes. For detailed technical information, see the [Developer Documentation](docs/DEVELOPER_DOCUMENTATION_SUMMARY.md).

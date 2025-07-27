@@ -38,6 +38,29 @@ interface RestoreBackupOptions {
   force?: boolean;
 }
 
+// Specific types for inquirer prompts
+interface ConfirmPromptResult {
+  confirm: boolean;
+}
+
+interface RestoreTimePromptResult {
+  targetTime: string;
+  verify: boolean;
+  preserveExisting: boolean;
+  confirmed: boolean;
+}
+
+interface CreateSchedulePromptResult {
+  name: string;
+  cronExpression: string;
+  backupType: 'full' | 'incremental';
+  description: string;
+  retentionDays: number;
+  compressionEnabled: boolean;
+  verificationEnabled: boolean;
+  enabled: boolean;
+}
+
 interface CreateScheduleOptions {
   cron?: string;
   type?: string;
@@ -89,23 +112,24 @@ export function registerBackupCommands(program: Command): void {
 
         formatter.info(`Creating backup: ${String(backupName)}...`);
 
-        const backup = await apiClient.request('/api/backup/create', {
-          method: 'POST',
-          body: backupData,
-        });
+        const backup = await apiClient.request<AnyApiResponse>(
+          'POST',
+          '/api/backup/create',
+          backupData
+        );
 
         if (!hasDataProperty<BackupInfo>(backup)) {
           throw new Error('Failed to create backup');
         }
 
-        formatter.success(`Backup created successfully: ${String(String(backup.data.id))}`);
+        formatter.success(`Backup created successfully: ${backup.data.id}`);
         formatter.output(backup.data, {
           fields: ['id', 'name', 'size', 'compressed', 'verified', 'createdAt'],
           headers: ['ID', 'Name', 'Size', 'Compressed', 'Verified', 'Created'],
         });
       } catch (error) {
         formatter.error(
-          `Failed to create backup: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
+          `Failed to create backup: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
         process.exit(1);
       }
@@ -128,27 +152,33 @@ export function registerBackupCommands(program: Command): void {
           order: options.order ?? 'desc',
         };
 
-        const backups = await apiClient.request('/api/backup/list', {
-          params,
-        });
+        const response = await apiClient.request<AnyApiResponse>(
+          'GET',
+          '/api/backup/list',
+          undefined,
+          params
+        );
+        if (isSuccessResponse(response)) {
+          const backups = response.data as BackupInfo[];
 
-        if (
-          !('data' in backups) ||
-          !backups.data ||
-          !Array.isArray(backups.data) ||
-          backups.data.length === 0
-        ) {
-          formatter.info('No backups found');
-          return;
+          if (backups.length === 0) {
+            formatter.info('No backups found');
+            return;
+          }
+
+          formatter.output(backups, {
+            fields: ['id', 'name', 'size', 'compressed', 'verified', 'createdAt'],
+            headers: ['ID', 'Name', 'Size', 'Compressed', 'Verified', 'Created'],
+          });
+        } else {
+          formatter.error(
+            `Failed to list backups: ${response.error instanceof Error ? response.error.message : 'Unknown error'}`
+          );
+          process.exit(1);
         }
-
-        formatter.output(backups.data, {
-          fields: ['id', 'name', 'size', 'compressed', 'verified', 'createdAt'],
-          headers: ['ID', 'Name', 'Size', 'Compressed', 'Verified', 'Created'],
-        });
       } catch (error) {
         formatter.error(
-          `Failed to list backups: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
+          `Failed to list backups: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
         process.exit(1);
       }
@@ -164,7 +194,7 @@ export function registerBackupCommands(program: Command): void {
 
       try {
         // Get backup info
-        const backup = await apiClient.request(`/api/backup/${String(id)}`);
+        const backup = await apiClient.request<AnyApiResponse>('GET', `/api/backup/${String(id)}`);
         if (!hasDataProperty<BackupInfo>(backup)) {
           formatter.error(`Backup ${String(id)} not found`);
           process.exit(1);
@@ -177,11 +207,11 @@ export function registerBackupCommands(program: Command): void {
             headers: ['ID', 'Name', 'Size', 'Created'],
           });
 
-          const { confirm } = await inquirer.prompt([
+          const { confirm } = await inquirer.prompt<ConfirmPromptResult>([
             {
               type: 'confirm',
               name: 'confirm',
-              message: `Restore from backup "${String(String(backup.data.name))}"? This cannot be undone!`,
+              message: `Restore from backup "${String(backup.data.name)}"? This cannot be undone!`,
               default: false,
             },
           ]);
@@ -194,18 +224,19 @@ export function registerBackupCommands(program: Command): void {
 
         const restoreData = { verify: !options.noVerify };
 
-        formatter.info(`Restoring from backup: ${String(String(backup.data.name))}...`);
+        formatter.info(`Restoring from backup: ${String(backup.data.name)}...`);
 
-        const result = await apiClient.request(`/api/backup/${String(id)}/restore`, {
-          method: 'POST',
-          body: restoreData,
-        });
+        const result = await apiClient.request<AnyApiResponse>(
+          'POST',
+          `/api/backup/${String(id)}/restore`,
+          restoreData
+        );
 
         formatter.success('Database restored successfully');
         formatter.output(result);
       } catch (error) {
         formatter.error(
-          `Failed to restore backup: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
+          `Failed to restore backup: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
         process.exit(1);
       }
@@ -221,17 +252,20 @@ export function registerBackupCommands(program: Command): void {
 
       try {
         if (!options.force) {
-          const backup = await apiClient.request(`/api/backup/${String(id)}`);
+          const backup = await apiClient.request<AnyApiResponse>(
+            'GET',
+            `/api/backup/${String(id)}`
+          );
           if (!hasDataProperty<BackupInfo>(backup)) {
             formatter.error(`Backup ${String(id)} not found`);
             process.exit(1);
           }
 
-          const { confirm } = await inquirer.prompt([
+          const { confirm } = await inquirer.prompt<ConfirmPromptResult>([
             {
               type: 'confirm',
               name: 'confirm',
-              message: `Delete backup "${String(String(backup.data.name))}"?`,
+              message: `Delete backup "${String(backup.data.name)}"?`,
               default: false,
             },
           ]);
@@ -242,11 +276,11 @@ export function registerBackupCommands(program: Command): void {
           }
         }
 
-        await apiClient.request(`/api/backup/${String(id)}`, { method: 'DELETE' });
+        await apiClient.request<AnyApiResponse>('DELETE', `/api/backup/${String(id)}`);
         formatter.success(`Backup ${String(id)} deleted successfully`);
       } catch (error) {
         formatter.error(
-          `Failed to delete backup: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
+          `Failed to delete backup: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
         process.exit(1);
       }
@@ -261,9 +295,10 @@ export function registerBackupCommands(program: Command): void {
       try {
         formatter.info(`Verifying backup: ${String(id)}...`);
 
-        const result = await apiClient.request(`/api/backup/${String(id)}/verify`, {
-          method: 'POST',
-        });
+        const result = await apiClient.request<AnyApiResponse>(
+          'POST',
+          `/api/backup/${String(id)}/verify`
+        );
 
         if (hasDataProperty<{ valid: boolean }>(result) && result.data.valid) {
           formatter.success('Backup verification passed');
@@ -274,7 +309,7 @@ export function registerBackupCommands(program: Command): void {
         formatter.output(result);
       } catch (error) {
         formatter.error(
-          `Failed to verify backup: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
+          `Failed to verify backup: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
         process.exit(1);
       }
@@ -288,21 +323,20 @@ export function registerBackupCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const backup = await apiClient.request(`/api/backup/${String(id)}`);
+        const backup = await apiClient.request<AnyApiResponse>('GET', `/api/backup/${String(id)}`);
         if (!hasDataProperty<BackupInfo>(backup)) {
           formatter.error(`Backup ${String(id)} not found`);
           process.exit(1);
         }
 
         const finalExportPath =
-          exportPath ??
-          `${String(String(backup.data.name))}.${String(String(options.format ?? 'json'))}`;
+          exportPath ?? `${String(backup.data.name)}.${String(options.format ?? 'json')}`;
 
         formatter.info(`Exporting backup to: ${String(finalExportPath)}...`);
 
-        const data = (await apiClient.request(`/api/backup/${String(id)}/export`, {
+        const data = await apiClient.request(`/api/backup/${String(id)}/export`, {
           params: { format: options.format ?? 'json' },
-        })) as unknown;
+        });
 
         // Ensure directory exists
         const dir = path.dirname(finalExportPath);
@@ -319,10 +353,10 @@ export function registerBackupCommands(program: Command): void {
 
         const stats = fs.statSync(finalExportPath);
         formatter.success(`Backup exported successfully to ${String(finalExportPath)}`);
-        formatter.info(`File size: ${String(String((stats.size / 1024 / 1024).toFixed(2)))} MB`);
+        formatter.info(`File size: ${String((stats.size / 1024 / 1024).toFixed(2))} MB`);
       } catch (error) {
         formatter.error(
-          `Failed to export backup: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
+          `Failed to export backup: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
         process.exit(1);
       }
@@ -344,7 +378,7 @@ export function registerBackupCommands(program: Command): void {
           const now = new Date();
           const defaultTime = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(); // 24 hours ago
 
-          const answers = await inquirer.prompt([
+          const answers = await inquirer.prompt<RestoreTimePromptResult>([
             {
               type: 'input',
               name: 'targetTime',
@@ -404,16 +438,16 @@ export function registerBackupCommands(program: Command): void {
           }
 
           // Confirmation for non-interactive mode
-          const { confirmed } = await inquirer.prompt([
+          const { confirm } = await inquirer.prompt<ConfirmPromptResult>([
             {
               type: 'confirm',
-              name: 'confirmed',
+              name: 'confirm',
               message: `Restore database to ${String(restoreTime)}? This will replace the current database.`,
               default: false,
             },
           ]);
 
-          if (!confirmed) {
+          if (!confirm) {
             formatter.info('Point-in-time restoration cancelled');
             return;
           }
@@ -481,7 +515,7 @@ export function registerBackupCommands(program: Command): void {
 
         // Interactive mode if no name provided
         if (!name || !options.cron) {
-          const answers = await inquirer.prompt([
+          const answers = await inquirer.prompt<CreateSchedulePromptResult>([
             {
               type: 'input',
               name: 'name',
@@ -547,21 +581,22 @@ export function registerBackupCommands(program: Command): void {
           scheduleData = {
             ...(name && { name }),
             ...(options.cron && { cronExpression: options.cron }),
-            backupType: (options.type as 'full' | 'incremental') || 'full',
+            backupType: (options.type as 'full' | 'incremental') ?? 'full',
             ...(options.description && { description: options.description }),
-            retentionDays: parseInt(options.retention || '30', 10),
+            retentionDays: parseInt(options.retention ?? '30', 10),
             compressionEnabled: !options['no-compression'],
             verificationEnabled: !options['no-verification'],
             enabled: !options.disabled,
           };
         }
 
-        formatter.info(`Creating backup schedule: ${String(String(scheduleData.name))}...`);
+        formatter.info(`Creating backup schedule: ${String(scheduleData.name)}...`);
 
-        const schedule = await apiClient.request('/api/schedule/create', {
-          method: 'POST',
-          body: JSON.stringify(scheduleData),
-        });
+        const schedule = await apiClient.request(
+          'POST',
+          '/api/schedule/create',
+          JSON.stringify(scheduleData)
+        );
 
         formatter.success('Backup schedule created successfully');
         if (isSuccessResponse(schedule)) {
@@ -606,7 +641,7 @@ export function registerBackupCommands(program: Command): void {
             return;
           }
 
-          formatter.success(`Found ${String(String(schedules.length))} backup schedule(s)`);
+          formatter.success(`Found ${String(schedules.length)} backup schedule(s)`);
           formatter.output(schedules);
         } else {
           formatter.error('Failed to list backup schedules');
@@ -668,9 +703,7 @@ export function registerBackupCommands(program: Command): void {
       try {
         formatter.info('Starting backup scheduler...');
 
-        await apiClient.request('/api/schedule/start', {
-          method: 'POST',
-        });
+        await apiClient.request('POST', '/api/schedule/start');
 
         formatter.success('Backup scheduler started successfully');
       } catch (error) {
@@ -688,9 +721,7 @@ export function registerBackupCommands(program: Command): void {
       try {
         formatter.info('Stopping backup scheduler...');
 
-        await apiClient.request('/api/schedule/stop', {
-          method: 'POST',
-        });
+        await apiClient.request('POST', '/api/schedule/stop');
 
         formatter.success('Backup scheduler stopped successfully');
       } catch (error) {
@@ -708,9 +739,7 @@ export function registerBackupCommands(program: Command): void {
       try {
         formatter.info('Cleaning up old backups...');
 
-        await apiClient.request('/api/schedule/cleanup', {
-          method: 'POST',
-        });
+        await apiClient.request('POST', '/api/schedule/cleanup');
 
         formatter.success('Backup cleanup completed successfully');
       } catch (error) {

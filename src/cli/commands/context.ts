@@ -251,11 +251,11 @@ export function registerContextCommands(program: Command): void {
         if (summary['recentActivity']) {
           formatter.info('🔄 Recent Activity:');
           // eslint-disable-next-line dot-notation
-          (summary['recentActivity'] as any[]).forEach((activity: any) => {
-            formatter.info(
-              `• ${String(String(activity.description))} (${String(String(activity.date))})`
-            );
-          });
+          (summary['recentActivity'] as Array<{ description: string; date: string }>).forEach(
+            activity => {
+              formatter.info(`• ${String(activity.description)} (${String(activity.date)})`);
+            }
+          );
           formatter.info('');
         }
 
@@ -276,7 +276,7 @@ export function registerContextCommands(program: Command): void {
         }
       } catch (error) {
         formatter.error(
-          `Failed to get project summary: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
+          `Failed to get project summary: ${String(error instanceof Error ? error.message : 'Unknown error')}`
         );
         process.exit(1);
       }
@@ -337,7 +337,7 @@ export function registerContextCommands(program: Command): void {
         }
 
         // eslint-disable-next-line dot-notation
-        formatter.info(`🎯 Task Context: ${String(String((taskContext['title'] as string) ?? id))}\n`);
+        formatter.info(`🎯 Task Context: ${String((taskContext['title'] as string) ?? id)}\n`);
 
         // eslint-disable-next-line dot-notation
         if (taskContext['description']) {

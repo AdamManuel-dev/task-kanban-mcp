@@ -33,8 +33,16 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '@/utils/logger';
-import type { DatabaseConnection } from '@/database/connection';
-import type { Task, TaskDependency, ServiceError, PaginationOptions, FilterOptions } from '@/types';
+import type { DatabaseConnection, QueryParameters } from '@/database/connection';
+import type {
+  Task,
+  TaskDependency,
+  ServiceError,
+  PaginationOptions,
+  FilterOptions,
+  CriticalPathResult,
+  TaskImpactAnalysis,
+} from '@/types';
 
 /**
  * Request interface for creating new tasks
@@ -77,6 +85,7 @@ export interface UpdateTaskRequest {
   actual_hours?: number | undefined;
   parent_task_id?: string | undefined;
   metadata?: string | undefined;
+  progress?: number | undefined;
 }
 
 /**
@@ -450,7 +459,7 @@ export class TaskService {
 
     try {
       let query = 'SELECT DISTINCT t.* FROM tasks t';
-      const params: any[] = [];
+      const params: QueryParameters = [];
       const conditions: string[] = ['t.archived = ?'];
       params.push(archived);
 
@@ -513,8 +522,8 @@ export class TaskService {
         params.push(priority_max);
       }
 
-      query += ` WHERE ${String(String(conditions.join(' AND ')))}`;
-      query += ` ORDER BY t.${String(sortBy)} ${String(String(sortOrder.toUpperCase()))} LIMIT ? OFFSET ?`;
+      query += ` WHERE ${conditions.join(' AND ')}`;
+      query += ` ORDER BY t.${sortBy} ${sortOrder.toUpperCase()} LIMIT ? OFFSET ?`;
       params.push(limit, offset);
 
       const tasks = await this.db.query<Task>(query, params);
@@ -560,7 +569,7 @@ export class TaskService {
       }
 
       const updates: string[] = [];
-      const params: any[] = [];
+      const params: QueryParameters = [];
 
       if (data.title !== undefined) {
         updates.push('title = ?');
@@ -601,6 +610,10 @@ export class TaskService {
       if (data.actual_hours !== undefined) {
         updates.push('actual_hours = ?');
         params.push(data.actual_hours);
+      }
+      if (data.progress !== undefined) {
+        updates.push('progress = ?');
+        params.push(data.progress);
       }
       if (data.parent_task_id !== undefined) {
         updates.push('parent_task_id = ?');
@@ -656,6 +669,16 @@ export class TaskService {
       const updatedTask = await this.getTaskById(id);
       if (!updatedTask) {
         throw TaskService.createError('TASK_UPDATE_FAILED', 'Task disappeared after update');
+      }
+
+      // Auto-update parent task progress if this is a subtask and status changed
+      if (
+        (data.status !== undefined || data.progress !== undefined) &&
+        existingTask.parent_task_id
+      ) {
+        this.updateParentProgressOnSubtaskChange(id).catch(error => 
+          logger.error('Failed to update parent progress on subtask change', { error, taskId: id })
+        );
       }
 
       logger.info('Task updated successfully', { taskId: id });
@@ -871,7 +894,7 @@ export class TaskService {
         INNER JOIN tasks blocking_task ON td.depends_on_task_id = blocking_task.id
         WHERE blocking_task.status != 'done' AND t.archived = FALSE
       `;
-      const params: any[] = [];
+      const params: QueryParameters = [];
 
       if (boardId) {
         query += ' AND t.board_id = ?';
@@ -881,7 +904,7 @@ export class TaskService {
       query += ' ORDER BY t.priority DESC, t.created_at ASC';
 
       const tasks = await this.db.query<Task>(query, params);
-      tasks.forEach(task => this.convertTaskDates(task));
+      tasks.forEach(task => TaskService.convertTaskDates(task));
 
       return tasks;
     } catch (error) {
@@ -913,7 +936,7 @@ export class TaskService {
         SELECT * FROM tasks 
         WHERE due_date < ? AND status != 'done' AND archived = FALSE
       `;
-      const params: any[] = [new Date()];
+      const params: QueryParameters = [new Date()];
 
       if (boardId) {
         query += ' AND board_id = ?';
@@ -923,7 +946,7 @@ export class TaskService {
       query += ' ORDER BY due_date ASC, priority DESC';
 
       const tasks = await this.db.query<Task>(query, params);
-      tasks.forEach(task => this.convertTaskDates(task));
+      tasks.forEach(task => TaskService.convertTaskDates(task));
 
       return tasks;
     } catch (error) {
@@ -1312,7 +1335,7 @@ export class TaskService {
           AND t.archived = FALSE
       `;
 
-      const params: any[] = [query];
+      const params: QueryParameters = [query];
 
       if (board_id) {
         sql += ' AND t.board_id = ?';
@@ -1365,7 +1388,7 @@ export class TaskService {
    * @param originalError Optional original error for debugging
    * @returns ServiceError instance
    */
-  private static createError(code: string, message: string, originalError?: any): ServiceError {
+  private static createError(code: string, message: string, originalError?: unknown): ServiceError {
     const error = new Error(message) as ServiceError;
     error.code = code;
     error.statusCode = TaskService.getStatusCodeForError(code);
@@ -1400,6 +1423,413 @@ export class TaskService {
         return 500;
       default:
         return 500;
+    }
+  }
+
+  /**
+   * Calculate progress for a parent task based on subtask completion
+   *
+   * @param {string} parentTaskId - Parent task ID
+   * @returns {Promise<number>} Progress percentage (0-100)
+   *
+   * @description Calculates weighted progress based on subtask status:
+   * - 'done' subtasks contribute 100%
+   * - 'in_progress' subtasks contribute 50%
+   * - Other statuses contribute 0%
+   */
+  async calculateParentTaskProgress(parentTaskId: string): Promise<number> {
+    try {
+      const subtasks = await this.getSubtasks(parentTaskId);
+
+      if (subtasks.length === 0) {
+        return 0; // No subtasks, progress remains as set manually
+      }
+
+      const totalWeight = subtasks.length;
+      let completedWeight = 0;
+
+      for (const subtask of subtasks) {
+        switch (subtask.status) {
+          case 'done':
+            completedWeight += 1;
+            break;
+          case 'in_progress':
+            completedWeight += 0.5;
+            break;
+          default:
+            // 'todo', 'blocked', 'archived' contribute 0
+            break;
+        }
+      }
+
+      const progress = Math.round((completedWeight / totalWeight) * 100);
+
+      // Update the parent task's progress
+      await this.updateTask(parentTaskId, { progress });
+
+      logger.info('Parent task progress calculated', {
+        parentTaskId,
+        subtaskCount: subtasks.length,
+        progress,
+      });
+
+      return progress;
+    } catch (error) {
+      logger.error('Failed to calculate parent task progress', { parentTaskId, error });
+      throw TaskService.createError('TASK_UPDATE_FAILED', 'Failed to calculate progress');
+    }
+  }
+
+  /**
+   * Get critical path analysis for a set of tasks
+   *
+   * @param {string} boardId - Board ID to analyze
+   * @returns {Promise<CriticalPathResult>} Critical path analysis
+   *
+   * @description Analyzes task dependencies to find the critical path
+   * that determines the minimum time to complete all tasks
+   */
+  async getCriticalPath(boardId: string): Promise<CriticalPathResult> {
+    try {
+      // Get all tasks and dependencies for the board
+      const tasks = await this.getTasks({ board_id: boardId });
+      const allDependencies = await this.db.query<TaskDependency>(
+        `
+        SELECT td.* FROM task_dependencies td
+        JOIN tasks t ON td.task_id = t.id
+        WHERE t.board_id = ?
+      `,
+        [boardId]
+      );
+
+      // Build dependency graph
+      const dependencyMap = new Map<string, string[]>();
+      const dependentsMap = new Map<string, string[]>();
+
+      for (const dep of allDependencies) {
+        // task_id depends on depends_on_task_id
+        if (!dependencyMap.has(dep.task_id)) {
+          dependencyMap.set(dep.task_id, []);
+        }
+        dependencyMap.get(dep.task_id)!.push(dep.depends_on_task_id);
+
+        // depends_on_task_id has dependent task_id
+        if (!dependentsMap.has(dep.depends_on_task_id)) {
+          dependentsMap.set(dep.depends_on_task_id, []);
+        }
+        dependentsMap.get(dep.depends_on_task_id)!.push(dep.task_id);
+      }
+
+      // Calculate estimated duration for each task (use estimated_hours or default)
+      const taskDurations = new Map<string, number>();
+      for (const task of tasks) {
+        taskDurations.set(task.id, task.estimated_hours ?? 8); // Default 8 hours
+      }
+
+      // Find tasks with no dependencies (starting points)
+      const startingTasks = tasks.filter(
+        task => !dependencyMap.has(task.id) || dependencyMap.get(task.id)!.length === 0
+      );
+
+      // Find tasks with no dependents (ending points)
+      const endingTasks = tasks.filter(
+        task => !dependentsMap.has(task.id) || dependentsMap.get(task.id)!.length === 0
+      );
+
+      // Calculate critical path using topological sort and longest path
+      const criticalPath = this.findLongestPath(tasks, dependencyMap, dependentsMap, taskDurations);
+
+      const result: CriticalPathResult = {
+        critical_path: criticalPath.path,
+        total_duration: criticalPath.duration,
+        starting_tasks: startingTasks,
+        ending_tasks: endingTasks,
+        bottlenecks: this.identifyBottlenecks(dependentsMap, tasks),
+        dependency_count: allDependencies.length,
+      };
+
+      logger.info('Critical path calculated', {
+        boardId,
+        pathLength: criticalPath.path.length,
+        totalDuration: criticalPath.duration,
+      });
+
+      return result;
+    } catch (error) {
+      logger.error('Failed to calculate critical path', { boardId, error });
+      throw TaskService.createError('TASK_FETCH_FAILED', 'Failed to calculate critical path');
+    }
+  }
+
+  /**
+   * Find the longest path through the dependency graph (critical path)
+   *
+   * @private
+   */
+  private findLongestPath(
+    tasks: Task[],
+    dependencyMap: Map<string, string[]>,
+    dependentsMap: Map<string, string[]>,
+    taskDurations: Map<string, number>
+  ): { path: Task[]; duration: number } {
+    const visited = new Set<string>();
+    const distances = new Map<string, number>();
+    const predecessors = new Map<string, string | null>();
+
+    // Initialize distances
+    for (const task of tasks) {
+      distances.set(task.id, 0);
+      predecessors.set(task.id, null);
+    }
+
+    // Topological sort using DFS
+    const sortedTasks: string[] = [];
+    const visit = (taskId: string) => {
+      if (visited.has(taskId)) return;
+      visited.add(taskId);
+
+      const dependencies = dependencyMap.get(taskId) ?? [];
+      for (const depId of dependencies) {
+        visit(depId);
+      }
+      sortedTasks.push(taskId);
+    };
+
+    for (const task of tasks) {
+      if (!visited.has(task.id)) {
+        visit(task.id);
+      }
+    }
+
+    // Calculate longest distances (critical path)
+    for (const taskId of sortedTasks) {
+      const dependencies = dependencyMap.get(taskId) ?? [];
+      for (const depId of dependencies) {
+        const newDistance = (distances.get(depId) ?? 0) + (taskDurations.get(taskId) ?? 0);
+        if (newDistance > (distances.get(taskId) ?? 0)) {
+          distances.set(taskId, newDistance);
+          predecessors.set(taskId, depId);
+        }
+      }
+    }
+
+    // Find the task with maximum distance (end of critical path)
+    let maxDistance = 0;
+    let endTask = '';
+    for (const [taskId, distance] of distances) {
+      if (distance > maxDistance) {
+        maxDistance = distance;
+        endTask = taskId;
+      }
+    }
+
+    // Reconstruct the critical path
+    const pathIds: string[] = [];
+    let current: string | null = endTask;
+    while (current) {
+      pathIds.unshift(current);
+      current = predecessors.get(current) ?? null;
+    }
+
+    // Convert task IDs to Task objects
+    const taskMap = new Map(tasks.map(t => [t.id, t]));
+    const path = pathIds.map(id => taskMap.get(id)!).filter(Boolean);
+
+    return { path, duration: maxDistance };
+  }
+
+  /**
+   * Identify bottleneck tasks that block many other tasks
+   *
+   * @private
+   */
+  private identifyBottlenecks(dependentsMap: Map<string, string[]>, tasks: Task[]): Task[] {
+    const bottleneckThreshold = 2; // Tasks blocking 2+ other tasks are bottlenecks
+
+    const bottlenecks = tasks.filter(task => {
+      const dependentCount = dependentsMap.get(task.id)?.length ?? 0;
+      return dependentCount >= bottleneckThreshold && task.status !== 'done';
+    });
+
+    // Sort by number of dependents (most blocking first)
+    bottlenecks.sort((a, b) => {
+      const aCount = dependentsMap.get(a.id)?.length ?? 0;
+      const bCount = dependentsMap.get(b.id)?.length ?? 0;
+      return bCount - aCount;
+    });
+
+    return bottlenecks;
+  }
+
+  /**
+   * Get impact analysis for a task (what would be affected if this task changes)
+   *
+   * @param {string} taskId - Task ID to analyze
+   * @returns {Promise<TaskImpactAnalysis>} Impact analysis result
+   */
+  async getTaskImpactAnalysis(taskId: string): Promise<TaskImpactAnalysis> {
+    try {
+      const task = await this.getTaskById(taskId);
+      if (!task) {
+        throw TaskService.createError('TASK_NOT_FOUND', 'Task not found');
+      }
+
+      // Get all tasks that depend on this task (direct and indirect)
+      const impactedTasks = await this.getDownstreamTasks(taskId);
+
+      // Get all tasks this task depends on
+      const dependencyTasks = await this.getUpstreamTasks(taskId);
+
+      // Calculate impact score based on how many tasks would be affected
+      const impactScore = this.calculateImpactScore(impactedTasks, task);
+
+      const result: TaskImpactAnalysis = {
+        task,
+        directly_impacted: impactedTasks.direct,
+        indirectly_impacted: impactedTasks.indirect,
+        total_impacted_count: impactedTasks.direct.length + impactedTasks.indirect.length,
+        upstream_dependencies: dependencyTasks,
+        impact_score: impactScore,
+        risk_level: impactScore > 10 ? 'high' : impactScore > 5 ? 'medium' : 'low',
+      };
+
+      logger.info('Task impact analysis completed', {
+        taskId,
+        totalImpacted: result.total_impacted_count,
+        riskLevel: result.risk_level,
+      });
+
+      return result;
+    } catch (error) {
+      logger.error('Failed to analyze task impact', { taskId, error });
+      throw TaskService.createError('TASK_FETCH_FAILED', 'Failed to analyze task impact');
+    }
+  }
+
+  /**
+   * Get all tasks downstream from a given task (tasks that depend on this task)
+   *
+   * @private
+   */
+  private async getDownstreamTasks(taskId: string): Promise<{ direct: Task[]; indirect: Task[] }> {
+    const visited = new Set<string>();
+    const direct: Task[] = [];
+    const indirect: Task[] = [];
+
+    const findDownstream = async (currentTaskId: string, depth: number = 0) => {
+      if (visited.has(currentTaskId)) return;
+      visited.add(currentTaskId);
+
+      const dependents = await this.db.query<TaskDependency>(
+        'SELECT * FROM task_dependencies WHERE depends_on_task_id = ?',
+        [currentTaskId]
+      );
+
+      for (const dep of dependents) {
+        const dependentTask = await this.getTaskById(dep.task_id);
+        if (dependentTask) {
+          if (depth === 0) {
+            direct.push(dependentTask);
+          } else {
+            indirect.push(dependentTask);
+          }
+          await findDownstream(dep.task_id, depth + 1);
+        }
+      }
+    };
+
+    await findDownstream(taskId);
+    return { direct, indirect };
+  }
+
+  /**
+   * Get all tasks upstream from a given task (tasks this task depends on)
+   *
+   * @private
+   */
+  private async getUpstreamTasks(taskId: string): Promise<Task[]> {
+    const visited = new Set<string>();
+    const upstream: Task[] = [];
+
+    const findUpstream = async (currentTaskId: string) => {
+      if (visited.has(currentTaskId)) return;
+      visited.add(currentTaskId);
+
+      const dependencies = await this.db.query<TaskDependency>(
+        'SELECT * FROM task_dependencies WHERE task_id = ?',
+        [currentTaskId]
+      );
+
+      for (const dep of dependencies) {
+        const dependencyTask = await this.getTaskById(dep.depends_on_task_id);
+        if (dependencyTask) {
+          upstream.push(dependencyTask);
+          await findUpstream(dep.depends_on_task_id);
+        }
+      }
+    };
+
+    await findUpstream(taskId);
+    return upstream;
+  }
+
+  /**
+   * Calculate impact score for a task based on various factors
+   *
+   * @private
+   */
+  private calculateImpactScore(
+    impactedTasks: { direct: Task[]; indirect: Task[] },
+    task: Task
+  ): number {
+    let score = 0;
+
+    // Base score from number of impacted tasks
+    score += impactedTasks.direct.length * 3; // Direct impact is more significant
+    score += impactedTasks.indirect.length * 1;
+
+    // Priority multiplier
+    const priorityMultiplier = (task.priority ?? 1) / 5;
+    score *= 1 + priorityMultiplier;
+
+    // Due date urgency (if task is overdue or due soon)
+    if (task.due_date) {
+      const dueDate = new Date(task.due_date);
+      const now = new Date();
+      const daysUntilDue = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+      if (daysUntilDue < 0) {
+        score *= 1.5; // Overdue tasks have higher impact
+      } else if (daysUntilDue <= 3) {
+        score *= 1.3; // Due soon
+      }
+    }
+
+    return Math.round(score);
+  }
+
+  /**
+   * Auto-update parent task progress when subtask status changes
+   *
+   * @param {string} subtaskId - Subtask that was updated
+   * @returns {Promise<void>}
+   */
+  async updateParentProgressOnSubtaskChange(subtaskId: string): Promise<void> {
+    try {
+      const subtask = await this.getTaskById(subtaskId);
+      if (!subtask?.parent_task_id) {
+        return; // Not a subtask or subtask not found
+      }
+
+      await this.calculateParentTaskProgress(subtask.parent_task_id);
+
+      logger.info('Parent task progress updated after subtask change', {
+        subtaskId,
+        parentTaskId: subtask.parent_task_id,
+      });
+    } catch (error) {
+      logger.error('Failed to update parent progress on subtask change', { subtaskId, error });
+      // Don't throw error - this is a background update that shouldn't fail the main operation
     }
   }
 }

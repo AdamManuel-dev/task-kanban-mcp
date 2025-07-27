@@ -4,13 +4,13 @@
 
 import type { Task, Board, Note, Tag } from '../types';
 import type { ConfigManager } from './config';
-import type { ApiClient } from './client';
+import type { ApiClientWrapper } from './api-client-wrapper';
 import type { OutputFormatter } from './formatter';
 
 // Global CLI components interface
 export interface CliComponents {
   config: ConfigManager;
-  apiClient: ApiClient;
+  apiClient: ApiClientWrapper;
   formatter: OutputFormatter;
 }
 

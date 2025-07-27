@@ -1,6 +1,37 @@
-# Agent Integration Guide
+# MCP Integration Guide
 
-This guide covers how to integrate AI agents with the MCP Kanban Server using the Model Context Protocol (MCP).
+This guide covers how to integrate AI agents with the MCP Kanban Server using the Model Context Protocol (MCP). Learn how to set up MCP for your AI assistants and use the available tools effectively.
+
+## 🚀 Quick Start
+
+### Basic MCP Setup
+
+```json
+// .mcp/config.json
+{
+  "servers": {
+    "kanban": {
+      "command": "mcp-kanban",
+      "args": ["--api-key", "your-agent-key"],
+      "env": {
+        "MCP_KANBAN_URL": "http://localhost:3000"
+      }
+    }
+  }
+}
+```
+
+### Test MCP Integration
+
+```javascript
+// Test getting next task
+{
+  "tool": "get_next_task",
+  "parameters": {
+    "capabilities": ["javascript", "react"]
+  }
+}
+```
 
 ## Overview
 

@@ -36,6 +36,7 @@
     "@typescript-eslint/switch-exhaustiveness-check": "warn",
     "@typescript-eslint/consistent-type-imports": "error",
     "@typescript-eslint/consistent-type-definitions": ["error", "interface"],
+    "@typescript-eslint/dot-notation": "off",
     
     // Import rules
     "import/extensions": ["error", "ignorePackages", {
@@ -61,10 +62,49 @@
     "prefer-arrow-callback": "warn",
     "prefer-template": "warn",
     "no-param-reassign": "warn",
-    "no-plusplus": "warn",
+    "no-plusplus": "off",
+    "no-await-in-loop": "off",
     "template-curly-spacing": "error",
     "arrow-spacing": "error",
     "generator-star-spacing": "error",
+    
+    // Disable non-valuable style rules
+    "no-underscore-dangle": "off",
+    "no-continue": "off",
+    "camelcase": [
+      "error",
+      {
+        "properties": "never",
+        "ignoreDestructuring": true,
+        "allow": [
+          "board_id",
+          "task_id",
+          "column_id",
+          "parent_task_id",
+          "due_date",
+          "created_at",
+          "updated_at",
+          "task_description",
+          "team_member",
+          "team_capacity"
+        ]
+      }
+    ],
+    "no-restricted-syntax": [
+      "error",
+      {
+        "selector": "ForInStatement",
+        "message": "for..in loops iterate over the entire prototype chain, which is virtually never what you want. Use Object.{keys,values,entries}, and iterate over the resulting array."
+      },
+      {
+        "selector": "LabeledStatement",
+        "message": "Labels are a form of GOTO; using them makes code confusing and hard to maintain and understand."
+      },
+      {
+        "selector": "WithStatement",
+        "message": "`with` is disallowed in strict mode because it makes code impossible to predict and optimize."
+      }
+    ],
     "space-before-function-paren": ["error", {
       "anonymous": "always",
       "named": "never",
@@ -91,15 +131,72 @@
   },
   "overrides": [
     {
-      "files": ["*.test.ts", "*.spec.ts"],
+      "files": ["*.test.ts", "*.spec.ts", "tests/**/*.ts"],
       "env": {
         "jest": true
       },
       "rules": {
+        // TypeScript safety rules - relaxed for tests
         "@typescript-eslint/no-explicit-any": "off",
         "@typescript-eslint/no-unsafe-assignment": "off",
         "@typescript-eslint/no-unsafe-member-access": "off",
-        "@typescript-eslint/no-unsafe-call": "off"
+        "@typescript-eslint/no-unsafe-call": "off",
+        "@typescript-eslint/no-unsafe-argument": "off",
+        "@typescript-eslint/no-unsafe-return": "off",
+        "@typescript-eslint/no-base-to-string": "off",
+        "@typescript-eslint/unbound-method": "off",
+        "@typescript-eslint/no-misused-promises": "off",
+        "@typescript-eslint/no-floating-promises": "off",
+        "@typescript-eslint/require-await": "off",
+        "@typescript-eslint/explicit-function-return-type": "off",
+        "@typescript-eslint/prefer-nullish-coalescing": "off",
+        "@typescript-eslint/prefer-optional-chain": "off",
+        "@typescript-eslint/consistent-type-imports": "off",
+        "@typescript-eslint/consistent-type-definitions": "off",
+        
+        // Performance rules - relaxed for tests
+        "no-await-in-loop": "off",
+        "no-restricted-syntax": "off",
+        "no-loop-func": "off",
+        
+        // Code style rules - relaxed for tests
+        "no-plusplus": "off",
+        "prefer-destructuring": "off",
+        "no-console": "off",
+        "no-unused-expressions": "off",
+        "@typescript-eslint/no-unused-expressions": "off",
+        "no-new-object": "off",
+        "consistent-return": "off",
+        "no-use-before-define": "off",
+        "@typescript-eslint/no-use-before-define": "off",
+        
+        // Import rules - relaxed for tests
+        "import/extensions": "off",
+        "import/no-unresolved": "off",
+        "import/no-extraneous-dependencies": "off",
+        "global-require": "off",
+        "@typescript-eslint/no-var-requires": "off",
+        
+        // Additional test-specific rules
+        "no-promise-executor-return": "off"
+      }
+    },
+    {
+      "files": ["tests/performance/**/*.ts", "tests/e2e/**/*.ts"],
+      "rules": {
+        // Even more relaxed for performance and e2e tests
+        "@typescript-eslint/no-explicit-any": "off",
+        "@typescript-eslint/no-unsafe-assignment": "off",
+        "@typescript-eslint/no-unsafe-member-access": "off",
+        "@typescript-eslint/no-unsafe-call": "off",
+        "@typescript-eslint/no-unsafe-argument": "off",
+        "@typescript-eslint/no-unsafe-return": "off",
+        "no-console": "off",
+        "no-await-in-loop": "off",
+        "no-restricted-syntax": "off",
+        "no-plusplus": "off",
+        "import/extensions": "off",
+        "import/no-unresolved": "off"
       }
     }
   ]

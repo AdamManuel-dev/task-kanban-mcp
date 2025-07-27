@@ -1,6 +1,6 @@
 import { Command } from 'commander';
-import chalk from 'chalk';
 import { existsSync } from 'fs';
+import { logger } from '@/utils/logger';
 import { todoProcessor } from '../utils/todo-processor';
 
 interface ProcessTodosOptions {
@@ -25,13 +25,13 @@ export const processTodosCommand = new Command('process-todos')
     try {
       // Validate file exists
       if (!existsSync(file)) {
-        logger.error(chalk.red(`Error: File not found: ${String(file)}`));
+        logger.error(`Error: File not found: ${String(file)}`);
         process.exit(1);
       }
 
-      logger.log(chalk.cyan('\n🚀 Processing TODOs...\n'));
+      logger.info('\n🚀 Processing TODOs...\n');
 
-      await todoProcessor.processTodos(file, {
+      await todoProcessor.process(file, {
         concurrent: options.concurrent,
         maxConcurrent: parseInt(options.maxConcurrent, 10),
         groupByPhase: options.groupByPhase,
@@ -40,10 +40,10 @@ export const processTodosCommand = new Command('process-todos')
         dryRun: options.dryRun,
       });
 
-      logger.log(chalk.green('\n✅ TODO processing complete!\n'));
+      logger.info('\n✅ TODO processing complete!\n');
     } catch (error) {
       logger.error(
-        chalk.red('\n❌ Error processing TODOs:'),
+        '\n❌ Error processing TODOs:',
         error instanceof Error ? error.message : String(error)
       );
       process.exit(1);

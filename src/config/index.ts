@@ -297,11 +297,11 @@ const rawConfig = {
     }),
   },
   development: {
-    seedDatabase: parseEnvVar(process.env['DEV_SEED_DATABASE'], false),
-    resetOnStart: parseEnvVar(process.env['DEV_RESET_ON_START'], false),
-    mockGitIntegration: parseEnvVar(process.env['DEV_MOCK_GIT_INTEGRATION'], false),
-    enableDebugRoutes: parseEnvVar(process.env['DEV_ENABLE_DEBUG_ROUTES'], false),
-    watchFiles: parseEnvVar(process.env['DEV_WATCH_FILES'], true),
+    seedDatabase: parseEnvVar(process.env.DEV_SEED_DATABASE, false),
+    resetOnStart: parseEnvVar(process.env.DEV_RESET_ON_START, false),
+    mockGitIntegration: parseEnvVar(process.env.DEV_MOCK_GIT_INTEGRATION, false),
+    enableDebugRoutes: parseEnvVar(process.env.DEV_ENABLE_DEBUG_ROUTES, false),
+    watchFiles: parseEnvVar(process.env.DEV_WATCH_FILES, true),
   },
 };
 
@@ -323,7 +323,7 @@ const rawConfig = {
  * const db = new Database(config.database.path);
  *
  * // Check environment
- * if (config.server.nodeEnv === 'production') {
+ * if (config.server['nodeEnv'] = == 'production') {
  *   // Production-specific logic
  * }
  * ```

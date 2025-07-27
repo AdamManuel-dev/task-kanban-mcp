@@ -2,9 +2,9 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
 
 env:
   NODE_VERSION: '18'
@@ -14,40 +14,40 @@ jobs:
   test:
     name: Test & Quality Checks
     runs-on: ubuntu-latest
-    
+
     strategy:
       matrix:
         node-version: [18, 20]
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
-          
+
       - name: Install dependencies
         run: npm ci
-        
+
       - name: Run type checking
         run: npm run typecheck
-        
+
       - name: Run linting
         run: npm run lint
-        
+
       - name: Run tests
         run: npm run test:coverage
-        
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
           file: ./coverage/lcov.info
           flags: unittests
           name: codecov-umbrella
-          
+
       - name: Build project
         run: npm run build
 
@@ -55,23 +55,23 @@ jobs:
   security:
     name: Security Scan
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          
+
       - name: Install dependencies
         run: npm ci
-        
+
       - name: Run security audit
         run: npm audit --audit-level high
-        
+
       - name: Run Snyk security check
         uses: snyk/actions/node@master
         env:
@@ -84,14 +84,14 @@ jobs:
     name: Docker Build
     runs-on: ubuntu-latest
     needs: [test]
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-        
+
       - name: Build development image
         uses: docker/build-push-action@v5
         with:
@@ -101,7 +101,7 @@ jobs:
           tags: mcp-kanban:dev
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          
+
       - name: Build production image
         uses: docker/build-push-action@v5
         with:
@@ -118,26 +118,26 @@ jobs:
     runs-on: ubuntu-latest
     needs: [test, security, docker]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
-          
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          
+
       - name: Install dependencies
         run: npm ci
-        
+
       - name: Build project
         run: npm run build
-        
+
       - name: Create release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -151,16 +151,45 @@ jobs:
     needs: [test, security, docker]
     if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
     environment: staging
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.DOCKER_REGISTRY }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push staging image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: production
+          push: true
+          tags: ${{ secrets.DOCKER_REGISTRY }}/mcp-kanban:staging
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
       - name: Deploy to staging
         run: |
           echo "🚀 Deploying to staging environment"
-          # Add your staging deployment commands here
-          
+          # Set deployment environment variables
+          export DEPLOYMENT_ENV=staging
+          export DOCKER_REGISTRY=${{ secrets.DOCKER_REGISTRY }}
+          export DOCKER_IMAGE=mcp-kanban
+          export DOCKER_TAG=staging
+          export HEALTH_CHECK_URL=${{ secrets.STAGING_HEALTH_CHECK_URL }}
+
+          # Run deployment script
+          chmod +x scripts/deploy.sh
+          ./scripts/deploy.sh deploy
+
   # Deploy to production (main branch with tags)
   deploy-production:
     name: Deploy to Production
@@ -168,12 +197,45 @@ jobs:
     needs: [release]
     if: startsWith(github.ref, 'refs/tags/v')
     environment: production
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.DOCKER_REGISTRY }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push production image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: production
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_REGISTRY }}/mcp-kanban:latest
+            ${{ secrets.DOCKER_REGISTRY }}/mcp-kanban:${{ github.ref_name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
       - name: Deploy to production
         run: |
           echo "🚀 Deploying to production environment"
-          # Add your production deployment commands here
+          # Set deployment environment variables
+          export DEPLOYMENT_ENV=production
+          export DOCKER_REGISTRY=${{ secrets.DOCKER_REGISTRY }}
+          export DOCKER_IMAGE=mcp-kanban
+          export DOCKER_TAG=${{ github.ref_name }}
+          export HEALTH_CHECK_URL=${{ secrets.PRODUCTION_HEALTH_CHECK_URL }}
+          export SLACK_WEBHOOK_URL=${{ secrets.SLACK_WEBHOOK_URL }}
+          export EMAIL_RECIPIENTS=${{ secrets.EMAIL_RECIPIENTS }}
+
+          # Run deployment script
+          chmod +x scripts/deploy.sh
+          ./scripts/deploy.sh deploy

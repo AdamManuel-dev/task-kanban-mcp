@@ -91,7 +91,7 @@ export class MaintenanceManager {
    * Perform VACUUM operation to reclaim free space and optimize database
    *
    * @param {Object} options - Vacuum options
-   * @param {boolean} [options.incremental=false] - Use incremental vacuum
+   * @param {boolean} [options['incremental'] = false] - Use incremental vacuum
    * @param {number} [options.pages] - Number of pages to vacuum (incremental only)
    * @returns {Promise<MaintenanceResult>} Operation result
    *
@@ -408,7 +408,7 @@ export class MaintenanceManager {
    * Perform comprehensive database maintenance
    *
    * @param {Object} options - Maintenance options
-   * @param {boolean} [options.includeVacuum=true] - Include vacuum operation
+   * @param {boolean} [options['includeVacuum'] = true] - Include vacuum operation
    * @param {boolean} [options.includeAnalyze=true] - Include analyze operation
    * @param {boolean} [options.includeOptimize=true] - Include optimize operation
    * @param {boolean} [options.includeWalCheckpoint=true] - Include WAL checkpoint

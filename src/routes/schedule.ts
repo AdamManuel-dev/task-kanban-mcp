@@ -479,7 +479,7 @@ router.post('/cleanup', async (_req, res) => {
  *       500:
  *         description: Failed to start scheduler
  */
-router.post('/start', async (_req, res) => {
+router.post('/start', (_req, res) => {
   try {
     const { schedulingService } = getServices();
     schedulingService.start();
@@ -514,7 +514,7 @@ router.post('/start', async (_req, res) => {
  *       500:
  *         description: Failed to stop scheduler
  */
-router.post('/stop', async (_req, res) => {
+router.post('/stop', (_req, res) => {
   try {
     const { schedulingService } = getServices();
     schedulingService.stop();

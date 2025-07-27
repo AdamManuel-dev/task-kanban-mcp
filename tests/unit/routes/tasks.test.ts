@@ -63,20 +63,18 @@ jest.doMock('../../../src/utils/validation', () => ({
 }));
 
 // Mock error utilities
+function createMockError(message: string, statusCode: number): Error & { statusCode: number } {
+  const error = new Error(message) as Error & { statusCode: number };
+  error.statusCode = statusCode;
+  return error;
+}
+
 jest.doMock('../../../src/utils/errors', () => ({
-  NotFoundError: class extends Error {
-    statusCode = 404;
-
-    constructor(entity: string, id: string) {
-      super(`${String(entity)} ${String(id)} not found`);
-    }
+  NotFoundError: function(entity: string, id: string) {
+    return createMockError(`${String(entity)} ${String(id)} not found`, 404);
   },
-  ValidationError: class extends Error {
-    statusCode = 400;
-
-    constructor(message: string) {
-      super(message);
-    }
+  ValidationError: function(message = 'Validation error') {
+    return createMockError(message, 400);
   },
 }));
 
@@ -112,7 +110,7 @@ describe('Tasks Routes', () => {
     app.use(responseFormattingMiddleware);
 
     // Mount routes
-    const router = await taskRoutes();
+    const router = taskRoutes();
     app.use('/api/v1/tasks', router);
 
     // Error handling middleware

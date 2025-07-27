@@ -392,7 +392,7 @@ export class ApiClientWrapper {
     });
   }
 
-  async createTask(task: CreateTaskRequest): Promise<TaskResponse> {
+  async createTask(task: CreateTaskRequest): Promise<AnyApiResponse> {
     return this.executeWithEnhancements(() => this.apiClient.createTask(task), {
       operationName: 'Create Task',
       showSpinner: true,
@@ -739,5 +739,36 @@ export class ApiClientWrapper {
     metadata: RequestMetadata
   ): Promise<T> {
     return this.executeWithEnhancements(operation, metadata);
+  }
+
+  /**
+   * Generic request method for custom API endpoints
+   */
+  async request<T>(
+    method: string,
+    path: string,
+    data?: unknown,
+    params?: Record<string, string>
+  ): Promise<T> {
+    const operation = async (): Promise<T> => {
+      const response = await this.apiClient.request(path, {
+        method: method as 'GET' | 'POST' | 'PATCH' | 'DELETE',
+        body: data,
+        params,
+      });
+      return response as T;
+    };
+
+    return this.executeWithEnhancements(operation, {
+      operationName: `${method.toUpperCase()} ${path}`,
+      showSpinner: true,
+      spinnerText: `Making ${method.toUpperCase()} request to ${path}...`,
+      successText: `${method.toUpperCase()} request to ${path} completed`,
+      errorText: `Failed to make ${method.toUpperCase()} request to ${path}`,
+    });
+  }
+
+  public getApiClient(): ApiClient {
+    return this.apiClient;
   }
 }

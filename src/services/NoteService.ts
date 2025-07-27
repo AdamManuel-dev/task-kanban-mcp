@@ -32,7 +32,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '@/utils/logger';
-import type { DatabaseConnection } from '@/database/connection';
+import type { DatabaseConnection, QueryParameters } from '@/database/connection';
 import type { Note, ServiceError, PaginationOptions, FilterOptions } from '@/types';
 
 /**
@@ -260,29 +260,29 @@ export class NoteService {
       offset = 0,
       sortBy = 'updated_at',
       sortOrder = 'desc',
-      task_id,
+      task_id: taskId,
       category,
       pinned,
-      content_search,
-      board_id,
-      date_from,
-      date_to,
+      content_search: contentSearch,
+      board_id: boardId,
+      date_from: dateFrom,
+      date_to: dateTo,
     } = options;
 
     try {
       let query = 'SELECT n.* FROM notes n';
-      const params: any[] = [];
+      const params: QueryParameters = [];
       const conditions: string[] = [];
 
-      if (board_id) {
+      if (boardId) {
         query += ' INNER JOIN tasks t ON n.task_id = t.id';
         conditions.push('t.board_id = ?');
-        params.push(board_id);
+        params.push(boardId);
       }
 
-      if (task_id) {
+      if (taskId) {
         conditions.push('n.task_id = ?');
-        params.push(task_id);
+        params.push(taskId);
       }
 
       if (category) {
@@ -295,19 +295,19 @@ export class NoteService {
         params.push(pinned);
       }
 
-      if (content_search) {
+      if (contentSearch) {
         conditions.push('n.content LIKE ?');
-        params.push(`%${String(content_search)}%`);
+        params.push(`%${String(contentSearch)}%`);
       }
 
-      if (date_from) {
+      if (dateFrom) {
         conditions.push('n.created_at >= ?');
-        params.push(date_from);
+        params.push(dateFrom);
       }
 
-      if (date_to) {
+      if (dateTo) {
         conditions.push('n.created_at <= ?');
-        params.push(date_to);
+        params.push(dateTo);
       }
 
       if (conditions.length > 0) {
@@ -403,7 +403,7 @@ export class NoteService {
       }
 
       const updates: string[] = [];
-      const params: any[] = [];
+      const params: QueryParameters = [];
 
       if (data.content !== undefined) {
         updates.push('content = ?');
@@ -542,7 +542,7 @@ export class NoteService {
             ELSE 1 
           END as relevance_score
         FROM notes n
-        INNER JOIN tasks t ON n.task_id = t.id
+        INNER JOIN tasks t ON n['task_id'] = t.id
         INNER JOIN boards b ON t.board_id = b.id
         WHERE n.content LIKE ?
       `;
@@ -551,7 +551,7 @@ export class NoteService {
       const exactMatch = `%${String(query)}%`;
       const wordBoundary = `% ${String(query)} %`;
 
-      const params: any[] = [exactMatch, wordBoundary, searchTerm];
+      const params: QueryParameters = [exactMatch, wordBoundary, searchTerm];
       const conditions: string[] = [];
 
       if (task_id) {
@@ -855,7 +855,7 @@ export class NoteService {
         this.db.queryOne<{ count: number }>(
           `
           SELECT COUNT(*) as count 
-          ${String(baseQuery)}${String(whereClause)}${String(String(conditions.length > 0 ? ' AND' : ' WHERE'))} n.pinned = TRUE
+          ${String(baseQuery)}${String(whereClause)}${String(String(conditions.length > 0 ? ' AND' : ' WHERE'))} n['pinned'] = TRUE
         `,
           params
         ),
@@ -922,7 +922,7 @@ export class NoteService {
 
     try {
       let baseQuery = 'FROM notes n';
-      const params: any[] = [];
+      const params: QueryParameters = [];
       const conditions: string[] = [];
 
       if (board_id) {
@@ -1008,11 +1008,11 @@ export class NoteService {
    * @param originalError Optional original error for debugging
    * @returns Standardized ServiceError with status code
    */
-  private static createError(code: string, message: string, originalError?: any): ServiceError {
+  private static createError(code: string, message: string, originalError?: unknown): ServiceError {
     const error = new Error(message) as ServiceError;
     error.code = code;
     error.statusCode = NoteService.getStatusCodeForError(code);
-    error.details = originalError;
+    error.details = originalError as ServiceError['details'];
     return error;
   }
 

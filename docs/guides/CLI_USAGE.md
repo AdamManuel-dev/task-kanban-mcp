@@ -1,6 +1,30 @@
 # CLI Usage Guide
 
-The MCP Kanban Server provides a powerful command-line interface for managing tasks, boards, and coordinating with AI agents.
+The MCP Kanban Server provides a powerful command-line interface for managing tasks, boards, and coordinating with AI agents. This guide covers all CLI commands, options, and workflows.
+
+## 🚀 Quick Start
+
+### Basic Commands
+
+```bash
+# Get help
+kanban --help
+
+# Check version
+kanban --version
+
+# Test connection
+kanban config test
+
+# Create your first board
+kanban board create "My Project"
+
+# Create your first task
+kanban task create "Set up development environment" --priority high
+
+# List tasks
+kanban task list
+```
 
 ## Installation
 

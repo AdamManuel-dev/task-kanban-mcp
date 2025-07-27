@@ -58,7 +58,7 @@ describe('CLI Complete Workflow E2E Tests', () => {
       }
 
       // Step 4: Create tasks with different priorities
-      const taskResults = [];
+      const taskResults: string[] = [];
       const tasks = [
         { title: 'High priority bug fix', priority: 'P1', status: 'todo' },
         { title: 'Feature implementation', priority: 'P2', status: 'todo' },
@@ -67,20 +67,15 @@ describe('CLI Complete Workflow E2E Tests', () => {
       ];
 
       await Promise.all(
-  tasks.map(async (task) => {
-    await new Promise((resolve, reject) => {
-        child.on('close', code => {
-          if (code === 0) {
-            resolve(output);
-          } else {
-            reject(new Error(`Interactive setup failed with code ${String(code)}`));
-          }
-        });
-      });
-
-      expect(output).toContain('Board created successfully');
-      expect(output).toContain('Interactive Test Project');
-      expect(output).toContain('Set as default board');
+        tasks.map(async task => {
+          const result = execSync(
+            `node dist/cli/index.js task create --title "${task.title}" --priority ${task.priority} --status ${task.status}`,
+            { encoding: 'utf8', cwd: process.cwd() }
+          );
+          taskResults.push(result);
+          expect(result).toContain('Task created successfully');
+        })
+      );
 
       // Follow up with interactive task creation
       const taskChild = spawn('node', ['dist/cli/index.js', 'task', 'create', '--interactive'], {
@@ -118,7 +113,7 @@ describe('CLI Complete Workflow E2E Tests', () => {
   describe('Performance and Load Testing', () => {
     it('should handle multiple rapid operations', async () => {
       const startTime = Date.now();
-      const operations = [];
+      const operations: string[] = [];
 
       // Create multiple tasks rapidly
       for (let i = 0; i < 10; i++) {
@@ -153,12 +148,12 @@ describe('CLI Complete Workflow E2E Tests', () => {
     }, 45000);
 
     it('should handle large input values efficiently', async () => {
-      const largeTitle = `Large Task Title: ${String(String('x'.repeat(1000)))}`;
-      const largeDescription = `Large Description: ${String(String('y'.repeat(5000)))}`;
+      const largeTitle = `Large Task Title: ${'x'.repeat(1000)}`;
+      const largeDescription = `Large Description: ${'y'.repeat(5000)}`;
 
       const startTime = Date.now();
       const result = execSync(
-        `node dist/cli/index.js task create --title "${String(largeTitle)}" --description "${String(largeDescription)}"`,
+        `node dist/cli/index.js task create --title "${largeTitle}" --description "${largeDescription}"`,
         { encoding: 'utf8', cwd: process.cwd() }
       );
       const endTime = Date.now();

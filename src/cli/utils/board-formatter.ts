@@ -141,7 +141,7 @@ export class BoardFormatter {
         output.push(chalk.gray('  No tasks'));
       } else {
         for (const task of column.tasks) {
-          output.push(`  ${String(formatTaskListItem(task))}`);
+          output.push(`  ${formatTaskListItem(task)}`);
         }
       }
     }

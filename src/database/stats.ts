@@ -155,9 +155,9 @@ export class StatisticsCollector {
 
   private readonly config: StatsConfig;
 
-  private queryHistory: QueryRecord[] = [];
+  private readonly queryHistory: QueryRecord[] = [];
 
-  private monitoringActive = false;
+  private readonly monitoringActive = false;
 
   constructor(db: DatabaseConnection, config: Partial<StatsConfig> = {}) {
     this.db = db;
@@ -411,8 +411,8 @@ export class StatisticsCollector {
    *
    * @returns {Promise<QueryStats>} Query performance metrics
    */
-  public async getQueryStatistics(): Promise<QueryStats> {
-    if (!this.config.enableQueryMonitoring ?? this.queryHistory.length === 0) {
+  public getQueryStatistics(): QueryStats {
+    if (!this.config.enableQueryMonitoring || this.queryHistory.length === 0) {
       return {
         totalQueries: 0,
         averageExecutionTime: 0,

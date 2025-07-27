@@ -3,6 +3,9 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
+import swaggerUi from 'swagger-ui-express';
+import YAML from 'yamljs';
+import path from 'path';
 import { config } from '@/config';
 import { logger } from '@/utils/logger';
 import { dbConnection } from '@/database/connection';
@@ -101,6 +104,42 @@ export async function createServer(): Promise<express.Application> {
     })
   );
 
+  // Interactive API Explorer (Swagger UI) - Must be before API middleware to avoid auth
+  try {
+    const openApiSpecPath = path.join(__dirname, '../docs/api/openapi.yaml');
+    const openApiSpec = YAML.load(openApiSpecPath);
+
+    app.use(
+      '/api/docs',
+      swaggerUi.serve,
+      swaggerUi.setup(openApiSpec, {
+        customCss: '.swagger-ui .topbar { display: none }',
+        customSiteTitle: 'MCP Kanban API Explorer',
+        customfavIcon: '/favicon.ico',
+        swaggerOptions: {
+          docExpansion: 'list',
+          filter: true,
+          showRequestHeaders: true,
+          tryItOutEnabled: true,
+          requestInterceptor: (req: any) => {
+            // Add authentication header if available
+            if (req.headers && !req.headers.Authorization) {
+              const apiKey = req.headers['x-api-key'] || req.headers.authorization;
+              if (apiKey) {
+                req.headers.Authorization = `Bearer ${apiKey}`;
+              }
+            }
+            return req;
+          },
+        },
+      })
+    );
+
+    logger.info('Interactive API Explorer available at /api/docs');
+  } catch (error) {
+    logger.warn('Failed to load OpenAPI specification for interactive explorer', { error });
+  }
+
   // API middleware
   const apiMiddleware = await createApiMiddleware();
   app.use('/api', apiMiddleware);
@@ -137,6 +176,7 @@ export async function createServer(): Promise<express.Application> {
       endpoints: {
         api: '/api/v1',
         websocket: `ws://localhost:${String(String(config.websocket.port))}${String(String(config.websocket.path))}`,
+        interactiveExplorer: '/api/docs',
       },
     });
   });

@@ -22,6 +22,9 @@ describe('MCP Server Integration Tests', () => {
     // Create a test server instance (not the singleton)
     server = new MCPKanbanServer();
 
+    // Initialize the server (this will set up the database connection for services)
+    await server.start();
+
     // Create test board
     const boardId = uuidv4();
     await dbConnection.execute(
@@ -81,6 +84,8 @@ describe('MCP Server Integration Tests', () => {
   });
 
   afterAll(async () => {
+    // Stop the server properly (don't exit process in tests)
+    await server.stop(false);
     await dbConnection.close();
   });
 
@@ -159,8 +164,8 @@ describe('MCP Server Integration Tests', () => {
       const taskData = {
         title: 'Tool Created Task',
         description: 'Created via MCP tool',
-        boardId: testBoard.id,
-        columnId: global.testColumnId,
+        board_id: testBoard.id,
+        column_id: global.testColumnId,
         status: 'todo',
         priority: 'high',
       };
@@ -168,15 +173,15 @@ describe('MCP Server Integration Tests', () => {
       const result = await toolRegistry.callTool('create_task', taskData);
 
       expect(result.success).toBe(true);
-      expect(result.data).toBeDefined();
-      expect(result.data.title).toBe(taskData.title);
-      expect(result.data.id).toBeDefined();
+      expect(result.task).toBeDefined();
+      expect(result.task.title).toBe(taskData.title);
+      expect(result.task.id).toBeDefined();
     });
 
     it('should execute get_task tool', async () => {
       const toolRegistry = server.getToolRegistry();
 
-      const result = await toolRegistry.callTool('get_task', { id: testTask.id });
+      const result = await toolRegistry.callTool('get_task', { task_id: testTask.id });
 
       expect(result.success).toBe(true);
       expect(result.data).toBeDefined();
@@ -188,7 +193,7 @@ describe('MCP Server Integration Tests', () => {
       const toolRegistry = server.getToolRegistry();
 
       const updates = {
-        id: testTask.id,
+        task_id: testTask.id,
         title: 'Updated via MCP Tool',
         status: 'in_progress',
       };

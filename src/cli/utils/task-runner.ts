@@ -1,6 +1,6 @@
-import type { ListrTask } from 'listr2';
 import { Listr } from 'listr2';
 import chalk from 'chalk';
+import { logger } from '../../utils/logger';
 
 export interface TaskItem {
   id: string;
@@ -38,7 +38,7 @@ export class TaskRunner {
       exitOnError?: boolean;
     }
   ): Promise<void> {
-    const listrTasks: ListrTask[] = tasks.map(task => ({
+    const listrTasks = tasks.map(task => ({
       title: task.title,
       task: task.action,
       ...(task.skip && { skip: task.skip }),
@@ -72,10 +72,10 @@ export class TaskRunner {
       exitOnError?: boolean;
     }
   ): Promise<void> {
-    const mainTasks: ListrTask[] = groups.map(group => ({
+    const mainTasks = groups.map(group => ({
       title: group.title,
-      task: (_ctx, task): any => {
-        const subtasks: ListrTask[] = group.tasks.map(item => ({
+      task: (_ctx: any, task: any): any => {
+        const subtasks = group.tasks.map(item => ({
           title: item.title,
           task: item.action,
           ...(item.skip && { skip: item.skip }),
@@ -216,7 +216,7 @@ export class TaskRunner {
     const running = new Set<string>();
 
     const canRun = (task: (typeof tasks)[0]): boolean => {
-      if (!task.dependencies ?? task.dependencies.length === 0) {
+      if (!task.dependencies || task.dependencies.length === 0) {
         return true;
       }
       return task.dependencies.every(dep => completed.has(dep));

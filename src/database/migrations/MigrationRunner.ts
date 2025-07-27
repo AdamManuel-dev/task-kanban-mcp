@@ -75,7 +75,7 @@ export class MigrationRunner {
           }
 
           const [, number, description] = match;
-          if (!number ?? !description) {
+          if (!number || !description) {
             logger.warn(`Invalid migration filename format: ${file}`);
             return null;
           }
@@ -119,7 +119,7 @@ export class MigrationRunner {
     const migrationModule = await import(filePath);
     const migration = migrationModule.default ?? migrationModule;
 
-    if (!migration.up ?? !migration.down) {
+    if (!migration.up || !migration.down) {
       throw new Error(`Migration ${file.id} must export 'up' and 'down' functions`);
     }
 

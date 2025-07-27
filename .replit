@@ -1,0 +1,38 @@
+language = "nodejs"
+run = "npm start"
+
+[nix]
+channel = "stable-22_11"
+
+[env]
+NODE_ENV = "development"
+PORT = "3000"
+MCP_KANBAN_DB_FOLDER_PATH = "/home/runner/mcp-kanban/data/db"
+LOG_LEVEL = "info"
+
+[packager]
+language = "nodejs"
+
+[packager.features]
+packageSearch = true
+guessImports = true
+
+[languages.javascript]
+pattern = "**/*.js"
+syntax = "javascript"
+
+[languages.typescript]
+pattern = "**/*.ts"
+syntax = "typescript"
+
+[languages.json]
+pattern = "**/*.json"
+syntax = "json"
+
+[ports]
+3000 = "MCP Kanban Server"
+3001 = "MCP Kanban WebSocket"
+
+[deployment]
+run = ["sh", "-c", "npm start"]
+deploymentTarget = "cloudrun" 

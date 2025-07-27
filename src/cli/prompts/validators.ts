@@ -50,7 +50,7 @@ export const validateTaskTitle = createSafePromptValidator(
     // Additional security checks
     const suspiciousCheck = detectSuspicious(input);
     if (suspiciousCheck.suspicious) {
-      return `Security issue: ${String(String(suspiciousCheck.patterns.join(', ')))} detected in title`;
+      return `Security issue: ${suspiciousCheck.patterns.join(', ')} detected in title`;
     }
 
     return true;
@@ -64,7 +64,7 @@ export function validatePriority(input: string): true | string {
   const upperInput = input.toUpperCase();
 
   if (!PRIORITIES.includes(upperInput as Priority)) {
-    return `Priority must be one of: ${String(String(PRIORITIES.join(', ')))}`;
+    return `Priority must be one of: ${PRIORITIES.join(', ')}`;
   }
 
   return true;
@@ -77,7 +77,7 @@ export function validateTaskSize(input: string): true | string {
   const upperInput = input.toUpperCase();
 
   if (!TASK_SIZES.includes(upperInput as TaskSize)) {
-    return `Task size must be one of: ${String(String(TASK_SIZES.join(', ')))}`;
+    return `Task size must be one of: ${TASK_SIZES.join(', ')}`;
   }
 
   return true;
@@ -119,12 +119,9 @@ export const validateUrl = createSafePromptValidator(
     try {
       const url = new URL(trimmed);
 
-      // Additional security checks for URLs
-      if (
-        url.protocol === 'javascript:' ||
-        url.protocol === 'data:' ||
-        url.protocol === 'vbscript:'
-      ) {
+      // Additional security checks for URLs - block dangerous protocols
+      const dangerousProtocols = ['javascript:', 'data:', 'vbscript:'];
+      if (dangerousProtocols.includes(url.protocol)) {
         return 'Unsafe URL protocol detected';
       }
 
@@ -332,7 +329,7 @@ export function createEnumValidator<T extends readonly string[]>(
 ): (input: string) => true | string {
   return (input: string) => {
     if (!validOptions.includes(input)) {
-      return `${String(fieldName)} must be one of: ${String(String(validOptions.join(', ')))}`;
+      return `${fieldName} must be one of: ${validOptions.join(', ')}`;
     }
     return true;
   };
@@ -549,7 +546,7 @@ export function validateAndSanitizeInput(
     return {
       valid: false,
       sanitized: input,
-      error: `Validation error: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`,
+      error: `Validation error: ${error instanceof Error ? error.message : 'Unknown error'}`,
     };
   }
 }

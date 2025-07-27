@@ -204,7 +204,7 @@ export interface BoardWithStats extends Board {
 export interface ServiceError extends Error {
   code: string;
   statusCode: number;
-  details?: any;
+  details?: string | number | boolean | null | undefined | { [key: string]: unknown } | unknown[];
 }
 
 export interface PaginationOptions {
@@ -237,4 +237,37 @@ export interface TagWithStats extends Tag {
   usage_count: number;
   last_used?: Date | undefined;
   child_count: number;
+}
+
+/**
+ * Critical path analysis result
+ *
+ * @interface CriticalPathResult
+ * @description Results from critical path analysis showing the longest chain
+ * of dependent tasks that determines the minimum project completion time.
+ */
+export interface CriticalPathResult {
+  critical_path: Task[];
+  total_duration: number;
+  starting_tasks: Task[];
+  ending_tasks: Task[];
+  bottlenecks: Task[];
+  dependency_count: number;
+}
+
+/**
+ * Task impact analysis result
+ *
+ * @interface TaskImpactAnalysis
+ * @description Analysis of how changes to a task would impact other tasks
+ * in the project, including direct and indirect dependencies.
+ */
+export interface TaskImpactAnalysis {
+  task: Task;
+  directly_impacted: Task[];
+  indirectly_impacted: Task[];
+  total_impacted_count: number;
+  upstream_dependencies: Task[];
+  impact_score: number;
+  risk_level: 'low' | 'medium' | 'high';
 }

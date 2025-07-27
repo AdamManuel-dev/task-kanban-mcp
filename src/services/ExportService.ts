@@ -395,7 +395,7 @@ export class ExportService {
 
     query += ' ORDER BY created_at DESC';
 
-    return await this.db.query<Board>(query, params);
+    return this.db.query<Board>(query, params);
   }
 
   private async getColumns(boardIds: string[]): Promise<Column[]> {
@@ -404,7 +404,7 @@ export class ExportService {
     const query = `SELECT * FROM columns WHERE board_id IN (${boardIds
       .map(() => '?')
       .join(',')}) ORDER BY position`;
-    return await this.db.query<Column>(query, boardIds);
+    return this.db.query<Column>(query, boardIds);
   }
 
   private async getTasks(options: ExportOptions): Promise<Task[]> {
@@ -433,7 +433,7 @@ export class ExportService {
 
     query += ' ORDER BY created_at DESC';
 
-    return await this.db.query<Task>(query, params);
+    return this.db.query<Task>(query, params);
   }
 
   private async getTags(_options: ExportOptions): Promise<Tag[]> {
@@ -472,7 +472,7 @@ export class ExportService {
       columns
         .map(col => {
           const value = (item as Record<string, unknown>)[col];
-          if (value === null ?? value === undefined) return '';
+          if (value === null || value === undefined) return '';
           return String(value).includes(',') ? `"${String(value)}"` : String(value);
         })
         .join(',')
@@ -494,7 +494,7 @@ export class ExportService {
 
         if (existingBoard) {
           if (options.conflictResolution === 'skip') {
-            result.skipped++;
+            result.skipped += 1;
             continue;
           } else if (options.conflictResolution === 'rename') {
             board.name = `${board.name} (imported ${new Date().toISOString()})`;
@@ -513,7 +513,7 @@ export class ExportService {
             board.updated_at,
           ]
         );
-        result.imported++;
+        result.imported += 1;
       } catch (error: unknown) {
         result.errors.push(
           `Failed to import board ${board.name}: ${error instanceof Error ? error.message : String(error)}`
@@ -542,7 +542,7 @@ export class ExportService {
             column.updated_at,
           ]
         );
-        result.imported++;
+        result.imported += 1;
       } catch (error: unknown) {
         result.errors.push(
           `Failed to import column ${column.name}: ${error instanceof Error ? error.message : String(error)}`

@@ -276,11 +276,15 @@ export class MCPKanbanServer {
 
       // Keep the process running
       process.on('SIGINT', () => {
-        this.stop();
+        this.stop().catch(error => 
+          logger.error('Failed to stop server on SIGINT', { error })
+        );
       });
 
       process.on('SIGTERM', () => {
-        this.stop();
+        this.stop().catch(error => 
+          logger.error('Failed to stop server on SIGTERM', { error })
+        );
       });
     } catch (error) {
       logger.error('Failed to start MCP server', { error });
@@ -304,7 +308,7 @@ export class MCPKanbanServer {
    * await server.stop();
    * ```
    */
-  async stop(): Promise<void> {
+  async stop(exitProcess: boolean = true): Promise<void> {
     try {
       logger.info('Stopping MCP Kanban server...');
 
@@ -315,10 +319,15 @@ export class MCPKanbanServer {
       }
 
       logger.info('MCP Kanban server stopped');
-      process.exit(0);
+
+      if (exitProcess) {
+        process.exit(0);
+      }
     } catch (error) {
       logger.error('Error stopping MCP server', { error });
-      process.exit(1);
+      if (exitProcess) {
+        process.exit(1);
+      }
     }
   }
 

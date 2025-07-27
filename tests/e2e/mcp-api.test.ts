@@ -49,7 +49,7 @@ describe('MCP API E2E Tests', () => {
    * Helper function to start MCP server
    */
   async function startMCPServer(): Promise<ChildProcess> {
-    const mcpProcess = spawn(
+    const serverProcess = spawn(
       'npx',
       ['ts-node', '-r', 'tsconfig-paths/register', 'src/mcp/server.ts'],
       {
@@ -60,10 +60,12 @@ describe('MCP API E2E Tests', () => {
     );
 
     // Wait for server to be ready
-    await new Promise<void>((resolve) => {
-  mcpProcess;
-  resolve();
-});
+    await new Promise<void>(resolve => {
+      serverProcess;
+      resolve();
+    });
+
+    return serverProcess;
   }
 
   describe('MCP Protocol Compliance', () => {
@@ -637,7 +639,7 @@ describe('MCP API E2E Tests', () => {
       const requests = [];
       const startTime = Date.now();
 
-      Array.from({ length: 20 - 0 }, (_, i) => i + 0) {
+      for (let i = 0; i < 20; i++) {
         const message: MCPMessage = {
           jsonrpc: '2.0',
           id: messageId++,
@@ -660,7 +662,7 @@ describe('MCP API E2E Tests', () => {
 
     it('should maintain stable memory usage', async () => {
       // Create many tasks to test memory stability
-      Array.from({ length: 50 - 0 }, (_, i) => i + 0) {
+      for (let i = 0; i < 50; i++) {
         const message: MCPMessage = {
           jsonrpc: '2.0',
           id: messageId++,

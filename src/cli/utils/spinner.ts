@@ -19,11 +19,11 @@ export class SpinnerError extends Error {
  * Manages loading spinners for CLI operations with comprehensive error handling
  */
 export class SpinnerManager {
-  private spinner: Ora | null = null;
+  private readonly spinner: Ora | null = null;
 
-  private isSpinning = false;
+  private readonly isSpinning = false;
 
-  private destroyed = false;
+  private readonly destroyed = false;
 
   private readonly maxTextLength = 200;
 
@@ -254,7 +254,7 @@ export class SpinnerManager {
       timeout?: number;
     }
   ): Promise<T> {
-    if (!promise ?? typeof promise.then !== 'function') {
+    if (promise == null || typeof promise.then !== 'function') {
       throw new SpinnerError('Promise is required and must be a valid Promise', 'INVALID_PROMISE');
     }
 
@@ -351,7 +351,7 @@ export class SpinnerManager {
         const stepError = error instanceof Error ? error : new Error(String(error));
         errors.push(stepError);
 
-        if (stopOnError && !step.skipOnError) {
+        if (stopOnError && !step?.skipOnError) {
           throw stepError;
         }
       }

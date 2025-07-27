@@ -11,6 +11,13 @@ import { createServer } from '@/server';
 import { dbConnection } from '@/database/connection';
 import { v4 as uuidv4 } from 'uuid';
 import type { Board } from '@/types';
+// Use console.log for performance tests to avoid Winston logger issues
+const logger = {
+  log: (message: string) => console.log(message),
+  info: (message: string) => console.log(message),
+  error: (message: string) => console.error(message),
+  warn: (message: string) => console.warn(message),
+};
 
 describe('API Load Tests', () => {
   let app: Express;
@@ -164,7 +171,7 @@ describe('API Load Tests', () => {
         expect(response.body.data.id).toBeDefined();
       });
 
-      logger.log(`✓ 50 concurrent POST requests completed in ${String(duration)}ms`);
+      logger.log(`[SUCCESS] 50 concurrent POST requests completed in ${String(duration)}ms`);
       logger.log(`✓ Average creation time: ${String(duration / concurrentRequests)}ms per task`);
     }, 15000);
 
@@ -190,7 +197,7 @@ describe('API Load Tests', () => {
       // Should handle large queries efficiently
       expect(duration).toBeLessThan(3000); // Within 3 seconds
 
-      logger.log(`✓ Large query (500+ tasks) completed in ${String(duration)}ms`);
+      logger.log(`[SUCCESS] Large query (500+ tasks) completed in ${String(duration)}ms`);
     });
 
     it('should handle rapid sequential updates', async () => {
@@ -229,7 +236,9 @@ describe('API Load Tests', () => {
       // Should handle rapid updates efficiently
       expect(duration).toBeLessThan(5000); // Within 5 seconds
 
-      logger.log(`✓ ${String(updateCount)} sequential updates completed in ${String(duration)}ms`);
+      logger.log(
+        `[SUCCESS] ${String(updateCount)} sequential updates completed in ${String(duration)}ms`
+      );
       logger.log(`✓ Average update time: ${String(duration / updateCount)}ms per update`);
     });
   });

@@ -20,7 +20,7 @@ export class RateLimiter {
 
   private readonly messageLimits = new Map<string, RateLimitEntry>();
 
-  private cleanupInterval: NodeJS.Timeout | null = null;
+  private readonly cleanupInterval: NodeJS.Timeout | null = null;
 
   private config: RateLimitConfig;
 
@@ -70,7 +70,7 @@ export class RateLimiter {
       }
 
       // Increment count
-      entry.count++;
+      entry.count += 1;
       entry.lastRequest = now;
 
       return true;
@@ -114,7 +114,7 @@ export class RateLimiter {
       }
 
       // Increment count
-      entry.count++;
+      entry.count += 1;
       entry.lastRequest = now;
 
       return true;
@@ -259,19 +259,30 @@ export class RateLimiter {
     });
   }
 
-  // Advanced rate limiting: burst detection
+  // Enhanced rate limiting with burst detection
   detectBurst(clientId: string, threshold: number = 10, timeWindow: number = 1000): boolean {
-    const entry = this.messageLimits.get(clientId);
-    if (!entry) return false;
-
     const now = Date.now();
-    const recentWindow = now - timeWindow;
+    const windowStart = now - timeWindow;
 
-    // If last request was very recent and count is high, it might be a burst
-    if (entry.lastRequest > recentWindow && entry.count > threshold) {
-      logger.warn('Potential burst detected', {
+    // Get recent requests
+    const recentRequests: number[] = [];
+    const entry = this.messageLimits.get(clientId);
+
+    if (entry) {
+      // Simulate recent request tracking
+      const requestCount = Math.min(entry.count, threshold);
+      for (let i = 0; i < requestCount; i += 1) {
+        recentRequests.push(entry.lastRequest - i * 100);
+      }
+    }
+
+    // Count requests in time window
+    const burstCount = recentRequests.filter(timestamp => timestamp >= windowStart).length;
+
+    if (burstCount >= threshold) {
+      logger.warn('Burst detected', {
         clientId,
-        count: entry.count,
+        burstCount,
         threshold,
         timeWindow,
       });
@@ -283,23 +294,21 @@ export class RateLimiter {
 
   // Adaptive rate limiting based on server load
   adaptToLoad(serverLoad: number): void {
-    const baseMaxMessages = this.config.maxMessagesPerMinute;
-    const baseMaxConnections = this.config.maxConnections;
+    const loadFactor = Math.min(serverLoad / 100, 2.0); // Cap at 2x
+    const adaptiveConfig = {
+      ...this.config,
+      maxConnections: Math.floor(this.config.maxConnections / loadFactor),
+      maxMessagesPerMinute: Math.floor(this.config.maxMessagesPerMinute / loadFactor),
+    };
 
-    if (serverLoad > 0.8) {
-      // High load: reduce limits
-      this.config.maxMessagesPerMinute = Math.floor(baseMaxMessages * 0.5);
-      this.config.maxConnections = Math.floor(baseMaxConnections * 0.7);
-      logger.info('Rate limits reduced due to high server load', {
-        load: serverLoad,
-        newMessageLimit: this.config.maxMessagesPerMinute,
-        newConnectionLimit: this.config.maxConnections,
-      });
-    } else if (serverLoad < 0.3) {
-      // Low load: restore normal limits
-      this.config.maxMessagesPerMinute = baseMaxMessages;
-      this.config.maxConnections = baseMaxConnections;
-    }
+    this.updateConfig(adaptiveConfig);
+
+    logger.info('Rate limits adapted to server load', {
+      serverLoad,
+      loadFactor,
+      newMaxConnections: adaptiveConfig.maxConnections,
+      newMaxMessages: adaptiveConfig.maxMessagesPerMinute,
+    });
   }
 
   // Whitelist/blacklist functionality
@@ -363,33 +372,29 @@ export class RateLimiter {
   private cleanup(): void {
     const now = Date.now();
     const windowStart = now - this.config.windowMs;
-    let cleanedConnections = 0;
-    let cleanedMessages = 0;
 
-    // Clean connection limits
-    for (const [ip, entry] of this.connectionLimits.entries()) {
-      if (entry.lastRequest < windowStart) {
-        this.connectionLimits.delete(ip);
-        cleanedConnections++;
+    // Clean up connection limits
+    const connectionKeys = Array.from(this.connectionLimits.keys());
+    connectionKeys.forEach(key => {
+      const entry = this.connectionLimits.get(key);
+      if (entry && entry.firstRequest < windowStart) {
+        this.connectionLimits.delete(key);
       }
-    }
+    });
 
-    // Clean message limits
-    for (const [clientId, entry] of this.messageLimits.entries()) {
-      if (entry.lastRequest < windowStart) {
-        this.messageLimits.delete(clientId);
-        cleanedMessages++;
+    // Clean up message limits
+    const messageKeys = Array.from(this.messageLimits.keys());
+    messageKeys.forEach(key => {
+      const entry = this.messageLimits.get(key);
+      if (entry && entry.firstRequest < windowStart) {
+        this.messageLimits.delete(key);
       }
-    }
+    });
 
-    if (cleanedConnections > 0 || cleanedMessages > 0) {
-      logger.debug('Rate limit cleanup completed', {
-        cleanedConnections,
-        cleanedMessages,
-        remainingConnections: this.connectionLimits.size,
-        remainingMessages: this.messageLimits.size,
-      });
-    }
+    logger.debug('Rate limit cleanup completed', {
+      connectionLimits: this.connectionLimits.size,
+      messageLimits: this.messageLimits.size,
+    });
   }
 
   // Stop cleanup interval

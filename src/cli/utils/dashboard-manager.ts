@@ -42,15 +42,15 @@ export class DashboardManager {
 
   private readonly themeHelper: ThemeHelper;
 
-  private refreshTimer?: NodeJS.Timeout;
+  private readonly refreshTimer?: NodeJS.Timeout;
 
   private currentLayout: 'overview' | 'velocity' | 'personal' = 'overview';
 
-  // private readonly focusedWidget: string | null = null;
+  private readonly focusedWidget: string | null = null;
 
-  // private readonly isFullscreen = false;
+  private readonly isFullscreen = false;
 
-  // private readonly debugMode = false;
+  private readonly debugMode = false;
 
   constructor(config: Partial<DashboardConfig> = {}, apiClient?: ApiClient) {
     this.config = {
@@ -77,7 +77,7 @@ export class DashboardManager {
     });
 
     // Create grid
-    this.grid = new contrib.grid({
+    this.grid = contrib.grid({
       rows: 12,
       cols: 12,
       screen: this.screen,
@@ -98,7 +98,9 @@ export class DashboardManager {
 
     // Dashboard controls
     this.screen.key(['r', 'F5'], () => {
-      this.refreshData();
+      this.refreshData().catch(error => 
+        this.showError('Failed to refresh data', error)
+      );
     });
 
     // Layout switching
@@ -165,7 +167,7 @@ export class DashboardManager {
    * Create overview dashboard layout
    */
   createOverviewDashboard(data: DashboardData): void {
-    DashboardManager.clearWidgets();
+    this.clearWidgets();
 
     // Task status donut chart
     const donutStyles = this.themeHelper.getDonutStyles();
@@ -230,8 +232,8 @@ export class DashboardManager {
     this.widgets.set('velocityLine', velocityLine);
     this.widgets.set('activityLog', activityLog);
 
-    DashboardManager.addHeader('📊 Kanban Dashboard - Overview');
-    DashboardManager.addFooter();
+    this.addHeader('📊 Kanban Dashboard - Overview');
+    this.addFooter();
   }
 
   /**
@@ -404,13 +406,15 @@ export class DashboardManager {
    */
   switchLayout(layout: 'overview' | 'velocity' | 'personal'): void {
     this.currentLayout = layout;
-    this.refreshData();
+    this.refreshData().catch(error => 
+      this.showError('Failed to refresh data after layout change', error)
+    );
   }
 
   /**
    * Add header with current info
    */
-  private static addHeader(title: string): void {
+  private addHeader(title: string): void {
     const headerStyles = this.themeHelper.getHeaderStyles();
     const header = this.grid.set(-1, 0, 1, 12, blessed.box, {
       label: title,
@@ -426,7 +430,7 @@ export class DashboardManager {
   /**
    * Add footer with controls
    */
-  private static addFooter(): void {
+  private addFooter(): void {
     const footerStyles = this.themeHelper.getFooterStyles();
     const footer = this.grid.set(12, 0, 1, 12, blessed.box, {
       ...footerStyles,
@@ -603,7 +607,9 @@ Press any key to close this help...
 
     if (this.config.autoRefresh) {
       this.refreshTimer = setInterval(() => {
-        this.refreshData();
+        this.refreshData().catch(error => 
+          this.showError('Failed to auto-refresh data', error)
+        );
       }, this.config.refreshInterval);
     }
   }
@@ -663,7 +669,7 @@ Press any key to close this help...
   /**
    * Clear all widgets
    */
-  private static clearWidgets(): void {
+  private clearWidgets(): void {
     for (const widget of this.widgets.values()) {
       widget.destroy();
     }
@@ -747,7 +753,9 @@ Press any key to close this help...
    * Start the dashboard
    */
   start(): void {
-    this.refreshData();
+    this.refreshData().catch(error => 
+      this.showError('Failed to refresh data on start', error)
+    );
     this.startAutoRefresh();
     this.screen.render();
   }
@@ -884,7 +892,7 @@ Press any key to close...
   /**
    * Show debug overlay with widget information
    */
-  private static showDebugOverlay(): void {
+  private showDebugOverlay(): void {
     const debugInfo = Array.from(this.widgets.entries())
       .map(([name, widget]) => `${String(name)}: ${String(String(widget.constructor.name))}`)
       .join('\n');
@@ -918,7 +926,7 @@ ${String(debugInfo)}
   /**
    * Hide debug overlay
    */
-  private static hideDebugOverlay(): void {
+  private hideDebugOverlay(): void {
     const debugWidget = this.widgets.get('debug');
     if (debugWidget) {
       this.screen.remove(debugWidget);

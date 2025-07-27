@@ -121,11 +121,11 @@ export class TaskSizeEstimator {
       Unknown: [],
     };
 
-    for (const task of tasks) {
+    tasks.forEach(task => {
       const estimate = this.estimateTime(task);
       const size = estimate.suggestedSize;
       groups[size].push({ task, estimate });
-    }
+    });
 
     return groups;
   }
@@ -133,98 +133,50 @@ export class TaskSizeEstimator {
   /**
    * Display estimates in a formatted way
    */
-  displayEstimates(
+  static displayEstimates(
     taskGroups: Record<
       TaskSize | 'Unknown',
       Array<{ task: TaskForEstimation; estimate: TaskEstimate }>
     >
   ): void {
     try {
+      // eslint-disable-next-line no-console
       console.log(chalk.cyan('\n📊 Task Size Estimates\n'));
     } catch {
+      // eslint-disable-next-line no-console
       console.log('\n📊 Task Size Estimates\n');
     }
 
-    let totalMin = 0;
-    let totalMax = 0;
-    let totalAvg = 0;
-    let totalTasks = 0;
+    const sizes: (TaskSize | 'Unknown')[] = ['XS', 'S', 'M', 'L', 'XL', 'Unknown'];
 
-    // Flatten all tasks from all groups
-    const allEstimates = Object.values(taskGroups).flat();
+    sizes.forEach(size => {
+      const tasks = taskGroups[size];
+      if (tasks.length === 0) return;
 
-    for (const { task, estimate } of allEstimates) {
-      try {
-        console.log(chalk.bold(`📋 ${String(String(task.title))}`));
-      } catch {
-        console.log(`📋 ${String(String(task.title))}`);
-      }
-      console.log(formatKeyValue('  Size', TaskSizeEstimator.formatSize(estimate.size)));
+      // eslint-disable-next-line no-console
       console.log(
-        formatKeyValue(
-          '  Time Range',
-          `${String(String(estimate.minHours))}h - ${String(String(estimate.maxHours))}h`
+        chalk.bold(
+          `${size === 'Unknown' ? 'Unknown' : TaskSizeEstimator.formatSize(size)} (${tasks.length} tasks):`
         )
       );
-      console.log(formatKeyValue('  Average', `${String(String(estimate.avgHours))}h`));
-      console.log(
-        formatKeyValue('  Confidence', TaskSizeEstimator.formatConfidence(estimate.confidence))
-      );
-
-      if (
-        estimate.reasoning &&
-        Array.isArray(estimate.reasoning) &&
-        estimate.reasoning.length > 0
-      ) {
-        try {
-          console.log(chalk.gray('  Reasoning:'));
-        } catch {
-          console.log('  Reasoning:');
-        }
-        estimate.reasoning.forEach((reason: string) => {
-          try {
-            console.log(chalk.gray(`    • ${String(reason)}`));
-          } catch {
-            console.log(`    • ${String(reason)}`);
-          }
-        });
-      }
-
-      console.log('');
-
-      totalMin += estimate.minHours;
-      totalMax += estimate.maxHours;
-      totalAvg += estimate.avgHours;
-      totalTasks++;
-    }
-
-    // Summary
-    try {
+      // eslint-disable-next-line no-console
       console.log(chalk.gray('─'.repeat(50)));
-      console.log(chalk.bold('Summary:'));
-    } catch {
-      console.log('─'.repeat(50));
-      console.log('Summary:');
-    }
-    console.log(formatKeyValue('Total Tasks', totalTasks.toString()));
-    console.log(
-      formatKeyValue(
-        'Total Time',
-        `${String(totalMin)}h - ${String(totalMax)}h (avg: ${String(totalAvg)}h)`
-      )
-    );
-    console.log(formatKeyValue('Duration', `${String(formatDuration(totalAvg * 60 * 60 * 1000))}`));
 
-    // Size distribution
-    console.log('\nSize Distribution:');
-    for (const [size, tasks] of Object.entries(taskGroups)) {
-      if (tasks.length > 0) {
-        const percentage = (tasks.length / totalTasks) * 100;
+      tasks.forEach(({ task, estimate }) => {
+        // eslint-disable-next-line no-console
+        console.log(chalk.white(`• ${task.title}`));
+        // eslint-disable-next-line no-console
         console.log(
-          `  ${String(String(TaskSizeEstimator.formatSize(size as TaskSize)))}: ${String(String(formatProgressBar(tasks.length, totalTasks, 20)))} ${String(String(tasks.length))} tasks (${String(String(percentage.toFixed(1)))}%)`
+          chalk.gray(`  ${estimate.avgHours}h (${estimate.minHours}-${estimate.maxHours}h)`)
         );
-      }
-    }
+        // eslint-disable-next-line no-console
+        console.log(
+          chalk.gray(`  Confidence: ${TaskSizeEstimator.formatConfidence(estimate.confidence)}`)
+        );
+        // eslint-disable-next-line no-console
+        console.log('');
+      });
+    });
   }
 
   /**

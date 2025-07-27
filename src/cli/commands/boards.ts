@@ -27,16 +27,15 @@
 
 import type { Command } from 'commander';
 import inquirer from 'inquirer';
-// import * as React from 'react';
-// import { render } from 'ink';
+import * as React from 'react';
+import { render } from 'ink';
 import chalk from 'chalk';
 import type { CliComponents, CreateBoardRequest } from '../types';
 import type { Task, Board, Column } from '../../types';
 import { isSuccessResponse } from '../api-client-wrapper';
-// import { BoardView } from '../ui/components/BoardView';
-// import type { Board, Column } from '../ui/components/BoardView';
-// import type { Task } from '../ui/components/TaskList';
-import { spinner } from '../utils/spinner';
+import BoardView from '../ui/components/BoardView';
+import { SpinnerManager } from '../utils/spinner';
+import { logger } from '../../utils/logger';
 
 interface ListBoardOptions {
   active?: boolean;
@@ -94,7 +93,45 @@ interface ViewBoardOptions {
 interface CreateBoardData {
   name?: string;
   description?: string;
+}
+
+interface CreateBoardOptions {
+  name?: string;
+  description?: string;
+  interactive?: boolean;
+}
+
+interface CreateBoardPromptResult {
+  name?: string;
+  description?: string;
   useAsDefault?: boolean;
+}
+
+interface UpdateBoardOptions {
+  name?: string;
+  description?: string;
+  interactive?: boolean;
+}
+
+interface UpdateBoardPromptResult {
+  name?: string;
+  description?: string;
+}
+
+interface DeleteBoardOptions {
+  force?: boolean;
+}
+
+interface ConfirmPromptResult {
+  confirm: boolean;
+}
+
+interface QuickSetupOptions {
+  name?: string;
+  description?: string;
+  template?: string;
+  public?: boolean;
+  setDefault?: boolean;
 }
 
 interface QuickSetupDefaults {
@@ -187,7 +224,7 @@ export function registerBoardCommands(program: Command): void {
         });
       } catch (error) {
         formatter.error(
-          `Failed to list boards: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
+          `Failed to list boards: ${String(error instanceof Error ? error.message : 'Unknown error')}`
         );
         process.exit(1);
       }
@@ -263,7 +300,7 @@ export function registerBoardCommands(program: Command): void {
         }
       } catch (error) {
         formatter.error(
-          `Failed to get board: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
+          `Failed to get board: ${String(error instanceof Error ? error.message : 'Unknown error')}`
         );
         process.exit(1);
       }
@@ -330,6 +367,7 @@ export function registerBoardCommands(program: Command): void {
         }
 
         // Fetch board data with spinner
+        const spinner = new SpinnerManager();
         const boardData = await spinner.withSpinner(
           `Loading board: ${String(boardId)}`,
           apiClient.getBoard(boardId),
@@ -362,60 +400,48 @@ export function registerBoardCommands(program: Command): void {
           return;
         }
 
-        // Interactive mode with React component - temporarily disabled
-        formatter.info('Interactive board view temporarily disabled');
-        formatter.output(board);
+        // Interactive mode with React component
+        spinner.info(`Starting interactive board view for: ${board.name}`);
 
-        /*
         let refreshInterval: NodeJS.Timeout | null = null;
         let shouldRefresh = false;
 
-        const InteractiveBoardView = () => {
+        const InteractiveBoardView = (): React.ReactElement => {
           const [currentBoard, setCurrentBoard] = React.useState<Board>(board);
-          const [isLoading, setIsLoading] = React.useState(false);
 
           // Auto-refresh functionality
           React.useEffect(() => {
             if (options?.refresh && parseInt(options.refresh, 10) > 0) {
               const interval = parseInt(options.refresh, 10) * 1000;
-              refreshInterval = setInterval(async () => {
+              refreshInterval = setInterval(() => {
                 if (!shouldRefresh) return;
 
-                setIsLoading(true);
-                try {
-                  const refreshedData = await apiClient.getBoard(boardId);
-                  if (refreshedData) {
-                    const apiResponse = refreshedData as ApiBoardResponse;
-                    const refreshedBoard: Board = {
-                      id: apiResponse.id,
-                      name: apiResponse.name,
-                      description: apiResponse.description,
-                      columns: (apiResponse.columns ?? []).map(
-                        (col: ApiColumnData): Column => ({
-                          id: col.id,
-                          name: col.name,
-                          limit: col.wip_limit,
-                          tasks: (col.tasks ?? []).map(
-                            (task: ApiTaskData): Task => ({
-                              id: task.id,
-                              title: task.title,
-                              status: task.status,
-                              priority: task.priority,
-                              assignee: task.assignee,
-                              tags: task.tags,
-                              due_date: task.due_date,
-                            })
-                          ),
-                        })
-                      ),
-                    };
-                    setCurrentBoard(refreshedBoard);
+                (async (): Promise<void> => {
+                  try {
+                    const refreshedData = await apiClient.getBoard(boardId);
+                    if (refreshedData) {
+                      const refreshedApiResponse = refreshedData as ApiBoardResponse;
+                      const refreshedBoard: Board = {
+                        id: refreshedApiResponse.id,
+                        name: refreshedApiResponse.name,
+                        description: refreshedApiResponse.description,
+                        color: '#2196F3', // Default color
+                        created_at: new Date(),
+                        updated_at: new Date(),
+                        archived: false,
+                      };
+
+                      // TODO: Process refreshed columns and tasks when needed
+                      // const refreshedColumns: Column[] = (apiResponse.columns ?? []).map(...);
+                      // const refreshedTasks: Task[] = (apiResponse.columns ?? []).flatMap(...);
+                      setCurrentBoard(refreshedBoard);
+                    }
+                  } catch (error) {
+                    // Silently fail refresh
                   }
-                } catch (error) {
-                  // Silently fail refresh
-                } finally {
-                  setIsLoading(false);
-                }
+                })().catch((err: Error) => {
+                  logger.error('Auto-refresh failed', { error: err.message });
+                });
               }, interval);
             }
 
@@ -433,120 +459,21 @@ export function registerBoardCommands(program: Command): void {
 
           return React.createElement(BoardView, {
             board: currentBoard,
-            showWIPLimits: options?.wipLimits,
-            maxColumnHeight: parseInt(options?.maxHeight ?? '8', 10),
-            columnWidth: parseInt(options?.columnWidth ?? '25', 10),
-            onTaskSelect: async (task, _columnId) => {
-              try {
-                // Show task details
-                formatter.info(`\nTask: ${String(String(task.title))}`);
-                formatter.info(`Status: ${String(String(task.status))}`);
-                formatter.info(`Priority: ${String(String(task.priority ?? 'None'))}`);
-                if (task.assignee) formatter.info(`Assignee: ${String(String(task.assignee))}`);
-                if (task.tags?.length) formatter.info(`Tags: ${String(String(task.tags.join(', ')))}`);
-                if (task.due_date) formatter.info(`Due: ${String(String(task.due_date))}`);
-              } catch (error) {
-                // Handle task selection error
-              }
-            },
-            onColumnSelect: async column => {
-              try {
-                formatter.info(`\nColumn: ${String(String(column.name))}`);
-                formatter.info(`Tasks: ${String(String(column.tasks.length))}`);
-                if (column.limit) formatter.info(`WIP Limit: ${String(String(column.limit))}`);
-              } catch (error) {
-                // Handle column selection error
-              }
-            },
-            onKeyPress: async (key, context) => {
-              switch (key) {
-                case 'r':
-                  // Manual refresh
-                  setIsLoading(true);
-                  try {
-                    const refreshedData = await apiClient.getBoard(boardId);
-                    if (refreshedData) {
-                      const apiResponse = refreshedData as ApiBoardResponse;
-                      const refreshedBoard: Board = {
-                        id: apiResponse.id,
-                        name: apiResponse.name,
-                        description: apiResponse.description,
-                        columns: (apiResponse.columns ?? []).map(
-                          (col: ApiColumnData): Column => ({
-                            id: col.id,
-                            name: col.name,
-                            limit: col.wip_limit,
-                            tasks: (col.tasks ?? []).map(
-                              (task: ApiTaskData): Task => ({
-                                id: task.id,
-                                title: task.title,
-                                status: task.status,
-                                priority: task.priority,
-                                assignee: task.assignee,
-                                tags: task.tags,
-                                due_date: task.due_date,
-                              })
-                            ),
-                          })
-                        ),
-                      };
-                      setCurrentBoard(refreshedBoard);
-                    }
-                  } catch (error) {
-                    // Handle refresh error
-                  } finally {
-                    setIsLoading(false);
-                  }
-                  break;
-                case 'n':
-                  // Create new task in selected column
-                  if (context.selectedColumn) {
-                    formatter.info(`\nCreate new task in column: ${String(String(context.selectedColumn.name))}`);
-                  }
-                  break;
-                case 'e':
-                  // Edit selected task
-                  if (context.selectedTask) {
-                    formatter.info(`\nEdit task: ${String(String(context.selectedTask.title))}`);
-                  }
-                  break;
-                case 'd':
-                  // Delete selected task
-                  if (context.selectedTask) {
-                    formatter.info(`\nDelete task: ${String(String(context.selectedTask.title))}`);
-                  }
-                  break;
-                case '?':
-                  // Show help
-                  formatter.info('\nKeyboard shortcuts:');
-                  formatter.info('  ←/→ or h/l: Switch columns');
-                  formatter.info('  ↑/↓ or j/k: Navigate tasks');
-                  formatter.info('  Enter: Select task/column');
-                  formatter.info('  r: Refresh board');
-                  formatter.info('  n: New task in column');
-                  formatter.info('  e: Edit selected task');
-                  formatter.info('  d: Delete selected task');
-                  formatter.info('  ?: Show this help');
-                  formatter.info('  q: Quit');
-                  break;
-                default:
-                  // Handle unknown key
-                  break;
-              }
-            },
+            columns: [], // TODO: Get columns from API
+            tasks: [], // TODO: Get tasks from API
+            showDetails: false,
           });
         };
 
         // Show loading indicator and instructions
-        formatter.info(`Starting interactive board view for: ${String(String(board.name))}`);
+        formatter.info(`Starting interactive board view for: ${String(board.name)}`);
         formatter.info('Press ? for help, q to quit');
 
         // Render the interactive board view
         render(React.createElement(InteractiveBoardView));
-        */
       } catch (error) {
         formatter.error(
-          `Failed to start board view: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
+          `Failed to start board view: ${String(error instanceof Error ? error.message : 'Unknown error')}`
         );
         process.exit(1);
       }
@@ -583,7 +510,7 @@ export function registerBoardCommands(program: Command): void {
     .option('-n, --name <name>', 'board name')
     .option('-d, --description <desc>', 'board description')
     .option('-i, --interactive', 'interactive mode')
-    .action(async options => {
+    .action(async (options: CreateBoardOptions) => {
       const { config, apiClient, formatter } = getComponents();
 
       let boardData: CreateBoardData = {};
@@ -621,7 +548,7 @@ export function registerBoardCommands(program: Command): void {
           default: false,
         });
 
-        const answers = await inquirer.prompt(questions);
+        const answers = await inquirer.prompt<CreateBoardPromptResult>(questions);
         boardData = { ...boardData, ...answers };
       }
 
@@ -646,7 +573,7 @@ export function registerBoardCommands(program: Command): void {
         }
       } catch (error) {
         formatter.error(
-          `Failed to create board: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
+          `Failed to create board: ${String(error instanceof Error ? error.message : 'Unknown error')}`
         );
         process.exit(1);
       }
@@ -658,7 +585,7 @@ export function registerBoardCommands(program: Command): void {
     .option('-n, --name <name>', 'board name')
     .option('-d, --description <desc>', 'board description')
     .option('-i, --interactive', 'interactive mode')
-    .action(async (id: string, options) => {
+    .action(async (id: string, options: UpdateBoardOptions) => {
       const { apiClient, formatter } = getComponents();
 
       try {
@@ -672,7 +599,7 @@ export function registerBoardCommands(program: Command): void {
         let updates: Record<string, unknown> = {};
 
         if (options.interactive) {
-          const answers = await inquirer.prompt([
+          const answers = await inquirer.prompt<UpdateBoardPromptResult>([
             {
               type: 'input',
               name: 'name',
@@ -705,7 +632,7 @@ export function registerBoardCommands(program: Command): void {
         formatter.output(updatedBoard);
       } catch (error) {
         formatter.error(
-          `Failed to update board: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
+          `Failed to update board: ${String(error instanceof Error ? error.message : 'Unknown error')}`
         );
         process.exit(1);
       }
@@ -716,7 +643,7 @@ export function registerBoardCommands(program: Command): void {
     .alias('rm')
     .description('Delete a board')
     .option('-f, --force', 'skip confirmation')
-    .action(async (id: string, options) => {
+    .action(async (id: string, options: DeleteBoardOptions) => {
       const { apiClient, formatter } = getComponents();
 
       try {
@@ -727,11 +654,11 @@ export function registerBoardCommands(program: Command): void {
             process.exit(1);
           }
 
-          const { confirm } = await inquirer.prompt([
+          const { confirm } = await inquirer.prompt<ConfirmPromptResult>([
             {
               type: 'confirm',
               name: 'confirm',
-              message: `Delete board "${String(String((board.data as Board).name))}"? This will also delete all tasks in the board.`,
+              message: `Delete board "${String((board.data as Board).name)}"? This will also delete all tasks in the board.`,
               default: false,
             },
           ]);
@@ -746,7 +673,7 @@ export function registerBoardCommands(program: Command): void {
         formatter.success(`Board ${String(id)} deleted successfully`);
       } catch (error) {
         formatter.error(
-          `Failed to delete board: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
+          `Failed to delete board: ${String(error instanceof Error ? error.message : 'Unknown error')}`
         );
         process.exit(1);
       }
@@ -887,7 +814,7 @@ export function registerBoardCommands(program: Command): void {
     .option('--template <type>', 'use template (basic, scrum, bugs, content)')
     .option('--public', 'make board public')
     .option('--set-default', 'set as default board after creation')
-    .action(async options => {
+    .action(async (options: QuickSetupOptions) => {
       const { config, apiClient, formatter } = getComponents();
 
       try {
@@ -968,6 +895,7 @@ export function registerBoardCommands(program: Command): void {
         };
 
         // Create the board with spinner
+        const spinner = new SpinnerManager();
         const board = await spinner.withSpinner(
           `Creating board: ${String(String(boardData.name))}`,
           apiClient.createBoard(createData),

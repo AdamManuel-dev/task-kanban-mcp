@@ -31,9 +31,12 @@
 import type { Command } from 'commander';
 import inquirer from 'inquirer';
 
-import type { CliComponents } from '../types';
+import type { CliComponents, CreateTaskRequest } from '../types';
+import type { Task } from '../../types';
 import { createTaskPrompt, PromptCancelledError } from '../prompts/task-prompts';
-import { spinner } from '../utils/spinner';
+import { SpinnerManager } from '../utils/spinner';
+import { isSuccessResponse } from '../api-client-wrapper';
+import { TaskTemplateService } from '../../services/TaskTemplateService';
 
 interface ShowTaskOptions {
   context?: boolean;
@@ -46,6 +49,7 @@ interface CreateTaskOptions {
   due?: string;
   tags?: string;
   priority?: string;
+  template?: string;
   column?: string;
   board?: string;
 }
@@ -96,8 +100,41 @@ interface Task {
 interface TaskListResponse {
   data: Task[];
   total?: number;
-  page?: number;
-  limit?: number;
+}
+
+interface UpdateTaskPromptResult {
+  title?: string;
+  description?: string;
+  status?: string;
+  priority?: string;
+  assignee?: string;
+  due_date?: string;
+  tags?: string;
+}
+
+interface MoveTaskPromptResult {
+  column?: string;
+  position?: string;
+}
+
+interface ConfirmPromptResult {
+  confirm: boolean;
+}
+
+interface ActionPromptResult {
+  action: string;
+}
+
+interface ColumnPromptResult {
+  columnId: string;
+}
+
+interface StatusPromptResult {
+  newStatus: string;
+}
+
+interface QueryPromptResult {
+  query: string;
 }
 
 /**
@@ -149,59 +186,63 @@ export function registerTaskCommands(program: Command): void {
     .command('list')
     .alias('ls')
     .description('List tasks')
-    .option('-b, --board <id>', 'filter by board ID')
+    .option('-b, --board <board>', 'filter by board')
     .option('-s, --status <status>', 'filter by status')
     .option('-t, --tags <tags>', 'filter by tags (comma-separated)')
-    .option('-l, --limit <number>', 'limit number of results', '20')
-    .option('--sort <field>', 'sort by field', 'priority')
-    .option('--order <direction>', 'sort order (asc/desc)', 'desc')
-    .action(async options => {
-      const { config, apiClient, formatter } = getComponents();
+    .option('-l, --limit <limit>', 'limit number of results')
+    .option('--sort <field>', 'sort by field')
+    .option('--order <order>', 'sort order (asc/desc)')
+    .action(
+      async (options: {
+        board?: string;
+        status?: string;
+        tags?: string;
+        limit?: string;
+        sort?: string;
+        order?: string;
+      }) => {
+        const { config, apiClient, formatter } = getComponents();
 
-      try {
-        const params: Record<string, string> = {
-          limit: options.limit,
-          sort: options.sort,
-          order: options.order,
-        };
+        try {
+          const params: Record<string, string> = {
+            limit: options.limit ?? '20',
+            sort: options.sort ?? 'createdAt',
+            order: options.order ?? 'desc',
+          };
 
-        // eslint-disable-next-line dot-notation
-        if (options['board']) params['board'] = options['board'];
-        // eslint-disable-next-line dot-notation
-        if (options['status']) params['status'] = options['status'];
-        // eslint-disable-next-line dot-notation
-        if (options['tags']) params['tags'] = options['tags'];
+          if (options.board) params.board = options.board;
+          if (options.status) params.status = options.status;
+          if (options.tags) params.tags = options.tags;
 
-        // Use default board if no board specified
-        // eslint-disable-next-line dot-notation
-        if (!options['board'] && config.getDefaultBoard()) {
-          // eslint-disable-next-line dot-notation
-          params['board'] = config.getDefaultBoard()!;
+          // Use default board if no board specified
+          if (!options.board && config.getDefaultBoard()) {
+            params.board = config.getDefaultBoard()!;
+          }
+
+          const tasks = await apiClient.getTasks(params);
+
+          if (
+            !tasks ||
+            !('data' in tasks) ||
+            !tasks.data ||
+            (Array.isArray(tasks.data) && tasks.data.length === 0)
+          ) {
+            formatter.info('No tasks found');
+            return;
+          }
+
+          formatter.output(tasks, {
+            fields: ['id', 'title', 'status', 'priority', 'dueDate', 'createdAt'],
+            headers: ['ID', 'Title', 'Status', 'Priority', 'Due Date', 'Created'],
+          });
+        } catch (error) {
+          formatter.error(
+            `Failed to list tasks: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+          process.exit(1);
         }
-
-        const tasks = await apiClient.getTasks(params);
-
-        if (
-          !tasks ||
-          !('data' in tasks) ||
-          !tasks.data ||
-          (Array.isArray(tasks.data) && tasks.data.length === 0)
-        ) {
-          formatter.info('No tasks found');
-          return;
-        }
-
-        formatter.output(tasks, {
-          fields: ['id', 'title', 'status', 'priority', 'dueDate', 'createdAt'],
-          headers: ['ID', 'Title', 'Status', 'Priority', 'Due Date', 'Created'],
-        });
-      } catch (error) {
-        formatter.error(
-          `Failed to list tasks: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
-        );
-        process.exit(1);
       }
-    });
+    );
 
   /**
    * Show detailed information about a specific task.
@@ -256,7 +297,7 @@ export function registerTaskCommands(program: Command): void {
         }
       } catch (error) {
         formatter.error(
-          `Failed to get task: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
+          `Failed to get task: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
         process.exit(1);
       }
@@ -306,108 +347,175 @@ export function registerTaskCommands(program: Command): void {
     .option('-p, --priority <number>', 'priority (1-10)', '5')
     .option('--due <date>', 'due date (YYYY-MM-DD)')
     .option('--tags <tags>', 'tags (comma-separated)')
+    .option('--template <id>', 'create from template')
     .option('-i, --interactive', 'interactive mode')
     .action(async (options: CreateTaskOptions) => {
       const { config, apiClient, formatter } = getComponents();
-
-      let taskData: Record<string, unknown> = {};
-
-      if (options.interactive ?? !options.title) {
-        // Enhanced interactive mode with AI size estimation
-        try {
-          const defaults = {
-            title: options.title,
-            description: options.description,
-            due_date: options.due,
-            tags: options.tags ? options.tags.split(',').map((t: string) => t.trim()) : undefined,
-          };
-
-          const promptResult = await createTaskPrompt(defaults);
-
-          // Map prompt result to task data
-          taskData = {
-            title: promptResult.title,
-            description: promptResult.description,
-            priority: promptResult.priority,
-            size: promptResult.size,
-            assignee: promptResult.assignee,
-            dueDate: promptResult.due_date,
-            estimatedHours: promptResult.estimated_hours,
-            tags: promptResult.tags,
-          };
-
-          // Convert priority from P1-P5 to 1-10 scale
-          if (promptResult.priority) {
-            const priorityMap = { P1: 10, P2: 8, P3: 5, P4: 3, P5: 1 };
-            // eslint-disable-next-line dot-notation
-            taskData['priority'] = priorityMap[promptResult.priority] ?? 5;
-          }
-        } catch (error) {
-          if (error instanceof PromptCancelledError) {
-            formatter.warn('Task creation cancelled');
-            return;
-          }
-          throw error;
-        }
-      }
-
-      // Use command line options or answers
-      // eslint-disable-next-line dot-notation
-      taskData['title'] = options.title ?? taskData['title'];
-      // eslint-disable-next-line dot-notation
-      taskData['description'] = options.description ?? taskData['description'];
-      // eslint-disable-next-line dot-notation
-      taskData['boardId'] = options.board ?? taskData['board'] ?? config.getDefaultBoard();
-      // eslint-disable-next-line dot-notation
-      taskData['columnId'] = options.column ?? taskData['column'];
-      // eslint-disable-next-line dot-notation
-      taskData['priority'] = parseInt(options.priority ?? String(taskData['priority'] ?? ''), 10);
-
-      // eslint-disable-next-line dot-notation
-      if (options.due ?? taskData['dueDate']) {
-        // eslint-disable-next-line dot-notation
-        taskData['dueDate'] = options.due ?? taskData['dueDate'];
-      }
-
-      // eslint-disable-next-line dot-notation
-      if (options.tags ?? taskData['tags']) {
-        // eslint-disable-next-line dot-notation
-        const tagsStr = options.tags ?? String(taskData['tags'] ?? '');
-        // eslint-disable-next-line dot-notation
-        taskData['tags'] = tagsStr.split(',').map((tag: string) => tag.trim());
-      }
+      const spinner = new SpinnerManager();
 
       try {
+        spinner.start('Initializing...');
+
+        let taskData: Record<string, unknown> = {};
+
+        // Handle template creation
+        if (options.template) {
+          const templateService = TaskTemplateService.getInstance();
+          const template = await templateService.getTemplate(options.template);
+          
+          if (!template) {
+            spinner.fail(`Template not found: ${options.template}`);
+            process.exit(1);
+          }
+
+          if (!template.is_active) {
+            spinner.fail(`Template is inactive: ${template.name}`);
+            process.exit(1);
+          }
+
+          // Extract variables from template
+          const titleVariables = extractTemplateVariables(template.title_template);
+          const descVariables = template.description_template 
+            ? extractTemplateVariables(template.description_template)
+            : [];
+          const allVariables = [...new Set([...titleVariables, ...descVariables])];
+
+          let variables: Record<string, any> = {};
+          if (allVariables.length > 0) {
+            console.log(`\n📝 Template: ${template.name}\n`);
+            
+            const variableAnswers = await inquirer.prompt(
+              allVariables.map(variable => ({
+                type: 'input',
+                name: variable,
+                message: `${variable}:`,
+              }))
+            );
+            variables = variableAnswers;
+          }
+
+          // Process templates
+          const title = processTemplate(template.title_template, variables);
+          const description = template.description_template 
+            ? processTemplate(template.description_template, variables)
+            : '';
+
+          taskData = {
+            title,
+            description,
+            priority: template.priority,
+            estimated_hours: template.estimated_hours,
+            tags: template.tags,
+          };
+
+          spinner.succeed(`Using template: ${template.name}`);
+        }
+
+        if (options.interactive ?? !options.title) {
+          // Enhanced interactive mode with AI size estimation
+          spinner.info('Starting interactive task creation...');
+
+          try {
+            const defaults = {
+              title: options.title ?? '',
+              description: options.description ?? '',
+              due_date: options.due ?? '',
+              tags: options.tags ? options.tags.split(',').map((t: string) => t.trim()) : [],
+            };
+
+            const promptResult = await createTaskPrompt(defaults);
+
+            // Map prompt result to task data
+            taskData = {
+              title: promptResult.title,
+              description: promptResult.description,
+              priority: promptResult.priority,
+              size: promptResult.size,
+              assignee: promptResult.assignee,
+              dueDate: promptResult.due_date,
+              estimatedHours: promptResult.estimated_hours,
+              tags: promptResult.tags,
+            };
+
+            // Convert priority from P1-P5 to 1-10 scale
+            if (promptResult.priority) {
+              const priorityMap = { P1: 10, P2: 8, P3: 5, P4: 3, P5: 1 };
+              // eslint-disable-next-line dot-notation
+              taskData['priority'] = priorityMap[promptResult.priority] ?? 5;
+            }
+          } catch (error) {
+            if (error instanceof PromptCancelledError) {
+              spinner.info('Task creation cancelled');
+              return;
+            }
+            throw error;
+          }
+        }
+
+        // Use command line options or answers
+        // eslint-disable-next-line dot-notation
+        taskData['title'] = options.title ?? taskData['title'];
+        // eslint-disable-next-line dot-notation
+        taskData['description'] = options.description ?? taskData['description'];
+        // eslint-disable-next-line dot-notation
+        taskData['boardId'] = options.board ?? taskData['board'] ?? config.getDefaultBoard();
+        // eslint-disable-next-line dot-notation
+        taskData['columnId'] = options.column ?? taskData['column'];
+        // eslint-disable-next-line dot-notation
+        taskData['priority'] = parseInt(options.priority ?? String(taskData['priority'] ?? ''), 10);
+
+        // eslint-disable-next-line dot-notation
+        if (options.due ?? taskData['dueDate']) {
+          // eslint-disable-next-line dot-notation
+          taskData['dueDate'] = options.due ?? taskData['dueDate'];
+        }
+
+        // eslint-disable-next-line dot-notation
+        if (options.tags ?? taskData['tags']) {
+          // eslint-disable-next-line dot-notation
+          const tagsStr = options.tags ?? String(taskData['tags'] ?? '');
+          // eslint-disable-next-line dot-notation
+          taskData['tags'] = tagsStr.split(',').map((tag: string) => tag.trim());
+        }
+
         // eslint-disable-next-line dot-notation
         if (!taskData['boardId']) {
-          formatter.error(
+          spinner.fail(
             'Board ID is required. Set default board with "kanban config set defaults.board <id>"'
           );
           process.exit(1);
         }
 
-        const task = await spinner.withSpinner(
-          // eslint-disable-next-line dot-notation
-          `Creating task: ${String(taskData['title'])}`,
-          apiClient.createTask(taskData),
-          {
-            successText: `✅ Task created successfully`,
-            failText: `❌ Failed to create task`,
-          }
-        );
+        const createTaskRequest: CreateTaskRequest = {
+          title: String(taskData.title),
+          description: taskData.description as string,
+          board_id: String(taskData.boardId),
+          column_id: taskData.columnId as string,
+          priority: taskData.priority as number,
+          status: 'todo',
+          assignee: taskData.assignee as string,
+          due_date: taskData.dueDate as string,
+          tags: taskData.tags as string[],
+        };
 
-        formatter.success(`Task ID: ${String(String(task.id ?? 'Unknown'))}`);
-        // eslint-disable-next-line dot-notation
-        if (taskData['size']) {
-          formatter.info(
-            // eslint-disable-next-line dot-notation
-            `Estimated size: ${String(taskData['size'])} (${String(taskData['estimatedHours'] ?? 'Unknown')} hours)`
-          );
+        spinner.start(`Creating task: ${createTaskRequest.title}`);
+        const response = await apiClient.createTask(createTaskRequest);
+
+        if (isSuccessResponse(response)) {
+          spinner.succeed(`Task created successfully: ${response.data.id}`);
+          console.log('\n📋 Task Details:');
+          console.log(`   Title: ${response.data.title}`);
+          console.log(`   Status: ${response.data.status}`);
+          if (response.data.priority) console.log(`   Priority: ${response.data.priority}`);
+          if (response.data.assignee) console.log(`   Assignee: ${response.data.assignee}`);
+          if (response.data.due_date) console.log(`   Due: ${response.data.due_date}`);
+        } else {
+          spinner.fail(`Failed to create task: ${response.error?.message ?? 'Unknown error'}`);
+          process.exit(1);
         }
-        formatter.output(task);
       } catch (error) {
-        formatter.error(
-          `Failed to create task: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
+        spinner.fail(
+          `Failed to create task: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
         process.exit(1);
       }
@@ -466,7 +574,7 @@ export function registerTaskCommands(program: Command): void {
         let updates: Record<string, unknown> = {};
 
         if (options.interactive) {
-          const answers = await inquirer.prompt([
+          const answers = await inquirer.prompt<UpdateTaskPromptResult>([
             {
               type: 'input',
               name: 'title',
@@ -557,13 +665,14 @@ export function registerTaskCommands(program: Command): void {
 
       try {
         if (!options.force) {
-          const task = await apiClient.getTask(id);
-          if (!task) {
+          const response = await apiClient.getTask(id);
+          if (!isSuccessResponse(response) || !response.data) {
             formatter.error(`Task ${String(id)} not found`);
             process.exit(1);
           }
 
-          const { confirm } = await inquirer.prompt([
+          const task = response.data as Task;
+          const { confirm } = await inquirer.prompt<ConfirmPromptResult>([
             {
               type: 'confirm',
               name: 'confirm',
@@ -712,7 +821,7 @@ export function registerTaskCommands(program: Command): void {
         // Start interactive task selection
         const React = await import('react');
         const { render } = await import('ink');
-        const { TaskList } = await import('../ui/components/TaskList');
+        const TaskList = (await import('../ui/components/TaskList')).default;
 
         // Transform API tasks to component format
         const taskList: Task[] = taskResponse.data.map((task: Task) => ({
@@ -745,7 +854,7 @@ export function registerTaskCommands(program: Command): void {
             if (task.due_date) formatter.info(`   Due: ${String(String(task.due_date))}`);
 
             // Ask what to do with selected task
-            const { action } = await inquirer.prompt([
+            const { action } = await inquirer.prompt<ActionPromptResult>([
               {
                 type: 'list',
                 name: 'action',
@@ -775,7 +884,7 @@ export function registerTaskCommands(program: Command): void {
                 break;
               case 'move':
                 // Launch move command
-                const { columnId } = await inquirer.prompt([
+                const { columnId } = await inquirer.prompt<ColumnPromptResult>([
                   {
                     type: 'input',
                     name: 'columnId',
@@ -787,7 +896,7 @@ export function registerTaskCommands(program: Command): void {
                 formatter.success(`Task moved to column ${String(columnId)}`);
                 break;
               case 'status':
-                const { newStatus } = await inquirer.prompt([
+                const { newStatus } = await inquirer.prompt<StatusPromptResult>([
                   {
                     type: 'list',
                     name: 'newStatus',
@@ -799,7 +908,7 @@ export function registerTaskCommands(program: Command): void {
                 formatter.success(`Task status updated to ${String(newStatus)}`);
                 break;
               case 'delete':
-                const { confirm } = await inquirer.prompt([
+                const { confirm } = await inquirer.prompt<ConfirmPromptResult>([
                   {
                     type: 'confirm',
                     name: 'confirm',
@@ -828,7 +937,7 @@ export function registerTaskCommands(program: Command): void {
             switch (key) {
               case 'search':
                 setSearchMode(true);
-                const { query } = await inquirer.prompt([
+                const { query } = await inquirer.prompt<QueryPromptResult>([
                   {
                     type: 'input',
                     name: 'query',
@@ -904,7 +1013,9 @@ export function registerTaskCommands(program: Command): void {
             tasks: currentTasks,
             title: `Task Selection ${statusFilter.length ? `(${statusFilter.join(', ')})` : ''}${searchQuery ? ` - Search: "${searchQuery}"` : ''}`,
             onTaskSelect: handleTaskSelect,
-            onKeyPress: handleKeyPress,
+            onKeyPress: (key: string, selectedTask: Task | null) => {
+              void handleKeyPress(key, selectedTask);
+            },
             showSelection: true,
             maxHeight: 15,
             showStats: true,
@@ -926,4 +1037,117 @@ export function registerTaskCommands(program: Command): void {
         process.exit(1);
       }
     });
+
+  /**
+   * Get next recommended task based on priority and context
+   *
+   * @command next
+   * @description Recommends the next task to work on based on AI prioritization
+   */
+  taskCmd
+    .command('next')
+    .description('Get next recommended task to work on')
+    .option('-b, --board <boardId>', 'filter by board ID')
+    .option('-a, --assignee <assignee>', 'filter by assignee')
+    .option('-s, --skill <skill>', 'filter by skill context')
+    .option('--include-blocked', 'include blocked tasks in recommendation')
+    .option('--json', 'output as JSON')
+    .action(
+      async (options: {
+        board?: string;
+        assignee?: string;
+        skill?: string;
+        includeBlocked?: boolean;
+        json?: boolean;
+      }) => {
+        const { apiClient, formatter } = getComponents();
+
+        try {
+          // Build query parameters
+          const params: Record<string, string> = {};
+          if (options.board) params.board_id = options.board;
+          if (options.assignee) params.assignee = options.assignee;
+          if (options.skill) params.skill_context = options.skill;
+          if (options.includeBlocked) params.exclude_blocked = 'false';
+
+          // Call the API endpoint for next task recommendation
+          const response = await apiClient.request('GET', '/api/tasks/next', undefined, params);
+
+          if (!response || !(response as any).next_task) {
+            formatter.info('No tasks available matching your criteria');
+            if (options.json) {
+              formatter.output({ next_task: null, reasoning: 'No available tasks found' });
+            }
+            return;
+          }
+
+          const { next_task: nextTask, reasoning } = response as any;
+
+          if (options.json) {
+            formatter.output({ next_task: nextTask, reasoning });
+            return;
+          }
+
+          // Display the recommended task
+          formatter.success('🎯 Next Recommended Task:');
+          formatter.output(`📋 ${String(nextTask.title)}`);
+          formatter.output(`🆔 ID: ${String(nextTask.id)}`);
+          formatter.output(`📊 Priority: ${String(nextTask.priority ?? 'Not set')}`);
+          formatter.output(`📅 Status: ${String(nextTask.status)}`);
+
+          if (nextTask.due_date) {
+            const dueDate = new Date(nextTask.due_date);
+            const now = new Date();
+            const daysUntilDue = Math.ceil(
+              (dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+            );
+            const dueDateStr = dueDate.toLocaleDateString();
+            const urgencyIndicator =
+              daysUntilDue < 0 ? '🚨 OVERDUE' : daysUntilDue <= 1 ? '⚠️ DUE SOON' : '';
+            formatter.output(`📅 Due: ${dueDateStr} ${urgencyIndicator}`);
+          }
+
+          if (nextTask.description) {
+            formatter.output(`📝 Description: ${String(nextTask.description)}`);
+          }
+
+          formatter.info(`\n💡 Reasoning: ${String(reasoning)}`);
+
+          // Provide action suggestions
+          formatter.info('\n🚀 Quick Actions:');
+          formatter.output(`   kanban task update ${String(nextTask.id)} --status in_progress`);
+          formatter.output(`   kanban task show ${String(nextTask.id)} --context`);
+        } catch (error) {
+          formatter.error(
+            `Failed to get next task: ${String(error instanceof Error ? error.message : 'Unknown error')}`
+          );
+          process.exit(1);
+        }
+      }
+    );
+}
+
+// Helper functions for template processing
+function extractTemplateVariables(template: string): string[] {
+  const variableRegex = /\{\{(\w+)\}\}/g;
+  const variables = new Set<string>();
+  let match;
+
+  while ((match = variableRegex.exec(template)) !== null) {
+    variables.add(match[1]);
+  }
+
+  return Array.from(variables).sort();
+}
+
+function processTemplate(template: string, variables: Record<string, any>): string {
+  let result = template;
+  
+  // Replace variables in format {{variable_name}}
+  for (const [key, value] of Object.entries(variables)) {
+    const pattern = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+    result = result.replace(pattern, String(value));
+  }
+
+  return result;
 }

@@ -258,7 +258,7 @@ export class SchemaManager {
         WHERE type='table' AND name NOT LIKE 'sqlite_%'
       `);
 
-      if (!tables ?? tables[0]?.count === 0) {
+      if (!tables || tables[0]?.count === 0) {
         logger.info('No schema to drop');
         return;
       }
@@ -493,7 +493,7 @@ export class SchemaManager {
     }
   }
 
-  private async getExpectedSchema(): Promise<SchemaInfo> {
+  private getExpectedSchema(): SchemaInfo {
     // Parse the schema file to extract expected objects
     const schemaSQL = SchemaManager.readSchemaFile();
 

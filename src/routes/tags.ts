@@ -5,13 +5,13 @@ import { requirePermission } from '@/middleware/auth';
 import { TagValidation, validateInput } from '@/utils/validation';
 import { NotFoundError } from '@/utils/errors';
 
-export async function tagRoutes(): Promise<Router> {
+export function tagRoutes(): Router {
   const router = Router();
 
   const tagService = new TagService(dbConnection);
 
   // GET /api/v1/tags - List tags with filters
-  router.get('/', requirePermission('read'), async (req, res, next) => {
+  router.get('/', requirePermission('read'), async (req, res, next): Promise<void> => {
     try {
       const {
         limit = 50,
@@ -38,7 +38,7 @@ export async function tagRoutes(): Promise<Router> {
       const tags = await tagService.getTags(options);
 
       // Get total count for pagination
-      const { limit, offset, ...countOptions } = options;
+      const { limit: _, offset: __, ...countOptions } = options;
       const totalTags = await tagService.getTags(countOptions);
       const total = totalTags.length;
 
@@ -54,7 +54,7 @@ export async function tagRoutes(): Promise<Router> {
   });
 
   // POST /api/v1/tags - Create tag
-  router.post('/', requirePermission('write'), async (req, res, next) => {
+  router.post('/', requirePermission('write'), async (req, res, next): Promise<void> => {
     try {
       const tagData = validateInput(TagValidation.create, req.body);
       const tag = await tagService.createTag(tagData);
@@ -65,7 +65,7 @@ export async function tagRoutes(): Promise<Router> {
   });
 
   // GET /api/v1/tags/tree - Get tag hierarchy tree
-  router.get('/tree', requirePermission('read'), async (req, res, next) => {
+  router.get('/tree', requirePermission('read'), async (req, res, next): Promise<void> => {
     try {
       const { includeUsageCount = false } = req.query;
       const tree = await tagService.getTagTree(includeUsageCount === 'true');
@@ -76,7 +76,7 @@ export async function tagRoutes(): Promise<Router> {
   });
 
   // GET /api/v1/tags/popular - Get most used tags
-  router.get('/popular', requirePermission('read'), async (req, res, next) => {
+  router.get('/popular', requirePermission('read'), async (req, res, next): Promise<void> => {
     try {
       const { limit = 20, board_id, days = 30 } = req.query;
 
@@ -94,7 +94,7 @@ export async function tagRoutes(): Promise<Router> {
   });
 
   // GET /api/v1/tags/colors - Get available tag colors
-  router.get('/colors', requirePermission('read'), async (_req, res, next) => {
+  router.get('/colors', requirePermission('read'), (_req, res, next) => {
     try {
       const colors = [
         '#ff6b6b',
@@ -125,7 +125,7 @@ export async function tagRoutes(): Promise<Router> {
   });
 
   // GET /api/v1/tags/stats - Get tag usage statistics
-  router.get('/stats', requirePermission('read'), async (req, res, next) => {
+  router.get('/stats', requirePermission('read'), async (req, res, next): Promise<void> => {
     try {
       const { board_id } = req.query;
       const stats = await tagService.getTagStats(board_id as string);
@@ -136,7 +136,7 @@ export async function tagRoutes(): Promise<Router> {
   });
 
   // GET /api/v1/tags/:id - Get tag details
-  router.get('/:id', requirePermission('read'), async (req, res, next) => {
+  router.get('/:id', requirePermission('read'), async (req, res, next): Promise<void> => {
     try {
       const { id } = req.params;
       if (!id) {
@@ -162,7 +162,7 @@ export async function tagRoutes(): Promise<Router> {
   });
 
   // PATCH /api/v1/tags/:id - Update tag
-  router.patch('/:id', requirePermission('write'), async (req, res, next) => {
+  router.patch('/:id', requirePermission('write'), async (req, res, next): Promise<void> => {
     try {
       const { id } = req.params;
       if (!id) {
@@ -177,7 +177,7 @@ export async function tagRoutes(): Promise<Router> {
   });
 
   // DELETE /api/v1/tags/:id - Delete tag
-  router.delete('/:id', requirePermission('write'), async (req, res, next) => {
+  router.delete('/:id', requirePermission('write'), async (req, res, next): Promise<void> => {
     try {
       const { id } = req.params;
       if (!id) {
@@ -191,7 +191,7 @@ export async function tagRoutes(): Promise<Router> {
   });
 
   // GET /api/v1/tags/:id/children - Get tag children
-  router.get('/:id/children', requirePermission('read'), async (req, res, next) => {
+  router.get('/:id/children', requirePermission('read'), async (req, res, next): Promise<void> => {
     try {
       const { id } = req.params;
       if (!id) {
@@ -210,7 +210,7 @@ export async function tagRoutes(): Promise<Router> {
   });
 
   // GET /api/v1/tags/:id/path - Get tag hierarchy path
-  router.get('/:id/path', requirePermission('read'), async (req, res, next) => {
+  router.get('/:id/path', requirePermission('read'), async (req, res, next): Promise<void> => {
     try {
       const { id } = req.params;
       if (!id) {
@@ -224,7 +224,7 @@ export async function tagRoutes(): Promise<Router> {
   });
 
   // POST /api/v1/tags/:id/merge - Merge tags
-  router.post('/:id/merge', requirePermission('write'), async (req, res, next) => {
+  router.post('/:id/merge', requirePermission('write'), async (req, res, next): Promise<void> => {
     try {
       const { id } = req.params;
       if (!id) {
@@ -244,7 +244,7 @@ export async function tagRoutes(): Promise<Router> {
   });
 
   // GET /api/v1/tags/:id/tasks - Get tasks with this tag
-  router.get('/:id/tasks', requirePermission('read'), async (req, res, next) => {
+  router.get('/:id/tasks', requirePermission('read'), async (req, res, next): Promise<void> => {
     try {
       const { id } = req.params;
       if (!id) {

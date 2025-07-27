@@ -61,7 +61,7 @@ export class TaskListFormatter {
     } = options;
 
     // Sort tasks
-    const sortedTasks = this.sortTasks(tasks, sortBy);
+    const sortedTasks = TaskListFormatter.sortTasks(tasks, sortBy);
 
     // Build table headers
     const headers = ['ID', 'Title', 'Status', 'Priority'];
@@ -73,7 +73,7 @@ export class TaskListFormatter {
     const table = new Table({
       head: headers,
       style: { head: ['cyan'] },
-      colWidths: this.calculateTableWidths(headers, showDescription),
+      colWidths: TaskListFormatter.calculateTableWidths(headers, showDescription),
     });
 
     // Add rows
@@ -101,19 +101,20 @@ export class TaskListFormatter {
       }
 
       if (showTags) {
-        row.push(task.tags ? task.tags.map(t => chalk.magenta(`#${String(t)}`)).join(' ') : '-');
+        row.push(
+          task.tags ? task.tags.map((t: string) => chalk.magenta(`#${String(t)}`)).join(' ') : '-'
+        );
       }
 
       table.push(row);
 
       // Add description row if enabled
       if (showDescription && task.description) {
-        const descRow = [
-          {
-            colSpan: headers.length,
-            content: chalk.gray(`  ${String(String(truncate(task.description, 100)))}`),
-          },
-        ];
+        const descRow = [chalk.gray(`  ${String(String(truncate(task.description, 100)))}`)];
+        // Add empty cells to match header count
+        for (let i = 1; i < headers.length; i += 1) {
+          descRow.push('');
+        }
         table.push(descRow);
       }
     }
@@ -129,7 +130,7 @@ export class TaskListFormatter {
     const output: string[] = [];
 
     if (groupBy !== 'none') {
-      const grouped = this.groupTasks(tasks, groupBy);
+      const grouped = TaskListFormatter.groupTasks(tasks, groupBy);
 
       for (const [group, groupTasks] of grouped) {
         output.push(
@@ -138,7 +139,7 @@ export class TaskListFormatter {
 
         const tasksToShow = maxItems ? groupTasks.slice(0, maxItems) : groupTasks;
         for (const task of tasksToShow) {
-          output.push(this.formatTaskListItem(task));
+          output.push(TaskListFormatter.formatTaskListItem(task));
         }
 
         if (maxItems && groupTasks.length > maxItems) {
@@ -148,7 +149,7 @@ export class TaskListFormatter {
     } else {
       const tasksToShow = maxItems ? tasks.slice(0, maxItems) : tasks;
       for (const task of tasksToShow) {
-        output.push(this.formatTaskListItem(task));
+        output.push(TaskListFormatter.formatTaskListItem(task));
       }
 
       if (maxItems && tasks.length > maxItems) {

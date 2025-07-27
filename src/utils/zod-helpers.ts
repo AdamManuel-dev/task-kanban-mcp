@@ -105,11 +105,11 @@ export function createOptionalSchema<T extends z.ZodRawShape>(
 ): z.ZodObject<{ [K in keyof T]: z.ZodOptional<T[K]> }> {
   const optionalShape = {} as { [K in keyof T]: z.ZodOptional<T[K]> };
 
-  for (const key in shape) {
+  Object.keys(shape).forEach(key => {
     if (Object.prototype.hasOwnProperty.call(shape, key) && shape[key]) {
       (optionalShape as Record<string, z.ZodOptional<z.ZodTypeAny>>)[key] = shape[key].optional();
     }
-  }
+  });
 
   return z.object(optionalShape);
 }

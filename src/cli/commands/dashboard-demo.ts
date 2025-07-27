@@ -3,50 +3,6 @@ import chalk from 'chalk';
 import { getThemeNames } from '../ui/themes/dashboard-themes';
 import { logger } from '../../utils/logger';
 
-/**
- * Simple dashboard demo command (without blessed-contrib dependencies)
- */
-export const dashboardDemoCommand = new Command('dashboard-demo')
-  .description('Demo the dashboard functionality (text-based)')
-  .option('-l, --layout <layout>', 'Layout to display: overview, velocity, or personal', 'overview')
-  .option('--list-themes', 'List available themes')
-  .action(async options => {
-    // Handle list themes option
-    if (options.listThemes) {
-      logger.info(chalk.cyan('\n🎨 Available Dashboard Themes:'));
-      getThemeNames().forEach(theme => {
-        logger.info(`  ${String(String(chalk.yellow('•')))} ${String(theme)}`);
-      });
-      logger.info(chalk.gray('\nUse these theme names with "kanban dashboard --theme <theme>"\n'));
-      return;
-    }
-    logger.info(chalk.cyan('\n🚀 Kanban Dashboard Demo\n'));
-
-    const layout = options.layout ?? 'overview';
-
-    switch (layout) {
-      case 'overview':
-        displayOverviewDemo();
-        break;
-      case 'velocity':
-        displayVelocityDemo();
-        break;
-      case 'personal':
-        displayPersonalDemo();
-        break;
-      default:
-        logger.info(
-          chalk.yellow(`Unknown layout: ${String(layout)}. Available: overview, velocity, personal`)
-        );
-    }
-
-    logger.info(
-      chalk.gray(
-        '\nNote: This is a text-based demo. Use "kanban dashboard" for full interactive experience.'
-      )
-    );
-  });
-
 function displayOverviewDemo(): void {
   logger.info(chalk.bold.blue('📊 Overview Dashboard\n'));
 
@@ -122,5 +78,50 @@ function displayPersonalDemo(): void {
 
   // Time tracking
   logger.info(chalk.yellow("⏰ This Week's Hours:"));
-  logger.info('  Mon: 8h | Tue: 7h | Wed: 9h | Thu: 6h | Fri: 8h');
+  logger.info('  Mon: 6h | Tue: 7h | Wed: 5h | Thu: 8h | Fri: 4h');
+  logger.info('  Total: 30 hours | Average: 6 hours/day');
 }
+
+/**
+ * Simple dashboard demo command (without blessed-contrib dependencies)
+ */
+export const dashboardDemoCommand = new Command('dashboard-demo')
+  .description('Demo the dashboard functionality (text-based)')
+  .option('-l, --layout <layout>', 'Layout to display: overview, velocity, or personal', 'overview')
+  .option('--list-themes', 'List available themes')
+  .action((options: { layout?: string; listThemes?: boolean }) => {
+    // Handle list themes option
+    if (options.listThemes) {
+      logger.info(chalk.cyan('\n🎨 Available Dashboard Themes:'));
+      getThemeNames().forEach(theme => {
+        logger.info(`  ${String(chalk.yellow('•'))} ${String(theme)}`);
+      });
+      logger.info(chalk.gray('\nUse these theme names with "kanban dashboard --theme <theme>"\n'));
+      return;
+    }
+    logger.info(chalk.cyan('\n🚀 Kanban Dashboard Demo\n'));
+
+    const layout: string = options.layout ?? 'overview';
+
+    switch (layout) {
+      case 'overview':
+        displayOverviewDemo();
+        break;
+      case 'velocity':
+        displayVelocityDemo();
+        break;
+      case 'personal':
+        displayPersonalDemo();
+        break;
+      default:
+        logger.info(
+          chalk.yellow(`Unknown layout: ${String(layout)}. Available: overview, velocity, personal`)
+        );
+    }
+
+    logger.info(
+      chalk.gray(
+        '\nNote: This is a text-based demo. Use "kanban dashboard" for full interactive experience.'
+      )
+    );
+  });

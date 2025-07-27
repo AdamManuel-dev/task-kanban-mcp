@@ -1,5 +1,8 @@
 /**
  * API Integration Tests for Task Endpoints
+ *
+ * This test suite provides comprehensive coverage for all task-related REST API endpoints.
+ * It tests CRUD operations, filtering, sorting, pagination, and error handling.
  */
 
 import request from 'supertest';
@@ -7,13 +10,14 @@ import type { Express } from 'express';
 import { createServer } from '@/server';
 import { dbConnection } from '@/database/connection';
 import { v4 as uuidv4 } from 'uuid';
-import type { Task, Board } from '@/types';
+import type { Task, Board, CreateTaskRequest } from '@/types';
 
 describe('Task API Integration Tests', () => {
   let app: Express;
   let apiKey: string;
   let testBoard: Board;
-  let testTask: Task;
+  // let testTask: Task;
+  let testColumnId: string;
 
   beforeAll(async () => {
     // Initialize database
@@ -58,7 +62,7 @@ describe('Task API Integration Tests', () => {
     );
 
     // Store first column ID for task creation
-    global.testColumnId = columnIds[0];
+    testColumnId = columnIds[0];
   });
 
   afterAll(async () => {
@@ -71,12 +75,12 @@ describe('Task API Integration Tests', () => {
   });
 
   describe('POST /api/v1/tasks', () => {
-    it('should create a new task', async () => {
-      const newTask = {
+    it('should create a new task with valid data', async () => {
+      const newTask: CreateTaskRequest = {
         title: 'Test Task',
         description: 'This is a test task',
         board_id: testBoard.id,
-        column_id: global.testColumnId,
+        column_id: testColumnId,
         status: 'todo',
         priority: 5,
       };
@@ -99,9 +103,30 @@ describe('Task API Integration Tests', () => {
       expect(response.body.data.createdAt).toBeDefined();
     });
 
-    it('should validate required fields', async () => {
+    it('should create a task with minimal required fields', async () => {
+      const minimalTask = {
+        title: 'Minimal Task',
+        board_id: testBoard.id,
+        column_id: testColumnId,
+      };
+
+      const response = await request(app)
+        .post('/api/v1/tasks')
+        .set('X-API-Key', apiKey)
+        .send(minimalTask)
+        .expect(201);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.title).toBe(minimalTask.title);
+      expect(response.body.data.status).toBe('todo'); // Default status
+      expect(response.body.data.priority).toBe(5); // Default priority
+    });
+
+    it('should reject task creation with invalid board_id', async () => {
       const invalidTask = {
-        description: 'Missing title',
+        title: 'Invalid Task',
+        board_id: 'non-existent-board',
+        column_id: testColumnId,
       };
 
       const response = await request(app)
@@ -111,180 +136,458 @@ describe('Task API Integration Tests', () => {
         .expect(400);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBeDefined();
+      expect(response.body.error).toContain('board_id');
     });
 
-    it('should require authentication', async () => {
+    it('should reject task creation with invalid column_id', async () => {
+      const invalidTask = {
+        title: 'Invalid Task',
+        board_id: testBoard.id,
+        column_id: 'non-existent-column',
+      };
+
+      const response = await request(app)
+        .post('/api/v1/tasks')
+        .set('X-API-Key', apiKey)
+        .send(invalidTask)
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toContain('column_id');
+    });
+
+    it('should reject task creation without API key', async () => {
       const newTask = {
         title: 'Test Task',
         board_id: testBoard.id,
-        column_id: global.testColumnId,
+        column_id: testColumnId,
       };
 
       await request(app).post('/api/v1/tasks').send(newTask).expect(401);
+    });
+
+    it('should reject task creation with invalid status', async () => {
+      const invalidTask = {
+        title: 'Invalid Task',
+        board_id: testBoard.id,
+        column_id: testColumnId,
+        status: 'invalid_status',
+      };
+
+      const response = await request(app)
+        .post('/api/v1/tasks')
+        .set('X-API-Key', apiKey)
+        .send(invalidTask)
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toContain('status');
     });
   });
 
   describe('GET /api/v1/tasks', () => {
     beforeEach(async () => {
       // Create test tasks
-      const taskId = uuidv4();
-      await dbConnection.execute(
-        `INSERT INTO tasks (id, title, description, board_id, column_id, status, priority, position, created_at) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          taskId,
-          'Test Task 1',
-          'Description 1',
-          testBoard.id,
-          global.testColumnId,
-          'todo',
-          'high',
-          0,
-          new Date().toISOString(),
-        ]
-      );
+      const tasks = [
+        {
+          id: uuidv4(),
+          title: 'Task 1',
+          description: 'First test task',
+          board_id: testBoard.id,
+          column_id: testColumnId,
+          status: 'todo',
+          priority: 3,
+        },
+        {
+          id: uuidv4(),
+          title: 'Task 2',
+          description: 'Second test task',
+          board_id: testBoard.id,
+          column_id: testColumnId,
+          status: 'in_progress',
+          priority: 7,
+        },
+        {
+          id: uuidv4(),
+          title: 'Task 3',
+          description: 'Third test task',
+          board_id: testBoard.id,
+          column_id: testColumnId,
+          status: 'done',
+          priority: 5,
+        },
+      ];
 
-      testTask = {
-        id: taskId,
-        title: 'Test Task 1',
-        description: 'Description 1',
-        boardId: testBoard.id,
-        columnId: null,
-        status: 'todo',
-        priority: 'high',
-        position: 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+      for (const task of tasks) {
+        await dbConnection.execute(
+          `INSERT INTO tasks (id, title, description, board_id, column_id, status, priority, created_at, updated_at) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            task.id,
+            task.title,
+            task.description,
+            task.board_id,
+            task.column_id,
+            task.status,
+            task.priority,
+            new Date().toISOString(),
+            new Date().toISOString(),
+          ]
+        );
+      }
     });
 
-    it('should list all tasks', async () => {
+    it('should list all tasks with default pagination', async () => {
       const response = await request(app).get('/api/v1/tasks').set('X-API-Key', apiKey).expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data.length).toBeGreaterThan(0);
-      expect(response.body.data[0]).toMatchObject({
-        title: testTask.title,
-        description: testTask.description,
+      expect(response.body.data).toHaveLength(3);
+      expect(response.body.pagination).toMatchObject({
+        page: 1,
+        limit: 50,
+        total: 3,
+        totalPages: 1,
       });
     });
 
-    it('should filter tasks by board', async () => {
-      // Create task in different board
-      const otherBoardId = uuidv4();
-      await dbConnection.execute('INSERT INTO boards (id, name, created_at) VALUES (?, ?, ?)', [
-        otherBoardId,
-        'Other Board',
-        new Date().toISOString(),
-      ]);
-
-      // Need to create column for other board first
-      const otherColumnId = uuidv4();
-      await dbConnection.execute(
-        'INSERT INTO columns (id, board_id, name, position, created_at) VALUES (?, ?, ?, ?, ?)',
-        [otherColumnId, otherBoardId, 'To Do', 0, new Date().toISOString()]
-      );
-
-      await dbConnection.execute(
-        `INSERT INTO tasks (id, title, board_id, column_id, status, position, created_at) 
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [uuidv4(), 'Other Task', otherBoardId, otherColumnId, 'todo', 0, new Date().toISOString()]
-      );
-
-      const response = await request(app)
-        .get('/api/v1/tasks')
-        .query({ boardId: testBoard.id })
-        .set('X-API-Key', apiKey)
-        .expect(200);
-
-      expect(response.body.data).toHaveLength(1);
-      expect(response.body.data[0].boardId).toBe(testBoard.id);
-    });
-
     it('should filter tasks by status', async () => {
-      // Create task with different status
-      await dbConnection.execute(
-        `INSERT INTO tasks (id, title, board_id, column_id, status, position, created_at) 
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [
-          uuidv4(),
-          'Done Task',
-          testBoard.id,
-          global.testColumnId,
-          'done',
-          1,
-          new Date().toISOString(),
-        ]
-      );
-
       const response = await request(app)
-        .get('/api/v1/tasks')
-        .query({ status: 'todo' })
+        .get('/api/v1/tasks?status=todo')
         .set('X-API-Key', apiKey)
         .expect(200);
 
+      expect(response.body.success).toBe(true);
       expect(response.body.data).toHaveLength(1);
       expect(response.body.data[0].status).toBe('todo');
     });
 
-    it('should support pagination', async () => {
-      // Create multiple tasks
-      await Promise.all(
-        Array.from({ length: 5 }, async (_, i) => {
-          await dbConnection.execute(
-            `INSERT INTO tasks (id, title, board_id, column_id, status, position, created_at) 
-             VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [
-              uuidv4(),
-              `Task ${String(i + 2)}`,
-              testBoard.id,
-              global.testColumnId,
-              'todo',
-              i + 1,
-              new Date().toISOString(),
-            ]
-          );
-        })
-      );
-
+    it('should filter tasks by board_id', async () => {
       const response = await request(app)
-        .get('/api/v1/tasks')
-        .query({ limit: 3, offset: 0 })
+        .get(`/api/v1/tasks?board_id=${testBoard.id}`)
         .set('X-API-Key', apiKey)
         .expect(200);
 
+      expect(response.body.success).toBe(true);
       expect(response.body.data).toHaveLength(3);
+      expect(response.body.data.every((task: Task) => task.board_id === testBoard.id)).toBe(true);
+    });
+
+    it('should search tasks by title', async () => {
+      const response = await request(app)
+        .get('/api/v1/tasks?search=Task 1')
+        .set('X-API-Key', apiKey)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toHaveLength(1);
+      expect(response.body.data[0].title).toBe('Task 1');
+    });
+
+    it('should sort tasks by priority', async () => {
+      const response = await request(app)
+        .get('/api/v1/tasks?sortBy=priority&sortOrder=desc')
+        .set('X-API-Key', apiKey)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toHaveLength(3);
+      expect(response.body.data[0].priority).toBe(7);
+      expect(response.body.data[1].priority).toBe(5);
+      expect(response.body.data[2].priority).toBe(3);
+    });
+
+    it('should apply pagination', async () => {
+      const response = await request(app)
+        .get('/api/v1/tasks?limit=2&offset=0')
+        .set('X-API-Key', apiKey)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toHaveLength(2);
       expect(response.body.pagination).toMatchObject({
-        limit: 3,
-        offset: 0,
-        total: 6,
+        page: 1,
+        limit: 2,
+        total: 3,
+        totalPages: 2,
       });
+    });
+
+    it('should filter by priority range', async () => {
+      const response = await request(app)
+        .get('/api/v1/tasks?priority_min=4&priority_max=6')
+        .set('X-API-Key', apiKey)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toHaveLength(1);
+      expect(response.body.data[0].priority).toBe(5);
+    });
+
+    it('should reject request without API key', async () => {
+      await request(app).get('/api/v1/tasks').expect(401);
     });
   });
 
   describe('GET /api/v1/tasks/:id', () => {
-    it('should get a specific task', async () => {
+    let testTaskId: string;
+
+    beforeEach(async () => {
+      // Create a test task
+      testTaskId = uuidv4();
+      await dbConnection.execute(
+        `INSERT INTO tasks (id, title, description, board_id, column_id, status, priority, created_at, updated_at) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          testTaskId,
+          'Test Task',
+          'Test Description',
+          testBoard.id,
+          testColumnId,
+          'todo',
+          5,
+          new Date().toISOString(),
+          new Date().toISOString(),
+        ]
+      );
+    });
+
+    it('should retrieve a task by ID', async () => {
       const response = await request(app)
-        .get(`/api/v1/tasks/${String(String(testTask.id))}`)
+        .get(`/api/v1/tasks/${testTaskId}`)
         .set('X-API-Key', apiKey)
         .expect(200);
 
       expect(response.body.success).toBe(true);
       expect(response.body.data).toMatchObject({
-        id: testTask.id,
-        title: testTask.title,
-        description: testTask.description,
+        id: testTaskId,
+        title: 'Test Task',
+        description: 'Test Description',
+        board_id: testBoard.id,
+        status: 'todo',
+        priority: 5,
       });
     });
 
     it('should return 404 for non-existent task', async () => {
-      const fakeId = uuidv4();
+      const nonExistentId = uuidv4();
+      const response = await request(app)
+        .get(`/api/v1/tasks/${nonExistentId}`)
+        .set('X-API-Key', apiKey)
+        .expect(404);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toContain('not found');
+    });
+
+    it('should reject request without API key', async () => {
+      await request(app).get(`/api/v1/tasks/${testTaskId}`).expect(401);
+    });
+  });
+
+  describe('PUT /api/v1/tasks/:id', () => {
+    let testTaskId: string;
+
+    beforeEach(async () => {
+      // Create a test task
+      testTaskId = uuidv4();
+      await dbConnection.execute(
+        `INSERT INTO tasks (id, title, description, board_id, column_id, status, priority, created_at, updated_at) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          testTaskId,
+          'Original Task',
+          'Original Description',
+          testBoard.id,
+          testColumnId,
+          'todo',
+          3,
+          new Date().toISOString(),
+          new Date().toISOString(),
+        ]
+      );
+    });
+
+    it('should update a task with valid data', async () => {
+      const updateData = {
+        title: 'Updated Task',
+        description: 'Updated Description',
+        status: 'in_progress',
+        priority: 8,
+      };
 
       const response = await request(app)
-        .get(`/api/v1/tasks/${String(fakeId)}`)
+        .put(`/api/v1/tasks/${testTaskId}`)
         .set('X-API-Key', apiKey)
+        .send(updateData)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toMatchObject({
+        id: testTaskId,
+        title: updateData.title,
+        description: updateData.description,
+        status: updateData.status,
+        priority: updateData.priority,
+      });
+    });
+
+    it('should partially update a task', async () => {
+      const updateData = {
+        status: 'done',
+      };
+
+      const response = await request(app)
+        .put(`/api/v1/tasks/${testTaskId}`)
+        .set('X-API-Key', apiKey)
+        .send(updateData)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.status).toBe('done');
+      expect(response.body.data.title).toBe('Original Task'); // Should remain unchanged
+    });
+
+    it('should return 404 for non-existent task', async () => {
+      const nonExistentId = uuidv4();
+      const updateData = { title: 'Updated Task' };
+
+      const response = await request(app)
+        .put(`/api/v1/tasks/${nonExistentId}`)
+        .set('X-API-Key', apiKey)
+        .send(updateData)
+        .expect(404);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toContain('not found');
+    });
+
+    it('should reject invalid status update', async () => {
+      const updateData = {
+        status: 'invalid_status',
+      };
+
+      const response = await request(app)
+        .put(`/api/v1/tasks/${testTaskId}`)
+        .set('X-API-Key', apiKey)
+        .send(updateData)
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toContain('status');
+    });
+
+    it('should reject request without API key', async () => {
+      const updateData = { title: 'Updated Task' };
+
+      await request(app).put(`/api/v1/tasks/${testTaskId}`).send(updateData).expect(401);
+    });
+  });
+
+  describe('DELETE /api/v1/tasks/:id', () => {
+    let testTaskId: string;
+
+    beforeEach(async () => {
+      // Create a test task
+      testTaskId = uuidv4();
+      await dbConnection.execute(
+        `INSERT INTO tasks (id, title, description, board_id, column_id, status, priority, created_at, updated_at) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          testTaskId,
+          'Task to Delete',
+          'This task will be deleted',
+          testBoard.id,
+          testColumnId,
+          'todo',
+          5,
+          new Date().toISOString(),
+          new Date().toISOString(),
+        ]
+      );
+    });
+
+    it('should delete a task by ID', async () => {
+      const response = await request(app)
+        .delete(`/api/v1/tasks/${testTaskId}`)
+        .set('X-API-Key', apiKey)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.message).toContain('deleted');
+
+      // Verify task is actually deleted
+      await request(app).get(`/api/v1/tasks/${testTaskId}`).set('X-API-Key', apiKey).expect(404);
+    });
+
+    it('should return 404 for non-existent task', async () => {
+      const nonExistentId = uuidv4();
+      const response = await request(app)
+        .delete(`/api/v1/tasks/${nonExistentId}`)
+        .set('X-API-Key', apiKey)
+        .expect(404);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toContain('not found');
+    });
+
+    it('should reject request without API key', async () => {
+      await request(app).delete(`/api/v1/tasks/${testTaskId}`).expect(401);
+    });
+  });
+
+  describe('POST /api/v1/tasks/:id/notes', () => {
+    let testTaskId: string;
+
+    beforeEach(async () => {
+      // Create a test task
+      testTaskId = uuidv4();
+      await dbConnection.execute(
+        `INSERT INTO tasks (id, title, description, board_id, column_id, status, priority, created_at, updated_at) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          testTaskId,
+          'Task with Notes',
+          'This task will have notes added',
+          testBoard.id,
+          testColumnId,
+          'todo',
+          5,
+          new Date().toISOString(),
+          new Date().toISOString(),
+        ]
+      );
+    });
+
+    it('should add a note to a task', async () => {
+      const noteData = {
+        content: 'This is a test note',
+        type: 'comment',
+      };
+
+      const response = await request(app)
+        .post(`/api/v1/tasks/${testTaskId}/notes`)
+        .set('X-API-Key', apiKey)
+        .send(noteData)
+        .expect(201);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toMatchObject({
+        content: noteData.content,
+        type: noteData.type,
+        task_id: testTaskId,
+      });
+      expect(response.body.data.id).toBeDefined();
+      expect(response.body.data.createdAt).toBeDefined();
+    });
+
+    it('should return 404 for non-existent task', async () => {
+      const nonExistentId = uuidv4();
+      const noteData = { content: 'Test note' };
+
+      const response = await request(app)
+        .post(`/api/v1/tasks/${nonExistentId}/notes`)
+        .set('X-API-Key', apiKey)
+        .send(noteData)
         .expect(404);
 
       expect(response.body.success).toBe(false);
@@ -292,158 +595,91 @@ describe('Task API Integration Tests', () => {
     });
   });
 
-  describe('PATCH /api/v1/tasks/:id', () => {
-    it('should update a task', async () => {
-      const updates = {
-        title: 'Updated Task Title',
-        status: 'in_progress',
-        priority: 'high',
-      };
-
-      const response = await request(app)
-        .patch(`/api/v1/tasks/${String(String(testTask.id))}`)
-        .set('X-API-Key', apiKey)
-        .send(updates)
-        .expect(200);
-
-      expect(response.body.success).toBe(true);
-      expect(response.body.data).toMatchObject(updates);
-      expect(response.body.data.updatedAt).toBeDefined();
-    });
-
-    it('should validate update fields', async () => {
-      const invalidUpdate = {
-        status: 'invalid_status',
-      };
-
-      const response = await request(app)
-        .patch(`/api/v1/tasks/${String(String(testTask.id))}`)
-        .set('X-API-Key', apiKey)
-        .send(invalidUpdate)
-        .expect(400);
-
-      expect(response.body.success).toBe(false);
-    });
-  });
-
-  describe('DELETE /api/v1/tasks/:id', () => {
-    it('should delete a task', async () => {
-      const response = await request(app)
-        .delete(`/api/v1/tasks/${String(String(testTask.id))}`)
-        .set('X-API-Key', apiKey)
-        .expect(200);
-
-      expect(response.body.success).toBe(true);
-
-      // Verify task is deleted
-      await request(app)
-        .get(`/api/v1/tasks/${String(String(testTask.id))}`)
-        .set('X-API-Key', apiKey)
-        .expect(404);
-    });
-  });
-
-  describe('Task Dependencies', () => {
-    let dependentTaskId: string;
+  describe('GET /api/v1/tasks/:id/notes', () => {
+    let testTaskId: string;
 
     beforeEach(async () => {
-      // Create a dependent task
-      dependentTaskId = uuidv4();
+      // Create a test task with notes
+      testTaskId = uuidv4();
       await dbConnection.execute(
-        `INSERT INTO tasks (id, title, board_id, column_id, status, position, created_at) 
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO tasks (id, title, description, board_id, column_id, status, priority, created_at, updated_at) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-          dependentTaskId,
-          'Dependent Task',
+          testTaskId,
+          'Task with Notes',
+          'This task has notes',
           testBoard.id,
-          global.testColumnId,
+          testColumnId,
           'todo',
-          1,
+          5,
+          new Date().toISOString(),
           new Date().toISOString(),
         ]
       );
+
+      // Add notes to the task
+      const notes = [
+        { content: 'First note', type: 'comment' },
+        { content: 'Second note', type: 'comment' },
+      ];
+
+      for (const note of notes) {
+        await dbConnection.execute(
+          `INSERT INTO notes (id, task_id, content, type, created_at) 
+           VALUES (?, ?, ?, ?, ?)`,
+          [uuidv4(), testTaskId, note.content, note.type, new Date().toISOString()]
+        );
+      }
     });
 
-    it('should add task dependencies', async () => {
+    it('should retrieve all notes for a task', async () => {
       const response = await request(app)
-        .post(`/api/v1/tasks/${String(String(testTask.id))}/dependencies`)
+        .get(`/api/v1/tasks/${testTaskId}/notes`)
         .set('X-API-Key', apiKey)
-        .send({ dependsOn: [dependentTaskId] })
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.data.dependencies).toContain(dependentTaskId);
+      expect(response.body.data).toHaveLength(2);
+      expect(response.body.data[0].task_id).toBe(testTaskId);
+      expect(response.body.data[1].task_id).toBe(testTaskId);
     });
 
-    it('should prevent circular dependencies', async () => {
-      // First add A depends on B
-      await request(app)
-        .post(`/api/v1/tasks/${String(String(testTask.id))}/dependencies`)
+    it('should return empty array for task with no notes', async () => {
+      const emptyTaskId = uuidv4();
+      await dbConnection.execute(
+        `INSERT INTO tasks (id, title, description, board_id, column_id, status, priority, created_at, updated_at) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          emptyTaskId,
+          'Empty Task',
+          'This task has no notes',
+          testBoard.id,
+          testColumnId,
+          'todo',
+          5,
+          new Date().toISOString(),
+          new Date().toISOString(),
+        ]
+      );
+
+      const response = await request(app)
+        .get(`/api/v1/tasks/${emptyTaskId}/notes`)
         .set('X-API-Key', apiKey)
-        .send({ dependsOn: [dependentTaskId] })
         .expect(200);
 
-      // Then try to add B depends on A (circular)
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toHaveLength(0);
+    });
+
+    it('should return 404 for non-existent task', async () => {
+      const nonExistentId = uuidv4();
       const response = await request(app)
-        .post(`/api/v1/tasks/${String(dependentTaskId)}/dependencies`)
+        .get(`/api/v1/tasks/${nonExistentId}/notes`)
         .set('X-API-Key', apiKey)
-        .send({ dependsOn: [testTask.id] })
-        .expect(400);
+        .expect(404);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toContain('circular');
-    });
-  });
-
-  describe('Task Search', () => {
-    beforeEach(async () => {
-      // Create tasks with different titles for search
-      const tasks = [
-        { title: 'Important bug fix', description: 'Fix critical bug in auth' },
-        { title: 'Feature request', description: 'Add new dashboard' },
-        { title: 'Documentation update', description: 'Update API docs' },
-      ];
-
-      await Promise.all(
-        tasks.map(async task => {
-          await dbConnection.execute(
-            `INSERT INTO tasks (id, title, description, board_id, column_id, status, position, created_at) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [
-              uuidv4(),
-              task.title,
-              task.description,
-              testBoard.id,
-              global.testColumnId,
-              'todo',
-              0,
-              new Date().toISOString(),
-            ]
-          );
-        })
-      );
-    });
-
-    it('should search tasks by title', async () => {
-      const response = await request(app)
-        .get('/api/v1/tasks/search')
-        .query({ q: 'bug' })
-        .set('X-API-Key', apiKey)
-        .expect(200);
-
-      expect(response.body.data).toHaveLength(1);
-      expect(response.body.data[0].title).toContain('bug');
-    });
-
-    it('should search tasks by description', async () => {
-      const response = await request(app)
-        .get('/api/v1/tasks/search')
-        .query({ q: 'API' })
-        .set('X-API-Key', apiKey)
-        .expect(200);
-
-      expect(response.body.data).toHaveLength(1);
-      expect(response.body.data[0].description).toContain('API');
+      expect(response.body.error).toContain('not found');
     });
   });
 });

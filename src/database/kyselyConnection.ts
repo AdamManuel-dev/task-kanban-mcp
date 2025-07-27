@@ -14,9 +14,9 @@ import type { Database as DatabaseSchema } from './kyselySchema';
 export class KyselyConnection {
   private static instance: KyselyConnection | null = null;
 
-  private _db: Kysely<DatabaseSchema> | null = null;
+  private readonly _db: Kysely<DatabaseSchema> | null = null;
 
-  private _sqliteDb: Database.Database | null = null;
+  private readonly _sqliteDb: Database.Database | null = null;
 
   private constructor() {
     // Private constructor for singleton pattern
@@ -25,7 +25,7 @@ export class KyselyConnection {
   /**
    * Initialize the Kysely database connection
    */
-  public static async initialize(): Promise<KyselyConnection> {
+  public static initialize(): KyselyConnection {
     if (this.instance) {
       logger.warn('Kysely connection already initialized');
       return this.instance;

@@ -14,8 +14,8 @@ export class MCPResourceRegistry {
     this.services = services;
   }
 
-  async listResources(): Promise<Resource[]> {
-    return [
+  listResources(): Promise<Resource[]> {
+    return Promise.resolve([
       {
         uri: 'kanban://boards',
         name: 'All Boards',
@@ -125,7 +125,7 @@ export class MCPResourceRegistry {
         description: 'Complete board data export including all tasks, notes, and metadata',
         mimeType: 'application/json',
       },
-    ];
+    ]);
   }
 
   async readResource(uri: string): Promise<ResourceContent> {

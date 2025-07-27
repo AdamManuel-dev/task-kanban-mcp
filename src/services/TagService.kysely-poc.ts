@@ -68,9 +68,9 @@ export class TagServiceKysely {
       const newTag: NewTag = {
         id: tagId,
         name: data.name,
-        color: data.color || null,
-        description: data.description || null,
-        parent_id: data.parent_id || null,
+        color: data.color ?? null,
+        description: data.description ?? null,
+        parent_id: data.parent_id ?? null,
       };
 
       // Insert and return the created tag
@@ -281,7 +281,7 @@ export class TagServiceKysely {
 
       await Promise.all(
         allTags.map(async _tag => {
-          this.db
+          await this.db
             .selectFrom('tags')
             .select(['parent_id'])
             .where('id', '=', currentParentId)

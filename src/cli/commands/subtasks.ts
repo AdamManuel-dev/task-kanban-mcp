@@ -1,6 +1,7 @@
+import { logger } from '@/utils/logger';
 import type { Command } from 'commander';
 import inquirer from 'inquirer';
-import type { CliComponents } from '../types';
+import type { CliComponents, AnyApiResponse } from '../types';
 
 export function registerSubtaskCommands(program: Command): void {
   const subtaskCmd = program
@@ -19,90 +20,116 @@ export function registerSubtaskCommands(program: Command): void {
     .option('-p, --priority <number>', 'priority (1-10)', '5')
     .option('--due <date>', 'due date (YYYY-MM-DD)')
     .option('-i, --interactive', 'interactive mode')
-    .action(async (parentId: string, options) => {
-      const { apiClient, formatter } = getComponents();
+    .action(
+      async (
+        parentId: string,
+        options: {
+          title?: string;
+          description?: string;
+          priority?: string;
+          due?: string;
+          interactive?: boolean;
+        }
+      ) => {
+        const { apiClient, formatter } = getComponents();
 
-      try {
-        // Verify parent task exists
-        const parentTask = (await apiClient.getTask(parentId)) as any;
-        if (!parentTask) {
-          formatter.error(`Parent task ${String(parentId)} not found`);
+        try {
+          // Verify parent task exists
+          const parentTask = await apiClient.getTask(parentId);
+          if (!parentTask) {
+            formatter.error(`Parent task ${String(parentId)} not found`);
+            process.exit(1);
+          }
+
+          let subtaskData: Record<string, unknown> = {
+            parentId,
+            boardId: (parentTask as any).boardId,
+            columnId: (parentTask as any).columnId,
+          };
+
+          if ((options as any).interactive ?? !options.title) {
+            const questions: Array<
+              | {
+                  type: string;
+                  name: string;
+                  message: string;
+                  validate?: (input: string) => boolean | string;
+                  default?: number;
+                }
+              | {
+                  type: string;
+                  name: string;
+                  message: string;
+                  validate?: (input: number) => boolean | string;
+                  default?: number;
+                }
+            > = [];
+
+            if (!options.title) {
+              questions.push({
+                type: 'input',
+                name: 'title',
+                message: 'Subtask title:',
+                validate: (input: string) => input.length > 0 || 'Title is required',
+              });
+            }
+
+            if (!options.description) {
+              questions.push({
+                type: 'input',
+                name: 'description',
+                message: 'Subtask description (optional):',
+              });
+            }
+
+            if (!options.priority) {
+              questions.push({
+                type: 'number',
+                name: 'priority',
+                message: 'Priority (1-10):',
+                default: 5,
+                validate: (input: number) =>
+                  (input >= 1 && input <= 10) || 'Priority must be between 1 and 10',
+              });
+            }
+
+            if (!options.due) {
+              questions.push({
+                type: 'input',
+                name: 'dueDate',
+                message: 'Due date (YYYY-MM-DD, optional):',
+                validate: (input: string) => {
+                  if (!input) return true;
+                  const date = new Date(input);
+                  return !Number.isNaN(date.getTime()) || 'Invalid date format';
+                },
+              });
+            }
+
+            const answers = await inquirer.prompt(questions);
+            subtaskData = { ...subtaskData, ...answers };
+          }
+
+          // Use command line options or answers
+          subtaskData.title = options.title ?? subtaskData.title;
+          subtaskData.description = options.description ?? subtaskData.description;
+          subtaskData.priority = parseInt(options.priority ?? String(subtaskData.priority), 10);
+
+          if (options.due ?? subtaskData.dueDate) {
+            subtaskData.dueDate = options.due ?? subtaskData.dueDate;
+          }
+
+          const subtask = await apiClient.createTask(subtaskData as any);
+          formatter.success(`Subtask created successfully: ${String((subtask as any).id)}`);
+          formatter.output(subtask);
+        } catch (error) {
+          formatter.error(
+            `Failed to create subtask: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
+          );
           process.exit(1);
         }
-
-        let subtaskData: any = {
-          parentId,
-          boardId: parentTask.boardId,
-          columnId: parentTask.columnId,
-        };
-
-        if (options.interactive ?? !options.title) {
-          const questions: any[] = [];
-
-          if (!options.title) {
-            questions.push({
-              type: 'input',
-              name: 'title',
-              message: 'Subtask title:',
-              validate: (input: string) => input.length > 0 || 'Title is required',
-            });
-          }
-
-          if (!options.description) {
-            questions.push({
-              type: 'input',
-              name: 'description',
-              message: 'Subtask description (optional):',
-            });
-          }
-
-          if (!options.priority) {
-            questions.push({
-              type: 'number',
-              name: 'priority',
-              message: 'Priority (1-10):',
-              default: 5,
-              validate: (input: number) =>
-                (input >= 1 && input <= 10) || 'Priority must be between 1 and 10',
-            });
-          }
-
-          if (!options.due) {
-            questions.push({
-              type: 'input',
-              name: 'dueDate',
-              message: 'Due date (YYYY-MM-DD, optional):',
-              validate: (input: string) => {
-                if (!input) return true;
-                const date = new Date(input);
-                return !isNaN(date.getTime()) || 'Invalid date format';
-              },
-            });
-          }
-
-          const answers = await inquirer.prompt(questions);
-          subtaskData = { ...subtaskData, ...answers };
-        }
-
-        // Use command line options or answers
-        subtaskData.title = options.title ?? subtaskData.title;
-        subtaskData.description = options.description ?? subtaskData.description;
-        subtaskData.priority = parseInt(options.priority ?? subtaskData.priority, 10);
-
-        if (options.due ?? subtaskData.dueDate) {
-          subtaskData.dueDate = options.due ?? subtaskData.dueDate;
-        }
-
-        const subtask = (await apiClient.createTask(subtaskData)) as any;
-        formatter.success(`Subtask created successfully: ${String(String(subtask.id))}`);
-        formatter.output(subtask);
-      } catch (error) {
-        formatter.error(
-          `Failed to create subtask: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
-        );
-        process.exit(1);
       }
-    });
+    );
 
   subtaskCmd
     .command('list <parentId>')
@@ -124,7 +151,7 @@ export function registerSubtaskCommands(program: Command): void {
 
         const subtasks = (await apiClient.getTasks(params)) as any;
 
-        if (!subtasks ?? subtasks.length === 0) {
+        if (!subtasks || subtasks.length === 0) {
           formatter.info(`No subtasks found for task ${String(parentId)}`);
           return;
         }
@@ -154,14 +181,15 @@ export function registerSubtaskCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        await apiClient.request(`/api/tasks/${String(taskId)}/dependencies`, {
-          method: 'POST',
-          body: { dependsOn: dependsOnId },
-        });
+        await apiClient.request<AnyApiResponse>(
+          'POST',
+          `/api/tasks/${String(taskId)}/dependencies`,
+          { dependsOn: dependsOnId }
+        );
         formatter.success(`Task ${String(taskId)} now depends on task ${String(dependsOnId)}`);
       } catch (error) {
         formatter.error(
-          `Failed to add dependency: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
+          `Failed to add dependency: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
         process.exit(1);
       }
@@ -174,18 +202,16 @@ export function registerSubtaskCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        await apiClient.request(
-          `/api/tasks/${String(taskId)}/dependencies/${String(dependsOnId)}`,
-          {
-            method: 'DELETE',
-          }
+        await apiClient.request<AnyApiResponse>(
+          'DELETE',
+          `/api/tasks/${String(taskId)}/dependencies/${String(dependsOnId)}`
         );
         formatter.success(
           `Removed dependency: task ${String(taskId)} no longer depends on task ${String(dependsOnId)}`
         );
       } catch (error) {
         formatter.error(
-          `Failed to remove dependency: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
+          `Failed to remove dependency: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
         process.exit(1);
       }
@@ -201,11 +227,12 @@ export function registerSubtaskCommands(program: Command): void {
       try {
         if (options.blocked) {
           // Show tasks that are blocked by this task
-          const blockedTasks = (await apiClient.request(
+          const blockedTasks = (await apiClient.request<AnyApiResponse>(
+            'GET',
             `/api/tasks/${String(taskId)}/blocking`
           )) as any;
 
-          if (!blockedTasks ?? blockedTasks.length === 0) {
+          if (!blockedTasks || blockedTasks.length === 0) {
             formatter.info(`No tasks are blocked by task ${String(taskId)}`);
             return;
           }
@@ -217,11 +244,12 @@ export function registerSubtaskCommands(program: Command): void {
           });
         } else {
           // Show dependencies of this task
-          const dependencies = (await apiClient.request(
+          const dependencies = (await apiClient.request<AnyApiResponse>(
+            'GET',
             `/api/tasks/${String(taskId)}/dependencies`
           )) as any;
 
-          if (!dependencies ?? dependencies.length === 0) {
+          if (!dependencies || dependencies.length === 0) {
             formatter.info(`Task ${String(taskId)} has no dependencies`);
             return;
           }
@@ -234,7 +262,7 @@ export function registerSubtaskCommands(program: Command): void {
         }
       } catch (error) {
         formatter.error(
-          `Failed to list dependencies: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
+          `Failed to list dependencies: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
         process.exit(1);
       }
@@ -249,9 +277,12 @@ export function registerSubtaskCommands(program: Command): void {
 
       try {
         const depth = parseInt(options.depth, 10);
-        const graph = (await apiClient.request(`/api/tasks/${String(taskId)}/dependency-graph`, {
-          params: { depth: depth.toString() },
-        })) as any;
+        const graph = (await apiClient.request<AnyApiResponse>(
+          'GET',
+          `/api/tasks/${String(taskId)}/dependency-graph`,
+          undefined,
+          { depth: depth.toString() }
+        )) as any;
 
         if (!graph) {
           formatter.info(`No dependency graph available for task ${String(taskId)}`);
@@ -264,7 +295,7 @@ export function registerSubtaskCommands(program: Command): void {
         const printNode = (node: any, indent = 0) => {
           const prefix = '  '.repeat(indent) + (indent > 0 ? '└─ ' : '');
           const status = node.status === 'completed' ? '✓' : node.status === 'blocked' ? '⚠' : '○';
-          logger.log(
+          logger.info(
             `${String(prefix)}${String(status)} ${String(String(node.id))}: ${String(String(node.title))} (${String(String(node.status))})`
           );
 

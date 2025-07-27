@@ -33,7 +33,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '@/utils/logger';
-import type { DatabaseConnection } from '@/database/connection';
+import type { DatabaseConnection, QueryParameters } from '@/database/connection';
 import type { Tag, TaskTag, ServiceError, PaginationOptions, FilterOptions } from '@/types';
 
 /**
@@ -320,11 +320,11 @@ export class TagService {
 
     try {
       let query = 'SELECT * FROM tags';
-      const params: any[] = [];
+      const params: QueryParameters = [];
       const conditions: string[] = [];
 
       if (parent_tag_id !== undefined) {
-        if (parent_tag_id === null ?? parent_tag_id === undefined) {
+        if (parent_tag_id === null || parent_tag_id === undefined) {
           conditions.push('parent_tag_id IS NULL');
         } else {
           conditions.push('parent_tag_id = ?');
@@ -493,7 +493,7 @@ export class TagService {
             COUNT(*) as count,
             MAX(tt.created_at) as last_used
           FROM task_tags tt
-          WHERE tt.tag_id = ?
+          WHERE tt['tag_id'] = ?
         `,
           [id]
         ),
@@ -543,7 +543,7 @@ export class TagService {
       }
 
       const updates: string[] = [];
-      const params: any[] = [];
+      const params: QueryParameters = [];
 
       if (data.name !== undefined) {
         if (data.name !== existingTag.name) {
@@ -803,7 +803,7 @@ export class TagService {
       const tags = await this.db.query<Tag>(
         `
         SELECT t.* FROM tags t
-        INNER JOIN task_tags tt ON t.id = tt.tag_id
+        INNER JOIN task_tags tt ON t['id'] = tt.tag_id
         WHERE tt.task_id = ?
         ORDER BY t.name ASC
       `,
@@ -912,7 +912,7 @@ export class TagService {
           MIN(tt.created_at) as first_used,
           MAX(tt.created_at) as last_used
         FROM tags t
-        LEFT JOIN task_tags tt ON t.id = tt.tag_id
+        LEFT JOIN task_tags tt ON t['id'] = tt.tag_id
         WHERE tt.created_at >= ? OR tt.created_at IS NULL
         GROUP BY t.id, t.name
         ORDER BY usage_count DESC
@@ -1084,10 +1084,10 @@ export class TagService {
           MAX(tt.created_at) as last_used,
           (SELECT COUNT(*) FROM tags WHERE parent_tag_id = t.id) as child_count
         FROM tags t
-        LEFT JOIN task_tags tt ON t.id = tt.tag_id
+        LEFT JOIN task_tags tt ON t['id'] = tt.tag_id
       `;
 
-      const params: any[] = [];
+      const params: QueryParameters = [];
       const conditions: string[] = [];
 
       if (board_id) {
@@ -1158,7 +1158,7 @@ export class TagService {
   }> {
     try {
       let baseQuery = '';
-      const params: any[] = [];
+      const params: QueryParameters = [];
 
       if (boardId) {
         baseQuery = `
@@ -1450,11 +1450,11 @@ export class TagService {
    * @param originalError Optional original error for debugging context
    * @returns Standardized ServiceError with status code and details
    */
-  private static createError(code: string, message: string, originalError?: any): ServiceError {
+  private static createError(code: string, message: string, originalError?: unknown): ServiceError {
     const error = new Error(message) as ServiceError;
     error.code = code;
     error.statusCode = this.getStatusCodeForError(code);
-    error.details = originalError;
+    error.details = originalError as ServiceError['details'];
     return error;
   }
 

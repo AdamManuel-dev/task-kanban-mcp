@@ -28,7 +28,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '@/utils/logger';
-import type { DatabaseConnection } from '@/database/connection';
+import type { DatabaseConnection, QueryParameters } from '@/database/connection';
 import type {
   Board,
   Column,
@@ -79,7 +79,7 @@ export class BoardService {
    * @param {CreateBoardRequest} data - Board creation data
    * @param {string} data.name - Board name (required)
    * @param {string} [data.description] - Board description
-   * @param {string} [data.color='#2196F3'] - Board color in hex format
+   * @param {string} [data['color'] = '#2196F3'] - Board color in hex format
    * @returns {Promise<Board>} Created board with generated ID and timestamps
    * @throws {ServiceError} If board creation fails
    *
@@ -243,7 +243,11 @@ export class BoardService {
       };
     } catch (error) {
       logger.error('Failed to get board with columns', { error, id });
-      throw this.createError('BOARD_FETCH_FAILED', 'Failed to fetch board with columns', error);
+      throw BoardService.createError(
+        'BOARD_FETCH_FAILED',
+        'Failed to fetch board with columns',
+        error
+      );
     }
   }
 
@@ -308,7 +312,7 @@ export class BoardService {
       };
     } catch (error) {
       logger.error('Failed to get board with stats', { error, id });
-      throw this.createError('BOARD_FETCH_FAILED', 'Failed to fetch board stats', error);
+      throw BoardService.createError('BOARD_FETCH_FAILED', 'Failed to fetch board stats', error);
     }
   }
 
@@ -316,7 +320,7 @@ export class BoardService {
    * Get multiple boards with filtering and pagination
    *
    * @param {PaginationOptions & FilterOptions} [options={}] - Query options
-   * @param {number} [options.limit=50] - Maximum number of boards to return
+   * @param {number} [options['limit'] = 50] - Maximum number of boards to return
    * @param {number} [options.offset=0] - Number of boards to skip
    * @param {string} [options.sortBy='updated_at'] - Field to sort by
    * @param {'asc'|'desc'} [options.sortOrder='desc'] - Sort direction
@@ -353,7 +357,7 @@ export class BoardService {
 
     try {
       let query = 'SELECT * FROM boards WHERE archived = ?';
-      const params: any[] = [archived];
+      const params: QueryParameters = [archived];
 
       if (search) {
         query += ' AND (name LIKE ? OR description LIKE ?)';
@@ -375,7 +379,7 @@ export class BoardService {
       return boards;
     } catch (error) {
       logger.error('Failed to get boards', { error, options });
-      throw this.createError('BOARDS_FETCH_FAILED', 'Failed to fetch boards', error);
+      throw BoardService.createError('BOARDS_FETCH_FAILED', 'Failed to fetch boards', error);
     }
   }
 
@@ -405,11 +409,11 @@ export class BoardService {
     try {
       const existingBoard = await this.getBoardById(id);
       if (!existingBoard) {
-        throw this.createError('BOARD_NOT_FOUND', 'Board not found', { id });
+        throw BoardService.createError('BOARD_NOT_FOUND', 'Board not found', { id });
       }
 
       const updates: string[] = [];
-      const params: any[] = [];
+      const params: QueryParameters = [];
 
       if (data.name !== undefined) {
         updates.push('name = ?');
@@ -448,7 +452,7 @@ export class BoardService {
 
       const updatedBoard = await this.getBoardById(id);
       if (!updatedBoard) {
-        throw this.createError('BOARD_UPDATE_FAILED', 'Board disappeared after update');
+        throw BoardService.createError('BOARD_UPDATE_FAILED', 'Board disappeared after update');
       }
 
       logger.info('Board updated successfully', { boardId: id });
@@ -458,7 +462,7 @@ export class BoardService {
         throw error;
       }
       logger.error('Failed to update board', { error, id, data });
-      throw this.createError('BOARD_UPDATE_FAILED', 'Failed to update board', error);
+      throw BoardService.createError('BOARD_UPDATE_FAILED', 'Failed to update board', error);
     }
   }
 
@@ -480,7 +484,7 @@ export class BoardService {
     try {
       const board = await this.getBoardById(id);
       if (!board) {
-        throw this.createError('BOARD_NOT_FOUND', 'Board not found', { id });
+        throw BoardService.createError('BOARD_NOT_FOUND', 'Board not found', { id });
       }
 
       await this.db.transaction(async db => {
@@ -507,7 +511,7 @@ export class BoardService {
         throw error;
       }
       logger.error('Failed to delete board', { error, id });
-      throw this.createError('BOARD_DELETE_FAILED', 'Failed to delete board', error);
+      throw BoardService.createError('BOARD_DELETE_FAILED', 'Failed to delete board', error);
     }
   }
 
@@ -567,7 +571,7 @@ export class BoardService {
     try {
       const originalBoard = await this.getBoardWithColumns(id);
       if (!originalBoard) {
-        throw this.createError('BOARD_NOT_FOUND', 'Board not found', { id });
+        throw BoardService.createError('BOARD_NOT_FOUND', 'Board not found', { id });
       }
 
       const duplicatedBoard = await this.createBoard({
@@ -608,7 +612,7 @@ export class BoardService {
         throw error;
       }
       logger.error('Failed to duplicate board', { error, id });
-      throw this.createError('BOARD_DUPLICATE_FAILED', 'Failed to duplicate board', error);
+      throw BoardService.createError('BOARD_DUPLICATE_FAILED', 'Failed to duplicate board', error);
     }
   }
 
@@ -621,11 +625,11 @@ export class BoardService {
    * @param {any} [originalError] - Original error object for debugging
    * @returns {ServiceError} Formatted service error with status code
    */
-  private static createError(code: string, message: string, originalError?: any): ServiceError {
+  private static createError(code: string, message: string, originalError?: unknown): ServiceError {
     const error = new Error(message) as ServiceError;
     error.code = code;
     error.statusCode = BoardService.getStatusCodeForError(code);
-    error.details = originalError;
+    error.details = originalError as ServiceError['details'];
     return error;
   }
 

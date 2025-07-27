@@ -5,13 +5,13 @@
  * optimize queries, and ensure efficient data access patterns.
  */
 
-import { dbConnection } from '@/database/connection';
-import { TaskService } from '@/services/TaskService';
-import { BoardService } from '@/services/BoardService';
-import { NoteService } from '@/services/NoteService';
-import { TagService } from '@/services/TagService';
+import { dbConnection } from '../../src/database/connection';
+import { TaskService } from '../../src/services/TaskService';
+import { BoardService } from '../../src/services/BoardService';
+import { NoteService } from '../../src/services/NoteService';
+import { TagService } from '../../src/services/TagService';
 import { v4 as uuidv4 } from 'uuid';
-import type { Task, Board } from '@/types';
+import type { Task, Board } from '../../src/types';
 
 describe('Database Performance Tests', () => {
   let taskService: TaskService;
@@ -240,10 +240,11 @@ describe('Database Performance Tests', () => {
     it('should handle full-text search efficiently', async () => {
       const searchTerms = ['test', 'performance', 'task', 'description'];
       const iterations = 25;
+      const startTime = Date.now();
 
       await Promise.all(
-  searchTerms.map(async (term) => {
-    await dbConnection.query(
+        searchTerms.map(async (term) => {
+          await dbConnection.query(
             `
             SELECT id, title, description, status
             FROM tasks 
@@ -260,15 +261,14 @@ describe('Database Performance Tests', () => {
           `,
             [`%${String(term)}%`, `%${String(term)}%`, testBoard.id, `%${String(term)}%`, `%${String(term)}%`]
           );
-  })
-);
+        })
+      );
 
-        const endTime = Date.now();
-        const duration = endTime - startTime;
+      const endTime = Date.now();
+      const duration = endTime - startTime;
 
-        expect(duration).toBeLessThan(3000); // Should complete within 3 seconds
-        logger.log(`✓ ${String(iterations)} text searches for "${String(term)}" completed in ${String(duration)}ms`);
-      }
+      expect(duration).toBeLessThan(3000); // Should complete within 3 seconds
+      logger.log(`✓ ${String(iterations)} text searches completed in ${String(duration)}ms`);
     });
 
     it('should handle filtering and sorting efficiently', async () => {
@@ -279,29 +279,36 @@ describe('Database Performance Tests', () => {
         { status: 'done' },
       ];
 
+      const startTime = Date.now();
+      const iterations = filterCombinations.length;
+
       await Promise.all(
-  filterCombinations.map(async (filters) => {
-    await dbConnection.query(
+        filterCombinations.map(async (filters) => {
+          const whereClause = Object.keys(filters).length > 0 
+            ? 'WHERE ' + Object.entries(filters).map(([key, value]) => `${key} = ?`).join(' AND ')
+            : '';
+          const params = Object.values(filters);
+          
+          await dbConnection.query(
             `
             SELECT id, title, status, priority, created_at
             FROM tasks 
-            ${String(whereClause)}
+            ${whereClause}
             ORDER BY priority DESC, created_at DESC
             LIMIT 100
           `,
             params
           );
-  })
-);
+        })
+      );
 
-        const endTime = Date.now();
-        const duration = endTime - startTime;
+      const endTime = Date.now();
+      const duration = endTime - startTime;
 
-        expect(duration).toBeLessThan(2000); // Should complete within 2 seconds
-        logger.log(
-          `✓ ${String(iterations)} filtered queries (${String(String(JSON.stringify(filters)))}) completed in ${String(duration)}ms`
-        );
-      }
+      expect(duration).toBeLessThan(2000); // Should complete within 2 seconds
+      logger.log(
+        `✓ ${String(iterations)} filtered queries completed in ${String(duration)}ms`
+      );
     });
   });
 
@@ -313,7 +320,7 @@ describe('Database Performance Tests', () => {
       // Mix of operations through service layer
       const operations = [];
 
-      Array.from({ length: operationCount - 0 }, (_, i) => i + 0) {
+      for (let i = 0; i < operationCount; i++) {
         const operation = i % 4;
 
         switch (operation) {
@@ -372,6 +379,8 @@ describe('Database Performance Tests', () => {
               })
             );
             break;
+          default:
+            break;
         }
       }
 
@@ -393,7 +402,7 @@ describe('Database Performance Tests', () => {
       const batchPromises = Array.from({ length: concurrentBatches }, async (_, batchIndex) => {
         const batchOperations = [];
 
-        Array.from({ length: operationsPerBatch - 0 }, (_, i) => i + 0) {
+        for (let i = 0; i < operationsPerBatch; i++) {
           batchOperations.push(
             taskService.createTask({
               title: `Concurrent Task B${String(batchIndex)}-${String(i)}`,
@@ -430,7 +439,7 @@ describe('Database Performance Tests', () => {
       const transactionCount = 100;
       const startTime = Date.now();
 
-      Array.from({ length: transactionCount - 0 }, (_, i) => i + 0) {
+      for (let i = 0; i < transactionCount; i++) {
         await dbConnection.transaction(async db => {
           // Simple transaction with multiple operations
           await db.run('INSERT INTO tags (id, name, created_at) VALUES (?, ?, ?)', [
@@ -458,9 +467,9 @@ describe('Database Performance Tests', () => {
       const operationsPerTransaction = 50;
       const startTime = Date.now();
 
-      Array.from({ length: longTransactionCount - 0 }, (_, i) => i + 0) {
+      for (let i = 0; i < longTransactionCount; i++) {
         await dbConnection.transaction(async () => {
-          Array.from({ length: operationsPerTransaction - 0 }, (_, j) => j + 0) {
+          for (let j = 0; j < operationsPerTransaction; j++) {
             await dbConnection.execute(
               'INSERT INTO tags (id, name, color, created_at) VALUES (?, ?, ?, ?)',
               [
@@ -529,7 +538,7 @@ describe('Database Performance Tests', () => {
       const startTime = Date.now();
 
       // Query for large result sets multiple times
-      Array.from({ length: 10 - 0 }, (_, i) => i + 0) {
+      for (let i = 0; i < 10; i++) {
         const results = await dbConnection.query(
           `
           SELECT id, title, description, status, priority, created_at, updated_at
@@ -574,7 +583,7 @@ describe('Database Performance Tests', () => {
       const initialMemory = process.memoryUsage();
 
       // Perform many operations that could potentially leak resources
-      Array.from({ length: operationCount - 0 }, (_, i) => i + 0) {
+      for (let i = 0; i < operationCount; i++) {
         // Create and immediately query
         const taskId = uuidv4();
         await dbConnection.execute(
@@ -650,7 +659,7 @@ describe('Database Performance Tests', () => {
         const iterations = 20;
         const startTime = Date.now();
 
-        Array.from({ length: iterations - 0 }, (_, i) => i + 0) {
+        for (let i = 0; i < iterations; i++) {
           let params: any[];
 
           if (query.includes('id = ?')) {
@@ -690,7 +699,7 @@ describe('Database Performance Tests', () => {
       const queryPromises = Array.from({ length: concurrentQueries }, async (_, threadIndex) => {
         const threadTimes: number[] = [];
 
-        Array.from({ length: queriesPerThread - 0 }, (_, i) => i + 0) {
+        for (let i = 0; i < queriesPerThread; i++) {
           const queryStart = Date.now();
 
           await dbConnection.query(

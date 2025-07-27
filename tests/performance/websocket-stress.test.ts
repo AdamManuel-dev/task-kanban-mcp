@@ -198,7 +198,9 @@ describe('WebSocket Stress Tests', () => {
 
       logger.log(`✓ Sent ${String(messageCount)} messages in ${String(duration)}ms`);
       logger.log(`✓ Processed ${String(String(messages.length))} messages`);
-      logger.log(`✓ Throughput: ${String(String(Math.round((messageCount / duration) * 1000)))} msg/sec`);
+      logger.log(
+        `✓ Throughput: ${String(String(Math.round((messageCount / duration) * 1000)))} msg/sec`
+      );
 
       ws.close();
     }, 10000);
@@ -297,14 +299,14 @@ describe('WebSocket Stress Tests', () => {
 
         // Small delay to avoid overwhelming
         await new Promise<void>(resolve => {
-    setTimeout(resolve, 10
-  }));
+          setTimeout(resolve, 10);
+        });
       }
 
       // Wait for all subscription responses
       await new Promise<void>(resolve => {
-    setTimeout(resolve, 1000
-  }));
+        setTimeout(resolve, 1000);
+      });
 
       const endTime = Date.now();
       const duration = endTime - startTime;
@@ -313,7 +315,7 @@ describe('WebSocket Stress Tests', () => {
       expect(successResponses.length).toBeGreaterThan(0);
       expect(duration).toBeLessThan(5000);
 
-      logger.log(`✓ Created ${String(String(successResponses.length))} subscriptions in ${String(duration)}ms`);
+      logger.log(`✓ Created ${successResponses.length} subscriptions in ${duration}ms`);
 
       ws.close();
     }, 10000);
@@ -352,8 +354,8 @@ describe('WebSocket Stress Tests', () => {
 
         // Wait for subscriptions to be established
         await new Promise<void>(resolve => {
-    setTimeout(resolve, 1000
-  }));
+          setTimeout(resolve, 1000);
+        });
 
         const startTime = Date.now();
 
@@ -373,8 +375,8 @@ describe('WebSocket Stress Tests', () => {
 
         // Wait for message propagation
         await new Promise<void>(resolve => {
-    setTimeout(resolve, 500
-  }));
+          setTimeout(resolve, 500);
+        });
 
         const endTime = Date.now();
         const duration = endTime - startTime;
@@ -425,8 +427,8 @@ describe('WebSocket Stress Tests', () => {
 
       // Wait for connections and subscriptions to be established
       await new Promise<void>(resolve => {
-    setTimeout(resolve, 1000
-  }));
+        setTimeout(resolve, 1000);
+      });
 
       expect(webSocketManager.getClientCount()).toBe(connectionCount);
 
@@ -438,8 +440,8 @@ describe('WebSocket Stress Tests', () => {
 
       // Wait for cleanup
       await new Promise<void>(resolve => {
-    setTimeout(resolve, 2000
-  }));
+        setTimeout(resolve, 2000);
+      });
 
       // Verify cleanup
       expect(webSocketManager.getClientCount()).toBe(0);
@@ -482,8 +484,8 @@ describe('WebSocket Stress Tests', () => {
 
         // Brief pause between iterations
         await new Promise<void>(resolve => {
-    setTimeout(resolve, 100
-  }));
+          setTimeout(resolve, 100);
+        });
       }
 
       const endTime = Date.now();
@@ -529,8 +531,8 @@ describe('WebSocket Stress Tests', () => {
 
       // Wait for processing
       await new Promise<void>(resolve => {
-    setTimeout(resolve, 1000
-  }));
+        setTimeout(resolve, 1000);
+      });
 
       const endTime = Date.now();
       const duration = endTime - startTime;
@@ -542,7 +544,9 @@ describe('WebSocket Stress Tests', () => {
       const errorResponses = responses.filter(m => m.type === 'error');
       expect(errorResponses.length).toBeGreaterThan(0);
 
-      logger.log(`✓ Recovered from ${String(invalidMessageCount)} invalid messages in ${String(duration)}ms`);
+      logger.log(
+        `✓ Recovered from ${String(invalidMessageCount)} invalid messages in ${String(duration)}ms`
+      );
       logger.log(`✓ Generated ${String(String(errorResponses.length))} error responses`);
 
       ws.close();

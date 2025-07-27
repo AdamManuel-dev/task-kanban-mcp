@@ -36,14 +36,17 @@ import { MigrationRunner } from './migrations';
 import { SeedRunner } from './seeds';
 
 /**
- * Configuration options for database connection
- *
- * @interface DatabaseConfig
- * @property {string} path - Path to the SQLite database file
- * @property {boolean} walMode - Enable Write-Ahead Logging for better concurrency
- * @property {number} memoryLimit - Memory-mapped I/O size limit in bytes
- * @property {number} timeout - Busy timeout in milliseconds
- * @property {boolean} verbose - Enable verbose SQLite logging
+ * Database query parameter types
+ */
+export type QueryParameter = string | number | boolean | null | Date | Buffer;
+
+/**
+ * Database query parameters array
+ */
+export type QueryParameters = QueryParameter[];
+
+/**
+ * Database configuration
  */
 export interface DatabaseConfig {
   path: string;
@@ -51,6 +54,36 @@ export interface DatabaseConfig {
   memoryLimit: number;
   timeout: number;
   verbose: boolean;
+}
+
+/**
+ * Database statistics
+ */
+export interface DatabaseStats {
+  size: number;
+  pageCount: number;
+  pageSize: number;
+  walMode: boolean;
+  tables: number;
+  responseTime?: number;
+}
+
+/**
+ * Database health check result
+ */
+export interface DatabaseHealthCheck {
+  connected: boolean;
+  responsive: boolean;
+  stats: DatabaseStats;
+  error?: string;
+}
+
+/**
+ * Database execution result
+ */
+export interface DatabaseExecutionResult {
+  lastID?: number | undefined;
+  changes: number;
 }
 
 /**
@@ -127,7 +160,7 @@ export class DatabaseConnection {
    * Initialize database connection and configure SQLite
    *
    * @param {Object} options - Initialization options
-   * @param {boolean} [options.skipSchema=false] - Skip automatic schema creation/validation
+   * @param {boolean} [options['skipSchema'] = false] - Skip automatic schema creation/validation
    * @returns {Promise<void>}
    * @throws {Error} If database initialization fails
    *
@@ -272,7 +305,7 @@ export class DatabaseConnection {
    *
    * @template T - The expected result type
    * @param {string} sql - SQL query to execute
-   * @param {any[]} [params=[]] - Query parameters for prepared statement
+   * @param {QueryParameters} [params=[]] - Query parameters for prepared statement
    * @returns {Promise<T[]>} Array of results
    * @throws {Error} If query execution fails
    *
@@ -296,7 +329,7 @@ export class DatabaseConnection {
    * const users = await db.query<User>('SELECT * FROM users WHERE active = ?', [true]);
    * ```
    */
-  public async query<T = any>(sql: string, params: any[] = []): Promise<T[]> {
+  public async query<T = any>(sql: string, params: QueryParameters = []): Promise<T[]> {
     const db = this.getDatabase();
     try {
       logger.debug('Executing query', { sql, params });
@@ -314,7 +347,7 @@ export class DatabaseConnection {
    *
    * @template T - The expected result type
    * @param {string} sql - SQL query to execute
-   * @param {any[]} [params=[]] - Query parameters for prepared statement
+   * @param {QueryParameters} [params=[]] - Query parameters for prepared statement
    * @returns {Promise<T | undefined>} First result or undefined if no results
    * @throws {Error} If query execution fails
    *
@@ -330,7 +363,10 @@ export class DatabaseConnection {
    * }
    * ```
    */
-  public async queryOne<T = any>(sql: string, params: any[] = []): Promise<T | undefined> {
+  public async queryOne<T = any>(
+    sql: string,
+    params: QueryParameters = []
+  ): Promise<T | undefined> {
     const db = this.getDatabase();
     try {
       logger.debug('Executing query (single result)', { sql, params });
@@ -347,8 +383,8 @@ export class DatabaseConnection {
    * Execute a data modification statement (INSERT, UPDATE, DELETE)
    *
    * @param {string} sql - SQL statement to execute
-   * @param {any[]} [params=[]] - Statement parameters for prepared statement
-   * @returns {Promise<sqlite3.RunResult>} Result containing lastID and changes
+   * @param {QueryParameters} [params=[]] - Statement parameters for prepared statement
+   * @returns {Promise<DatabaseExecutionResult>} Result containing lastID and changes
    * @throws {Error} If statement execution fails
    *
    * @example
@@ -369,15 +405,15 @@ export class DatabaseConnection {
    *
    * // Delete
    * const deleteResult = await db.execute('DELETE FROM tasks WHERE id = ?', ['task-123']);
-   * if (deleteResult.changes === 0) {
+   * if (deleteResult['changes'] = == 0) {
    *   logger.log('Task not found');
    * }
    * ```
    */
   public async execute(
     sql: string,
-    params: any[] = []
-  ): Promise<{ lastID?: number | undefined; changes: number }> {
+    params: QueryParameters = []
+  ): Promise<DatabaseExecutionResult> {
     const db = this.getDatabase();
     try {
       logger.debug('Executing statement', { sql, params });
@@ -491,13 +527,7 @@ export class DatabaseConnection {
    * logger.log(`WAL mode: ${stats.walMode ? 'enabled' : 'disabled'}`);
    * ```
    */
-  public async getStats(): Promise<{
-    size: number;
-    pageCount: number;
-    pageSize: number;
-    walMode: boolean;
-    tables: number;
-  }> {
+  public async getStats(): Promise<DatabaseStats> {
     const db = this.getDatabase();
 
     const [, tableCount] = await Promise.all([
@@ -546,16 +576,15 @@ export class DatabaseConnection {
    * }
    * ```
    */
-  public async healthCheck(): Promise<{
-    connected: boolean;
-    responsive: boolean;
-    stats: any;
-    error?: string;
-  }> {
+  public async healthCheck(): Promise<DatabaseHealthCheck> {
     try {
       const connected = this.isConnected();
       if (!connected) {
-        return { connected: false, responsive: false, stats: null };
+        return {
+          connected: false,
+          responsive: false,
+          stats: { size: 0, pageCount: 0, pageSize: 0, walMode: false, tables: 0 },
+        };
       }
 
       // Test responsiveness with a simple query
@@ -577,7 +606,7 @@ export class DatabaseConnection {
       return {
         connected: false,
         responsive: false,
-        stats: null,
+        stats: { size: 0, pageCount: 0, pageSize: 0, walMode: false, tables: 0 },
         error: (error as Error).message,
       };
     }
@@ -634,7 +663,7 @@ export class DatabaseConnection {
     try {
       await Promise.all(
         pragmas.map(async pragma => {
-          this.db!.exec(pragma);
+          await this.db!.exec(pragma);
         })
       );
     } catch (error) {
@@ -723,7 +752,7 @@ export class DatabaseConnection {
    */
   public async runMigrations(target?: string): Promise<number> {
     const runner = this.getMigrationRunner();
-    return await runner.up(target);
+    return runner.up(target);
   }
 
   /**
@@ -743,7 +772,7 @@ export class DatabaseConnection {
    */
   public async rollbackMigrations(target?: string): Promise<number> {
     const runner = this.getMigrationRunner();
-    return await runner.down(target);
+    return runner.down(target);
   }
 
   /**
@@ -763,7 +792,7 @@ export class DatabaseConnection {
     total: number;
   }> {
     const runner = this.getMigrationRunner();
-    return await runner.status();
+    return runner.status();
   }
 
   /**
@@ -798,7 +827,7 @@ export class DatabaseConnection {
    */
   public async runSeeds(options: { force?: boolean } = {}): Promise<number> {
     const runner = this.getSeedRunner();
-    return await runner.run(options);
+    return runner.run(options);
   }
 
   /**
@@ -818,7 +847,7 @@ export class DatabaseConnection {
     total: number;
   }> {
     const runner = this.getSeedRunner();
-    return await runner.status();
+    return runner.status();
   }
 
   /**
@@ -834,7 +863,7 @@ export class DatabaseConnection {
    */
   public async resetSeeds(): Promise<void> {
     const runner = this.getSeedRunner();
-    return await runner.reset();
+    return runner.reset();
   }
 }
 

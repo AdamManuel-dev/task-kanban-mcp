@@ -11,45 +11,54 @@ export function registerNoteCommands(program: Command): void {
   noteCmd
     .command('list')
     .alias('ls')
-    .description('List notes')
-    .option('-c, --category <category>', 'filter by category')
-    .option('-t, --task <taskId>', 'filter by task ID')
-    .option('--pinned', 'show only pinned notes')
+    .description('List all notes')
     .option('-l, --limit <number>', 'limit number of results', '20')
     .option('--sort <field>', 'sort by field', 'createdAt')
     .option('--order <direction>', 'sort order (asc/desc)', 'desc')
-    .action(async options => {
-      const { apiClient, formatter } = getComponents();
+    .option('--category <category>', 'filter by category')
+    .option('--task <taskId>', 'filter by task ID')
+    .option('--pinned', 'show only pinned notes')
+    .action(
+      async (options: {
+        limit?: string;
+        sort?: string;
+        order?: string;
+        category?: string;
+        task?: string;
+        pinned?: boolean;
+      }) => {
+        const { apiClient, formatter } = getComponents();
 
-      try {
-        const params: Record<string, string> = {
-          limit: options.limit,
-          sort: options.sort,
-          order: options.order,
-        };
+        try {
+          const params: Record<string, string> = {
+            limit: options.limit || '20',
+            sort: options.sort || 'createdAt',
+            order: options.order || 'desc',
+          };
 
-        if (options.category) params.category = options.category;
-        if (options.task) params.taskId = options.task;
-        if (options.pinned) params.pinned = 'true';
+          if (options.category) params.category = options.category;
+          if (options.task) params.taskId = options.task;
+          if (options.pinned) params.pinned = 'true';
 
-        const notes = (await apiClient.getNotes(params)) as any;
+          const notes = await apiClient.getNotes(params);
 
-        if (!notes || notes.length === 0) {
-          formatter.info('No notes found');
-          return;
+          if (!notes || !Array.isArray(notes) || notes.length === 0) {
+            formatter.info('No notes found');
+            return;
+          }
+
+          formatter.output(notes, {
+            fields: ['id', 'title', 'category', 'pinned', 'taskId', 'createdAt'],
+            headers: ['ID', 'Title', 'Category', 'Pinned', 'Task ID', 'Created'],
+          });
+        } catch (error) {
+          formatter.error(
+            `Failed to list notes: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+          process.exit(1);
         }
-
-        formatter.output(notes, {
-          fields: ['id', 'title', 'category', 'pinned', 'taskId', 'createdAt'],
-          headers: ['ID', 'Title', 'Category', 'Pinned', 'Task ID', 'Created'],
-        });
-      } catch (error) {
-        formatter.error(
-          `Failed to list notes: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
-        );
-        process.exit(1);
       }
-    });
+    );
 
   noteCmd
     .command('show <id>')
@@ -58,7 +67,7 @@ export function registerNoteCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const note = (await apiClient.getNote(id)) as any;
+        const note = await apiClient.getNote(id);
 
         if (!note) {
           formatter.error(`Note ${String(id)} not found`);
@@ -68,7 +77,7 @@ export function registerNoteCommands(program: Command): void {
         formatter.output(note);
       } catch (error) {
         formatter.error(
-          `Failed to get note: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
+          `Failed to get note: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
         process.exit(1);
       }
@@ -84,80 +93,96 @@ export function registerNoteCommands(program: Command): void {
     .option('--task <taskId>', 'link to task ID')
     .option('--pin', 'pin the note')
     .option('-i, --interactive', 'interactive mode')
-    .action(async options => {
-      const { apiClient, formatter } = getComponents();
+    .action(
+      async (options: {
+        title?: string;
+        content?: string;
+        category?: string;
+        task?: string;
+        pin?: boolean;
+        interactive?: boolean;
+      }) => {
+        const { apiClient, formatter } = getComponents();
 
-      let noteData: any = {};
+        let noteData: Record<string, unknown> = {};
 
-      if (options.interactive ?? !options.title) {
-        const questions: any[] = [];
+        if ((options as any).interactive ?? !options.title) {
+          const questions: Array<{
+            type: string;
+            name: string;
+            message: string;
+            validate?: (input: string) => boolean | string;
+            choices?: string[];
+            default?: string;
+          }> = [];
 
-        if (!options.title) {
-          questions.push({
-            type: 'input',
-            name: 'title',
-            message: 'Note title:',
-            validate: (input: string) => input.length > 0 || 'Title is required',
-          });
+          if (!options.title) {
+            questions.push({
+              type: 'input',
+              name: 'title',
+              message: 'Note title:',
+              validate: (input: string) => input.length > 0 || 'Title is required',
+            });
+          }
+
+          if (!options.content) {
+            questions.push({
+              type: 'editor',
+              name: 'content',
+              message: 'Note content:',
+            });
+          }
+
+          if (!options.category) {
+            questions.push({
+              type: 'list',
+              name: 'category',
+              message: 'Note category:',
+              choices: ['general', 'meeting', 'idea', 'bug', 'feature', 'docs'],
+              default: 'general',
+            });
+          }
+
+          if (!options.task) {
+            questions.push({
+              type: 'input',
+              name: 'taskId',
+              message: 'Link to task ID (optional):',
+            });
+          }
+
+          if (!options.pin) {
+            questions.push({
+              type: 'confirm',
+              name: 'pinned',
+              message: 'Pin this note?',
+              default: false,
+            });
+          }
+
+          const answers = await inquirer.prompt(questions);
+          noteData = { ...noteData, ...answers };
         }
 
-        if (!options.content) {
-          questions.push({
-            type: 'editor',
-            name: 'content',
-            message: 'Note content:',
-          });
-        }
+        // Use command line options or answers
+        noteData.title = options.title ?? noteData.title;
+        noteData.content = options.content ?? noteData.content;
+        noteData.category = options.category ?? noteData.category ?? 'general';
+        noteData.taskId = options.task ?? noteData.taskId;
+        noteData.pinned = options.pin ?? noteData.pinned ?? false;
 
-        if (!options.category) {
-          questions.push({
-            type: 'list',
-            name: 'category',
-            message: 'Note category:',
-            choices: ['general', 'meeting', 'idea', 'bug', 'feature', 'docs'],
-            default: 'general',
-          });
+        try {
+          const note = (await apiClient.createNote(noteData)) as any;
+          formatter.success(`Note created successfully: ${String(String(note.id))}`);
+          formatter.output(note);
+        } catch (error) {
+          formatter.error(
+            `Failed to create note: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
+          );
+          process.exit(1);
         }
-
-        if (!options.task) {
-          questions.push({
-            type: 'input',
-            name: 'taskId',
-            message: 'Link to task ID (optional):',
-          });
-        }
-
-        if (!options.pin) {
-          questions.push({
-            type: 'confirm',
-            name: 'pinned',
-            message: 'Pin this note?',
-            default: false,
-          });
-        }
-
-        const answers = await inquirer.prompt(questions);
-        noteData = { ...noteData, ...answers };
       }
-
-      // Use command line options or answers
-      noteData.title = options.title ?? noteData.title;
-      noteData.content = options.content ?? noteData.content;
-      noteData.category = options.category ?? noteData.category ?? 'general';
-      noteData.taskId = options.task ?? noteData.taskId;
-      noteData.pinned = options.pin ?? noteData.pinned ?? false;
-
-      try {
-        const note = (await apiClient.createNote(noteData)) as any;
-        formatter.success(`Note created successfully: ${String(String(note.id))}`);
-        formatter.output(note);
-      } catch (error) {
-        formatter.error(
-          `Failed to create note: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
-        );
-        process.exit(1);
-      }
-    });
+    );
 
   noteCmd
     .command('update <id>')
@@ -294,7 +319,7 @@ export function registerNoteCommands(program: Command): void {
 
         const notes = (await apiClient.searchNotes(query)) as any;
 
-        if (!notes ?? notes.length === 0) {
+        if (!notes || notes.length === 0) {
           formatter.info(`No notes found matching "${String(query)}"`);
           return;
         }

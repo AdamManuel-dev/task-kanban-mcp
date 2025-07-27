@@ -73,7 +73,7 @@ export class SeedRunner {
     const seedModule = await import(filePath);
     const seed = seedModule.default ?? seedModule;
 
-    if (!seed.name ?? !seed.run) {
+    if (!seed.name || !seed.run) {
       throw new Error(`Seed ${String(filename)} must export 'name' and 'run' properties`);
     }
 
