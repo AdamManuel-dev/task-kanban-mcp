@@ -11,6 +11,39 @@ import {
   TASK_SIZES,
 } from './validators';
 import { spinner } from '../utils/spinner';
+import { TaskSizeEstimator } from '../estimation/task-size-estimator';
+
+/**
+ * Error thrown when a prompt is cancelled
+ */
+export class PromptCancelledError extends Error {
+  constructor(message = 'Prompt was cancelled by user') {
+    super(message);
+    this.name = 'PromptCancelledError';
+  }
+}
+
+/**
+ * Wrapper for prompt that handles cancellation
+ */
+async function safePrompt<T>(promptConfig: any): Promise<T> {
+  try {
+    return await prompt<T>(promptConfig);
+  } catch (error) {
+    // Check if it's a cancellation (Ctrl+C, ESC, etc.)
+    if (error instanceof Error) {
+      const errorMessage = error.message.toLowerCase();
+      if (errorMessage.includes('cancel') || 
+          errorMessage.includes('abort') || 
+          errorMessage.includes('interrupt') ||
+          error.name === 'SIGINT') {
+        throw new PromptCancelledError(`Operation cancelled: ${error.message}`);
+      }
+    }
+    // Re-throw other errors
+    throw error;
+  }
+}
 
 export interface TaskInput {
   title: string;
@@ -39,24 +72,61 @@ export interface BulkActionInput {
  * Create task interactive prompt
  */
 export async function createTaskPrompt(defaults?: Partial<TaskInput>): Promise<TaskInput> {
-  console.log(chalk.cyan('\n📝 Create New Task\n'));
+  try {
+    console.log(chalk.cyan('\n📝 Create New Task\n'));
+    console.log(chalk.gray('Press Ctrl+C to cancel at any time\n'));
 
-  const response = await prompt<TaskInput>([
-    {
-      type: 'input',
-      name: 'title',
-      message: 'Task title:',
-      initial: defaults?.title,
-      validate: validateTaskTitle,
-    },
-    {
-      type: 'text',
-      name: 'description',
-      message: 'Description (optional):',
-      initial: defaults?.description,
-      multiline: true,
-      hint: 'Press Ctrl+D when done',
-    },
+    // Create estimator instance
+    const estimator = new TaskSizeEstimator();
+
+    // Get basic info first for estimation
+    const basicInfo = await safePrompt<{title: string; description?: string}>([
+      {
+        type: 'input',
+        name: 'title',
+        message: 'Task title:',
+        initial: defaults?.title,
+        validate: validateTaskTitle,
+      },
+      {
+        type: 'text',
+        name: 'description',
+        message: 'Description (optional):',
+        initial: defaults?.description,
+        multiline: true,
+        hint: 'Press Ctrl+D when done',
+      },
+    ]);
+
+    // Generate size estimation
+    let suggestedSize: TaskSize | undefined;
+    let estimation: any;
+    
+    if (basicInfo.title) {
+      try {
+        estimation = estimator.estimateTime({
+          title: basicInfo.title,
+          description: basicInfo.description,
+        });
+        suggestedSize = estimation.size;
+
+        // Show estimation
+        console.log(chalk.cyan('\n🤖 AI Size Estimation:'));
+        console.log(chalk.yellow(`  Suggested Size: ${suggestedSize} (${estimation.avgHours} hours)`));
+        console.log(chalk.gray(`  Confidence: ${estimation.confidence}`));
+        if (estimation.reasoning?.length > 0) {
+          console.log(chalk.gray('  Reasoning:'));
+          estimation.reasoning.forEach((reason: string) => {
+            console.log(chalk.gray(`    • ${reason}`));
+          });
+        }
+        console.log();
+      } catch (error) {
+        console.log(chalk.yellow('⚠️  Size estimation unavailable\n'));
+      }
+    }
+
+    const additionalInfo = await safePrompt<Omit<TaskInput, 'title' | 'description'>>([
     {
       type: 'select',
       name: 'priority',
@@ -74,15 +144,31 @@ export async function createTaskPrompt(defaults?: Partial<TaskInput>): Promise<T
     {
       type: 'select',
       name: 'size',
-      message: 'Task size:',
+      message: suggestedSize ? `Task size (AI suggests: ${suggestedSize}):` : 'Task size:',
       choices: [
-        { name: 'S', value: 'S', hint: 'Small - Less than 2 hours' },
-        { name: 'M', value: 'M', hint: 'Medium - 2-4 hours' },
-        { name: 'L', value: 'L', hint: 'Large - 4-8 hours' },
-        { name: 'XL', value: 'XL', hint: 'Extra Large - More than 8 hours' },
+        { 
+          name: suggestedSize === 'S' ? `S ⭐ (AI suggested - ${estimation?.avgHours || 1}h)` : 'S', 
+          value: 'S', 
+          hint: 'Small - Less than 2 hours' 
+        },
+        { 
+          name: suggestedSize === 'M' ? `M ⭐ (AI suggested - ${estimation?.avgHours || 3}h)` : 'M', 
+          value: 'M', 
+          hint: 'Medium - 2-4 hours' 
+        },
+        { 
+          name: suggestedSize === 'L' ? `L ⭐ (AI suggested - ${estimation?.avgHours || 6}h)` : 'L', 
+          value: 'L', 
+          hint: 'Large - 4-8 hours' 
+        },
+        { 
+          name: suggestedSize === 'XL' ? `XL ⭐ (AI suggested - ${estimation?.avgHours || 12}h)` : 'XL', 
+          value: 'XL', 
+          hint: 'Extra Large - More than 8 hours' 
+        },
         { name: 'Skip', value: undefined, hint: 'No size estimate' },
       ],
-      initial: defaults?.size ? TASK_SIZES.indexOf(defaults.size) : 1,
+      initial: suggestedSize ? TASK_SIZES.indexOf(suggestedSize) : (defaults?.size ? TASK_SIZES.indexOf(defaults.size) : 1),
     },
     {
       type: 'input',
@@ -120,6 +206,13 @@ export async function createTaskPrompt(defaults?: Partial<TaskInput>): Promise<T
     },
   ]);
 
+  // Merge basicInfo and additionalInfo
+  const response = {
+    title: basicInfo.title,
+    description: basicInfo.description,
+    ...additionalInfo,
+  };
+
   // Clean up the response
   const cleanedResponse: TaskInput = {
     title: response.title,
@@ -150,6 +243,14 @@ export async function createTaskPrompt(defaults?: Partial<TaskInput>): Promise<T
   }
 
   return cleanedResponse;
+  } catch (error) {
+    if (error instanceof PromptCancelledError) {
+      console.log(chalk.yellow('\n⚠️  Task creation cancelled\n'));
+      throw error;
+    }
+    console.error(chalk.red('\n❌ Failed to create task:'), error instanceof Error ? error.message : String(error));
+    throw error;
+  }
 }
 
 /**
@@ -159,9 +260,11 @@ export async function moveTaskPrompt(
   taskId: string,
   availableColumns: Array<{ id: string; name: string; taskCount: number }>
 ): Promise<MoveTaskInput> {
-  console.log(chalk.cyan(`\n🔄 Move Task ${taskId}\n`));
+  try {
+    console.log(chalk.cyan(`\n🔄 Move Task ${taskId}\n`));
+    console.log(chalk.gray('Press Ctrl+C to cancel at any time\n'));
 
-  const response = await prompt<{
+    const response = await safePrompt<{
     targetColumn: string;
     position: string;
   }>([
@@ -192,7 +295,7 @@ export async function moveTaskPrompt(
     const targetCol = availableColumns.find(c => c.id === response.targetColumn);
     const maxPosition = targetCol?.taskCount || 0;
 
-    const posResponse = await prompt<{ position: number }>({
+    const posResponse = await safePrompt<{ position: number }>({
       type: 'numeral',
       name: 'position',
       message: `Position (1-${maxPosition + 1}):`,
@@ -212,6 +315,14 @@ export async function moveTaskPrompt(
     targetColumn: response.targetColumn,
     position,
   };
+  } catch (error) {
+    if (error instanceof PromptCancelledError) {
+      console.log(chalk.yellow('\n⚠️  Move operation cancelled\n'));
+      throw error;
+    }
+    console.error(chalk.red('\n❌ Failed to move task:'), error instanceof Error ? error.message : String(error));
+    throw error;
+  }
 }
 
 /**
@@ -220,21 +331,23 @@ export async function moveTaskPrompt(
 export async function bulkTaskActionPrompt(
   tasks: Array<{ id: string; title: string; status: string }>
 ): Promise<BulkActionInput | null> {
-  console.log(chalk.cyan(`\n📦 Bulk Action for ${tasks.length} tasks\n`));
+  try {
+    console.log(chalk.cyan(`\n📦 Bulk Action for ${tasks.length} tasks\n`));
+    console.log(chalk.gray('Press Ctrl+C to cancel at any time\n'));
 
-  // Show selected tasks
-  console.log(chalk.gray('Selected tasks:'));
-  tasks.forEach((task, index) => {
-    if (index < 5) {
-      console.log(chalk.gray(`  - [${task.id}] ${task.title}`));
+    // Show selected tasks
+    console.log(chalk.gray('Selected tasks:'));
+    tasks.forEach((task, index) => {
+      if (index < 5) {
+        console.log(chalk.gray(`  - [${task.id}] ${task.title}`));
+      }
+    });
+    if (tasks.length > 5) {
+      console.log(chalk.gray(`  ... and ${tasks.length - 5} more`));
     }
-  });
-  if (tasks.length > 5) {
-    console.log(chalk.gray(`  ... and ${tasks.length - 5} more`));
-  }
-  console.log();
+    console.log();
 
-  const { action } = await prompt<{ action: string }>({
+    const { action } = await safePrompt<{ action: string }>({
     type: 'select',
     name: 'action',
     message: 'Choose bulk action:',
@@ -257,7 +370,7 @@ export async function bulkTaskActionPrompt(
 
   switch (action) {
     case 'move': {
-      const { column } = await prompt<{ column: string }>({
+      const { column } = await safePrompt<{ column: string }>({
         type: 'input',
         name: 'column',
         message: 'Target column name:',
@@ -268,7 +381,7 @@ export async function bulkTaskActionPrompt(
     }
 
     case 'assign': {
-      const { assignee } = await prompt<{ assignee: string }>({
+      const { assignee } = await safePrompt<{ assignee: string }>({
         type: 'input',
         name: 'assignee',
         message: 'Assign to (username or email):',
@@ -279,7 +392,7 @@ export async function bulkTaskActionPrompt(
     }
 
     case 'tag': {
-      const { tags } = await prompt<{ tags: string[] }>({
+      const { tags } = await safePrompt<{ tags: string[] }>({
         type: 'list',
         name: 'tags',
         message: 'Add tags (comma-separated):',
@@ -291,7 +404,7 @@ export async function bulkTaskActionPrompt(
     }
 
     case 'delete': {
-      const { confirm } = await prompt<{ confirm: boolean }>({
+      const { confirm } = await safePrompt<{ confirm: boolean }>({
         type: 'confirm',
         name: 'confirm',
         message: chalk.red(`Are you sure you want to delete ${tasks.length} tasks?`),
@@ -304,7 +417,7 @@ export async function bulkTaskActionPrompt(
     }
 
     case 'archive': {
-      const { confirm } = await prompt<{ confirm: boolean }>({
+      const { confirm } = await safePrompt<{ confirm: boolean }>({
         type: 'confirm',
         name: 'confirm',
         message: `Archive ${tasks.length} tasks?`,
@@ -322,6 +435,14 @@ export async function bulkTaskActionPrompt(
     action: action as BulkActionInput['action'],
     params: Object.keys(params).length > 0 ? params : undefined,
   };
+  } catch (error) {
+    if (error instanceof PromptCancelledError) {
+      console.log(chalk.yellow('\n⚠️  Bulk action cancelled\n'));
+      return null;
+    }
+    console.error(chalk.red('\n❌ Failed to execute bulk action:'), error instanceof Error ? error.message : String(error));
+    throw error;
+  }
 }
 
 /**
@@ -334,9 +455,11 @@ export async function taskFilterPrompt(): Promise<{
   tags?: string[];
   dateRange?: { start: string; end: string };
 }> {
-  console.log(chalk.cyan('\n🔍 Filter Tasks\n'));
+  try {
+    console.log(chalk.cyan('\n🔍 Filter Tasks\n'));
+    console.log(chalk.gray('Press Ctrl+C to cancel at any time\n'));
 
-  const response = await prompt<{
+    const response = await safePrompt<{
     filterBy: string[];
   }>({
     type: 'multiselect',
@@ -355,7 +478,7 @@ export async function taskFilterPrompt(): Promise<{
   const filters: any = {};
 
   if (response.filterBy.includes('status')) {
-    const { status } = await prompt<{ status: string[] }>({
+    const { status } = await safePrompt<{ status: string[] }>({
       type: 'multiselect',
       name: 'status',
       message: 'Select statuses:',
@@ -365,7 +488,7 @@ export async function taskFilterPrompt(): Promise<{
   }
 
   if (response.filterBy.includes('priority')) {
-    const { priority } = await prompt<{ priority: Priority[] }>({
+    const { priority } = await safePrompt<{ priority: Priority[] }>({
       type: 'multiselect',
       name: 'priority',
       message: 'Select priorities:',
@@ -375,7 +498,7 @@ export async function taskFilterPrompt(): Promise<{
   }
 
   if (response.filterBy.includes('assignee')) {
-    const { assignee } = await prompt<{ assignee: string }>({
+    const { assignee } = await safePrompt<{ assignee: string }>({
       type: 'input',
       name: 'assignee',
       message: 'Assignee (username or email):',
@@ -384,7 +507,7 @@ export async function taskFilterPrompt(): Promise<{
   }
 
   if (response.filterBy.includes('tags')) {
-    const { tags } = await prompt<{ tags: string[] }>({
+    const { tags } = await safePrompt<{ tags: string[] }>({
       type: 'list',
       name: 'tags',
       message: 'Tags (comma-separated):',
@@ -396,7 +519,7 @@ export async function taskFilterPrompt(): Promise<{
   }
 
   if (response.filterBy.includes('dateRange')) {
-    const dateRange = await prompt<{ start: string; end: string }>([
+    const dateRange = await safePrompt<{ start: string; end: string }>([
       {
         type: 'input',
         name: 'start',
@@ -416,4 +539,12 @@ export async function taskFilterPrompt(): Promise<{
   }
 
   return filters;
+  } catch (error) {
+    if (error instanceof PromptCancelledError) {
+      console.log(chalk.yellow('\n⚠️  Filter cancelled\n'));
+      return {};
+    }
+    console.error(chalk.red('\n❌ Failed to apply filters:'), error instanceof Error ? error.message : String(error));
+    throw error;
+  }
 }

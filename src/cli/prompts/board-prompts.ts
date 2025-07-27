@@ -2,6 +2,7 @@ import prompts from 'prompts';
 import chalk from 'chalk';
 import { validateBoardName, validateColumnName } from './validators';
 import { spinner } from '../utils/spinner';
+import { PromptCancelledError } from './task-prompts';
 
 export interface BoardSetupInput {
   name: string;

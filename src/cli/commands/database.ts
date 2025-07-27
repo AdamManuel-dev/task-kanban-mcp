@@ -1,6 +1,16 @@
 import type { Command } from 'commander';
 import inquirer from 'inquirer';
-import type { CliComponents, DatabaseOptimizationResult, DatabaseVacuumResult, DatabaseAnalysisResult, DatabaseStats, DatabaseIntegrityResult, DatabaseRepairResult, Migration, MigrationResult } from '../types';
+import type {
+  CliComponents,
+  DatabaseOptimizationResult,
+  DatabaseVacuumResult,
+  DatabaseAnalysisResult,
+  DatabaseStats,
+  DatabaseIntegrityResult,
+  DatabaseRepairResult,
+  Migration,
+  MigrationResult,
+} from '../types';
 
 export function registerDatabaseCommands(program: Command): void {
   const dbCmd = program.command('db').description('Database management commands');
@@ -21,7 +31,7 @@ export function registerDatabaseCommands(program: Command): void {
         const result = await apiClient.request('/api/database/optimize', {
           method: 'POST',
           body: { verbose: options.verbose || false },
-        }) as DatabaseOptimizationResult[];
+        });
 
         formatter.success('Database optimization completed');
         formatter.output(result, {
@@ -64,7 +74,7 @@ export function registerDatabaseCommands(program: Command): void {
 
         const result = await apiClient.request('/api/database/vacuum', {
           method: 'POST',
-        }) as DatabaseVacuumResult;
+        });
 
         formatter.success('Database vacuum completed');
         formatter.output(result, {
@@ -90,7 +100,7 @@ export function registerDatabaseCommands(program: Command): void {
 
         const result = await apiClient.request('/api/database/analyze', {
           method: 'POST',
-        }) as DatabaseAnalysisResult[];
+        });
 
         formatter.success('Database analysis completed');
         formatter.output(result, {
@@ -120,7 +130,7 @@ export function registerDatabaseCommands(program: Command): void {
         if (options.indexes) params.indexes = 'true';
         if (options.performance) params.performance = 'true';
 
-        const stats = await apiClient.request('/api/database/stats', { params }) as DatabaseStats;
+        const stats = await apiClient.request('/api/database/stats', { params });
 
         formatter.info('Database Statistics:');
 
@@ -179,7 +189,7 @@ export function registerDatabaseCommands(program: Command): void {
         const result = await apiClient.request('/api/database/check', {
           method: 'POST',
           body: { repair: options.repair || false },
-        }) as DatabaseIntegrityResult;
+        });
 
         if (result.healthy) {
           formatter.success('Database integrity check passed');
@@ -243,7 +253,7 @@ export function registerDatabaseCommands(program: Command): void {
         const result = await apiClient.request('/api/database/repair', {
           method: 'POST',
           body: repairData,
-        }) as DatabaseRepairResult;
+        });
 
         formatter.success('Database repair completed');
         formatter.output(result, {
@@ -268,7 +278,7 @@ export function registerDatabaseCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const migrations = await apiClient.request('/api/database/migrations/status') as Migration[];
+        const migrations = await apiClient.request('/api/database/migrations/status');
 
         if (!migrations || migrations.length === 0) {
           formatter.info('No migrations found');
@@ -305,7 +315,7 @@ export function registerDatabaseCommands(program: Command): void {
         const result = await apiClient.request('/api/database/migrations/up', {
           method: 'POST',
           body: migrateData,
-        }) as MigrationResult[];
+        });
 
         formatter.success('Migrations completed');
         formatter.output(result, {
@@ -357,7 +367,7 @@ export function registerDatabaseCommands(program: Command): void {
         const result = await apiClient.request('/api/database/migrations/down', {
           method: 'POST',
           body: rollbackData,
-        }) as MigrationResult[];
+        });
 
         formatter.success('Migration rollback completed');
         formatter.output(result, {
@@ -382,7 +392,7 @@ export function registerDatabaseCommands(program: Command): void {
         const migration = await apiClient.request('/api/database/migrations/create', {
           method: 'POST',
           body: { name },
-        }) as Migration;
+        });
 
         formatter.success(`Migration created: ${migration.filename}`);
         formatter.output(migration, {

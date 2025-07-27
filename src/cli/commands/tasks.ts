@@ -1,6 +1,9 @@
 import type { Command } from 'commander';
 import inquirer from 'inquirer';
 import type { CliComponents } from '../types';
+import { createTaskPrompt, PromptCancelledError } from '../prompts/task-prompts';
+import { spinner } from '../utils/spinner';
+import chalk from 'chalk';
 
 export function registerTaskCommands(program: Command): void {
   const taskCmd = program.command('task').alias('t').description('Manage tasks');
@@ -109,69 +112,42 @@ export function registerTaskCommands(program: Command): void {
       let taskData: any = {};
 
       if (options.interactive || !options.title) {
-        // Interactive mode
-        const questions: any[] = [];
+        // Enhanced interactive mode with AI size estimation
+        try {
+          const defaults = {
+            title: options.title,
+            description: options.description,
+            due_date: options.due,
+            tags: options.tags ? options.tags.split(',').map((t: string) => t.trim()) : undefined,
+          };
 
-        if (!options.title) {
-          questions.push({
-            type: 'input',
-            name: 'title',
-            message: 'Task title:',
-            validate: (input: string) => input.length > 0 || 'Title is required',
-          });
+          const promptResult = await createTaskPrompt(defaults);
+          
+          // Map prompt result to task data
+          taskData = {
+            title: promptResult.title,
+            description: promptResult.description,
+            priority: promptResult.priority,
+            size: promptResult.size,
+            assignee: promptResult.assignee,
+            dueDate: promptResult.due_date,
+            estimatedHours: promptResult.estimated_hours,
+            tags: promptResult.tags,
+          };
+
+          // Convert priority from P1-P5 to 1-10 scale
+          if (promptResult.priority) {
+            const priorityMap = { P1: 10, P2: 8, P3: 5, P4: 3, P5: 1 };
+            taskData.priority = priorityMap[promptResult.priority] || 5;
+          }
+
+        } catch (error) {
+          if (error instanceof PromptCancelledError) {
+            formatter.warn('Task creation cancelled');
+            return;
+          }
+          throw error;
         }
-
-        if (!options.description) {
-          questions.push({
-            type: 'input',
-            name: 'description',
-            message: 'Task description (optional):',
-          });
-        }
-
-        if (!options.board && !config.getDefaultBoard()) {
-          questions.push({
-            type: 'input',
-            name: 'board',
-            message: 'Board ID:',
-            validate: (input: string) => input.length > 0 || 'Board ID is required',
-          });
-        }
-
-        if (!options.priority) {
-          questions.push({
-            type: 'number',
-            name: 'priority',
-            message: 'Priority (1-10):',
-            default: 5,
-            validate: (input: number) =>
-              (input >= 1 && input <= 10) || 'Priority must be between 1 and 10',
-          });
-        }
-
-        if (!options.due) {
-          questions.push({
-            type: 'input',
-            name: 'dueDate',
-            message: 'Due date (YYYY-MM-DD, optional):',
-            validate: (input: string) => {
-              if (!input) return true;
-              const date = new Date(input);
-              return !isNaN(date.getTime()) || 'Invalid date format';
-            },
-          });
-        }
-
-        if (!options.tags) {
-          questions.push({
-            type: 'input',
-            name: 'tags',
-            message: 'Tags (comma-separated, optional):',
-          });
-        }
-
-        const answers = await inquirer.prompt(questions);
-        taskData = { ...taskData, ...answers };
       }
 
       // Use command line options or answers
@@ -198,8 +174,19 @@ export function registerTaskCommands(program: Command): void {
           process.exit(1);
         }
 
-        const task = (await apiClient.createTask(taskData)) as any;
-        formatter.success(`Task created successfully: ${task.id}`);
+        const task = await spinner.withSpinner(
+          `Creating task: ${taskData.title}`,
+          apiClient.createTask(taskData),
+          {
+            successText: `✅ Task created successfully`,
+            failText: `❌ Failed to create task`,
+          }
+        );
+
+        formatter.success(`Task ID: ${task.id || 'Unknown'}`);
+        if (taskData.size) {
+          formatter.info(`Estimated size: ${taskData.size} (${taskData.estimatedHours || 'Unknown'} hours)`);
+        }
         formatter.output(task);
       } catch (error) {
         formatter.error(

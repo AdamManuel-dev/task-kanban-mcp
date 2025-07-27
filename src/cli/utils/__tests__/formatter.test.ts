@@ -26,7 +26,7 @@ describe('Formatter Utilities', () => {
     it('should format dates with default format', () => {
       const date = new Date('2024-01-15T10:30:00Z');
       const formatted = formatDate(date);
-      
+
       expect(formatted).toMatch(/2024/);
       expect(formatted).toMatch(/Jan|January/);
       expect(formatted).toMatch(/15/);
@@ -35,28 +35,28 @@ describe('Formatter Utilities', () => {
     it('should format dates with custom format', () => {
       const date = new Date('2024-01-15T10:30:00Z');
       const formatted = formatDate(date, 'yyyy-MM-dd');
-      
+
       expect(formatted).toBe('2024-01-15');
     });
 
     it('should handle string dates', () => {
       const dateString = '2024-01-15T10:30:00Z';
       const formatted = formatDate(dateString);
-      
+
       expect(formatted).toMatch(/2024/);
     });
 
     it('should handle invalid dates', () => {
       const invalidDate = 'invalid-date';
       const formatted = formatDate(invalidDate);
-      
+
       expect(formatted).toBe('Invalid Date');
     });
 
     it('should use relative format', () => {
       const now = new Date();
       const formatted = formatDate(now, 'relative');
-      
+
       expect(formatted).toMatch(/now|ago|in/);
     });
   });
@@ -162,7 +162,7 @@ describe('Formatter Utilities', () => {
     it('should format simple lists', () => {
       const items = ['apple', 'banana', 'cherry'];
       const formatted = formatList(items);
-      
+
       expect(formatted).toContain('apple');
       expect(formatted).toContain('banana');
       expect(formatted).toContain('cherry');
@@ -171,14 +171,14 @@ describe('Formatter Utilities', () => {
     it('should format with bullets', () => {
       const items = ['item1', 'item2'];
       const formatted = formatList(items, { bullet: '•' });
-      
+
       expect(formatted).toContain('•');
     });
 
     it('should format with numbers', () => {
       const items = ['first', 'second'];
       const formatted = formatList(items, { numbered: true });
-      
+
       expect(formatted).toContain('1.');
       expect(formatted).toContain('2.');
     });
@@ -191,7 +191,7 @@ describe('Formatter Utilities', () => {
     it('should apply colors', () => {
       const items = ['red item', 'blue item'];
       const formatted = formatList(items, { color: true });
-      
+
       expect(formatted).toContain('red item');
       expect(formatted).toContain('blue item');
     });
@@ -203,9 +203,9 @@ describe('Formatter Utilities', () => {
         { name: 'John', age: 30, city: 'NYC' },
         { name: 'Jane', age: 25, city: 'LA' },
       ];
-      
+
       const formatted = formatTable(data);
-      
+
       expect(formatted).toContain('John');
       expect(formatted).toContain('Jane');
       expect(formatted).toContain('30');
@@ -215,7 +215,7 @@ describe('Formatter Utilities', () => {
     it('should format with custom headers', () => {
       const data = [{ name: 'John', age: 30 }];
       const formatted = formatTable(data, ['Full Name', 'Years']);
-      
+
       expect(formatted).toContain('Full Name');
       expect(formatted).toContain('Years');
     });
@@ -228,7 +228,7 @@ describe('Formatter Utilities', () => {
     it('should format with colors', () => {
       const data = [{ status: 'active', count: 5 }];
       const formatted = formatTable(data, undefined, { colors: true });
-      
+
       expect(formatted).toContain('active');
     });
   });
@@ -237,7 +237,7 @@ describe('Formatter Utilities', () => {
     it('should format JSON with indentation', () => {
       const data = { name: 'test', value: 123 };
       const formatted = formatJson(data);
-      
+
       expect(formatted).toContain('"name"');
       expect(formatted).toContain('"test"');
       expect(formatted).toContain('123');
@@ -246,7 +246,7 @@ describe('Formatter Utilities', () => {
     it('should handle arrays', () => {
       const data = [1, 2, 3];
       const formatted = formatJson(data);
-      
+
       expect(formatted).toContain('[');
       expect(formatted).toContain(']');
     });
@@ -254,7 +254,7 @@ describe('Formatter Utilities', () => {
     it('should format with colors', () => {
       const data = { test: true };
       const formatted = formatJson(data, { colors: true });
-      
+
       expect(formatted).toContain('test');
     });
   });
@@ -263,7 +263,7 @@ describe('Formatter Utilities', () => {
     it('should truncate long text', () => {
       const text = 'This is a very long text that should be truncated';
       const truncated = truncateText(text, 20);
-      
+
       expect(truncated).toHaveLength(23); // 20 + '...'
       expect(truncated).toEndWith('...');
     });
@@ -271,7 +271,7 @@ describe('Formatter Utilities', () => {
     it('should not truncate short text', () => {
       const text = 'Short text';
       const truncated = truncateText(text, 20);
-      
+
       expect(truncated).toBe(text);
     });
 
@@ -283,7 +283,7 @@ describe('Formatter Utilities', () => {
     it('should use custom suffix', () => {
       const text = 'Long text here';
       const truncated = truncateText(text, 5, ' [more]');
-      
+
       expect(truncated).toEndWith(' [more]');
     });
   });
@@ -374,7 +374,7 @@ describe('Formatter Utilities', () => {
   describe('formatProgress', () => {
     it('should format progress bar', () => {
       const progress = formatProgress(0.7, 20);
-      
+
       expect(progress).toHaveLength(20);
       expect(progress).toContain('█');
       expect(progress).toContain('░');
@@ -408,7 +408,7 @@ describe('Formatter Utilities', () => {
       };
 
       const summary = formatTaskSummary(task);
-      
+
       expect(summary).toContain('Test Task');
       expect(summary).toContain('P2');
       expect(summary).toContain('in_progress');

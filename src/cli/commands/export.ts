@@ -1,7 +1,13 @@
 import type { Command } from 'commander';
 import fs from 'fs/promises';
 import path from 'path';
-import type { CliComponents, ExportParams, ExportResponse, ImportValidationResponse, ImportResponse } from '../types';
+import type {
+  CliComponents,
+  ExportParams,
+  ExportResponse,
+  ImportValidationResponse,
+  ImportResponse,
+} from '../types';
 
 export function registerExportCommands(program: Command): void {
   const exportCmd = program.command('export').description('Export kanban data');
@@ -38,7 +44,7 @@ export function registerExportCommands(program: Command): void {
           params.boardIds = options.boardIds;
         }
 
-        const response = await apiClient.get('/export', { params }) as ExportResponse;
+        const response = await apiClient.get('/export', { params });
 
         if (file) {
           const outputPath = path.resolve(file);
@@ -53,7 +59,9 @@ export function registerExportCommands(program: Command): void {
         }
       } catch (error) {
         const { formatter } = getComponents();
-        formatter.error(`Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });
@@ -80,14 +88,16 @@ export function registerExportCommands(program: Command): void {
           includeNotes: options.notes,
         };
 
-        const response = await apiClient.get('/export', { params }) as ExportResponse;
+        const response = await apiClient.get('/export', { params });
 
         formatter.success('CSV export completed');
         formatter.info(`Files: ${response.filePath}`);
         formatter.info(`Items: ${response.itemCount}`);
       } catch (error) {
         const { formatter } = getComponents();
-        formatter.error(`Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });
@@ -122,7 +132,7 @@ export function registerExportCommands(program: Command): void {
         }
 
         const endpoint = options.validateOnly ? '/import/validate' : '/import';
-        const response = await apiClient.post(endpoint, formData) as { data: ImportValidationResponse | ImportResponse };
+        const response = await apiClient.post(endpoint, formData);
 
         if (options.validateOnly) {
           const validationData = response.data as ImportValidationResponse;
@@ -152,7 +162,9 @@ export function registerExportCommands(program: Command): void {
         }
       } catch (error) {
         const { formatter } = getComponents();
-        formatter.error(`Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        formatter.error(
+          `Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         process.exit(1);
       }
     });

@@ -21,7 +21,7 @@ describe('TaskSizeEstimator', () => {
         { title: 'Fix bug', size: 'S', actualHours: 2 },
         { title: 'Add feature', size: 'M', actualHours: 8 },
       ];
-      
+
       const customEstimator = new TaskSizeEstimator(historicalData);
       expect(customEstimator).toBeInstanceOf(TaskSizeEstimator);
     });
@@ -35,7 +35,7 @@ describe('TaskSizeEstimator', () => {
       };
 
       const estimate = estimator.estimateTime(task);
-      
+
       expect(estimate).toHaveProperty('suggestedSize');
       expect(estimate).toHaveProperty('estimatedHours');
       expect(estimate).toHaveProperty('confidence');
@@ -58,7 +58,8 @@ describe('TaskSizeEstimator', () => {
     it('should suggest larger sizes for complex tasks', () => {
       const task = {
         title: 'Implement user authentication system',
-        description: 'Build complete auth with JWT, OAuth, password reset, email verification, rate limiting, and security audit',
+        description:
+          'Build complete auth with JWT, OAuth, password reset, email verification, rate limiting, and security audit',
       };
 
       const estimate = estimator.estimateTime(task);
@@ -109,13 +110,13 @@ describe('TaskSizeEstimator', () => {
       ];
 
       const grouped = estimator.groupTasksBySize(tasks);
-      
+
       expect(grouped).toHaveProperty('XS');
       expect(grouped).toHaveProperty('S');
       expect(grouped).toHaveProperty('M');
       expect(grouped).toHaveProperty('L');
       expect(grouped).toHaveProperty('XL');
-      
+
       // Check that each group is an array
       Object.values(grouped).forEach(group => {
         expect(Array.isArray(group)).toBe(true);
@@ -124,20 +125,18 @@ describe('TaskSizeEstimator', () => {
 
     it('should handle empty task array', () => {
       const grouped = estimator.groupTasksBySize([]);
-      
+
       Object.values(grouped).forEach(group => {
         expect(group).toHaveLength(0);
       });
     });
 
     it('should include task details in grouped results', () => {
-      const tasks = [
-        { title: 'Simple task', description: 'Easy fix' },
-      ];
+      const tasks = [{ title: 'Simple task', description: 'Easy fix' }];
 
       const grouped = estimator.groupTasksBySize(tasks);
       const allTasks = Object.values(grouped).flat();
-      
+
       expect(allTasks.length).toBe(1);
       expect(allTasks[0]).toHaveProperty('task');
       expect(allTasks[0]).toHaveProperty('estimate');
@@ -161,14 +160,24 @@ describe('TaskSizeEstimator', () => {
         XS: [
           {
             task: { title: 'Fix typo', description: 'Simple change' },
-            estimate: { suggestedSize: 'XS', estimatedHours: 0.5, confidence: 0.9, reasoning: 'Simple text change' },
+            estimate: {
+              suggestedSize: 'XS',
+              estimatedHours: 0.5,
+              confidence: 0.9,
+              reasoning: 'Simple text change',
+            },
           },
         ],
         S: [],
         M: [
           {
             task: { title: 'Add feature', description: 'New functionality' },
-            estimate: { suggestedSize: 'M', estimatedHours: 4, confidence: 0.7, reasoning: 'Moderate complexity' },
+            estimate: {
+              suggestedSize: 'M',
+              estimatedHours: 4,
+              confidence: 0.7,
+              reasoning: 'Moderate complexity',
+            },
           },
         ],
         L: [],
@@ -176,7 +185,7 @@ describe('TaskSizeEstimator', () => {
       };
 
       estimator.displayEstimates(taskGroups);
-      
+
       expect(consoleSpy).toHaveBeenCalled();
       const output = consoleSpy.mock.calls.map(call => call[0]).join('\n');
       expect(output).toContain('XS');
@@ -208,7 +217,7 @@ describe('TaskSizeEstimator', () => {
       };
 
       estimator.displayEstimates(taskGroups);
-      
+
       const output = consoleSpy.mock.calls.map(call => call[0]).join('\n');
       expect(output).toContain('Total');
       expect(output).toContain('2'); // Total tasks
@@ -218,7 +227,7 @@ describe('TaskSizeEstimator', () => {
   describe('suggestTaskSize', () => {
     it('should return valid size suggestions', () => {
       const validSizes = ['XS', 'S', 'M', 'L', 'XL'];
-      
+
       const suggestions = [
         estimator.suggestTaskSize('Fix typo'),
         estimator.suggestTaskSize('Add new feature with database changes'),
@@ -238,17 +247,19 @@ describe('TaskSizeEstimator', () => {
     it('should be consistent for similar inputs', () => {
       const title1 = 'Fix login bug';
       const title2 = 'Fix login bug';
-      
+
       const suggestion1 = estimator.suggestTaskSize(title1);
       const suggestion2 = estimator.suggestTaskSize(title2);
-      
+
       expect(suggestion1).toBe(suggestion2);
     });
 
     it('should recognize common patterns', () => {
       const fixSuggestion = estimator.suggestTaskSize('Fix small CSS issue');
-      const implementSuggestion = estimator.suggestTaskSize('Implement complete user management system');
-      
+      const implementSuggestion = estimator.suggestTaskSize(
+        'Implement complete user management system'
+      );
+
       expect(['XS', 'S']).toContain(fixSuggestion);
       expect(['L', 'XL']).toContain(implementSuggestion);
     });

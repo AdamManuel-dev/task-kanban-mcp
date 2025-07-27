@@ -2,8 +2,8 @@
  * Unit tests for SpinnerManager
  */
 
-import { SpinnerManager } from '../spinner';
 import ora from 'ora';
+import { SpinnerManager } from '../spinner';
 
 // Mock ora
 jest.mock('ora');
@@ -175,11 +175,8 @@ describe('SpinnerManager', () => {
   describe('withSpinner', () => {
     it('should execute function with spinner for sync function', async () => {
       const syncFunction = jest.fn().mockReturnValue('result');
-      
-      const result = await spinnerManager.withSpinner(
-        'Processing...',
-        syncFunction
-      );
+
+      const result = await spinnerManager.withSpinner('Processing...', syncFunction);
 
       expect(ora).toHaveBeenCalledWith({
         text: 'Processing...',
@@ -194,11 +191,8 @@ describe('SpinnerManager', () => {
 
     it('should execute function with spinner for async function', async () => {
       const asyncFunction = jest.fn().mockResolvedValue('async result');
-      
-      const result = await spinnerManager.withSpinner(
-        'Processing async...',
-        asyncFunction
-      );
+
+      const result = await spinnerManager.withSpinner('Processing async...', asyncFunction);
 
       expect(mockSpinner.start).toHaveBeenCalled();
       expect(asyncFunction).toHaveBeenCalled();
@@ -208,10 +202,10 @@ describe('SpinnerManager', () => {
 
     it('should handle function errors and show failure', async () => {
       const errorFunction = jest.fn().mockRejectedValue(new Error('Test error'));
-      
-      await expect(
-        spinnerManager.withSpinner('Processing...', errorFunction)
-      ).rejects.toThrow('Test error');
+
+      await expect(spinnerManager.withSpinner('Processing...', errorFunction)).rejects.toThrow(
+        'Test error'
+      );
 
       expect(mockSpinner.start).toHaveBeenCalled();
       expect(mockSpinner.fail).toHaveBeenCalledWith('Failed!');
@@ -219,7 +213,7 @@ describe('SpinnerManager', () => {
 
     it('should use custom success and error messages', async () => {
       const successFunction = jest.fn().mockResolvedValue('result');
-      
+
       await spinnerManager.withSpinner(
         'Processing...',
         successFunction,
@@ -232,14 +226,9 @@ describe('SpinnerManager', () => {
 
     it('should show custom error message on failure', async () => {
       const errorFunction = jest.fn().mockRejectedValue(new Error('Test error'));
-      
+
       await expect(
-        spinnerManager.withSpinner(
-          'Processing...',
-          errorFunction,
-          'Success',
-          'Custom error'
-        )
+        spinnerManager.withSpinner('Processing...', errorFunction, 'Success', 'Custom error')
       ).rejects.toThrow('Test error');
 
       expect(mockSpinner.fail).toHaveBeenCalledWith('Custom error');
@@ -305,10 +294,10 @@ describe('SpinnerManager', () => {
   describe('state management', () => {
     it('should track spinning state correctly', () => {
       expect(spinnerManager.isSpinning).toBe(false);
-      
+
       spinnerManager.start();
       expect(spinnerManager.isSpinning).toBe(true);
-      
+
       spinnerManager.stop();
       expect(spinnerManager.isSpinning).toBe(false);
     });
@@ -316,7 +305,7 @@ describe('SpinnerManager', () => {
     it('should track spinning state after succeed', () => {
       spinnerManager.start();
       expect(spinnerManager.isSpinning).toBe(true);
-      
+
       spinnerManager.succeed();
       expect(spinnerManager.isSpinning).toBe(false);
     });
@@ -324,7 +313,7 @@ describe('SpinnerManager', () => {
     it('should track spinning state after fail', () => {
       spinnerManager.start();
       expect(spinnerManager.isSpinning).toBe(true);
-      
+
       spinnerManager.fail();
       expect(spinnerManager.isSpinning).toBe(false);
     });

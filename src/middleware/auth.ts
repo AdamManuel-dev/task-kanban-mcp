@@ -21,14 +21,16 @@ export function authenticationMiddleware(
   // Skip authentication for public endpoints
   const publicEndpoints = ['/health', '/docs'];
   const fullPath = req.originalUrl || req.url;
-  
+
   // Check for exact match or path that starts with endpoint followed by / or query
-  const isPublicEndpoint = publicEndpoints.some(endpoint => 
-    fullPath === endpoint || 
-    fullPath.startsWith(endpoint + '/') || 
-    fullPath.startsWith(endpoint + '?')
-  ) || fullPath === '/'; // Allow root path exactly
-  
+  const isPublicEndpoint =
+    publicEndpoints.some(
+      endpoint =>
+        fullPath === endpoint ||
+        fullPath.startsWith(`${endpoint}/`) ||
+        fullPath.startsWith(`${endpoint}?`)
+    ) || fullPath === '/'; // Allow root path exactly
+
   if (isPublicEndpoint) {
     return next();
   }
@@ -110,8 +112,10 @@ export function requirePermissions(permissions: string[], requireAll: boolean = 
 
 function validateApiKey(apiKey: string): boolean {
   // In development and test, allow default keys
-  if ((config.server.nodeEnv === 'development' || config.server.nodeEnv === 'test') && 
-      (apiKey === 'dev-key-1' || apiKey === 'test-key-1')) {
+  if (
+    (config.server.nodeEnv === 'development' || config.server.nodeEnv === 'test') &&
+    (apiKey === 'dev-key-1' || apiKey === 'test-key-1')
+  ) {
     return true;
   }
 

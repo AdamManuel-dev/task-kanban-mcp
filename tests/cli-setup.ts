@@ -44,17 +44,17 @@ jest.mock('blessed-contrib', () => ({
 
 // Mock chalk for testing
 jest.mock('chalk', () => ({
-  cyan: jest.fn((str) => str),
-  green: jest.fn((str) => str),
-  yellow: jest.fn((str) => str),
-  red: jest.fn((str) => str),
-  blue: jest.fn((str) => str),
-  magenta: jest.fn((str) => str),
-  gray: jest.fn((str) => str),
+  cyan: jest.fn(str => str),
+  green: jest.fn(str => str),
+  yellow: jest.fn(str => str),
+  red: jest.fn(str => str),
+  blue: jest.fn(str => str),
+  magenta: jest.fn(str => str),
+  gray: jest.fn(str => str),
   bold: {
-    blue: jest.fn((str) => str),
-    green: jest.fn((str) => str),
-    magenta: jest.fn((str) => str),
+    blue: jest.fn(str => str),
+    green: jest.fn(str => str),
+    magenta: jest.fn(str => str),
   },
 }));
 
@@ -99,16 +99,14 @@ export const cliTestUtils = {
   /**
    * Render a React component for CLI testing (placeholder)
    */
-  renderComponent: (component: ReactElement) => {
+  renderComponent: (component: ReactElement) =>
     // TODO: Implement when ink-testing-library is properly configured
-    return {
+    ({
       lastFrame: () => '',
       frames: [],
       rerender: jest.fn(),
       unmount: jest.fn(),
-    };
-  },
-
+    }),
   /**
    * Mock process.argv for command testing
    */
@@ -126,7 +124,7 @@ export const cliTestUtils = {
   mockStdout: () => {
     const originalWrite = process.stdout.write;
     const writes: string[] = [];
-    
+
     process.stdout.write = jest.fn((chunk: any) => {
       writes.push(chunk.toString());
       return true;
@@ -146,7 +144,7 @@ export const cliTestUtils = {
   mockStderr: () => {
     const originalWrite = process.stderr.write;
     const writes: string[] = [];
-    
+
     process.stderr.write = jest.fn((chunk: any) => {
       writes.push(chunk.toString());
       return true;
@@ -198,9 +196,7 @@ export const cliTestUtils = {
   /**
    * Wait for async operations
    */
-  waitFor: async (ms: number = 100) => {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  },
+  waitFor: async (ms: number = 100) => new Promise(resolve => setTimeout(resolve, ms)),
 
   /**
    * Create test task data

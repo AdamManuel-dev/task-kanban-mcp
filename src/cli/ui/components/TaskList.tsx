@@ -68,6 +68,58 @@ export const TaskList: React.FC<TaskListProps> = ({
       setSelectedIndex(prev => Math.max(0, prev - 1));
     } else if (key.downArrow || input === 'j') {
       setSelectedIndex(prev => Math.min(filteredTasks.length - 1, prev + 1));
+    } else if (key.pageUp || (key.ctrl && input === 'u')) {
+      // Page up - jump by maxHeight or to top
+      setSelectedIndex(prev => Math.max(0, prev - maxHeight));
+    } else if (key.pageDown || (key.ctrl && input === 'd')) {
+      // Page down - jump by maxHeight or to bottom
+      setSelectedIndex(prev => Math.min(filteredTasks.length - 1, prev + maxHeight));
+    } else if (input === 'g') {
+      // Go to top (Vim style)
+      setSelectedIndex(0);
+    } else if (input === 'G') {
+      // Go to bottom (Vim style)
+      setSelectedIndex(filteredTasks.length - 1);
+    } else if (input === 'h' || key.leftArrow) {
+      // Quick status filter - previous status
+      const statusOrder = ['todo', 'in_progress', 'done', 'blocked'];
+      const currentTask = filteredTasks[selectedIndex];
+      if (currentTask) {
+        const currentIndex = statusOrder.indexOf(currentTask.status);
+        const prevStatus = statusOrder[Math.max(0, currentIndex - 1)];
+        onKeyPress?.(`filter:${prevStatus}`, currentTask);
+      }
+    } else if (input === 'l' || key.rightArrow) {
+      // Quick status filter - next status
+      const statusOrder = ['todo', 'in_progress', 'done', 'blocked'];
+      const currentTask = filteredTasks[selectedIndex];
+      if (currentTask) {
+        const currentIndex = statusOrder.indexOf(currentTask.status);
+        const nextStatus = statusOrder[Math.min(statusOrder.length - 1, currentIndex + 1)];
+        onKeyPress?.(`filter:${nextStatus}`, currentTask);
+      }
+    } else if (input === '/') {
+      // Search mode trigger
+      onKeyPress?.('search', filteredTasks[selectedIndex] || null);
+    } else if (input === 'r') {
+      // Refresh
+      onKeyPress?.('refresh', filteredTasks[selectedIndex] || null);
+    } else if (input === 'd') {
+      // Delete/archive selected task
+      if (filteredTasks[selectedIndex]) {
+        onKeyPress?.('delete', filteredTasks[selectedIndex]);
+      }
+    } else if (input === 'e') {
+      // Edit selected task
+      if (filteredTasks[selectedIndex]) {
+        onKeyPress?.('edit', filteredTasks[selectedIndex]);
+      }
+    } else if (input === 'n') {
+      // Create new task
+      onKeyPress?.('new', filteredTasks[selectedIndex] || null);
+    } else if (input === '?') {
+      // Show help
+      onKeyPress?.('help', filteredTasks[selectedIndex] || null);
     } else if (key.return) {
       if (filteredTasks[selectedIndex]) {
         onTaskSelect?.(filteredTasks[selectedIndex]);
@@ -188,8 +240,16 @@ export const TaskList: React.FC<TaskListProps> = ({
     if (!showSelection) return null;
 
     return (
-      <Box marginTop={1}>
-        <Text color="gray">↑/↓ or j/k: Navigate | Enter: Select | q: Quit</Text>
+      <Box flexDirection="column" marginTop={1}>
+        <Text color="gray">
+          Navigation: ↑/↓ j/k | Page: PgUp/PgDn Ctrl+u/d | Jump: g(top) G(bottom)
+        </Text>
+        <Text color="gray">
+          Actions: Enter(select) n(new) e(edit) d(delete) r(refresh) /(search) ?(help) q(quit)
+        </Text>
+        <Text color="gray">
+          Filters: ←/→ h/l (cycle status filters)
+        </Text>
       </Box>
     );
   };

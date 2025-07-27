@@ -44,7 +44,7 @@ export const dashboardCommand = new Command('dashboard')
       };
 
       // Get API client from global components if available
-      const apiClient = global.cliComponents?.apiClient as ApiClient;
+      const apiClient = global.cliComponents?.apiClient;
       const dashboard = new DashboardManager(config, apiClient);
 
       // Set initial layout
@@ -77,7 +77,7 @@ dashboardCommand
   .command('overview')
   .description('Launch overview dashboard with task statistics')
   .action(async () => {
-    const apiClient = global.cliComponents?.apiClient as ApiClient;
+    const apiClient = global.cliComponents?.apiClient;
     const dashboard = new DashboardManager({}, apiClient);
     dashboard.switchLayout('overview');
     dashboard.start();
@@ -87,7 +87,7 @@ dashboardCommand
   .command('velocity')
   .description('Launch velocity dashboard with team performance metrics')
   .action(async () => {
-    const apiClient = global.cliComponents?.apiClient as ApiClient;
+    const apiClient = global.cliComponents?.apiClient;
     const dashboard = new DashboardManager({}, apiClient);
     dashboard.switchLayout('velocity');
     dashboard.start();
@@ -97,7 +97,7 @@ dashboardCommand
   .command('personal')
   .description('Launch personal productivity dashboard')
   .action(async () => {
-    const apiClient = global.cliComponents?.apiClient as ApiClient;
+    const apiClient = global.cliComponents?.apiClient;
     const dashboard = new DashboardManager({}, apiClient);
     dashboard.switchLayout('personal');
     dashboard.start();

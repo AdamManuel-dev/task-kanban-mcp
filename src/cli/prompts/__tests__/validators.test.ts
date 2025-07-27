@@ -38,8 +38,12 @@ describe('Validator Functions', () => {
     });
 
     it('should reject titles with only special characters', () => {
-      expect(validateTaskTitle('!!!')).toBe('Task title must contain at least one letter or number');
-      expect(validateTaskTitle('---')).toBe('Task title must contain at least one letter or number');
+      expect(validateTaskTitle('!!!')).toBe(
+        'Task title must contain at least one letter or number'
+      );
+      expect(validateTaskTitle('---')).toBe(
+        'Task title must contain at least one letter or number'
+      );
     });
 
     it('should reject titles with reserved keywords', () => {
@@ -176,7 +180,9 @@ describe('Validator Functions', () => {
 
     it('should reject strings exceeding maximum length', () => {
       expect(validateMaxLength('toolong', 5)).toBe('Must be no more than 5 characters long');
-      expect(validateMaxLength('verylongstring', 10)).toBe('Must be no more than 10 characters long');
+      expect(validateMaxLength('verylongstring', 10)).toBe(
+        'Must be no more than 10 characters long'
+      );
     });
   });
 

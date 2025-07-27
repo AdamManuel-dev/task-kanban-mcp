@@ -51,6 +51,19 @@ This log tracks the progress of implementing CLI enhancements from TODO.md
 | Task ID | Status | Files Changed | Tests Added | Notes | Timestamp |
 |---------|--------|---------------|-------------|-------|-----------||
 | TASK-049 | ✅ Completed | src/cli/ui/components/TaskList.tsx | - | Interactive task list with keyboard nav | 2025-01-27 |
+| TASK-052 | ✅ Completed | src/cli/ui/components/TaskList.tsx | - | Enhanced keyboard navigation with Vim-style shortcuts, pagination, quick actions | 2025-07-27 |
+| TASK-017 | ✅ Completed | src/cli/utils/spinner.ts | - | Comprehensive error handling, timeout support, validation, cleanup | 2025-07-27 |
+| TASK-034 | ✅ Completed | src/cli/prompts/task-prompts.ts, src/cli/prompts/board-prompts.ts | - | Added PromptCancelledError and safePrompt wrapper with cancellation handling | 2025-07-27 |
+| TASK-033 | ✅ Completed | src/cli/prompts/task-prompts.ts | - | Already implemented comprehensive bulkTaskActionPrompt function | 2025-07-27 |
+| TASK-047 | ✅ Completed | src/cli/prompts/task-prompts.ts | - | Integrated TaskSizeEstimator with AI suggestions and visual feedback | 2025-07-27 |
+| TASK-062 | ✅ Completed | src/cli/commands/tasks.ts, src/cli/index.ts | - | Enhanced task:create with interactive prompts, AI estimation, and spinner feedback | 2025-07-27 |
+| TASK-070 | ✅ Completed | src/cli/index.ts | - | Comprehensive global error handler with type-specific formatting, logging, and graceful shutdown | 2025-07-27 |
+
+### Phase 8: Advanced Features (P3)
+| Task ID | Status | Files Changed | Tests Added | Notes | Timestamp |
+|---------|--------|---------------|-------------|-------|-----------||
+| TASK-074 | ✅ Completed | src/cli/utils/keyboard-handler.ts | - | Global keyboard shortcut system with context scoping, help overlay, and extensible shortcuts | 2025-07-27 |
+| TASK-075 | ✅ Completed | src/cli/utils/keyboard-handler.ts | - | Ctrl+R refresh functionality with callback system and error handling | 2025-07-27 |
 | TASK-050 | ✅ Completed | src/cli/ui/components/BoardView.tsx | - | Kanban board with column navigation | 2025-01-27 |
 | TASK-051 | ✅ Completed | src/cli/ui/components/StatusIndicator.tsx | - | Progress and status indicators | 2025-01-27 |
 | TASK-058 | ✅ Completed | src/cli/ui/themes/default.ts | - | Theme system with multiple variants | 2025-01-27 |
