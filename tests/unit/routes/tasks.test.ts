@@ -8,12 +8,7 @@
 import request from 'supertest';
 import express from 'express';
 import { taskRoutes } from '@/routes/tasks';
-import { DatabaseConnection } from '@/database/connection';
-import { TaskService } from '@/services/TaskService';
-import { NoteService } from '@/services/NoteService';
-import { TagService } from '@/services/TagService';
 import { responseFormattingMiddleware } from '@/middleware/response';
-import { logger } from '@/utils/logger';
 
 // Mock the logger
 jest.mock('@/utils/logger', () => ({
@@ -27,7 +22,7 @@ jest.mock('@/utils/logger', () => ({
 
 // Mock authentication middleware
 jest.mock('@/middleware/auth', () => ({
-  requirePermission: (permission: string) => (req: any, res: any, next: any) => {
+  requirePermission: (_permission: string) => (req: any, res: any, next: any) => {
     // Mock authenticated user
     req.user = { id: 'test-user', permissions: ['read', 'write'] };
     next();
@@ -115,7 +110,7 @@ describe('Tasks Routes', () => {
 
     // Error handling middleware
     app.use((error: any, req: any, res: any, next: any) => {
-      console.error('Test error:', error);
+      // Error logged in test environment for debugging
       res.status(error.statusCode || 500).json({
         success: false,
         error: error.message || 'Internal server error',
@@ -155,7 +150,7 @@ describe('Tasks Routes', () => {
   });
 
   afterAll(async () => {
-    if (dbConnection && dbConnection.isConnected()) {
+    if (dbConnection?.isConnected()) {
       await dbConnection.close();
     }
   });

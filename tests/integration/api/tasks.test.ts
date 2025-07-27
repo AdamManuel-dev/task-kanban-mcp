@@ -69,15 +69,15 @@ describe('Task API Integration Tests', () => {
     await dbConnection.execute('DELETE FROM tasks');
   });
 
-  describe('POST /api/tasks', () => {
+  describe('POST /api/v1/tasks', () => {
     it('should create a new task', async () => {
       const newTask = {
         title: 'Test Task',
         description: 'This is a test task',
-        boardId: testBoard.id,
-        columnId: global.testColumnId,
+        board_id: testBoard.id,
+        column_id: global.testColumnId,
         status: 'todo',
-        priority: 'medium',
+        priority: 5,
       };
 
       const response = await request(app)
@@ -90,7 +90,7 @@ describe('Task API Integration Tests', () => {
       expect(response.body.data).toMatchObject({
         title: newTask.title,
         description: newTask.description,
-        boardId: newTask.boardId,
+        board_id: newTask.board_id,
         status: newTask.status,
         priority: newTask.priority,
       });
@@ -116,15 +116,15 @@ describe('Task API Integration Tests', () => {
     it('should require authentication', async () => {
       const newTask = {
         title: 'Test Task',
-        boardId: testBoard.id,
-        columnId: global.testColumnId,
+        board_id: testBoard.id,
+        column_id: global.testColumnId,
       };
 
       await request(app).post('/api/v1/tasks').send(newTask).expect(401);
     });
   });
 
-  describe('GET /api/tasks', () => {
+  describe('GET /api/v1/tasks', () => {
     beforeEach(async () => {
       // Create test tasks
       const taskId = uuidv4();
@@ -261,10 +261,10 @@ describe('Task API Integration Tests', () => {
     });
   });
 
-  describe('GET /api/tasks/:id', () => {
+  describe('GET /api/v1/tasks/:id', () => {
     it('should get a specific task', async () => {
       const response = await request(app)
-        .get(`/api/tasks/${testTask.id}`)
+        .get(`/api/v1/tasks/${testTask.id}`)
         .set('X-API-Key', apiKey)
         .expect(200);
 
@@ -280,7 +280,7 @@ describe('Task API Integration Tests', () => {
       const fakeId = uuidv4();
 
       const response = await request(app)
-        .get(`/api/tasks/${fakeId}`)
+        .get(`/api/v1/tasks/${fakeId}`)
         .set('X-API-Key', apiKey)
         .expect(404);
 
@@ -289,7 +289,7 @@ describe('Task API Integration Tests', () => {
     });
   });
 
-  describe('PATCH /api/tasks/:id', () => {
+  describe('PATCH /api/v1/tasks/:id', () => {
     it('should update a task', async () => {
       const updates = {
         title: 'Updated Task Title',
@@ -298,7 +298,7 @@ describe('Task API Integration Tests', () => {
       };
 
       const response = await request(app)
-        .patch(`/api/tasks/${testTask.id}`)
+        .patch(`/api/v1/tasks/${testTask.id}`)
         .set('X-API-Key', apiKey)
         .send(updates)
         .expect(200);
@@ -314,7 +314,7 @@ describe('Task API Integration Tests', () => {
       };
 
       const response = await request(app)
-        .patch(`/api/tasks/${testTask.id}`)
+        .patch(`/api/v1/tasks/${testTask.id}`)
         .set('X-API-Key', apiKey)
         .send(invalidUpdate)
         .expect(400);
@@ -323,10 +323,10 @@ describe('Task API Integration Tests', () => {
     });
   });
 
-  describe('DELETE /api/tasks/:id', () => {
+  describe('DELETE /api/v1/tasks/:id', () => {
     it('should delete a task', async () => {
       const response = await request(app)
-        .delete(`/api/tasks/${testTask.id}`)
+        .delete(`/api/v1/tasks/${testTask.id}`)
         .set('X-API-Key', apiKey)
         .expect(200);
 
@@ -334,7 +334,7 @@ describe('Task API Integration Tests', () => {
 
       // Verify task is deleted
       const checkResponse = await request(app)
-        .get(`/api/tasks/${testTask.id}`)
+        .get(`/api/v1/tasks/${testTask.id}`)
         .set('X-API-Key', apiKey)
         .expect(404);
     });
@@ -363,7 +363,7 @@ describe('Task API Integration Tests', () => {
 
     it('should add task dependencies', async () => {
       const response = await request(app)
-        .post(`/api/tasks/${testTask.id}/dependencies`)
+        .post(`/api/v1/tasks/${testTask.id}/dependencies`)
         .set('X-API-Key', apiKey)
         .send({ dependsOn: [dependentTaskId] })
         .expect(200);
@@ -375,14 +375,14 @@ describe('Task API Integration Tests', () => {
     it('should prevent circular dependencies', async () => {
       // First add A depends on B
       await request(app)
-        .post(`/api/tasks/${testTask.id}/dependencies`)
+        .post(`/api/v1/tasks/${testTask.id}/dependencies`)
         .set('X-API-Key', apiKey)
         .send({ dependsOn: [dependentTaskId] })
         .expect(200);
 
       // Then try to add B depends on A (circular)
       const response = await request(app)
-        .post(`/api/tasks/${dependentTaskId}/dependencies`)
+        .post(`/api/v1/tasks/${dependentTaskId}/dependencies`)
         .set('X-API-Key', apiKey)
         .send({ dependsOn: [testTask.id] })
         .expect(400);
@@ -421,7 +421,7 @@ describe('Task API Integration Tests', () => {
 
     it('should search tasks by title', async () => {
       const response = await request(app)
-        .get('/api/tasks/search')
+        .get('/api/v1/tasks/search')
         .query({ q: 'bug' })
         .set('X-API-Key', apiKey)
         .expect(200);
@@ -432,7 +432,7 @@ describe('Task API Integration Tests', () => {
 
     it('should search tasks by description', async () => {
       const response = await request(app)
-        .get('/api/tasks/search')
+        .get('/api/v1/tasks/search')
         .query({ q: 'API' })
         .set('X-API-Key', apiKey)
         .expect(200);

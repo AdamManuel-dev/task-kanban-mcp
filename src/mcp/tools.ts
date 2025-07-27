@@ -12,6 +12,7 @@ import type {
   UpdateTaskArgs,
   GetTaskArgs,
   ListTasksArgs,
+  SearchTasksArgs,
   DeleteTaskArgs,
   CreateBoardArgs,
   GetBoardArgs,
@@ -184,6 +185,32 @@ export class MCPToolRegistry {
             },
           },
           required: [],
+        },
+      },
+      {
+        name: 'search_tasks',
+        description: 'Search tasks across boards with full-text search capabilities',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            query: { type: 'string', description: 'Search query for task title and description' },
+            board_id: { type: 'string', description: 'Filter by board ID' },
+            column_id: { type: 'string', description: 'Filter by column ID' },
+            status: {
+              type: 'string',
+              enum: ['todo', 'in_progress', 'done', 'blocked', 'archived'],
+              description: 'Filter by status',
+            },
+            assignee: { type: 'string', description: 'Filter by assignee' },
+            tags: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Filter by tags',
+            },
+            limit: { type: 'number', description: 'Maximum number of results', default: 20 },
+            offset: { type: 'number', description: 'Offset for pagination', default: 0 },
+          },
+          required: ['query'],
         },
       },
       {
@@ -422,6 +449,8 @@ export class MCPToolRegistry {
           return await this.getTask(args as GetTaskArgs);
         case 'list_tasks':
           return await this.listTasks(args as ListTasksArgs);
+        case 'search_tasks':
+          return await this.searchTasks(args as SearchTasksArgs);
         case 'delete_task':
           return await this.deleteTask(args as DeleteTaskArgs);
         case 'create_board':
@@ -566,6 +595,39 @@ export class MCPToolRegistry {
       sortOrder?: 'asc' | 'desc';
     }
     const filters: TaskFilters = { ...restArgs };
+
+    // Validate and cast status if provided
+    if (status) {
+      const validStatuses = ['todo', 'in_progress', 'done', 'blocked', 'archived'];
+      if (!validStatuses.includes(status)) {
+        throw new Error(`Invalid status: ${status}. Must be one of: ${validStatuses.join(', ')}`);
+      }
+      filters.status = status as Task['status'];
+    }
+
+    const tasks = await this.services.taskService.getTasks(filters);
+    return { success: true, tasks, count: tasks.length };
+  }
+
+  private async searchTasks(args: SearchTasksArgs): Promise<TasksResponse> {
+    const { query, status, ...restArgs } = args;
+
+    // Convert SearchTasksArgs to ListTasksArgs format
+    interface TaskFilters {
+      board_id?: string;
+      column_id?: string;
+      status?: Task['status'];
+      assignee?: string;
+      tags?: string[];
+      search: string; // Required for search
+      limit?: number;
+      offset?: number;
+    }
+
+    const filters: TaskFilters = {
+      ...restArgs,
+      search: query, // Use query as the search parameter
+    };
 
     // Validate and cast status if provided
     if (status) {

@@ -1,10 +1,15 @@
 import { Router } from 'express';
-import { TaskService } from '@/services/TaskService';
+import {
+  TaskService,
+  type CreateTaskRequest,
+  type UpdateTaskRequest,
+} from '@/services/TaskService';
 import { NoteService } from '@/services/NoteService';
 import { TagService } from '@/services/TagService';
 import { dbConnection } from '@/database/connection';
 import { requirePermission } from '@/middleware/auth';
 import { TaskValidation, NoteValidation, validateInput } from '@/utils/validation';
+import type { Task } from '@/types';
 import { NotFoundError, ValidationError } from '@/utils/errors';
 
 export async function taskRoutes(): Promise<Router> {
@@ -41,7 +46,7 @@ export async function taskRoutes(): Promise<Router> {
         overdue: boolean;
         board_id?: string;
         column_id?: string;
-        status?: string;
+        status?: Task['status'];
         assignee?: string;
         parent_task_id?: string;
         search?: string;
@@ -60,7 +65,13 @@ export async function taskRoutes(): Promise<Router> {
       // Add optional properties only if they have values
       if (board_id) options.board_id = board_id as string;
       if (column_id) options.column_id = column_id as string;
-      if (status) options.status = status;
+      if (
+        status &&
+        typeof status === 'string' &&
+        ['todo', 'in_progress', 'done', 'blocked', 'archived'].includes(status)
+      ) {
+        options.status = status as Task['status'];
+      }
       if (assignee) options.assignee = assignee as string;
       if (parent_task_id) options.parent_task_id = parent_task_id as string;
       if (search) options.search = search as string;
@@ -92,7 +103,7 @@ export async function taskRoutes(): Promise<Router> {
       // Filter out undefined values to comply with exactOptionalPropertyTypes
       const taskData = Object.fromEntries(
         Object.entries(rawTaskData).filter(([, value]) => value !== undefined)
-      );
+      ) as unknown as CreateTaskRequest;
       const task = await taskService.createTask(taskData);
       return res.status(201).apiSuccess(task);
     } catch (error) {

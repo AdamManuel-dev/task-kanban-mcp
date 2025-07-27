@@ -1,7 +1,7 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "module": "ESNext",
+    "module": "CommonJS",
     "target": "ES2022",
     "moduleResolution": "node",
     "allowSyntheticDefaultImports": true,
@@ -13,6 +13,7 @@
     "noUnusedParameters": false,
     "noUncheckedIndexedAccess": false,
     "noPropertyAccessFromIndexSignature": false,
+    "exactOptionalPropertyTypes": false,
     "resolveJsonModule": true
   },
   "include": [
@@ -28,8 +29,7 @@
     "**/*.spec.ts"
   ],
   "ts-node": {
-    "esm": true,
-    "experimentalSpecifierResolution": "node",
+    "esm": false,
     "transpileOnly": true
   }
 } 

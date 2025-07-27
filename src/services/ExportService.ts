@@ -184,7 +184,7 @@ export class ExportService {
       // Export boards to CSV
       if (options.includeBoards !== false) {
         const boards = await this.getBoards(options);
-        const boardsCsv = this.convertToCSV(boards, [
+        const boardsCsv = this.convertArrayToCSV(boards, [
           'id',
           'name',
           'description',
@@ -201,7 +201,7 @@ export class ExportService {
       // Export tasks to CSV
       if (options.includeTasks !== false) {
         const tasks = await this.getTasks(options);
-        const tasksCsv = this.convertToCSV(tasks, [
+        const tasksCsv = this.convertArrayToCSV(tasks, [
           'id',
           'title',
           'description',
@@ -227,7 +227,7 @@ export class ExportService {
       // Export tags to CSV
       if (options.includeTags !== false) {
         const tags = await this.getTags(options);
-        const tagsCsv = this.convertToCSV(tags, [
+        const tagsCsv = this.convertArrayToCSV(tags, [
           'id',
           'name',
           'color',
@@ -244,7 +244,7 @@ export class ExportService {
       // Export notes to CSV
       if (options.includeNotes !== false) {
         const notes = await this.getNotes(options);
-        const notesCsv = this.convertToCSV(notes, [
+        const notesCsv = this.convertArrayToCSV(notes, [
           'id',
           'content',
           'category',
@@ -516,7 +516,7 @@ export class ExportService {
     return this.db.query<Note>(query, params);
   }
 
-  private convertToCSV(data: unknown[], columns: string[]): string {
+  private convertArrayToCSV(data: unknown[], columns: string[]): string {
     const header = columns.join(',');
     const rows = data.map(item =>
       columns
@@ -806,13 +806,12 @@ export class ExportService {
           ? this.anonymizeText(task.description, 'TaskDesc', options?.hashSeed)
           : task.description,
       createdBy:
-        task.createdBy && options?.anonymizeUserData
-          ? this.anonymizeText(task.createdBy, 'User', options?.hashSeed)
-          : task.createdBy,
+        // createdBy property doesn't exist on Task type
+        '',
       assignedTo:
-        task.assignedTo && options?.anonymizeUserData
-          ? this.anonymizeText(task.assignedTo, 'User', options?.hashSeed)
-          : task.assignedTo,
+        task.assignee && options?.anonymizeUserData
+          ? this.anonymizeText(task.assignee, 'User', options?.hashSeed)
+          : task.assignee,
     }));
   }
 
@@ -842,9 +841,8 @@ export class ExportService {
         ? this.anonymizeText(note.content, 'Note', options?.hashSeed)
         : note.content,
       createdBy:
-        note.createdBy && options?.anonymizeUserData
-          ? this.anonymizeText(note.createdBy, 'User', options?.hashSeed)
-          : note.createdBy,
+        // createdBy property doesn't exist on Note type
+        '',
     }));
   }
 
@@ -906,8 +904,8 @@ export class ExportService {
     // Data rows
     if (data.data.tasks && data.data.tasks.length > 0) {
       for (const task of data.data.tasks) {
-        const board = data.data.boards?.find(b => b.id === task.boardId);
-        const column = data.data.columns?.find(c => c.id === task.columnId);
+        const board = data.data.boards?.find(b => b.id === task.board_id);
+        const column = data.data.columns?.find(c => c.id === task.column_id);
 
         const row = [
           this.escapeCSV(board?.name || 'Unknown'),
@@ -915,11 +913,11 @@ export class ExportService {
           this.escapeCSV(task.title),
           this.escapeCSV(task.description || ''),
           this.escapeCSV(task.status),
-          this.escapeCSV(task.priority || ''),
-          task.dueDate ? new Date(task.dueDate).toISOString() : '',
-          task.createdAt,
-          this.escapeCSV(task.createdBy || ''),
-          this.escapeCSV(task.assignedTo || ''),
+          this.escapeCSV(task.priority?.toString() || ''),
+          task.due_date ? new Date(task.due_date).toISOString() : '',
+          task.created_at.toISOString(),
+          '', // createdBy property doesn't exist on Task type
+          this.escapeCSV(task.assignee || ''),
         ].join(',');
 
         rows.push(row);
@@ -976,8 +974,8 @@ export class ExportService {
           if (task.priority) {
             markdown += `  - Priority: ${task.priority}\n`;
           }
-          if (task.dueDate) {
-            markdown += `  - Due: ${new Date(task.dueDate).toLocaleDateString()}\n`;
+          if (task.due_date) {
+            markdown += `  - Due: ${new Date(task.due_date).toLocaleDateString()}\n`;
           }
           markdown += '\n';
         }
@@ -1049,8 +1047,8 @@ export class ExportService {
           if (task.description) {
             html += `<p>${this.escapeHtml(task.description)}</p>`;
           }
-          if (task.dueDate) {
-            html += `<p>Due: ${new Date(task.dueDate).toLocaleDateString()}</p>`;
+          if (task.due_date) {
+            html += `<p>Due: ${new Date(task.due_date).toLocaleDateString()}</p>`;
           }
           html += '</div>';
         }
@@ -1078,11 +1076,11 @@ export class ExportService {
   private groupTasksByBoard(tasks: Task[]): Record<string, Task[]> {
     return tasks.reduce(
       (acc, task) => {
-        const { boardId } = task;
-        if (!acc[boardId]) {
-          acc[boardId] = [];
+        const { board_id } = task;
+        if (!acc[board_id]) {
+          acc[board_id] = [];
         }
-        acc[boardId].push(task);
+        acc[board_id].push(task);
         return acc;
       },
       {} as Record<string, Task[]>
@@ -1100,6 +1098,6 @@ export class ExportService {
       '"': '&quot;',
       "'": '&#39;',
     };
-    return text.replace(/[&<>"']/g, m => map[m]);
+    return text.replace(/[&<>"']/g, m => map[m] || m);
   }
 }

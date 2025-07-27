@@ -96,7 +96,7 @@ export class BackupService {
    * @param {DatabaseConnection} db - Database connection instance
    */
   constructor(private readonly db: DatabaseConnection) {
-    this.backupDir = process.env.BACKUP_DIR || path.join(process.cwd(), 'backups');
+    this.backupDir = process.env['BACKUP_DIR'] || path.join(process.cwd(), 'backups');
     this.ensureBackupDirectory();
   }
 
@@ -924,8 +924,7 @@ export class BackupService {
         const rowCount = countResult?.count || 0;
 
         // Get table checksum (using all columns concatenated)
-        const columnsResult = await this.db.query(`PRAGMA table_info(${tableName})`);
-        const columns = columnsResult.map(col => col.name as string);
+        await this.db.query(`PRAGMA table_info(${tableName})`);
 
         const tableCheck = {
           tableName,
@@ -1124,7 +1123,7 @@ export class BackupService {
 
           // Check for INSERT INTO statements
           const insertMatch = trimmed.match(/^INSERT INTO\s+['"`]?(\w+)['"`]?/i);
-          if (insertMatch && tablesToRestore.has(insertMatch[1].toLowerCase())) {
+          if (insertMatch?.[1] && tablesToRestore.has(insertMatch[1].toLowerCase())) {
             shouldExecute = true;
 
             // Clear existing data if not preserving
@@ -1140,7 +1139,7 @@ export class BackupService {
             const createMatch = trimmed.match(
               /^CREATE TABLE\s+(?:IF NOT EXISTS\s+)?['"`]?(\w+)['"`]?/i
             );
-            if (createMatch && tablesToRestore.has(createMatch[1].toLowerCase())) {
+            if (createMatch?.[1] && tablesToRestore.has(createMatch[1].toLowerCase())) {
               shouldExecute = true;
             }
           }

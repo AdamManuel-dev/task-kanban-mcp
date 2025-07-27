@@ -1,7 +1,19 @@
 import { z } from 'zod';
+import {
+  sanitizeTaskTitle,
+  sanitizeDescription,
+  sanitizeName,
+  sanitizeTag,
+  sanitizeEmail,
+  sanitizeUrl,
+  createSafePromptValidator,
+  detectSuspicious,
+  inputSanitizer,
+} from '../utils/input-sanitizer';
 
 /**
- * Input validation functions for CLI prompts
+ * Input validation functions for CLI prompts with comprehensive sanitization
+ * Enhanced for TASK-119: Input sanitization for all prompts
  */
 
 // Task size options
@@ -17,31 +29,34 @@ export const STATUSES = ['todo', 'in_progress', 'done', 'blocked', 'cancelled'] 
 export type Status = (typeof STATUSES)[number];
 
 /**
- * Validate task title
+ * Validate task title with comprehensive sanitization
  */
-export function validateTaskTitle(input: string): true | string {
-  const trimmed = input.trim();
+export const validateTaskTitle = createSafePromptValidator(
+  sanitizeTaskTitle,
+  (input: string): true | string => {
+    const trimmed = input.trim();
 
-  if (!trimmed) {
-    return 'Task title cannot be empty';
+    if (!trimmed) {
+      return 'Task title cannot be empty';
+    }
+
+    if (trimmed.length < 3) {
+      return 'Task title must be at least 3 characters long';
+    }
+
+    if (trimmed.length > 200) {
+      return 'Task title must be less than 200 characters';
+    }
+
+    // Additional security checks
+    const suspiciousCheck = detectSuspicious(input);
+    if (suspiciousCheck.suspicious) {
+      return `Security issue: ${suspiciousCheck.patterns.join(', ')} detected in title`;
+    }
+
+    return true;
   }
-
-  if (trimmed.length < 3) {
-    return 'Task title must be at least 3 characters long';
-  }
-
-  if (trimmed.length > 200) {
-    return 'Task title must be less than 200 characters';
-  }
-
-  // Check for invalid characters
-  const invalidChars = /[<>:"\\|?*]/;
-  if (invalidChars.test(trimmed)) {
-    return 'Task title contains invalid characters: < > : " \\ | ? *';
-  }
-
-  return true;
-}
+);
 
 /**
  * Validate priority
@@ -70,40 +85,56 @@ export function validateTaskSize(input: string): true | string {
 }
 
 /**
- * Validate email address
+ * Validate email address with sanitization
  */
-export function validateEmail(input: string): true | string {
-  const trimmed = input.trim();
+export const validateEmail = createSafePromptValidator(
+  sanitizeEmail,
+  (input: string): true | string => {
+    const trimmed = input.trim();
 
-  if (!trimmed) {
-    return 'Email address cannot be empty';
+    if (!trimmed) {
+      return 'Email address cannot be empty';
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmed)) {
+      return 'Please enter a valid email address';
+    }
+
+    return true;
   }
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(trimmed)) {
-    return 'Please enter a valid email address';
-  }
-
-  return true;
-}
+);
 
 /**
- * Validate URL
+ * Validate URL with sanitization
  */
-export function validateUrl(input: string): true | string {
-  const trimmed = input.trim();
+export const validateUrl = createSafePromptValidator(
+  sanitizeUrl,
+  (input: string): true | string => {
+    const trimmed = input.trim();
 
-  if (!trimmed) {
-    return 'URL cannot be empty';
-  }
+    if (!trimmed) {
+      return 'URL cannot be empty';
+    }
 
-  try {
-    new URL(trimmed);
-    return true;
-  } catch {
-    return 'Please enter a valid URL';
+    try {
+      const url = new URL(trimmed);
+
+      // Additional security checks for URLs
+      if (
+        url.protocol === 'javascript:' ||
+        url.protocol === 'data:' ||
+        url.protocol === 'vbscript:'
+      ) {
+        return 'Unsafe URL protocol detected';
+      }
+
+      return true;
+    } catch {
+      return 'Please enter a valid URL';
+    }
   }
-}
+);
 
 /**
  * Validate git repository URL
@@ -125,71 +156,68 @@ export function validateGitRepoUrl(input: string): true | string {
 }
 
 /**
- * Validate board name
+ * Validate board name with sanitization
  */
-export function validateBoardName(input: string): true | string {
-  const trimmed = input.trim();
+export const validateBoardName = createSafePromptValidator(
+  (input: string) => sanitizeName(input, 50),
+  (input: string): true | string => {
+    const trimmed = input.trim();
 
-  if (!trimmed) {
-    return 'Board name cannot be empty';
+    if (!trimmed) {
+      return 'Board name cannot be empty';
+    }
+
+    if (trimmed.length < 2) {
+      return 'Board name must be at least 2 characters long';
+    }
+
+    if (trimmed.length > 50) {
+      return 'Board name must be less than 50 characters';
+    }
+
+    return true;
   }
-
-  if (trimmed.length < 2) {
-    return 'Board name must be at least 2 characters long';
-  }
-
-  if (trimmed.length > 50) {
-    return 'Board name must be less than 50 characters';
-  }
-
-  // Allow alphanumeric, spaces, hyphens, and underscores
-  const validNameRegex = /^[\w\s-]+$/;
-  if (!validNameRegex.test(trimmed)) {
-    return 'Board name can only contain letters, numbers, spaces, hyphens, and underscores';
-  }
-
-  return true;
-}
+);
 
 /**
- * Validate column name
+ * Validate column name with sanitization
  */
-export function validateColumnName(input: string): true | string {
-  const trimmed = input.trim();
+export const validateColumnName = createSafePromptValidator(
+  (input: string) => sanitizeName(input, 30),
+  (input: string): true | string => {
+    const trimmed = input.trim();
 
-  if (!trimmed) {
-    return 'Column name cannot be empty';
+    if (!trimmed) {
+      return 'Column name cannot be empty';
+    }
+
+    if (trimmed.length > 30) {
+      return 'Column name must be less than 30 characters';
+    }
+
+    return true;
   }
-
-  if (trimmed.length > 30) {
-    return 'Column name must be less than 30 characters';
-  }
-
-  return true;
-}
+);
 
 /**
- * Validate tag name
+ * Validate tag name with sanitization
  */
-export function validateTagName(input: string): true | string {
-  const trimmed = input.trim();
+export const validateTagName = createSafePromptValidator(
+  sanitizeTag,
+  (input: string): true | string => {
+    const trimmed = input.trim();
 
-  if (!trimmed) {
-    return 'Tag name cannot be empty';
+    if (!trimmed) {
+      return 'Tag name cannot be empty';
+    }
+
+    if (trimmed.length > 20) {
+      return 'Tag name must be less than 20 characters';
+    }
+
+    return true;
   }
-
-  if (trimmed.length > 20) {
-    return 'Tag name must be less than 20 characters';
-  }
-
-  // No spaces or special characters in tags
-  const validTagRegex = /^[\w-]+$/;
-  if (!validTagRegex.test(trimmed)) {
-    return 'Tag name can only contain letters, numbers, hyphens, and underscores';
-  }
-
-  return true;
-}
+);
 
 /**
  * Validate date input
@@ -342,3 +370,182 @@ export const BoardSchema = z.object({
 
 export type TaskInput = z.infer<typeof TaskSchema>;
 export type BoardInput = z.infer<typeof BoardSchema>;
+
+/**
+ * Additional sanitized validators for descriptions and other text inputs
+ */
+
+/**
+ * Validate task description with sanitization
+ */
+export const validateTaskDescription = createSafePromptValidator(
+  sanitizeDescription,
+  (input: string): true | string => {
+    const trimmed = input.trim();
+
+    if (trimmed.length > 2000) {
+      return 'Description must be less than 2000 characters';
+    }
+
+    return true;
+  }
+);
+
+/**
+ * Validate board description with sanitization
+ */
+export const validateBoardDescription = createSafePromptValidator(
+  sanitizeDescription,
+  (input: string): true | string => {
+    const trimmed = input.trim();
+
+    if (trimmed.length > 500) {
+      return 'Board description must be less than 500 characters';
+    }
+
+    return true;
+  }
+);
+
+/**
+ * Validate assignee name with sanitization
+ */
+export const validateAssignee = createSafePromptValidator(
+  (input: string) => sanitizeName(input, 100),
+  (input: string): true | string => {
+    const trimmed = input.trim();
+
+    if (trimmed.length > 100) {
+      return 'Assignee name must be less than 100 characters';
+    }
+
+    return true;
+  }
+);
+
+/**
+ * Create safe versions of existing Zod schemas with sanitization
+ */
+export const SafeTaskSchema = z.object({
+  title: z
+    .string()
+    .transform(val => sanitizeTaskTitle(val).sanitized)
+    .pipe(z.string().min(3).max(200)),
+  description: z
+    .string()
+    .optional()
+    .transform(val => (val ? sanitizeDescription(val).sanitized : val)),
+  priority: z.enum(PRIORITIES).optional(),
+  size: z.enum(TASK_SIZES).optional(),
+  assignee: z
+    .string()
+    .optional()
+    .transform(val => (val ? sanitizeName(val, 100).sanitized : val)),
+  due_date: z.string().optional(),
+  tags: z.array(z.string().transform(val => sanitizeTag(val).sanitized)).optional(),
+});
+
+export const SafeBoardSchema = z.object({
+  name: z
+    .string()
+    .transform(val => sanitizeName(val, 50).sanitized)
+    .pipe(z.string().min(2).max(50)),
+  description: z
+    .string()
+    .optional()
+    .transform(val => (val ? sanitizeDescription(val).sanitized : val)),
+  columns: z.array(
+    z.object({
+      name: z
+        .string()
+        .transform(val => sanitizeName(val, 30).sanitized)
+        .pipe(z.string().min(1).max(30)),
+      order: z.number().int().min(0),
+    })
+  ),
+});
+
+export type SafeTaskInput = z.infer<typeof SafeTaskSchema>;
+export type SafeBoardInput = z.infer<typeof SafeBoardSchema>;
+
+/**
+ * Utility function to validate and sanitize any input
+ */
+export function validateAndSanitizeInput(
+  input: string,
+  type: 'title' | 'description' | 'name' | 'tag' | 'email' | 'url' | 'assignee'
+): { valid: boolean; sanitized: string; error?: string; warnings?: string[] } {
+  try {
+    let validator: (input: string) => true | string;
+
+    switch (type) {
+      case 'title':
+        validator = validateTaskTitle;
+        break;
+      case 'description':
+        validator = validateTaskDescription;
+        break;
+      case 'name':
+        validator = validateBoardName;
+        break;
+      case 'tag':
+        validator = validateTagName;
+        break;
+      case 'email':
+        validator = validateEmail;
+        break;
+      case 'url':
+        validator = validateUrl;
+        break;
+      case 'assignee':
+        validator = validateAssignee;
+        break;
+      default:
+        return { valid: false, sanitized: input, error: 'Unknown validation type' };
+    }
+
+    const result = validator(input);
+    if (result === true) {
+      // Get the sanitized version
+      let sanitized: string;
+      switch (type) {
+        case 'title':
+          sanitized = sanitizeTaskTitle(input).sanitized;
+          break;
+        case 'description':
+          sanitized = sanitizeDescription(input).sanitized;
+          break;
+        case 'name':
+          sanitized = sanitizeName(input).sanitized;
+          break;
+        case 'tag':
+          sanitized = sanitizeTag(input).sanitized;
+          break;
+        case 'email':
+          sanitized = sanitizeEmail(input).sanitized;
+          break;
+        case 'url':
+          sanitized = sanitizeUrl(input).sanitized;
+          break;
+        case 'assignee':
+          sanitized = sanitizeName(input, 100).sanitized;
+          break;
+        default:
+          sanitized = input;
+      }
+
+      return {
+        valid: true,
+        sanitized,
+        warnings: sanitized !== input ? ['Input was sanitized'] : undefined,
+      };
+    }
+    return { valid: false, sanitized: input, error: result };
+  } catch (error) {
+    return {
+      valid: false,
+      sanitized: input,
+      error: `Validation error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+    };
+  }
+}

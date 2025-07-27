@@ -316,7 +316,7 @@ router.post('/:id/restore', validateRequest(RestoreBackupSchema), async (req, re
     logger.info(`Database restored from backup: ${id}`);
     return res.json(formatSuccessResponse(null, 'Database restored successfully'));
   } catch (error) {
-    logger.error(`Restore failed for backup ${req.params.id}:`, error);
+    logger.error(`Restore failed for backup ${req.params['id']}:`, error);
     return res
       .status(500)
       .json(
@@ -536,7 +536,7 @@ router.get('/:id/export', async (req, res) => {
     if (!id) {
       return res.status(400).json(formatErrorResponse('Backup ID is required'));
     }
-    const format = (req.query.format as string) || 'json';
+    const format = (req.query['format'] as string) || 'json';
 
     const backup = await backupService.getBackupMetadata(id);
     if (!backup) {

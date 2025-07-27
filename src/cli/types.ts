@@ -35,6 +35,11 @@ export interface HealthResponse {
   };
 }
 
+// Extended health response for API consistency
+export interface HealthApiResponse extends ApiResponse<HealthResponse> {
+  data: HealthResponse;
+}
+
 // Task operations
 export interface CreateTaskRequest {
   title: string;
@@ -172,6 +177,8 @@ export interface BackupInfo {
   verified: boolean;
   createdAt: string;
   description?: string;
+  compress?: boolean; // For requests
+  verify?: boolean; // For requests
 }
 
 export interface BackupResponse extends ApiResponse<BackupInfo> {
@@ -333,9 +340,74 @@ export interface ImportResponse {
   errors: string[];
 }
 
+// Context data structure
+export interface ContextData {
+  activeTasks?: Array<{
+    id: string;
+    title: string;
+    priority: string;
+    status: string;
+  }>;
+  blockedTasks?: Array<{
+    id: string;
+    title: string;
+    blockedBy: string;
+  }>;
+  upcomingDeadlines?: Array<{
+    id: string;
+    title: string;
+    dueDate: string;
+    priority: string;
+  }>;
+  recentActivity?: Array<{
+    id: string;
+    action: string;
+    timestamp: string;
+    details: string;
+  }>;
+  recommendations?: string[];
+  insights?: string[];
+  summary?: string | Record<string, unknown>;
+  statistics?: Record<string, unknown>;
+  productivityInsights?: string[];
+  bottlenecks?: Array<{ type: string; description: string; impact: string }>;
+  actionableRecommendations?: string[];
+  [key: string]: unknown; // Allow other dynamic properties
+}
+
+// Additional response types for missing operations
+export interface ContextResponse extends ApiResponse<ContextData> {
+  data: ContextData;
+}
+
+export interface DatabaseStatsResponse extends ApiResponse<DatabaseStats> {
+  data: DatabaseStats;
+}
+
+export interface DatabaseHealthResponse
+  extends ApiResponse<{ healthy: boolean; issues?: string[] }> {
+  data: { healthy: boolean; issues?: string[] };
+}
+
+export interface MigrationResponse extends ApiResponse<Migration> {
+  data: Migration;
+}
+
+export interface MigrationsResponse extends ApiResponse<Migration[]> {
+  data: Migration[];
+}
+
+export interface RestoreResponse extends ApiResponse<RestoreResult> {
+  data: RestoreResult;
+}
+
+export interface VerificationResponse extends ApiResponse<VerificationResult> {
+  data: VerificationResult;
+}
+
 // Union type for all possible API responses
 export type AnyApiResponse =
-  | HealthResponse
+  | HealthApiResponse
   | TaskResponse
   | TasksResponse
   | BoardResponse
@@ -348,5 +420,13 @@ export type AnyApiResponse =
   | BackupsResponse
   | ScheduleResponse
   | SchedulesResponse
+  | ContextResponse
+  | DatabaseStatsResponse
+  | DatabaseHealthResponse
+  | MigrationResponse
+  | MigrationsResponse
+  | RestoreResponse
+  | VerificationResponse
+  | ExportResponse
   | ErrorResponse
   | ApiResponse;

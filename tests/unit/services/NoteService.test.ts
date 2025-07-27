@@ -7,7 +7,6 @@
 
 import { NoteService } from '@/services/NoteService';
 import { DatabaseConnection } from '@/database/connection';
-import { logger } from '@/utils/logger';
 import type { Note, ServiceError } from '@/types';
 
 // Mock the logger to avoid console output during tests

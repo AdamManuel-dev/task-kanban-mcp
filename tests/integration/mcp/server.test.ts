@@ -2,7 +2,7 @@
  * MCP Server Integration Tests
  */
 
-import { mcpServer, MCPKanbanServer } from '@/mcp/server';
+import { MCPKanbanServer } from '@/mcp/server';
 import { dbConnection } from '@/database/connection';
 import { v4 as uuidv4 } from 'uuid';
 import type { Task, Board } from '@/types';

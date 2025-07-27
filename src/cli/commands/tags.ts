@@ -1,6 +1,51 @@
 import type { Command } from 'commander';
 import inquirer from 'inquirer';
+
 import type { CliComponents } from '../types';
+
+interface ListTagOptions {
+  usage?: boolean;
+  tree?: boolean;
+  limit?: string;
+}
+
+interface ShowTagOptions {
+  tasks?: boolean;
+  usage?: boolean;
+}
+
+interface CreateTagOptions {
+  name?: string;
+  color?: string;
+  description?: string;
+  parent?: string;
+  interactive?: boolean;
+}
+
+interface UpdateTagOptions {
+  name?: string;
+  color?: string;
+  description?: string;
+  parent?: string;
+  interactive?: boolean;
+}
+
+interface DeleteTagOptions {
+  force?: boolean;
+  cascade?: boolean;
+}
+
+interface TagData {
+  id: string;
+  name: string;
+  color?: string;
+  description?: string;
+  parentId?: string;
+  taskCount?: number;
+  children?: TagData[];
+  createdAt?: string;
+  updatedAt?: string;
+}
 
 export function registerTagCommands(program: Command): void {
   const tagCmd = program.command('tag').description('Manage tags');
@@ -15,11 +60,11 @@ export function registerTagCommands(program: Command): void {
     .option('--usage', 'include usage statistics')
     .option('--tree', 'show hierarchical tree structure')
     .option('-l, --limit <number>', 'limit number of results', '50')
-    .action(async options => {
+    .action(async (options: ListTagOptions) => {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const tags = (await apiClient.getTags()) as any;
+        const tags = (await apiClient.getTags()) as TagData[];
 
         if (!tags || tags.length === 0) {
           formatter.info('No tags found');
@@ -29,7 +74,7 @@ export function registerTagCommands(program: Command): void {
         if (options.tree) {
           // Display as hierarchical tree
           formatter.info('Hierarchical tag structure:');
-          const rootTags = tags.filter((tag: any) => !tag.parentId);
+          const rootTags = tags.filter((tag: TagData) => !tag.parentId);
           displayTagTree(rootTags, tags, formatter, 0);
         } else {
           // Regular table display
@@ -58,11 +103,11 @@ export function registerTagCommands(program: Command): void {
     .command('show <id>')
     .description('Show tag details')
     .option('--tasks', 'include tasks with this tag')
-    .action(async (id: string, options) => {
+    .action(async (id: string, options: ShowTagOptions) => {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const tag = (await apiClient.getTag(id)) as any;
+        const tag = (await apiClient.getTag(id)) as TagData;
 
         if (!tag) {
           formatter.error(`Tag ${id} not found`);
@@ -72,7 +117,7 @@ export function registerTagCommands(program: Command): void {
         formatter.output(tag);
 
         if (options.tasks && tag.tasks) {
-          console.log('\n--- Tasks with this tag ---');
+          formatter.info('\n--- Tasks with this tag ---');
           formatter.output(tag.tasks, {
             fields: ['id', 'title', 'status', 'priority'],
             headers: ['ID', 'Title', 'Status', 'Priority'],
@@ -94,13 +139,19 @@ export function registerTagCommands(program: Command): void {
     .option('-c, --color <color>', 'tag color (hex code)')
     .option('-p, --parent <parentId>', 'parent tag ID for hierarchy')
     .option('-i, --interactive', 'interactive mode')
-    .action(async (name: string, options) => {
+    .action(async (name: string, options: CreateTagOptions) => {
       const { apiClient, formatter } = getComponents();
 
-      let tagData: any = { name };
+      let tagData: Record<string, unknown> = { name };
 
       if (options.interactive) {
-        const questions: any[] = [
+        const questions: Array<{
+          type: string;
+          name: string;
+          message: string;
+          default?: string;
+          validate?: (input: string) => boolean | string;
+        }> = [
           {
             type: 'input',
             name: 'description',

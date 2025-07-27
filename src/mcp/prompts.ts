@@ -17,6 +17,69 @@ export class MCPPromptRegistry {
   async listPrompts(): Promise<Prompt[]> {
     return [
       {
+        name: 'task_planning',
+        description: 'Help plan and organize tasks with intelligent suggestions',
+        arguments: [
+          {
+            name: 'board_id',
+            description: 'ID of the board to plan tasks for',
+            required: true,
+          },
+          {
+            name: 'planning_horizon',
+            description: 'Time horizon for planning (day, week, sprint, month)',
+            required: false,
+          },
+          {
+            name: 'focus_area',
+            description: 'Specific area to focus planning on',
+            required: false,
+          },
+        ],
+      },
+      {
+        name: 'task_breakdown',
+        description: 'Break down complex tasks into manageable subtasks',
+        arguments: [
+          {
+            name: 'task_description',
+            description: 'Description of the complex task to break down',
+            required: true,
+          },
+          {
+            name: 'board_id',
+            description: 'ID of the board where tasks will be created',
+            required: false,
+          },
+          {
+            name: 'complexity_level',
+            description: 'Desired complexity level for subtasks',
+            required: false,
+          },
+        ],
+      },
+      {
+        name: 'sprint_planning',
+        description: 'Assist with sprint planning and capacity estimation',
+        arguments: [
+          {
+            name: 'board_id',
+            description: 'ID of the board for sprint planning',
+            required: true,
+          },
+          {
+            name: 'sprint_duration',
+            description: 'Duration of the sprint in days',
+            required: false,
+          },
+          {
+            name: 'team_capacity',
+            description: 'Available team capacity for the sprint',
+            required: false,
+          },
+        ],
+      },
+      {
         name: 'analyze_project_status',
         description: 'Analyze the current status of a project/board and provide insights',
         arguments: [
@@ -216,6 +279,12 @@ export class MCPPromptRegistry {
 
     try {
       switch (name) {
+        case 'task_planning':
+          return await this.generateTaskPlanningPrompt(args);
+        case 'task_breakdown':
+          return await this.generateTaskBreakdownBasicPrompt(args);
+        case 'sprint_planning':
+          return await this.generateSprintPlanningBasicPrompt(args);
         case 'analyze_project_status':
           return await this.generateProjectStatusPrompt(args);
         case 'task_breakdown_assistant':

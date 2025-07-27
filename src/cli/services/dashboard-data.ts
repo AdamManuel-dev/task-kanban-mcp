@@ -12,11 +12,7 @@ export class DashboardDataService {
    */
   async fetchDashboardData(): Promise<DashboardData> {
     try {
-      const [tasks, boards, activity] = await Promise.all([
-        this.fetchTasks(),
-        this.fetchBoards(),
-        this.fetchActivity(),
-      ]);
+      const [tasks, activity] = await Promise.all([this.fetchTasks(), this.fetchActivity()]);
 
       return {
         tasks: this.transformTaskData(tasks),

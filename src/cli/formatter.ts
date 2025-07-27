@@ -385,7 +385,7 @@ export class OutputFormatter {
    * Format backup schedule information
    */
   formatSchedule(schedule: any): string {
-    const lines = [];
+    const lines: string[] = [];
 
     // Header
     lines.push(this.formatHeader(`Schedule: ${schedule.name}`));

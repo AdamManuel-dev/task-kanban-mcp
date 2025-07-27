@@ -5,7 +5,10 @@ import ora from 'ora';
  * Error thrown by SpinnerManager
  */
 export class SpinnerError extends Error {
-  constructor(message: string, public code: string) {
+  constructor(
+    message: string,
+    public code: string
+  ) {
     super(message);
     this.name = 'SpinnerError';
   }
@@ -40,7 +43,7 @@ export class SpinnerManager {
     }
 
     if (text.length > this.maxTextLength) {
-      return text.substring(0, this.maxTextLength - 3) + '...';
+      return `${text.substring(0, this.maxTextLength - 3)}...`;
     }
 
     return text.trim();
@@ -53,7 +56,9 @@ export class SpinnerManager {
     try {
       return operation();
     } catch (error) {
-      console.warn(`Spinner operation failed: ${error instanceof Error ? error.message : String(error)}`);
+      console.warn(
+        `Spinner operation failed: ${error instanceof Error ? error.message : String(error)}`
+      );
       return fallback;
     }
   }
@@ -69,13 +74,14 @@ export class SpinnerManager {
         this.stop();
       }
 
-      this.spinner = this.safeOperation(() => 
-        ora({
-          text: validatedText,
-          color: 'cyan',
-          spinner: 'dots',
-          hideCursor: true,
-        }).start(),
+      this.spinner = this.safeOperation(
+        () =>
+          ora({
+            text: validatedText,
+            color: 'cyan',
+            spinner: 'dots',
+            hideCursor: true,
+          }).start(),
         null
       );
 
@@ -88,7 +94,10 @@ export class SpinnerManager {
       if (error instanceof SpinnerError) {
         throw error;
       }
-      throw new SpinnerError(`Failed to start spinner: ${error instanceof Error ? error.message : String(error)}`, 'START_FAILED');
+      throw new SpinnerError(
+        `Failed to start spinner: ${error instanceof Error ? error.message : String(error)}`,
+        'START_FAILED'
+      );
     }
   }
 
@@ -115,7 +124,10 @@ export class SpinnerManager {
       if (error instanceof SpinnerError) {
         throw error;
       }
-      throw new SpinnerError(`Failed to update spinner: ${error instanceof Error ? error.message : String(error)}`, 'UPDATE_FAILED');
+      throw new SpinnerError(
+        `Failed to update spinner: ${error instanceof Error ? error.message : String(error)}`,
+        'UPDATE_FAILED'
+      );
     }
   }
 
@@ -147,7 +159,9 @@ export class SpinnerManager {
 
       this.cleanup();
     } catch (error) {
-      console.warn(`Failed to stop spinner: ${error instanceof Error ? error.message : String(error)}`);
+      console.warn(
+        `Failed to stop spinner: ${error instanceof Error ? error.message : String(error)}`
+      );
       this.forceCleanup();
     }
   }
@@ -266,10 +280,10 @@ export class SpinnerManager {
       return result;
     } catch (error) {
       if (timeoutId) clearTimeout(timeoutId);
-      
+
       const errorMessage = error instanceof Error ? error.message : String(error);
       const failText = options?.failText || `Failed: ${text} - ${errorMessage}`;
-      
+
       this.fail(failText);
       throw error;
     }
@@ -302,11 +316,14 @@ export class SpinnerManager {
 
     for (let i = 0; i < steps.length; i++) {
       const step = steps[i];
-      
+
       if (!step || typeof step.action !== 'function') {
-        const error = new SpinnerError(`Invalid step at index ${i}: action must be a function`, 'INVALID_STEP');
+        const error = new SpinnerError(
+          `Invalid step at index ${i}: action must be a function`,
+          'INVALID_STEP'
+        );
         errors.push(error);
-        
+
         if (stopOnError && !step?.skipOnError) {
           throw error;
         }
@@ -314,19 +331,13 @@ export class SpinnerManager {
       }
 
       try {
-        const progressText = showProgress 
-          ? `[${i + 1}/${steps.length}] ${step.text}` 
-          : step.text;
+        const progressText = showProgress ? `[${i + 1}/${steps.length}] ${step.text}` : step.text;
 
-        const result = await this.withSpinner(
-          progressText,
-          step.action(),
-          {
-            successText: step.successText,
-            failText: step.failText,
-            timeout: step.timeout,
-          }
-        );
+        const result = await this.withSpinner(progressText, step.action(), {
+          ...(step.successText && { successText: step.successText }),
+          ...(step.failText && { failText: step.failText }),
+          ...(step.timeout && { timeout: step.timeout }),
+        });
 
         results.push(result);
       } catch (error) {

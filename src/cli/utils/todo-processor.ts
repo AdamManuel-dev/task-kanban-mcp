@@ -72,7 +72,7 @@ export class TodoProcessor {
             if (nextLine.includes('Dependencies:')) {
               const depMatch = nextLine.match(/Dependencies: (.+)/);
               if (depMatch && depMatch[1] !== 'None') {
-                dependencies.push(...depMatch[1].split(', ').map(d => d.trim()));
+                dependencies.push(...(depMatch[1]?.split(', ').map(d => d.trim()) || []));
               }
               break;
             }
@@ -81,13 +81,13 @@ export class TodoProcessor {
 
         todos.set(id, {
           id,
-          text: description,
+          text: description || '',
           completed: completed === 'x',
           priority: priority as TodoItem['priority'],
           size: size as TodoItem['size'],
           value: value as TodoItem['value'],
           dependencies,
-          phase: currentPhase || undefined,
+          phase: currentPhase || '',
         });
       }
     }

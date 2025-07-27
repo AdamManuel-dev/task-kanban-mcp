@@ -56,6 +56,17 @@ export interface ListTasksArgs {
   order?: 'asc' | 'desc';
 }
 
+export interface SearchTasksArgs {
+  query: string;
+  board_id?: string;
+  column_id?: string;
+  status?: string;
+  assignee?: string;
+  tags?: string[];
+  limit?: number;
+  offset?: number;
+}
+
 export interface DeleteTaskArgs {
   task_id: string;
 }

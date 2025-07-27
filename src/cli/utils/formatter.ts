@@ -1,5 +1,13 @@
 import chalk from 'chalk';
-import { format } from 'date-fns';
+import {
+  format,
+  isToday,
+  isTomorrow,
+  isYesterday,
+  isThisWeek,
+  isThisYear,
+  formatDistanceToNow,
+} from 'date-fns';
 
 /**
  * Utility functions for formatting CLI output
@@ -62,6 +70,152 @@ export function formatRelativeTime(date: Date | string): string {
   if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
   if (minutes > 0) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
   return 'just now';
+}
+
+/**
+ * Format relative time using date-fns (more natural language)
+ */
+export function formatRelativeTimeNatural(date: Date | string): string {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  return formatDistanceToNow(dateObj, { addSuffix: true });
+}
+
+/**
+ * Format date for due dates with smart context
+ */
+export function formatDueDate(date: Date | string): string {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+
+  if (isToday(dateObj)) {
+    return chalk.yellow('Due today');
+  }
+
+  if (isTomorrow(dateObj)) {
+    return chalk.yellow('Due tomorrow');
+  }
+
+  if (isYesterday(dateObj)) {
+    return chalk.red('Overdue (yesterday)');
+  }
+
+  const now = new Date();
+  if (dateObj < now) {
+    return chalk.red(`Overdue (${formatDistanceToNow(dateObj)} ago)`);
+  }
+
+  if (isThisWeek(dateObj)) {
+    return `Due ${format(dateObj, 'EEEE')}`;
+  }
+
+  if (isThisYear(dateObj)) {
+    return `Due ${format(dateObj, 'MMM d')}`;
+  }
+
+  return `Due ${format(dateObj, 'MMM d, yyyy')}`;
+}
+
+/**
+ * Format date with time if it's today, date only otherwise
+ */
+export function formatSmartDateTime(date: Date | string): string {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+
+  if (isToday(dateObj)) {
+    return format(dateObj, 'HH:mm');
+  }
+
+  if (isYesterday(dateObj)) {
+    return `Yesterday ${format(dateObj, 'HH:mm')}`;
+  }
+
+  if (isTomorrow(dateObj)) {
+    return `Tomorrow ${format(dateObj, 'HH:mm')}`;
+  }
+
+  if (isThisWeek(dateObj)) {
+    return format(dateObj, 'EEE HH:mm');
+  }
+
+  if (isThisYear(dateObj)) {
+    return format(dateObj, 'MMM d HH:mm');
+  }
+
+  return format(dateObj, 'MMM d, yyyy HH:mm');
+}
+
+/**
+ * Format time range
+ */
+export function formatTimeRange(startDate: Date | string, endDate: Date | string): string {
+  const start = typeof startDate === 'string' ? new Date(startDate) : startDate;
+  const end = typeof endDate === 'string' ? new Date(endDate) : endDate;
+
+  // Same day
+  if (isToday(start) && isToday(end)) {
+    return `Today ${format(start, 'HH:mm')} - ${format(end, 'HH:mm')}`;
+  }
+
+  // Same date
+  if (format(start, 'yyyy-MM-dd') === format(end, 'yyyy-MM-dd')) {
+    return `${format(start, 'MMM d')} ${format(start, 'HH:mm')} - ${format(end, 'HH:mm')}`;
+  }
+
+  // Different dates
+  return `${formatSmartDateTime(start)} - ${formatSmartDateTime(end)}`;
+}
+
+/**
+ * Format timestamp for logs and debugging
+ */
+export function formatTimestamp(date?: Date | string): string {
+  const dateObj = date ? (typeof date === 'string' ? new Date(date) : date) : new Date();
+  return format(dateObj, 'yyyy-MM-dd HH:mm:ss.SSS');
+}
+
+/**
+ * Format ISO date for API calls
+ */
+export function formatISODate(date: Date | string): string {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  return dateObj.toISOString();
+}
+
+/**
+ * Format date for human display (short format)
+ */
+export function formatDateShort(date: Date | string): string {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+
+  if (isToday(dateObj)) return 'Today';
+  if (isYesterday(dateObj)) return 'Yesterday';
+  if (isTomorrow(dateObj)) return 'Tomorrow';
+  if (isThisWeek(dateObj)) return format(dateObj, 'EEEE');
+  if (isThisYear(dateObj)) return format(dateObj, 'MMM d');
+
+  return format(dateObj, 'MMM d, yyyy');
+}
+
+/**
+ * Format working hours (business time)
+ */
+export function formatWorkingHours(hours: number): string {
+  if (hours < 1) {
+    const minutes = Math.round(hours * 60);
+    return `${minutes}min`;
+  }
+
+  if (hours < 8) {
+    return `${hours.toFixed(1)}h`;
+  }
+
+  const days = Math.floor(hours / 8);
+  const remainingHours = hours % 8;
+
+  if (remainingHours === 0) {
+    return `${days}d`;
+  }
+
+  return `${days}d ${remainingHours.toFixed(1)}h`;
 }
 
 /**

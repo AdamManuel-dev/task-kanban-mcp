@@ -99,10 +99,10 @@ export const cliTestUtils = {
   /**
    * Render a React component for CLI testing (placeholder)
    */
-  renderComponent: (component: ReactElement) =>
+  renderComponent: (component: ReactElement): any =>
     // TODO: Implement when ink-testing-library is properly configured
     ({
-      lastFrame: () => '',
+      lastFrame: (): string => '',
       frames: [],
       rerender: jest.fn(),
       unmount: jest.fn(),
@@ -110,10 +110,10 @@ export const cliTestUtils = {
   /**
    * Mock process.argv for command testing
    */
-  mockArgv: (args: string[]) => {
+  mockArgv: (args: string[]): (() => void) => {
     const originalArgv = process.argv;
     process.argv = ['node', 'test', ...args];
-    return () => {
+    return (): void => {
       process.argv = originalArgv;
     };
   },
@@ -121,7 +121,7 @@ export const cliTestUtils = {
   /**
    * Mock process.stdout.write for output testing
    */
-  mockStdout: () => {
+  mockStdout: (): { getWrites: () => string[]; restore: () => void } => {
     const originalWrite = process.stdout.write;
     const writes: string[] = [];
 
@@ -131,8 +131,8 @@ export const cliTestUtils = {
     }) as any;
 
     return {
-      getWrites: () => writes,
-      restore: () => {
+      getWrites: (): string[] => writes,
+      restore: (): void => {
         process.stdout.write = originalWrite;
       },
     };
@@ -141,7 +141,7 @@ export const cliTestUtils = {
   /**
    * Mock process.stderr.write for error testing
    */
-  mockStderr: () => {
+  mockStderr: (): { getWrites: () => string[]; restore: () => void } => {
     const originalWrite = process.stderr.write;
     const writes: string[] = [];
 
@@ -151,8 +151,8 @@ export const cliTestUtils = {
     }) as any;
 
     return {
-      getWrites: () => writes,
-      restore: () => {
+      getWrites: (): string[] => writes,
+      restore: (): void => {
         process.stderr.write = originalWrite;
       },
     };
@@ -161,7 +161,7 @@ export const cliTestUtils = {
   /**
    * Create mock API client for testing
    */
-  createMockApiClient: () => ({
+  createMockApiClient: (): any => ({
     get: jest.fn(),
     post: jest.fn(),
     put: jest.fn(),
@@ -172,10 +172,10 @@ export const cliTestUtils = {
   /**
    * Create mock config manager for testing
    */
-  createMockConfig: () => ({
+  createMockConfig: (): any => ({
     get: jest.fn(),
     set: jest.fn(),
-    exists: jest.fn(() => true),
+    exists: jest.fn((): boolean => true),
     load: jest.fn(),
     save: jest.fn(),
   }),
@@ -183,7 +183,7 @@ export const cliTestUtils = {
   /**
    * Create mock formatter for testing
    */
-  createMockFormatter: () => ({
+  createMockFormatter: (): any => ({
     setFormat: jest.fn(),
     setVerbose: jest.fn(),
     setQuiet: jest.fn(),
@@ -196,12 +196,13 @@ export const cliTestUtils = {
   /**
    * Wait for async operations
    */
-  waitFor: async (ms: number = 100) => new Promise(resolve => setTimeout(resolve, ms)),
+  waitFor: async (ms: number = 100): Promise<void> =>
+    new Promise<void>(resolve => setTimeout(resolve, ms)),
 
   /**
    * Create test task data
    */
-  createTestTask: (overrides = {}) => ({
+  createTestTask: (overrides = {}): any => ({
     id: 'test-task-1',
     title: 'Test Task',
     description: 'Test task description',
@@ -219,7 +220,7 @@ export const cliTestUtils = {
   /**
    * Create test board data
    */
-  createTestBoard: (overrides = {}) => ({
+  createTestBoard: (overrides = {}): any => ({
     id: 'test-board-1',
     name: 'Test Board',
     description: 'Test board description',
@@ -236,7 +237,7 @@ export const cliTestUtils = {
   /**
    * Create dashboard test data
    */
-  createTestDashboardData: () => ({
+  createTestDashboardData: (): any => ({
     tasks: {
       total: 20,
       byStatus: { todo: 8, in_progress: 6, done: 6 },
@@ -268,10 +269,8 @@ export const cliTestUtils = {
 
 // Global test utilities for CLI
 declare global {
-  namespace NodeJS {
-    interface Global {
-      cliTestUtils: typeof cliTestUtils;
-    }
+  interface Global {
+    cliTestUtils: typeof cliTestUtils;
   }
 }
 

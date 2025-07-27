@@ -4,7 +4,6 @@
 
 import { TaskService } from '@/services/TaskService';
 import { DatabaseConnection } from '@/database/connection';
-import { logger } from '@/utils/logger';
 
 // Mock the logger
 jest.mock('@/utils/logger', () => ({

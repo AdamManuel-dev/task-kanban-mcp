@@ -11,9 +11,12 @@ export interface KeyboardShortcut {
  * Global keyboard shortcut handler for CLI applications
  */
 export class KeyboardHandler {
-  private shortcuts: Map<string, KeyboardShortcut> = new Map();
+  private readonly shortcuts: Map<string, KeyboardShortcut> = new Map();
+
   private isActive = false;
+
   private helpVisible = false;
+
   private refreshCallback?: () => Promise<void> | void;
 
   constructor() {
@@ -41,7 +44,7 @@ export class KeyboardHandler {
     if (this.isActive) return;
 
     this.isActive = true;
-    
+
     // Set up raw mode for real-time key capture
     if (process.stdin.isTTY) {
       process.stdin.setRawMode(true);
@@ -58,7 +61,7 @@ export class KeyboardHandler {
     if (!this.isActive) return;
 
     this.isActive = false;
-    
+
     if (process.stdin.isTTY) {
       process.stdin.setRawMode(false);
       process.stdin.pause();
@@ -71,7 +74,7 @@ export class KeyboardHandler {
    */
   private async handleKeyPress(key: string): Promise<void> {
     const keyCode = key.charCodeAt(0);
-    
+
     // Handle Ctrl+C (exit)
     if (keyCode === 3) {
       console.log(chalk.yellow('\n⚠️  Interrupted by user'));
@@ -100,10 +103,10 @@ export class KeyboardHandler {
 
     this.helpVisible = true;
     console.clear();
-    
+
     console.log(chalk.cyan.bold('\n📋 Keyboard Shortcuts\n'));
     console.log(chalk.gray('─'.repeat(50)));
-    
+
     const globalShortcuts = Array.from(this.shortcuts.values())
       .filter(s => s.global)
       .sort((a, b) => a.key.localeCompare(b.key));
@@ -137,7 +140,7 @@ export class KeyboardHandler {
    */
   hideHelp(): void {
     if (!this.helpVisible) return;
-    
+
     this.helpVisible = false;
     console.clear();
     console.log(chalk.gray('Help hidden. Press ? to show again.\n'));
@@ -148,7 +151,7 @@ export class KeyboardHandler {
    */
   private formatKeyDisplay(key: string): string {
     const keyCode = key.charCodeAt(0);
-    
+
     if (keyCode === 3) return chalk.cyan('Ctrl+C');
     if (keyCode === 18) return chalk.cyan('Ctrl+R');
     if (keyCode === 6) return chalk.cyan('Ctrl+F');
@@ -157,7 +160,7 @@ export class KeyboardHandler {
     if (key === 'q') return chalk.cyan('q');
     if (key === 'r') return chalk.cyan('r');
     if (key === '/') return chalk.cyan('/');
-    
+
     return chalk.cyan(key);
   }
 
@@ -246,7 +249,10 @@ export class KeyboardHandler {
         await this.refreshCallback();
         console.log(chalk.green('✅ Refreshed'));
       } catch (error) {
-        console.error(chalk.red('❌ Refresh failed:'), error instanceof Error ? error.message : String(error));
+        console.error(
+          chalk.red('❌ Refresh failed:'),
+          error instanceof Error ? error.message : String(error)
+        );
       }
     } else {
       console.log(chalk.yellow('⚠️  No refresh action available in current context'));
@@ -265,13 +271,15 @@ export class KeyboardHandler {
  * Scoped keyboard handler for specific UI contexts
  */
 export class ScopedKeyboardHandler {
-  private parent: KeyboardHandler;
-  private contextName: string;
-  private scopedShortcuts: Map<string, KeyboardShortcut> = new Map();
+  private readonly parent: KeyboardHandler;
+
+  // private readonly contextName: string;
+
+  private readonly scopedShortcuts: Map<string, KeyboardShortcut> = new Map();
 
   constructor(parent: KeyboardHandler, contextName: string) {
     this.parent = parent;
-    this.contextName = contextName;
+    // this.contextName = contextName;
   }
 
   /**
@@ -282,7 +290,7 @@ export class ScopedKeyboardHandler {
       ...shortcut,
       global: false,
     };
-    
+
     this.scopedShortcuts.set(shortcut.key, scopedShortcut);
     this.parent.register(scopedShortcut);
   }
@@ -292,7 +300,8 @@ export class ScopedKeyboardHandler {
    */
   activate(): void {
     // Clean up previous scope shortcuts
-    this.parent.getShortcuts()
+    this.parent
+      .getShortcuts()
       .filter(s => !s.global)
       .forEach(s => this.parent.unregister(s.key));
 

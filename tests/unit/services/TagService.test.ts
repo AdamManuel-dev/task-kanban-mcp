@@ -368,7 +368,7 @@ describe('TagService', () => {
 
     beforeEach(async () => {
       tag = await tagService.createTag({ name: 'stats-tag' });
-      const childTag = await tagService.createTag({
+      const _childTag = await tagService.createTag({
         name: 'child-tag',
         parent_tag_id: tag.id,
       });
@@ -782,7 +782,7 @@ describe('TagService', () => {
         name: 'level2',
         parent_tag_id: level1.id,
       });
-      const level3 = await tagService.createTag({
+      const _level3 = await tagService.createTag({
         name: 'level3',
         parent_tag_id: level2.id,
       });

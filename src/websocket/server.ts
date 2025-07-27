@@ -38,9 +38,10 @@ export class WebSocketManager {
     return this.auth;
   }
 
-  async start(): Promise<void> {
+  async start(port?: number): Promise<void> {
     try {
-      logger.info('Starting WebSocket server...');
+      const wsPort = port || config.websocket.port;
+      logger.info('Starting WebSocket server...', { port: wsPort });
 
       // Create HTTP server for WebSocket upgrade
       this.httpServer = createServer();
@@ -60,10 +61,10 @@ export class WebSocketManager {
 
       // Start HTTP server
       await new Promise<void>((resolve, reject) => {
-        this.httpServer!.listen(config.websocket.port, config.websocket.host, () => {
+        this.httpServer!.listen(wsPort, config.websocket.host, () => {
           logger.info('WebSocket server started', {
             host: config.websocket.host,
-            port: config.websocket.port,
+            port: wsPort,
             path: config.websocket.path,
           });
           resolve();

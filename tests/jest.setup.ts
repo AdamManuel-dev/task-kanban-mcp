@@ -44,20 +44,18 @@ beforeEach(() => {
 
 // Global test utilities
 declare global {
-  namespace NodeJS {
-    interface Global {
-      testUtils: {
-        createTestTask: () => any;
-        createTestBoard: () => any;
-        cleanupTestData: () => Promise<void>;
-      };
-    }
+  interface Global {
+    testUtils: {
+      createTestTask: () => any;
+      createTestBoard: () => any;
+      cleanupTestData: () => Promise<void>;
+    };
   }
 }
 
 // TODO: Add more test utilities as needed
 global.testUtils = {
-  createTestTask: () => ({
+  createTestTask: (): any => ({
     id: 'test-task-1',
     title: 'Test Task',
     description: 'Test Description',
@@ -66,14 +64,14 @@ global.testUtils = {
     createdAt: new Date().toISOString(),
   }),
 
-  createTestBoard: () => ({
+  createTestBoard: (): any => ({
     id: 'test-board-1',
     name: 'Test Board',
     columns: ['todo', 'in-progress', 'done'],
     createdAt: new Date().toISOString(),
   }),
 
-  cleanupTestData: async () => {
+  cleanupTestData: async (): Promise<void> => {
     // TODO: Implement test data cleanup
   },
 };

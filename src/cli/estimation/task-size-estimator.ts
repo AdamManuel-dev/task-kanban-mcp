@@ -158,7 +158,7 @@ export class TaskSizeEstimator {
     for (const [size, tasks] of sizeGroups) {
       const percentage = (tasks.length / estimates.length) * 100;
       console.log(
-        `  ${this.formatSize(size as TaskSize)}: ${formatProgressBar(tasks.length, estimates.length, 20)} ${tasks.length} tasks`
+        `  ${this.formatSize(size as TaskSize)}: ${formatProgressBar(tasks.length, estimates.length, 20)} ${tasks.length} tasks (${percentage.toFixed(1)}%)`
       );
     }
   }

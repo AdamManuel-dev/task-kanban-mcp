@@ -2,9 +2,6 @@ import type { Command } from 'commander';
 import inquirer from 'inquirer';
 import type {
   CliComponents,
-  DatabaseOptimizationResult,
-  DatabaseVacuumResult,
-  DatabaseAnalysisResult,
   DatabaseStats,
   DatabaseIntegrityResult,
   DatabaseRepairResult,

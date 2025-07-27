@@ -126,7 +126,7 @@ describe('Application Server', () => {
 
   describe('Security Middleware', () => {
     it('should include security headers', async () => {
-      const response = await request(app)
+      const _response = await request(app)
         .get('/api/health')
         .expect(res => {
           // Check for helmet security headers

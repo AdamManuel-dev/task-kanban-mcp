@@ -1,307 +1,249 @@
-import React, { useState, useEffect } from 'react';
-import { Box, Text, useInput, useApp } from 'ink';
-import chalk from 'chalk';
+import type { Task } from '@/types';
 
-export interface Task {
-  id: string;
-  title: string;
-  status: 'todo' | 'in_progress' | 'done' | 'blocked';
-  priority?: 'P1' | 'P2' | 'P3' | 'P4' | 'P5';
-  assignee?: string;
-  tags?: string[];
-  due_date?: string;
-}
-
-export interface TaskListProps {
+interface TaskListProps {
   tasks: Task[];
-  title?: string;
-  onTaskSelect?: (task: Task) => void;
-  onKeyPress?: (key: string, selectedTask: Task | null) => void;
-  showSelection?: boolean;
+  selectedIndex?: number;
+  showDetails?: boolean;
   maxHeight?: number;
-  filterStatus?: string[];
-  showStats?: boolean;
+  sortBy?: 'priority' | 'due_date' | 'created_at' | 'title';
+  filterBy?: {
+    status?: Task['status'];
+    assignee?: string;
+    search?: string;
+  };
 }
 
-export const TaskList: React.FC<TaskListProps> = ({
-  tasks,
-  title = 'Tasks',
-  onTaskSelect,
-  onKeyPress,
-  showSelection = true,
-  maxHeight = 10,
-  filterStatus,
-  showStats = true,
-}) => {
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [scrollOffset, setScrollOffset] = useState(0);
-  const { exit } = useApp();
+interface TaskFilter {
+  status?: Task['status'];
+  assignee?: string;
+  search?: string;
+}
 
-  // Filter tasks based on status filter
-  const filteredTasks = filterStatus
-    ? tasks.filter(task => filterStatus.includes(task.status))
-    : tasks;
+/**
+ * Simple text-based task list formatter for CLI display
+ */
+export class TaskListFormatter {
+  private readonly maxHeight: number;
 
-  // Ensure selected index is within bounds
-  useEffect(() => {
-    if (selectedIndex >= filteredTasks.length && filteredTasks.length > 0) {
-      setSelectedIndex(filteredTasks.length - 1);
+  private readonly selectedIndex: number;
+
+  constructor(
+    private readonly tasks: Task[],
+    options: {
+      selectedIndex?: number;
+      maxHeight?: number;
+      sortBy?: TaskListProps['sortBy'];
+      filterBy?: TaskFilter;
+    } = {}
+  ) {
+    this.maxHeight = options.maxHeight || 10;
+    this.selectedIndex = options.selectedIndex || 0;
+
+    // Apply filters and sorting
+    this.tasks = this.processTaskList(tasks, options.sortBy, options.filterBy);
+  }
+
+  /**
+   * Renders the entire task list as formatted text
+   */
+  renderTaskList(): string {
+    const output: string[] = [];
+
+    // Header
+    output.push('📋 Task List');
+    output.push('');
+
+    if (this.tasks.length === 0) {
+      output.push('  No tasks found');
+      return output.join('\n');
     }
-    if (selectedIndex < 0) {
-      setSelectedIndex(0);
+
+    // Calculate scroll window
+    const startIndex = Math.max(0, this.selectedIndex - Math.floor(this.maxHeight / 2));
+    const endIndex = Math.min(this.tasks.length, startIndex + this.maxHeight);
+    const visibleTasks = this.tasks.slice(startIndex, endIndex);
+
+    // Show scroll indicator if there are tasks above
+    if (startIndex > 0) {
+      output.push(`  ⬆ ${startIndex} more above`);
+      output.push('');
     }
-  }, [filteredTasks.length, selectedIndex]);
 
-  // Update scroll offset based on selection
-  useEffect(() => {
-    if (selectedIndex < scrollOffset) {
-      setScrollOffset(selectedIndex);
-    } else if (selectedIndex >= scrollOffset + maxHeight) {
-      setScrollOffset(selectedIndex - maxHeight + 1);
+    // Render tasks
+    visibleTasks.forEach((task, index) => {
+      const actualIndex = startIndex + index;
+      const isSelected = actualIndex === this.selectedIndex;
+      output.push(this.formatTaskItem(task, isSelected));
+    });
+
+    // Show scroll indicator if there are more tasks below
+    if (endIndex < this.tasks.length) {
+      output.push('');
+      output.push(`  ⬇ ${this.tasks.length - endIndex} more below`);
     }
-  }, [selectedIndex, maxHeight]);
 
-  useInput((input, key) => {
-    if (!showSelection) return;
+    // Footer with summary
+    output.push('');
+    output.push('─'.repeat(50));
+    output.push(this.renderSummary());
 
-    if (key.upArrow || input === 'k') {
-      setSelectedIndex(prev => Math.max(0, prev - 1));
-    } else if (key.downArrow || input === 'j') {
-      setSelectedIndex(prev => Math.min(filteredTasks.length - 1, prev + 1));
-    } else if (key.pageUp || (key.ctrl && input === 'u')) {
-      // Page up - jump by maxHeight or to top
-      setSelectedIndex(prev => Math.max(0, prev - maxHeight));
-    } else if (key.pageDown || (key.ctrl && input === 'd')) {
-      // Page down - jump by maxHeight or to bottom
-      setSelectedIndex(prev => Math.min(filteredTasks.length - 1, prev + maxHeight));
-    } else if (input === 'g') {
-      // Go to top (Vim style)
-      setSelectedIndex(0);
-    } else if (input === 'G') {
-      // Go to bottom (Vim style)
-      setSelectedIndex(filteredTasks.length - 1);
-    } else if (input === 'h' || key.leftArrow) {
-      // Quick status filter - previous status
-      const statusOrder = ['todo', 'in_progress', 'done', 'blocked'];
-      const currentTask = filteredTasks[selectedIndex];
-      if (currentTask) {
-        const currentIndex = statusOrder.indexOf(currentTask.status);
-        const prevStatus = statusOrder[Math.max(0, currentIndex - 1)];
-        onKeyPress?.(`filter:${prevStatus}`, currentTask);
-      }
-    } else if (input === 'l' || key.rightArrow) {
-      // Quick status filter - next status
-      const statusOrder = ['todo', 'in_progress', 'done', 'blocked'];
-      const currentTask = filteredTasks[selectedIndex];
-      if (currentTask) {
-        const currentIndex = statusOrder.indexOf(currentTask.status);
-        const nextStatus = statusOrder[Math.min(statusOrder.length - 1, currentIndex + 1)];
-        onKeyPress?.(`filter:${nextStatus}`, currentTask);
-      }
-    } else if (input === '/') {
-      // Search mode trigger
-      onKeyPress?.('search', filteredTasks[selectedIndex] || null);
-    } else if (input === 'r') {
-      // Refresh
-      onKeyPress?.('refresh', filteredTasks[selectedIndex] || null);
-    } else if (input === 'd') {
-      // Delete/archive selected task
-      if (filteredTasks[selectedIndex]) {
-        onKeyPress?.('delete', filteredTasks[selectedIndex]);
-      }
-    } else if (input === 'e') {
-      // Edit selected task
-      if (filteredTasks[selectedIndex]) {
-        onKeyPress?.('edit', filteredTasks[selectedIndex]);
-      }
-    } else if (input === 'n') {
-      // Create new task
-      onKeyPress?.('new', filteredTasks[selectedIndex] || null);
-    } else if (input === '?') {
-      // Show help
-      onKeyPress?.('help', filteredTasks[selectedIndex] || null);
-    } else if (key.return) {
-      if (filteredTasks[selectedIndex]) {
-        onTaskSelect?.(filteredTasks[selectedIndex]);
-      }
-    } else if (input === 'q') {
-      exit();
-    } else {
-      onKeyPress?.(input, filteredTasks[selectedIndex] || null);
+    // Navigation help
+    output.push('');
+    output.push('Controls: ↑↓ Navigate | Enter: Select | Q: Quit');
+
+    return output.join('\n');
+  }
+
+  private formatTaskItem(task: Task, isSelected: boolean): string {
+    const prefix = isSelected ? '→' : ' ';
+    const statusIcon = this.getStatusIcon(task.status);
+    const priorityText = this.formatPriority(task.priority);
+    const dueDateText = this.formatDueDate(task.due_date);
+
+    const titleLine = `${prefix} ${statusIcon} ${this.truncateText(task.title, 40)} ${priorityText}`;
+
+    let output = titleLine;
+
+    if (task.assignee || dueDateText) {
+      const detailsLine = `    ${task.assignee ? `@${task.assignee}` : ''} ${dueDateText}`;
+      output += `\n${detailsLine.trim()}`;
     }
-  });
 
-  const formatTaskStatus = (status: Task['status']): string => {
+    return output;
+  }
+
+  private processTaskList(
+    tasks: Task[],
+    sortBy?: TaskListProps['sortBy'],
+    filterBy?: TaskFilter
+  ): Task[] {
+    let processed = [...tasks];
+
+    // Apply filters
+    if (filterBy) {
+      if (filterBy.status) {
+        processed = processed.filter(task => task.status === filterBy.status);
+      }
+      if (filterBy.assignee) {
+        processed = processed.filter(task => task.assignee === filterBy.assignee);
+      }
+      if (filterBy.search) {
+        const searchLower = filterBy.search.toLowerCase();
+        processed = processed.filter(
+          task =>
+            task.title.toLowerCase().includes(searchLower) ||
+            (task.description && task.description.toLowerCase().includes(searchLower))
+        );
+      }
+    }
+
+    // Apply sorting
+    if (sortBy) {
+      processed.sort((a, b) => {
+        switch (sortBy) {
+          case 'priority':
+            return b.priority - a.priority;
+          case 'due_date':
+            if (!a.due_date && !b.due_date) return 0;
+            if (!a.due_date) return 1;
+            if (!b.due_date) return -1;
+            return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+          case 'created_at':
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          case 'title':
+            return a.title.localeCompare(b.title);
+          default:
+            return 0;
+        }
+      });
+    }
+
+    return processed;
+  }
+
+  private getStatusIcon(status: Task['status']): string {
     const statusMap = {
-      todo: chalk.gray('○'),
-      in_progress: chalk.yellow('◐'),
-      done: chalk.green('●'),
-      blocked: chalk.red('✕'),
+      todo: '○',
+      in_progress: '◐',
+      done: '●',
+      blocked: '✕',
+      archived: '⬚',
     };
-    return statusMap[status];
-  };
+    return statusMap[status] || '○';
+  }
 
-  const formatPriority = (priority?: Task['priority']): string => {
-    if (!priority) return '';
+  private formatPriority(priority: number): string {
+    if (priority <= 0) return '';
 
-    const priorityColors = {
-      P1: chalk.red,
-      P2: chalk.yellow,
-      P3: chalk.blue,
-      P4: chalk.green,
-      P5: chalk.gray,
-    };
+    const stars = '★'.repeat(Math.min(priority, 5));
+    return `[${stars}]`;
+  }
 
-    return priorityColors[priority](priority);
-  };
-
-  const formatTags = (tags?: string[]): string => {
-    if (!tags || tags.length === 0) return '';
-    return tags.map(tag => chalk.magenta(`#${tag}`)).join(' ');
-  };
-
-  const formatDueDate = (dueDate?: string): string => {
+  private formatDueDate(dueDate?: Date | string): string {
     if (!dueDate) return '';
 
     const date = new Date(dueDate);
     const now = new Date();
-    const isOverdue = date < now;
-    const dateStr = date.toLocaleDateString();
+    const diffMs = date.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
-    return isOverdue ? chalk.red(`⏰ ${dateStr}`) : chalk.gray(`📅 ${dateStr}`);
-  };
+    if (diffDays < 0) return '[OVERDUE]';
+    if (diffDays === 0) return '[TODAY]';
+    if (diffDays === 1) return '[TOMORROW]';
+    if (diffDays <= 7) return `[${diffDays}d]`;
 
-  const renderTaskItem = (task: Task, index: number, isSelected: boolean): React.ReactNode => {
-    const statusIcon = formatTaskStatus(task.status);
-    const priority = formatPriority(task.priority);
-    const tags = formatTags(task.tags);
-    const dueDate = formatDueDate(task.due_date);
+    return `[${date.toLocaleDateString()}]`;
+  }
 
-    const titleColor = isSelected
-      ? chalk.bgBlue.white
-      : task.status === 'done'
-        ? chalk.gray
-        : chalk.white;
+  private truncateText(text: string, maxLength: number): string {
+    if (text.length <= maxLength) return text;
+    return `${text.substring(0, maxLength - 3)}...`;
+  }
 
-    const prefix = isSelected ? '▶ ' : '  ';
-
-    return (
-      <Box key={task.id} flexDirection="column">
-        <Box>
-          <Text>
-            {prefix}
-            {statusIcon} {titleColor(`[${task.id}] ${task.title}`)}
-            {priority && ` ${priority}`}
-          </Text>
-        </Box>
-        {(task.assignee || tags || dueDate) && (
-          <Box marginLeft={4}>
-            <Text color="gray">
-              {task.assignee && chalk.cyan(`@${task.assignee}`)}
-              {task.assignee && (tags || dueDate) && ' | '}
-              {tags}
-              {tags && dueDate && ' | '}
-              {dueDate}
-            </Text>
-          </Box>
-        )}
-      </Box>
+  private renderSummary(): string {
+    const statusCounts = this.tasks.reduce(
+      (acc, task) => {
+        acc[task.status] = (acc[task.status] || 0) + 1;
+        return acc;
+      },
+      {} as Record<Task['status'], number>
     );
-  };
 
-  const renderStats = (): React.ReactNode => {
-    if (!showStats) return null;
+    const total = this.tasks.length;
+    const completed = statusCounts.done || 0;
+    const inProgress = statusCounts.in_progress || 0;
+    const blocked = statusCounts.blocked || 0;
 
-    const stats = {
-      total: filteredTasks.length,
-      todo: filteredTasks.filter(t => t.status === 'todo').length,
-      inProgress: filteredTasks.filter(t => t.status === 'in_progress').length,
-      done: filteredTasks.filter(t => t.status === 'done').length,
-      blocked: filteredTasks.filter(t => t.status === 'blocked').length,
-    };
+    return `Total: ${total} | Done: ${completed} | In Progress: ${inProgress} | Blocked: ${blocked}`;
+  }
+}
 
-    const completionRate = stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : 0;
+/**
+ * Factory function to create a task list formatter
+ */
+export const createTaskList = (props: TaskListProps): string => {
+  const options: {
+    selectedIndex?: number;
+    maxHeight?: number;
+    sortBy?: TaskListProps['sortBy'];
+    filterBy?: TaskFilter;
+  } = {};
 
-    return (
-      <Box flexDirection="column" marginTop={1}>
-        <Text color="gray">{'─'.repeat(50)}</Text>
-        <Box>
-          <Text color="gray">
-            Total: {stats.total} | Todo: {chalk.gray(stats.todo)} | In Progress:{' '}
-            {chalk.yellow(stats.inProgress)} | Done: {chalk.green(stats.done)} | Blocked:{' '}
-            {chalk.red(stats.blocked)} | Complete: {chalk.cyan(`${completionRate}%`)}
-          </Text>
-        </Box>
-      </Box>
-    );
-  };
+  if (props.selectedIndex !== undefined) {
+    options.selectedIndex = props.selectedIndex;
+  }
+  if (props.maxHeight !== undefined) {
+    options.maxHeight = props.maxHeight;
+  }
+  if (props.sortBy !== undefined) {
+    options.sortBy = props.sortBy;
+  }
+  if (props.filterBy !== undefined) {
+    options.filterBy = props.filterBy;
+  }
 
-  const renderHelpText = (): React.ReactNode => {
-    if (!showSelection) return null;
-
-    return (
-      <Box flexDirection="column" marginTop={1}>
-        <Text color="gray">
-          Navigation: ↑/↓ j/k | Page: PgUp/PgDn Ctrl+u/d | Jump: g(top) G(bottom)
-        </Text>
-        <Text color="gray">
-          Actions: Enter(select) n(new) e(edit) d(delete) r(refresh) /(search) ?(help) q(quit)
-        </Text>
-        <Text color="gray">
-          Filters: ←/→ h/l (cycle status filters)
-        </Text>
-      </Box>
-    );
-  };
-
-  // Calculate visible tasks
-  const visibleTasks = filteredTasks.slice(scrollOffset, scrollOffset + maxHeight);
-  const hasMoreAbove = scrollOffset > 0;
-  const hasMoreBelow = scrollOffset + maxHeight < filteredTasks.length;
-
-  return (
-    <Box flexDirection="column">
-      {/* Header */}
-      <Box marginBottom={1}>
-        <Text bold color="cyan">
-          📋 {title} ({filteredTasks.length})
-        </Text>
-      </Box>
-
-      {/* Scroll indicator - above */}
-      {hasMoreAbove && (
-        <Box justifyContent="center">
-          <Text color="gray">⬆ {scrollOffset} more above</Text>
-        </Box>
-      )}
-
-      {/* Task list */}
-      <Box flexDirection="column">
-        {filteredTasks.length === 0 ? (
-          <Text color="gray">No tasks found</Text>
-        ) : (
-          visibleTasks.map((task, visibleIndex) => {
-            const actualIndex = scrollOffset + visibleIndex;
-            const isSelected = showSelection && actualIndex === selectedIndex;
-            return renderTaskItem(task, actualIndex, isSelected);
-          })
-        )}
-      </Box>
-
-      {/* Scroll indicator - below */}
-      {hasMoreBelow && (
-        <Box justifyContent="center">
-          <Text color="gray">⬇ {filteredTasks.length - scrollOffset - maxHeight} more below</Text>
-        </Box>
-      )}
-
-      {/* Stats */}
-      {renderStats()}
-
-      {/* Help text */}
-      {renderHelpText()}
-    </Box>
-  );
+  const formatter = new TaskListFormatter(props.tasks, options);
+  return formatter.renderTaskList();
 };
 
-export default TaskList;
+export default createTaskList;
