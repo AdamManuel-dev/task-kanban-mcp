@@ -7,6 +7,7 @@ import { contextRoutes } from './context';
 import { healthRoutes } from './health';
 import backupRoutes from './backup';
 import scheduleRoutes from './schedule';
+import exportRoutes from './export';
 
 export async function apiRoutes() {
   const router = Router();
@@ -22,6 +23,7 @@ export async function apiRoutes() {
   router.use('/context', await contextRoutes());
   router.use('/backup', backupRoutes);
   router.use('/schedule', scheduleRoutes);
+  router.use('/', exportRoutes); // Export/import routes at root level
 
   return router;
 }

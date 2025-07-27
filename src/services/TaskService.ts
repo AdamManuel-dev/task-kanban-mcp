@@ -65,18 +65,18 @@ export interface CreateTaskRequest {
  * are handled automatically with proper repositioning logic.
  */
 export interface UpdateTaskRequest {
-  title?: string;
-  description?: string;
-  column_id?: string;
-  position?: number;
-  priority?: number;
-  status?: Task['status'];
-  assignee?: string;
-  due_date?: Date;
-  estimated_hours?: number;
-  actual_hours?: number;
-  parent_task_id?: string;
-  metadata?: string;
+  title?: string | undefined;
+  description?: string | undefined;
+  column_id?: string | undefined;
+  position?: number | undefined;
+  priority?: number | undefined;
+  status?: Task['status'] | undefined;
+  assignee?: string | undefined;
+  due_date?: Date | undefined;
+  estimated_hours?: number | undefined;
+  actual_hours?: number | undefined;
+  parent_task_id?: string | undefined;
+  metadata?: string | undefined;
 }
 
 /**

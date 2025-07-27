@@ -1,4 +1,4 @@
-import type { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { ValidationError } from '@/utils/errors';
 import { CommonValidations } from '@/utils/validation';
 
@@ -29,21 +29,21 @@ export function requestValidationMiddleware(req: Request, _res: Response, next: 
   }
 
   // Validate query parameters
-  if (req.query.limit) {
-    const limit = parseInt(req.query.limit as string, 10);
+  if (req.query['limit']) {
+    const limit = parseInt(req.query['limit'] as string, 10);
     if (isNaN(limit) || limit < 1 || limit > 100) {
       return next(new ValidationError('Limit must be between 1 and 100'));
     }
   }
 
-  if (req.query.offset) {
-    const offset = parseInt(req.query.offset as string, 10);
+  if (req.query['offset']) {
+    const offset = parseInt(req.query['offset'] as string, 10);
     if (isNaN(offset) || offset < 0) {
       return next(new ValidationError('Offset must be non-negative'));
     }
   }
 
-  if (req.query.sortOrder && !['asc', 'desc'].includes(req.query.sortOrder as string)) {
+  if (req.query['sortOrder'] && !['asc', 'desc'].includes(req.query['sortOrder'] as string)) {
     return next(new ValidationError('Sort order must be "asc" or "desc"'));
   }
 
@@ -64,48 +64,4 @@ function extractUuidParams(path: string): string[] {
   }
 
   return params;
-}
-
-/**
- * Validate request data using Zod schema
- */
-export function validateRequest(schema: any, source: 'body' | 'query' | 'params' = 'body') {
-  return (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const data = source === 'body' ? req.body : source === 'query' ? req.query : req.params;
-
-      const result = schema.safeParse(data);
-
-      if (!result.success) {
-        return res.status(400).json({
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Request validation failed',
-            details: result.error.errors,
-          },
-        });
-      }
-
-      // Replace the original data with validated data
-      if (source === 'body') {
-        req.body = result.data;
-      } else if (source === 'query') {
-        req.query = result.data;
-      } else {
-        req.params = result.data;
-      }
-
-      return next();
-    } catch (error) {
-      return res.status(500).json({
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          details: error instanceof Error ? error.message : 'Unknown error',
-        },
-      });
-    }
-  };
 }

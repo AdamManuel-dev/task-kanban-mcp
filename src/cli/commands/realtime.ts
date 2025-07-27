@@ -143,8 +143,8 @@ export function registerRealtimeCommands(program: Command): void {
           level: options.level,
         };
 
-        if (options.component) params.component = options.component;
-        if (options.since) params.since = options.since;
+        if (options.component) params['component'] = options.component;
+        if (options.since) params['since'] = options.since;
 
         if (options.follow) {
           // Stream logs in real-time
@@ -216,7 +216,7 @@ export function registerRealtimeCommands(program: Command): void {
       'subtask:completed': '✓',
       default: '📋',
     };
-    return icons[eventType] || icons.default || '📋';
+    return icons[eventType] || icons['default'] || '📋';
   }
 
   function getEventColor(_eventType: string): (text: string) => string {

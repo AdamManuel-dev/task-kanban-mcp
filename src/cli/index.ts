@@ -19,6 +19,7 @@ import { registerSubtaskCommands } from './commands/subtasks';
 import { registerBackupCommands } from './commands/backup';
 import { registerDatabaseCommands } from './commands/database';
 import { registerRealtimeCommands } from './commands/realtime';
+import { registerExportCommands } from './commands/export';
 
 const packageJson = require('../../package.json');
 
@@ -77,6 +78,7 @@ registerSubtaskCommands(program);
 registerBackupCommands(program);
 registerDatabaseCommands(program);
 registerRealtimeCommands(program);
+registerExportCommands(program);
 
 // Global error handler
 program.exitOverride(err => {
@@ -88,7 +90,7 @@ program.exitOverride(err => {
   }
 
   console.error(chalk.red('Error:'), err.message);
-  if (program.opts().verbose) {
+  if (program.opts()['verbose']) {
     console.error(err.stack);
   }
   process.exit(1);

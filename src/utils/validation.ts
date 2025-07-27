@@ -33,6 +33,7 @@
 
 import { z } from 'zod';
 import type { ServiceError } from '@/types';
+import { optionalWithUndefined } from './zod-helpers';
 
 /**
  * Board validation schemas
@@ -43,21 +44,19 @@ import type { ServiceError } from '@/types';
 export const BoardValidation = {
   create: z.object({
     name: z.string().min(1, 'Board name is required').max(100, 'Board name too long'),
-    description: z.string().max(500, 'Description too long').optional(),
-    color: z
-      .string()
-      .regex(/^#[0-9A-F]{6}$/i, 'Invalid color format')
-      .optional(),
+    description: optionalWithUndefined(z.string().max(500, 'Description too long')),
+    color: optionalWithUndefined(
+      z.string().regex(/^#[0-9A-F]{6}$/i, 'Invalid color format')
+    ),
   }),
 
   update: z.object({
-    name: z.string().min(1, 'Board name is required').max(100, 'Board name too long').optional(),
-    description: z.string().max(500, 'Description too long').optional(),
-    color: z
-      .string()
-      .regex(/^#[0-9A-F]{6}$/i, 'Invalid color format')
-      .optional(),
-    archived: z.boolean().optional(),
+    name: optionalWithUndefined(z.string().min(1, 'Board name is required').max(100, 'Board name too long')),
+    description: optionalWithUndefined(z.string().max(500, 'Description too long')),
+    color: optionalWithUndefined(
+      z.string().regex(/^#[0-9A-F]{6}$/i, 'Invalid color format')
+    ),
+    archived: optionalWithUndefined(z.boolean()),
   }),
 };
 
@@ -70,32 +69,32 @@ export const BoardValidation = {
 export const TaskValidation = {
   create: z.object({
     title: z.string().min(1, 'Task title is required').max(200, 'Title too long'),
-    description: z.string().max(2000, 'Description too long').optional(),
+    description: optionalWithUndefined(z.string().max(2000, 'Description too long')),
     board_id: z.string().uuid('Invalid board ID'),
     column_id: z.string().uuid('Invalid column ID'),
-    position: z.number().int().min(0).optional(),
-    priority: z.number().int().min(0).max(10).optional(),
-    status: z.enum(['todo', 'in_progress', 'done', 'blocked', 'archived']).optional(),
-    assignee: z.string().max(100, 'Assignee name too long').optional(),
-    due_date: z.date().optional(),
-    estimated_hours: z.number().positive().optional(),
-    parent_task_id: z.string().uuid('Invalid parent task ID').optional(),
-    metadata: z.string().max(5000, 'Metadata too long').optional(),
+    position: optionalWithUndefined(z.number().int().min(0)),
+    priority: optionalWithUndefined(z.number().int().min(0).max(10)),
+    status: optionalWithUndefined(z.enum(['todo', 'in_progress', 'done', 'blocked', 'archived'])),
+    assignee: optionalWithUndefined(z.string().max(100, 'Assignee name too long')),
+    due_date: optionalWithUndefined(z.date()),
+    estimated_hours: optionalWithUndefined(z.number().positive()),
+    parent_task_id: optionalWithUndefined(z.string().uuid('Invalid parent task ID')),
+    metadata: optionalWithUndefined(z.string().max(5000, 'Metadata too long')),
   }),
 
   update: z.object({
-    title: z.string().min(1, 'Task title is required').max(200, 'Title too long').optional(),
-    description: z.string().max(2000, 'Description too long').optional(),
-    column_id: z.string().uuid('Invalid column ID').optional(),
-    position: z.number().int().min(0).optional(),
-    priority: z.number().int().min(0).max(10).optional(),
-    status: z.enum(['todo', 'in_progress', 'done', 'blocked', 'archived']).optional(),
-    assignee: z.string().max(100, 'Assignee name too long').optional(),
-    due_date: z.date().optional(),
-    estimated_hours: z.number().positive().optional(),
-    actual_hours: z.number().positive().optional(),
-    parent_task_id: z.string().uuid('Invalid parent task ID').optional(),
-    metadata: z.string().max(5000, 'Metadata too long').optional(),
+    title: optionalWithUndefined(z.string().min(1, 'Task title is required').max(200, 'Title too long')),
+    description: optionalWithUndefined(z.string().max(2000, 'Description too long')),
+    column_id: optionalWithUndefined(z.string().uuid('Invalid column ID')),
+    position: optionalWithUndefined(z.number().int().min(0)),
+    priority: optionalWithUndefined(z.number().int().min(0).max(10)),
+    status: optionalWithUndefined(z.enum(['todo', 'in_progress', 'done', 'blocked', 'archived'])),
+    assignee: optionalWithUndefined(z.string().max(100, 'Assignee name too long')),
+    due_date: optionalWithUndefined(z.date()),
+    estimated_hours: optionalWithUndefined(z.number().positive()),
+    actual_hours: optionalWithUndefined(z.number().positive()),
+    parent_task_id: optionalWithUndefined(z.string().uuid('Invalid parent task ID')),
+    metadata: optionalWithUndefined(z.string().max(5000, 'Metadata too long')),
   }),
 
   dependency: z.object({
@@ -115,14 +114,14 @@ export const NoteValidation = {
   create: z.object({
     task_id: z.string().uuid('Invalid task ID'),
     content: z.string().min(1, 'Note content is required').max(5000, 'Content too long'),
-    category: z.enum(['general', 'progress', 'blocker', 'decision', 'question']).optional(),
-    pinned: z.boolean().optional(),
+    category: optionalWithUndefined(z.enum(['general', 'progress', 'blocker', 'decision', 'question'])),
+    pinned: optionalWithUndefined(z.boolean()),
   }),
 
   update: z.object({
-    content: z.string().min(1, 'Note content is required').max(5000, 'Content too long').optional(),
-    category: z.enum(['general', 'progress', 'blocker', 'decision', 'question']).optional(),
-    pinned: z.boolean().optional(),
+    content: optionalWithUndefined(z.string().min(1, 'Note content is required').max(5000, 'Content too long')),
+    category: optionalWithUndefined(z.enum(['general', 'progress', 'blocker', 'decision', 'question'])),
+    pinned: optionalWithUndefined(z.boolean()),
   }),
 
   search: z.object({
@@ -146,22 +145,20 @@ export const NoteValidation = {
 export const TagValidation = {
   create: z.object({
     name: z.string().min(1, 'Tag name is required').max(50, 'Tag name too long'),
-    color: z
-      .string()
-      .regex(/^#[0-9A-F]{6}$/i, 'Invalid color format')
-      .optional(),
-    description: z.string().max(200, 'Description too long').optional(),
-    parent_tag_id: z.string().uuid('Invalid parent tag ID').optional(),
+    color: optionalWithUndefined(
+      z.string().regex(/^#[0-9A-F]{6}$/i, 'Invalid color format')
+    ),
+    description: optionalWithUndefined(z.string().max(200, 'Description too long')),
+    parent_tag_id: optionalWithUndefined(z.string().uuid('Invalid parent tag ID')),
   }),
 
   update: z.object({
-    name: z.string().min(1, 'Tag name is required').max(50, 'Tag name too long').optional(),
-    color: z
-      .string()
-      .regex(/^#[0-9A-F]{6}$/i, 'Invalid color format')
-      .optional(),
-    description: z.string().max(200, 'Description too long').optional(),
-    parent_tag_id: z.string().uuid('Invalid parent tag ID').optional(),
+    name: optionalWithUndefined(z.string().min(1, 'Tag name is required').max(50, 'Tag name too long')),
+    color: optionalWithUndefined(
+      z.string().regex(/^#[0-9A-F]{6}$/i, 'Invalid color format')
+    ),
+    description: optionalWithUndefined(z.string().max(200, 'Description too long')),
+    parent_tag_id: optionalWithUndefined(z.string().uuid('Invalid parent tag ID')),
   }),
 
   assignment: z.object({

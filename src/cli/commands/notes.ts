@@ -35,9 +35,9 @@ export function registerNoteCommands(program: Command): void {
           order: options.order,
         };
 
-        if (options.category) params.category = options.category;
-        if (options.task) params.taskId = options.task;
-        if (options.pinned) params.pinned = 'true';
+        if (options.category) params['category'] = options.category;
+        if (options.task) params['taskId'] = options.task;
+        if (options.pinned) params['pinned'] = 'true';
 
         const notes = await apiClient.getNotes(params);
 
@@ -296,8 +296,8 @@ export function registerNoteCommands(program: Command): void {
 
       try {
         const searchParams: Record<string, string> = {};
-        if (options.category) searchParams.category = options.category;
-        if (options.limit) searchParams.limit = options.limit;
+        if (options.category) searchParams['category'] = options.category;
+        if (options.limit) searchParams['limit'] = options.limit;
 
         const notes = await apiClient.searchNotes(query);
 

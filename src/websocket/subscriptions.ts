@@ -38,7 +38,7 @@ export class SubscriptionManager {
       }
 
       // Check permissions
-      if (!this.webSocketManager.auth.canSubscribeToChannel(client.permissions, channel)) {
+      if (!this.webSocketManager.getAuth().canSubscribeToChannel(client.permissions, channel)) {
         return { success: false, error: 'Insufficient permissions' };
       }
 

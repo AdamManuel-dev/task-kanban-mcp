@@ -309,6 +309,20 @@ export class ApiClient {
   }
 
   /**
+   * Convenience method for GET requests
+   */
+  async get<T = any>(endpoint: string, options?: Omit<RequestOptions, 'method'>): Promise<T> {
+    return this.request<T>(endpoint, { ...options, method: 'GET' });
+  }
+
+  /**
+   * Convenience method for POST requests
+   */
+  async post<T = any>(endpoint: string, body?: any, options?: Omit<RequestOptions, 'method' | 'body'>): Promise<T> {
+    return this.request<T>(endpoint, { ...options, method: 'POST', body });
+  }
+
+  /**
    * Update API key and base URL
    */
   updateConfig(): void {

@@ -17,7 +17,7 @@
  * ```
  */
 
-import dotenv from 'dotenv';
+import * as dotenv from 'dotenv';
 import { z } from 'zod';
 
 // Load environment variables
@@ -198,94 +198,99 @@ function parseEnvVar(value: string | undefined, defaultValue: any): any {
   return value;
 }
 
+// Helper function to access environment variables with bracket notation
+const getEnv = (key: string): string | undefined => {
+  return process.env[key];
+};
+
 // Build configuration from environment variables
 const rawConfig = {
   server: {
-    port: parseEnvVar(process.env.PORT, 3000),
-    host: parseEnvVar(process.env.HOST, 'localhost'),
-    nodeEnv: parseEnvVar(process.env.NODE_ENV, 'development'),
+    port: parseEnvVar(getEnv('PORT'), 3000),
+    host: parseEnvVar(getEnv('HOST'), 'localhost'),
+    nodeEnv: parseEnvVar(getEnv('NODE_ENV'), 'development'),
   },
   database: {
-    path: parseEnvVar(process.env.DATABASE_PATH, './data/kanban.db'),
-    backupPath: parseEnvVar(process.env.DATABASE_BACKUP_PATH, './data/backups'),
-    walMode: parseEnvVar(process.env.DATABASE_WAL_MODE, true),
-    memoryLimit: parseEnvVar(process.env.DATABASE_MEMORY_LIMIT, 268435456),
-    timeout: parseEnvVar(process.env.DATABASE_TIMEOUT, 30000),
-    verbose: parseEnvVar(process.env.DATABASE_VERBOSE, false),
+    path: parseEnvVar(getEnv('DATABASE_PATH'), './data/kanban.db'),
+    backupPath: parseEnvVar(getEnv('DATABASE_BACKUP_PATH'), './data/backups'),
+    walMode: parseEnvVar(getEnv('DATABASE_WAL_MODE'), true),
+    memoryLimit: parseEnvVar(getEnv('DATABASE_MEMORY_LIMIT'), 268435456),
+    timeout: parseEnvVar(getEnv('DATABASE_TIMEOUT'), 30000),
+    verbose: parseEnvVar(getEnv('DATABASE_VERBOSE'), false),
   },
   api: {
-    keySecret: parseEnvVar(process.env.API_KEY_SECRET, 'dev-secret-key-change-in-production'),
-    keys: parseEnvVar(process.env.API_KEYS, ['dev-key-1']),
-    corsOrigin: parseEnvVar(process.env.CORS_ORIGIN, '*'),
-    corsCredentials: parseEnvVar(process.env.CORS_CREDENTIALS, true),
+    keySecret: parseEnvVar(getEnv('API_KEY_SECRET'), 'dev-secret-key-change-in-production'),
+    keys: parseEnvVar(getEnv('API_KEYS'), ['dev-key-1']),
+    corsOrigin: parseEnvVar(getEnv('CORS_ORIGIN'), '*'),
+    corsCredentials: parseEnvVar(getEnv('CORS_CREDENTIALS'), true),
   },
   rateLimit: {
-    windowMs: parseEnvVar(process.env.RATE_LIMIT_WINDOW_MS, 60000),
-    maxRequests: parseEnvVar(process.env.RATE_LIMIT_MAX_REQUESTS, 1000),
-    skipSuccessfulRequests: parseEnvVar(process.env.RATE_LIMIT_SKIP_SUCCESSFUL_REQUESTS, false),
+    windowMs: parseEnvVar(getEnv('RATE_LIMIT_WINDOW_MS'), 60000),
+    maxRequests: parseEnvVar(getEnv('RATE_LIMIT_MAX_REQUESTS'), 1000),
+    skipSuccessfulRequests: parseEnvVar(getEnv('RATE_LIMIT_SKIP_SUCCESSFUL_REQUESTS'), false),
   },
   websocket: {
-    port: parseEnvVar(process.env.WEBSOCKET_PORT, 3001),
-    host: parseEnvVar(process.env.WEBSOCKET_HOST, 'localhost'),
-    path: parseEnvVar(process.env.WEBSOCKET_PATH, '/socket.io'),
-    corsOrigin: parseEnvVar(process.env.WEBSOCKET_CORS_ORIGIN, '*'),
-    heartbeatInterval: parseEnvVar(process.env.WEBSOCKET_HEARTBEAT_INTERVAL, 25000),
-    heartbeatTimeout: parseEnvVar(process.env.WEBSOCKET_HEARTBEAT_TIMEOUT, 60000),
-    authRequired: parseEnvVar(process.env.WEBSOCKET_AUTH_REQUIRED, false),
-    authTimeout: parseEnvVar(process.env.WEBSOCKET_AUTH_TIMEOUT, 30000),
-    maxConnections: parseEnvVar(process.env.WEBSOCKET_MAX_CONNECTIONS, 1000),
-    maxMessagesPerMinute: parseEnvVar(process.env.WEBSOCKET_MAX_MESSAGES_PER_MINUTE, 100),
-    maxSubscriptionsPerClient: parseEnvVar(process.env.WEBSOCKET_MAX_SUBSCRIPTIONS_PER_CLIENT, 50),
-    compression: parseEnvVar(process.env.WEBSOCKET_COMPRESSION, true),
-    maxPayload: parseEnvVar(process.env.WEBSOCKET_MAX_PAYLOAD, 1048576),
+    port: parseEnvVar(getEnv('WEBSOCKET_PORT'), 3001),
+    host: parseEnvVar(getEnv('WEBSOCKET_HOST'), 'localhost'),
+    path: parseEnvVar(getEnv('WEBSOCKET_PATH'), '/socket.io'),
+    corsOrigin: parseEnvVar(getEnv('WEBSOCKET_CORS_ORIGIN'), '*'),
+    heartbeatInterval: parseEnvVar(getEnv('WEBSOCKET_HEARTBEAT_INTERVAL'), 25000),
+    heartbeatTimeout: parseEnvVar(getEnv('WEBSOCKET_HEARTBEAT_TIMEOUT'), 60000),
+    authRequired: parseEnvVar(getEnv('WEBSOCKET_AUTH_REQUIRED'), false),
+    authTimeout: parseEnvVar(getEnv('WEBSOCKET_AUTH_TIMEOUT'), 30000),
+    maxConnections: parseEnvVar(getEnv('WEBSOCKET_MAX_CONNECTIONS'), 1000),
+    maxMessagesPerMinute: parseEnvVar(getEnv('WEBSOCKET_MAX_MESSAGES_PER_MINUTE'), 100),
+    maxSubscriptionsPerClient: parseEnvVar(getEnv('WEBSOCKET_MAX_SUBSCRIPTIONS_PER_CLIENT'), 50),
+    compression: parseEnvVar(getEnv('WEBSOCKET_COMPRESSION'), true),
+    maxPayload: parseEnvVar(getEnv('WEBSOCKET_MAX_PAYLOAD'), 1048576),
   },
   git: {
-    autoDetect: parseEnvVar(process.env.GIT_AUTO_DETECT, true),
-    branchPatterns: parseEnvVar(process.env.GIT_BRANCH_PATTERNS, [
+    autoDetect: parseEnvVar(getEnv('GIT_AUTO_DETECT'), true),
+    branchPatterns: parseEnvVar(getEnv('GIT_BRANCH_PATTERNS'), [
       'feature/{taskId}-*',
       '{taskId}-*',
     ]),
-    commitKeywords: parseEnvVar(process.env.GIT_COMMIT_KEYWORDS, ['fixes', 'closes', 'implements']),
-    defaultBoard: parseEnvVar(process.env.GIT_DEFAULT_BOARD, 'personal-tasks'),
+    commitKeywords: parseEnvVar(getEnv('GIT_COMMIT_KEYWORDS'), ['fixes', 'closes', 'implements']),
+    defaultBoard: parseEnvVar(getEnv('GIT_DEFAULT_BOARD'), 'personal-tasks'),
   },
   backup: {
-    enabled: parseEnvVar(process.env.BACKUP_ENABLED, true),
-    schedule: parseEnvVar(process.env.BACKUP_SCHEDULE, '0 2 * * *'),
-    retentionDays: parseEnvVar(process.env.BACKUP_RETENTION_DAYS, 30),
-    compress: parseEnvVar(process.env.BACKUP_COMPRESS, true),
-    encrypt: parseEnvVar(process.env.BACKUP_ENCRYPT, false),
-    encryptionKey: parseEnvVar(process.env.BACKUP_ENCRYPTION_KEY, undefined),
-    incremental: parseEnvVar(process.env.BACKUP_INCREMENTAL, true),
-    verifyIntegrity: parseEnvVar(process.env.BACKUP_VERIFY_INTEGRITY, true),
+    enabled: parseEnvVar(getEnv('BACKUP_ENABLED'), true),
+    schedule: parseEnvVar(getEnv('BACKUP_SCHEDULE'), '0 2 * * *'),
+    retentionDays: parseEnvVar(getEnv('BACKUP_RETENTION_DAYS'), 30),
+    compress: parseEnvVar(getEnv('BACKUP_COMPRESS'), true),
+    encrypt: parseEnvVar(getEnv('BACKUP_ENCRYPT'), false),
+    encryptionKey: parseEnvVar(getEnv('BACKUP_ENCRYPTION_KEY'), undefined),
+    incremental: parseEnvVar(getEnv('BACKUP_INCREMENTAL'), true),
+    verifyIntegrity: parseEnvVar(getEnv('BACKUP_VERIFY_INTEGRITY'), true),
   },
   logging: {
-    level: parseEnvVar(process.env.LOG_LEVEL, 'info'),
-    file: parseEnvVar(process.env.LOG_FILE, './logs/kanban.log'),
-    maxSize: parseEnvVar(process.env.LOG_MAX_SIZE, 10485760),
-    maxFiles: parseEnvVar(process.env.LOG_MAX_FILES, 5),
-    console: parseEnvVar(process.env.LOG_CONSOLE, true),
-    consoleLevel: parseEnvVar(process.env.LOG_CONSOLE_LEVEL, 'debug'),
+    level: parseEnvVar(getEnv('LOG_LEVEL'), 'info'),
+    file: parseEnvVar(getEnv('LOG_FILE'), './logs/kanban.log'),
+    maxSize: parseEnvVar(getEnv('LOG_MAX_SIZE'), 10485760),
+    maxFiles: parseEnvVar(getEnv('LOG_MAX_FILES'), 5),
+    console: parseEnvVar(getEnv('LOG_CONSOLE'), true),
+    consoleLevel: parseEnvVar(getEnv('LOG_CONSOLE_LEVEL'), 'debug'),
   },
   performance: {
-    maxRequestSize: parseEnvVar(process.env.MAX_REQUEST_SIZE, '10mb'),
-    requestTimeout: parseEnvVar(process.env.REQUEST_TIMEOUT, 30000),
-    keepAliveTimeout: parseEnvVar(process.env.KEEP_ALIVE_TIMEOUT, 5000),
-    maxMemoryUsage: parseEnvVar(process.env.MAX_MEMORY_USAGE, 512),
-    memoryCheckInterval: parseEnvVar(process.env.MEMORY_CHECK_INTERVAL, 60000),
+    maxRequestSize: parseEnvVar(getEnv('MAX_REQUEST_SIZE'), '10mb'),
+    requestTimeout: parseEnvVar(getEnv('REQUEST_TIMEOUT'), 30000),
+    keepAliveTimeout: parseEnvVar(getEnv('KEEP_ALIVE_TIMEOUT'), 5000),
+    maxMemoryUsage: parseEnvVar(getEnv('MAX_MEMORY_USAGE'), 512),
+    memoryCheckInterval: parseEnvVar(getEnv('MEMORY_CHECK_INTERVAL'), 60000),
   },
   mcp: {
-    serverName: parseEnvVar(process.env.MCP_SERVER_NAME, 'mcp-kanban'),
-    serverVersion: parseEnvVar(process.env.MCP_SERVER_VERSION, '0.1.0'),
-    toolsEnabled: parseEnvVar(process.env.MCP_TOOLS_ENABLED, true),
-    maxContextItems: parseEnvVar(process.env.MCP_MAX_CONTEXT_ITEMS, 50),
-    contextLookbackDays: parseEnvVar(process.env.MCP_CONTEXT_LOOKBACK_DAYS, 14),
-    contextCacheTtl: parseEnvVar(process.env.CONTEXT_CACHE_TTL, 300),
-    maxRelatedTasks: parseEnvVar(process.env.CONTEXT_MAX_RELATED_TASKS, 10),
+    serverName: parseEnvVar(getEnv('MCP_SERVER_NAME'), 'mcp-kanban'),
+    serverVersion: parseEnvVar(getEnv('MCP_SERVER_VERSION'), '0.1.0'),
+    toolsEnabled: parseEnvVar(getEnv('MCP_TOOLS_ENABLED'), true),
+    maxContextItems: parseEnvVar(getEnv('MCP_MAX_CONTEXT_ITEMS'), 50),
+    contextLookbackDays: parseEnvVar(getEnv('MCP_CONTEXT_LOOKBACK_DAYS'), 14),
+    contextCacheTtl: parseEnvVar(getEnv('CONTEXT_CACHE_TTL'), 300),
+    maxRelatedTasks: parseEnvVar(getEnv('CONTEXT_MAX_RELATED_TASKS'), 10),
   },
   priority: {
-    recalcInterval: parseEnvVar(process.env.PRIORITY_RECALC_INTERVAL, 3600),
-    staleThresholdDays: parseEnvVar(process.env.PRIORITY_STALE_THRESHOLD_DAYS, 7),
-    factors: parseEnvVar(process.env.PRIORITY_FACTORS, {
+    recalcInterval: parseEnvVar(getEnv('PRIORITY_RECALC_INTERVAL'), 3600),
+    staleThresholdDays: parseEnvVar(getEnv('PRIORITY_STALE_THRESHOLD_DAYS'), 7),
+    factors: parseEnvVar(getEnv('PRIORITY_FACTORS'), {
       age: 0.15,
       dependency: 0.3,
       deadline: 0.25,

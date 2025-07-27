@@ -87,3 +87,51 @@
 **Tests Added:** [count and description]
 **Notes:** [Any issues encountered, follow-ups needed, etc.]
 **Time Taken:** [if tracked]
+
+### TYPESCRIPT-FIXES - P0 - 2025-07-26
+**Original TODO:** Resolve final 3 TypeScript errors (exactOptionalPropertyTypes)
+**Implementation Summary:**
+- Fixed TypeScript errors related to exactOptionalPropertyTypes
+- Updated interfaces to explicitly include `undefined` for optional properties
+- Chose to keep exactOptionalPropertyTypes enabled for better type safety
+**Files Changed:**
+- src/services/TagService.ts - Updated CreateTagRequest and UpdateTagRequest interfaces
+- src/services/TaskService.ts - Updated UpdateTaskRequest interface
+**Tests Added:** 0 (Type fixes only)
+**Notes:** Reduced TypeScript errors from 157 to 154. Remaining errors are mostly related to index signature access.
+**Time Taken:** ~20 minutes
+
+### DATA-EXPORT-IMPORT - P0 - 2025-07-26
+**Original TODO:** Phase 7.4 Data Export/Import (5 P0 tasks)
+**Implementation Summary:**
+- Created comprehensive ExportService with JSON and CSV export capabilities
+- Implemented data import with validation and conflict resolution
+- Added REST API endpoints for export/import operations
+- Created CLI commands for export (JSON/CSV) and import (JSON)
+- Supports filtering by boards, dates, and status
+**Files Changed:**
+- src/services/ExportService.ts - New service for data export/import
+- src/routes/export.ts - New API routes for export/import endpoints
+- src/routes/index.ts - Registered export routes
+- src/cli/commands/export.ts - New CLI commands for export/import
+- src/cli/index.ts - Registered export commands
+**Tests Added:** 0 (To be added in testing phase)
+**Notes:** Full data portability achieved with validation and conflict handling
+**Time Taken:** ~45 minutes
+
+### TYPESCRIPT-PATTERNS - P1 - 2025-07-27
+**Original TODO:** Phase 6.2 Short-term TypeScript Tasks (6 tasks)
+**Implementation Summary:**
+- Created Zod helper utilities for handling exactOptionalPropertyTypes
+- Migrated all validation schemas to use new helper pattern
+- Created comprehensive TypeScript documentation suite
+**Files Changed:**
+- src/utils/zod-helpers.ts - New utility file with helper functions
+- src/utils/validation.ts - Updated all schemas to use optionalWithUndefined
+- src/types/index.ts - Added JSDoc comments to all interfaces
+- docs/typescript-patterns.md - New comprehensive patterns guide
+- docs/typescript-style-guide.md - New complete style guide
+- docs/type-decisions-rationale.md - New rationale documentation
+**Tests Added:** 0 (Documentation and type improvements)
+**Notes:** Established consistent patterns for handling optional properties with exactOptionalPropertyTypes enabled
+**Time Taken:** ~90 minutes

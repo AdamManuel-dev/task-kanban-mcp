@@ -126,7 +126,7 @@ export function registerSubtaskCommands(program: Command): void {
         };
 
         if (options.status) {
-          params.status = options.status;
+          params['status'] = options.status;
         }
 
         const subtasks = await apiClient.getTasks(params);

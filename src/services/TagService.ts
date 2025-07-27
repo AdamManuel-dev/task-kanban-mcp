@@ -5,16 +5,16 @@ import type { Tag, TaskTag, ServiceError, PaginationOptions, FilterOptions } fro
 
 export interface CreateTagRequest {
   name: string;
-  color?: string;
-  description?: string;
-  parent_tag_id?: string;
+  color?: string | undefined;
+  description?: string | undefined;
+  parent_tag_id?: string | undefined;
 }
 
 export interface UpdateTagRequest {
-  name?: string;
-  color?: string;
-  description?: string;
-  parent_tag_id?: string;
+  name?: string | undefined;
+  color?: string | undefined;
+  description?: string | undefined;
+  parent_tag_id?: string | undefined;
 }
 
 export interface TagFilters extends FilterOptions {

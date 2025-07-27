@@ -35,13 +35,13 @@ export function registerTaskCommands(program: Command): void {
           order: options.order,
         };
 
-        if (options.board) params.board = options.board;
-        if (options.status) params.status = options.status;
-        if (options.tags) params.tags = options.tags;
+        if (options.board) params['board'] = options.board;
+        if (options.status) params['status'] = options.status;
+        if (options.tags) params['tags'] = options.tags;
 
         // Use default board if no board specified
         if (!options.board && config.getDefaultBoard()) {
-          params.board = config.getDefaultBoard()!;
+          params['board'] = config.getDefaultBoard()!;
         }
 
         const tasks = await apiClient.getTasks(params);

@@ -1,7 +1,31 @@
 /**
  * TypeScript type definitions for the MCP Kanban system
+ * 
+ * @module types
+ * @description Core type definitions for all entities in the MCP Kanban system.
+ * These types are used throughout the application for type safety and consistency.
  */
 
+/**
+ * Represents a Kanban board
+ * 
+ * @interface Board
+ * @description A board is the top-level container for organizing tasks into columns.
+ * Each board can have multiple columns and tasks.
+ * 
+ * @example
+ * ```typescript
+ * const board: Board = {
+ *   id: '123e4567-e89b-12d3-a456-426614174000',
+ *   name: 'Development Sprint',
+ *   description: 'Q1 2024 sprint board',
+ *   color: '#2196F3',
+ *   created_at: new Date('2024-01-01'),
+ *   updated_at: new Date('2024-01-15'),
+ *   archived: false
+ * };
+ * ```
+ */
 export interface Board {
   id: string;
   name: string;
@@ -12,6 +36,15 @@ export interface Board {
   archived: boolean;
 }
 
+/**
+ * Represents a column within a Kanban board
+ * 
+ * @interface Column
+ * @description Columns organize tasks into different stages of work (e.g., To Do, In Progress, Done).
+ * Each column belongs to a specific board and has a position for ordering.
+ * 
+ * @property {number} [wip_limit] - Optional Work In Progress limit to prevent overloading
+ */
 export interface Column {
   id: string;
   board_id: string;
@@ -22,6 +55,17 @@ export interface Column {
   updated_at: Date;
 }
 
+/**
+ * Represents a task within the Kanban system
+ * 
+ * @interface Task
+ * @description A task is the fundamental unit of work in the system. Tasks belong to a board
+ * and column, and can have various properties like priority, status, and dependencies.
+ * 
+ * @property {string} status - Current status of the task
+ * @property {number} priority - Priority level from 0 (lowest) to 10 (highest)
+ * @property {string} [metadata] - JSON string for storing custom task data
+ */
 export interface Task {
   id: string;
   title: string;
@@ -43,6 +87,15 @@ export interface Task {
   metadata?: string | undefined;
 }
 
+/**
+ * Represents a dependency relationship between tasks
+ * 
+ * @interface TaskDependency
+ * @description Defines how tasks relate to each other. A task can block another task,
+ * relate to it, or be a duplicate of it.
+ * 
+ * @property {'blocks' | 'relates_to' | 'duplicates'} dependency_type - The type of relationship
+ */
 export interface TaskDependency {
   id: string;
   task_id: string;
@@ -51,6 +104,15 @@ export interface TaskDependency {
   created_at: Date;
 }
 
+/**
+ * Represents a note attached to a task
+ * 
+ * @interface Note
+ * @description Notes provide additional context, updates, or information about a task.
+ * They can be categorized and pinned for importance.
+ * 
+ * @property {boolean} pinned - Whether the note is pinned to the top
+ */
 export interface Note {
   id: string;
   task_id: string;
@@ -61,6 +123,16 @@ export interface Note {
   updated_at: Date;
 }
 
+/**
+ * Represents a tag for categorizing tasks
+ * 
+ * @interface Tag
+ * @description Tags help organize and filter tasks. They support hierarchical structure
+ * through parent-child relationships.
+ * 
+ * @property {string} color - Hex color code for visual identification
+ * @property {string} [parent_tag_id] - ID of parent tag for hierarchical organization
+ */
 export interface Tag {
   id: string;
   name: string;
@@ -94,6 +166,14 @@ export interface BoardWithColumns extends Board {
   columns: Column[];
 }
 
+/**
+ * Board with aggregated statistics
+ * 
+ * @interface BoardWithStats
+ * @extends {Board}
+ * @description Extends the base Board interface with computed statistics about
+ * tasks and columns within the board.
+ */
 export interface BoardWithStats extends Board {
   taskCount: number;
   completedTasks: number;
@@ -102,6 +182,25 @@ export interface BoardWithStats extends Board {
   columnCount: number;
 }
 
+/**
+ * Standard error interface for service layer errors
+ * 
+ * @interface ServiceError
+ * @extends {Error}
+ * @description Provides a consistent error structure across the application with
+ * HTTP status codes and additional details for debugging.
+ * 
+ * @example
+ * ```typescript
+ * class NotFoundError extends Error implements ServiceError {
+ *   code = 'NOT_FOUND';
+ *   statusCode = 404;
+ *   constructor(resource: string, id: string) {
+ *     super(`${resource} with ID ${id} not found`);
+ *   }
+ * }
+ * ```
+ */
 export interface ServiceError extends Error {
   code: string;
   statusCode: number;
@@ -120,6 +219,19 @@ export interface FilterOptions {
   search?: string;
 }
 
+/**
+ * Tag with usage statistics
+ * 
+ * @interface TagWithStats
+ * @extends {Tag}
+ * @description Extends the base Tag interface with usage statistics and metrics
+ * for understanding tag popularity and relationships.
+ * 
+ * @property {number} task_count - Number of tasks using this tag
+ * @property {number} usage_count - Total number of times tag has been applied
+ * @property {Date} [last_used] - When the tag was last applied to a task
+ * @property {number} child_count - Number of child tags in hierarchy
+ */
 export interface TagWithStats extends Tag {
   task_count: number;
   usage_count: number;

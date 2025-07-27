@@ -33,6 +33,10 @@ export class WebSocketManager {
     this.rateLimiter = new RateLimiter();
   }
 
+  getAuth(): WebSocketAuth {
+    return this.auth;
+  }
+
   async start(): Promise<void> {
     try {
       logger.info('Starting WebSocket server...');

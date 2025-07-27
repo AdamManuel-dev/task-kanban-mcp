@@ -123,9 +123,9 @@ export function registerDatabaseCommands(program: Command): void {
 
       try {
         const params: Record<string, string> = {};
-        if (options.tables) params.tables = 'true';
-        if (options.indexes) params.indexes = 'true';
-        if (options.performance) params.performance = 'true';
+        if (options.tables) params['tables'] = 'true';
+        if (options.indexes) params['indexes'] = 'true';
+        if (options.performance) params['performance'] = 'true';
 
         const stats = await apiClient.request('/api/database/stats', { params });
 
