@@ -22,12 +22,10 @@ const InteractiveView: React.FC<InteractiveViewProps> = ({ mode, data }) => {
     (
       input: string,
       key: {
-        upArrow?: boolean;
-        downArrow?: boolean;
-        leftArrow?: boolean;
-        rightArrow?: boolean;
-        escape?: boolean;
-        return?: boolean;
+        name: string;
+        ctrl: boolean;
+        meta: boolean;
+        shift: boolean;
       }
     ) => {
       if (input === 'q' && !key.ctrl) {
@@ -67,9 +65,7 @@ const InteractiveView: React.FC<InteractiveViewProps> = ({ mode, data }) => {
   };
 
   const handleColumnSelect = (column: Column) => {
-    setStatusMessage(
-      `Selected column: ${String(String(column.name))} (${String(String(column.tasks.length))} tasks)`
-    );
+    setStatusMessage(`Selected column: ${String(String(column.name))}`);
     setStatusType('info');
   };
 
@@ -196,7 +192,7 @@ const generateSampleData = () => {
       priority: 'P1',
       assignee: 'alice',
       tags: ['backend', 'security'],
-      due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     },
     {
       id: 'TASK-002',
