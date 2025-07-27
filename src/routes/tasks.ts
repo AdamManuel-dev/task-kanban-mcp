@@ -776,7 +776,11 @@ export function taskRoutes(): Router {
         limit: parseInt(limit as string, 10),
         offset: parseInt(offset as string, 10),
         category: category as any,
-        pinned: pinned === 'true' ? true : pinned === 'false' ? false : undefined,
+        pinned: (() => {
+          if (pinned === 'true') return true;
+          if (pinned === 'false') return false;
+          return undefined;
+        })(),
       };
 
       if (!id) {
@@ -821,9 +825,9 @@ export function taskRoutes(): Router {
   router.post('/:id/tags', requirePermission('write'), async (req, res, next): Promise<void> => {
     try {
       const { id } = req.params;
-      const { tag_ids } = req.body;
+      const { tag_ids: tagIds } = req.body;
 
-      if (!Array.isArray(tag_ids)) {
+      if (!Array.isArray(tagIds)) {
         return res.status(400).apiError('INVALID_INPUT', 'tag_ids must be an array');
       }
 
@@ -832,7 +836,7 @@ export function taskRoutes(): Router {
       }
       const assignedTags = [];
       await Promise.all(
-        tag_ids.map(async tagId => {
+        tagIds.map(async tagId => {
           await tagService.addTagToTask(id, tagId);
         })
       );
@@ -909,8 +913,8 @@ export function taskRoutes(): Router {
       const filters = {
         board_id: board_id as string,
         assignee: assignee as string,
-        skill_context: skill_context as string,
-        exclude_blocked: exclude_blocked === 'true',
+        skillContext: skill_context as string,
+        excludeBlocked: exclude_blocked === 'true',
       };
 
       // Get all tasks with filters
@@ -962,18 +966,92 @@ export function taskRoutes(): Router {
       });
 
       const nextTask = availableTasks[0];
-      let reasoning = `Highest priority available task (Priority: ${String(nextTask.priority ?? 1)})`;
 
+      // Enhanced reasoning with multiple factors
+      const reasoningFactors: string[] = [];
+
+      // Priority reasoning
+      const priority = nextTask.priority ?? 1;
+      if (priority >= 8) {
+        reasoningFactors.push(`🔥 Critical Priority (${priority}/10) - Urgent attention required`);
+      } else if (priority >= 6) {
+        reasoningFactors.push(`⚡ High Priority (${priority}/10) - Important task`);
+      } else if (priority >= 4) {
+        reasoningFactors.push(`📈 Medium Priority (${priority}/10) - Standard task`);
+      } else {
+        reasoningFactors.push(`📝 Low Priority (${priority}/10) - Background task`);
+      }
+
+      // Due date reasoning
       if (nextTask.due_date) {
         const dueDate = new Date(nextTask.due_date);
         const now = new Date();
         const daysUntilDue = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        reasoning += `, Due in ${String(daysUntilDue)} days`;
+
+        if (daysUntilDue < 0) {
+          reasoningFactors.push(
+            `🚨 OVERDUE by ${Math.abs(daysUntilDue)} day(s) - Immediate action needed`
+          );
+        } else if (daysUntilDue <= 1) {
+          reasoningFactors.push(
+            `⚠️ Due ${daysUntilDue === 0 ? 'today' : 'tomorrow'} - Time sensitive`
+          );
+        } else if (daysUntilDue <= 7) {
+          reasoningFactors.push(`📅 Due in ${daysUntilDue} days - Approaching deadline`);
+        } else {
+          reasoningFactors.push(`📅 Due in ${daysUntilDue} days - Adequate time available`);
+        }
       }
 
-      if (filters.skill_context) {
-        reasoning += `, Matches skill context: ${String(filters.skill_context)}`;
+      // Blocking status reasoning
+      if (nextTask.status === 'blocked') {
+        reasoningFactors.push(`🚫 Currently blocked - May need dependency resolution first`);
+      } else if (nextTask.status === 'in_progress') {
+        reasoningFactors.push(`🔄 Already in progress - Continue existing work`);
+      } else {
+        reasoningFactors.push(`✅ Ready to start - No blocking dependencies`);
       }
+
+      // Skill context reasoning
+      if (filters.skill_context) {
+        reasoningFactors.push(`🎯 Matches skill context: "${filters.skill_context}"`);
+      }
+
+      // Task complexity reasoning based on description length
+      if (nextTask.description) {
+        const descLength = nextTask.description.length;
+        if (descLength > 500) {
+          reasoningFactors.push(`📋 Complex task - Detailed requirements specified`);
+        } else if (descLength > 100) {
+          reasoningFactors.push(`📝 Well-defined task - Clear requirements`);
+        } else {
+          reasoningFactors.push(`⚡ Simple task - Quick to understand`);
+        }
+      }
+
+      // Assignee reasoning
+      if (nextTask.assignee) {
+        if (filters.assignee && nextTask.assignee === filters.assignee) {
+          reasoningFactors.push(`👤 Assigned to you - Personal responsibility`);
+        } else {
+          reasoningFactors.push(
+            `👥 Assigned to ${nextTask.assignee} - Team coordination may be needed`
+          );
+        }
+      } else {
+        reasoningFactors.push(`🆓 Unassigned - Available for anyone to pick up`);
+      }
+
+      // Selection reasoning summary
+      const mainReason = reasoningFactors[0]; // Priority is first
+      const additionalFactors = reasoningFactors.slice(1);
+
+      let reasoning = `Selected based on: ${mainReason}`;
+      if (additionalFactors.length > 0) {
+        reasoning += `\n\nAdditional factors:\n• ${additionalFactors.join('\n• ')}`;
+      }
+
+      reasoning += `\n\nThis task was chosen from ${availableTasks.length} available task(s) using priority-first sorting with deadline awareness.`;
 
       return res.apiSuccess({
         next_task: nextTask,

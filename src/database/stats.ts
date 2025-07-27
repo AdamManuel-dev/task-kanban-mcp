@@ -703,7 +703,7 @@ export class StatisticsCollector {
       if (match?.[1]) {
         return match[1]
           .split(',')
-          .map(col => col.trim().replace(/["`\[\]]/g, ''))
+          .map(col => col.trim().replace(/["`[\]]/g, ''))
           .filter(col => col.length > 0);
       }
     } catch {

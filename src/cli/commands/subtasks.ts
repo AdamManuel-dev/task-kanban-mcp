@@ -111,12 +111,15 @@ export function registerSubtaskCommands(program: Command): void {
           }
 
           // Use command line options or answers
-          subtaskData.title = options.title ?? subtaskData.title;
-          subtaskData.description = options.description ?? subtaskData.description;
-          subtaskData.priority = parseInt(options.priority ?? String(subtaskData.priority), 10);
+          subtaskData['title'] = options['title'] ?? subtaskData['title'];
+          subtaskData['description'] = options['description'] ?? subtaskData['description'];
+          subtaskData['priority'] = parseInt(
+            options['priority'] ?? String(subtaskData['priority']),
+            10
+          );
 
-          if (options.due ?? subtaskData.dueDate) {
-            subtaskData.dueDate = options.due ?? subtaskData.dueDate;
+          if (options.due ?? subtaskData['dueDate']) {
+            subtaskData['dueDate'] = options.due ?? subtaskData['dueDate'];
           }
 
           const subtask = await apiClient.createTask(subtaskData as any);
@@ -146,7 +149,7 @@ export function registerSubtaskCommands(program: Command): void {
         };
 
         if (options.status) {
-          params.status = options.status;
+          params['status'] = options['status'];
         }
 
         const subtasks = (await apiClient.getTasks(params)) as any;
@@ -294,7 +297,14 @@ export function registerSubtaskCommands(program: Command): void {
         // Simple text-based visualization
         const printNode = (node: any, indent = 0) => {
           const prefix = '  '.repeat(indent) + (indent > 0 ? '└─ ' : '');
-          const status = node.status === 'completed' ? '✓' : node.status === 'blocked' ? '⚠' : '○';
+          let status: string;
+          if (node.status === 'completed') {
+            status = '✓';
+          } else if (node.status === 'blocked') {
+            status = '⚠';
+          } else {
+            status = '○';
+          }
           logger.info(
             `${String(prefix)}${String(status)} ${String(String(node.id))}: ${String(String(node.title))} (${String(String(node.status))})`
           );

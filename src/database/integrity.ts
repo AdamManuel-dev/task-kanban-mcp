@@ -334,8 +334,8 @@ export class DatabaseIntegrityChecker {
         }
       }
 
-      metadata.totalViolations = totalViolations;
-      metadata.tablesChecked = foreignKeyChecks.length;
+      metadata['totalViolations'] = totalViolations;
+      metadata['tablesChecked'] = foreignKeyChecks.length;
 
       logger.debug('Foreign key constraint check completed', {
         violations: totalViolations,
@@ -387,7 +387,7 @@ export class DatabaseIntegrityChecker {
 
       if (invalidParentTasks[0]?.count > 0) {
         warnings.push(`Found ${invalidParentTasks[0].count} tasks with invalid parent references`);
-        metadata.invalidParentTasks = invalidParentTasks[0].count;
+        metadata['invalidParentTasks'] = invalidParentTasks[0].count;
       }
 
       // Check for tags with zero usage but existing in task_tags
@@ -407,7 +407,7 @@ export class DatabaseIntegrityChecker {
         warnings.push(
           `Found ${unusedTagsWithReferences[0].count} tags with zero usage count but active references`
         );
-        metadata.unusedTagsWithReferences = unusedTagsWithReferences[0].count;
+        metadata['unusedTagsWithReferences'] = unusedTagsWithReferences[0].count;
       }
 
       // Check for columns without any tasks
@@ -421,8 +421,8 @@ export class DatabaseIntegrityChecker {
 
       if (emptyColumns.length > 0) {
         warnings.push(`Found ${emptyColumns.length} columns with no active tasks`);
-        metadata.emptyColumns = emptyColumns.length;
-        metadata.emptyColumnDetails = emptyColumns.slice(0, 5); // Sample for review
+        metadata['emptyColumns'] = emptyColumns.length;
+        metadata['emptyColumnDetails'] = emptyColumns.slice(0, 5); // Sample for review
       }
 
       logger.debug('Orphaned records check completed', {
@@ -505,7 +505,7 @@ export class DatabaseIntegrityChecker {
 
       if (circularDependencies.length > 0) {
         errors.push(`Found ${circularDependencies.length} circular dependency chains`);
-        metadata.circularDependencies = circularDependencies;
+        metadata['circularDependencies'] = circularDependencies;
 
         // Group by task for better reporting
         const taskGroups = circularDependencies.reduce(
@@ -519,8 +519,8 @@ export class DatabaseIntegrityChecker {
           {} as Record<string, any[]>
         );
 
-        metadata.affectedTasks = Object.keys(taskGroups).length;
-        metadata.sampleCircularPaths = Object.values(taskGroups)
+        metadata['affectedTasks'] = Object.keys(taskGroups).length;
+        metadata['sampleCircularPaths'] = Object.values(taskGroups)
           .slice(0, 3)
           .map(group => (group as any[])[0].path);
       }
@@ -536,7 +536,7 @@ export class DatabaseIntegrityChecker {
         errors.push(
           `Found ${selfReferencingTasks.length} tasks that reference themselves as parent`
         );
-        metadata.selfReferencingTasks = selfReferencingTasks;
+        metadata['selfReferencingTasks'] = selfReferencingTasks;
       }
 
       // Check for potential cycles in parent-child relationships
@@ -580,7 +580,7 @@ export class DatabaseIntegrityChecker {
 
       if (parentChildCycles.length > 0) {
         errors.push(`Found ${parentChildCycles.length} parent-child relationship cycles`);
-        metadata.parentChildCycles = parentChildCycles;
+        metadata['parentChildCycles'] = parentChildCycles;
       }
 
       logger.debug('Circular dependency check completed', {
@@ -633,7 +633,7 @@ export class DatabaseIntegrityChecker {
 
       if (invalidPriorities[0]?.count > 0) {
         errors.push(`Found ${invalidPriorities[0].count} tasks with invalid priority values`);
-        metadata.invalidPriorities = invalidPriorities[0].count;
+        metadata['invalidPriorities'] = invalidPriorities[0].count;
       }
 
       // Check note category values
@@ -645,7 +645,7 @@ export class DatabaseIntegrityChecker {
 
       if (invalidNoteCategories[0]?.count > 0) {
         errors.push(`Found ${invalidNoteCategories[0].count} notes with invalid category values`);
-        metadata.invalidNoteCategories = invalidNoteCategories[0].count;
+        metadata['invalidNoteCategories'] = invalidNoteCategories[0].count;
       }
 
       // Check dependency types
@@ -657,7 +657,7 @@ export class DatabaseIntegrityChecker {
 
       if (invalidDependencyTypes[0]?.count > 0) {
         errors.push(`Found ${invalidDependencyTypes[0].count} dependencies with invalid types`);
-        metadata.invalidDependencyTypes = invalidDependencyTypes[0].count;
+        metadata['invalidDependencyTypes'] = invalidDependencyTypes[0].count;
       }
 
       // Check for negative priority values
@@ -669,7 +669,7 @@ export class DatabaseIntegrityChecker {
 
       if (negativePriorities[0]?.count > 0) {
         warnings.push(`Found ${negativePriorities[0].count} tasks with negative priority values`);
-        metadata.negativePriorities = negativePriorities[0].count;
+        metadata['negativePriorities'] = negativePriorities[0].count;
       }
 
       // Check for invalid JSON in metadata columns
@@ -711,7 +711,7 @@ export class DatabaseIntegrityChecker {
 
       if (invalidProgress[0]?.count > 0) {
         errors.push(`Found ${invalidProgress[0].count} tasks with invalid progress percentages`);
-        metadata.invalidProgress = invalidProgress[0].count;
+        metadata['invalidProgress'] = invalidProgress[0].count;
       }
 
       // Check for inconsistent subtask counts
@@ -725,7 +725,7 @@ export class DatabaseIntegrityChecker {
         errors.push(
           `Found ${inconsistentSubtaskCounts[0].count} tasks with more completed than total subtasks`
         );
-        metadata.inconsistentSubtaskCounts = inconsistentSubtaskCounts[0].count;
+        metadata['inconsistentSubtaskCounts'] = inconsistentSubtaskCounts[0].count;
       }
 
       logger.debug('Data type constraint check completed', {
@@ -783,7 +783,7 @@ export class DatabaseIntegrityChecker {
         errors.push(
           `Tasks FTS table inconsistency: ${tasksCount?.count ?? 0} tasks vs ${tasksFtsCount?.count ?? 0} FTS entries`
         );
-        metadata.tasksCountMismatch = {
+        metadata['tasksCountMismatch'] = {
           tasks: tasksCount?.count ?? 0,
           fts: tasksFtsCount?.count ?? 0,
         };
@@ -801,7 +801,7 @@ export class DatabaseIntegrityChecker {
         errors.push(
           `Notes FTS table inconsistency: ${notesCount?.count ?? 0} notes vs ${notesFtsCount?.count ?? 0} FTS entries`
         );
-        metadata.notesCountMismatch = {
+        metadata['notesCountMismatch'] = {
           notes: notesCount?.count ?? 0,
           fts: notesFtsCount?.count ?? 0,
         };
@@ -816,7 +816,7 @@ export class DatabaseIntegrityChecker {
 
       if (orphanedTasksFts[0]?.count > 0) {
         warnings.push(`Found ${orphanedTasksFts[0].count} orphaned entries in tasks FTS table`);
-        metadata.orphanedTasksFts = orphanedTasksFts[0].count;
+        metadata['orphanedTasksFts'] = orphanedTasksFts[0].count;
       }
 
       const orphanedNotesFts = await this.db.query(`
@@ -827,7 +827,7 @@ export class DatabaseIntegrityChecker {
 
       if (orphanedNotesFts[0]?.count > 0) {
         warnings.push(`Found ${orphanedNotesFts[0].count} orphaned entries in notes FTS table`);
-        metadata.orphanedNotesFts = orphanedNotesFts[0].count;
+        metadata['orphanedNotesFts'] = orphanedNotesFts[0].count;
       }
 
       // Check for missing FTS entries
@@ -839,7 +839,7 @@ export class DatabaseIntegrityChecker {
 
       if (missingTasksFts[0]?.count > 0) {
         warnings.push(`Found ${missingTasksFts[0].count} tasks missing from FTS table`);
-        metadata.missingTasksFts = missingTasksFts[0].count;
+        metadata['missingTasksFts'] = missingTasksFts[0].count;
       }
 
       const missingNotesFts = await this.db.query(`
@@ -850,7 +850,7 @@ export class DatabaseIntegrityChecker {
 
       if (missingNotesFts[0]?.count > 0) {
         warnings.push(`Found ${missingNotesFts[0].count} notes missing from FTS table`);
-        metadata.missingNotesFts = missingNotesFts[0].count;
+        metadata['missingNotesFts'] = missingNotesFts[0].count;
       }
 
       logger.debug('Full-text search consistency check completed', {
@@ -919,7 +919,7 @@ export class DatabaseIntegrityChecker {
 
       if (missingIndexes.length > 0) {
         warnings.push(`Missing critical indexes: ${missingIndexes.join(', ')}`);
-        metadata.missingIndexes = missingIndexes;
+        metadata['missingIndexes'] = missingIndexes;
       }
 
       // Check for duplicate or redundant indexes
@@ -933,8 +933,8 @@ export class DatabaseIntegrityChecker {
         ORDER BY tbl_name, name
       `);
 
-      metadata.totalIndexes = allIndexes.length;
-      metadata.indexesByTable = allIndexes.reduce(
+      metadata['totalIndexes'] = allIndexes.length;
+      metadata['indexesByTable'] = allIndexes.reduce(
         (acc, idx) => {
           if (!acc[idx.table_name]) acc[idx.table_name] = [];
           acc[idx.table_name].push(idx.name);
@@ -960,23 +960,23 @@ export class DatabaseIntegrityChecker {
           warnings.push(
             `${indexesWithoutStats.length} indexes lack statistics (consider running ANALYZE)`
           );
-          metadata.indexesWithoutStats = indexesWithoutStats.length;
+          metadata['indexesWithoutStats'] = indexesWithoutStats.length;
         }
 
-        metadata.indexesWithStats = indexStats.filter(
+        metadata['indexesWithStats'] = indexStats.filter(
           idx => idx.stats_status === 'has_stats'
         ).length;
       } catch (error) {
         // sqlite_stat1 might not be available
         warnings.push('Could not check index statistics');
-        metadata.indexesWithoutStats = 0;
-        metadata.indexesWithStats = 0;
+        metadata['indexesWithoutStats'] = 0;
+        metadata['indexesWithStats'] = 0;
       }
 
       logger.debug('Index integrity check completed', {
         totalIndexes: allIndexes.length,
         missingCriticalIndexes: missingIndexes.length,
-        indexesWithoutStats: metadata.indexesWithoutStats ?? 0,
+        indexesWithoutStats: metadata['indexesWithoutStats'] ?? 0,
       });
     } catch (error) {
       errors.push(`Index integrity check failed: ${(error as Error).message}`);

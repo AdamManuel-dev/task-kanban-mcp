@@ -617,6 +617,215 @@ export class BoardService {
   }
 
   /**
+   * Create a new column for a board
+   *
+   * @param {object} data - Column creation data
+   * @param {string} data.board_id - Board ID to create column in
+   * @param {string} data.name - Column name
+   * @param {number} data.position - Column position
+   * @param {number} [data.wip_limit] - Optional WIP limit
+   * @returns {Promise<Column>} Created column
+   * @throws {ServiceError} If board not found or creation fails
+   *
+   * @example
+   * ```typescript
+   * const column = await boardService.createColumn({
+   *   board_id: 'board-123',
+   *   name: 'In Review',
+   *   position: 2,
+   *   wip_limit: 3
+   * });
+   * ```
+   */
+  async createColumn(data: {
+    board_id: string;
+    name: string;
+    position: number;
+    wip_limit?: number;
+  }): Promise<Column> {
+    try {
+      // Verify board exists
+      const board = await this.getBoardById(data.board_id);
+      if (!board) {
+        throw BoardService.createError('BOARD_NOT_FOUND', 'Board not found', {
+          board_id: data.board_id,
+        });
+      }
+
+      const columnId = uuidv4();
+      const now = new Date();
+
+      await this.db.query(
+        `
+        INSERT INTO columns (id, board_id, name, position, wip_limit, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `,
+        [columnId, data.board_id, data.name, data.position, data.wip_limit || null, now, now]
+      );
+
+      const column = await this.db.queryFirst<Column>('SELECT * FROM columns WHERE id = ?', [
+        columnId,
+      ]);
+
+      if (!column) {
+        throw BoardService.createError('COLUMN_CREATE_FAILED', 'Failed to retrieve created column');
+      }
+
+      logger.info('Column created successfully', {
+        columnId,
+        board_id: data.board_id,
+        name: data.name,
+      });
+      return column;
+    } catch (error) {
+      if (
+        (error instanceof Error && error.message.includes('BOARD_')) ||
+        (error instanceof Error && error.message.includes('COLUMN_'))
+      ) {
+        throw error;
+      }
+      logger.error('Failed to create column', { error, data });
+      throw BoardService.createError('COLUMN_CREATE_FAILED', 'Failed to create column', error);
+    }
+  }
+
+  /**
+   * Update an existing column
+   *
+   * @param {string} id - Column ID to update
+   * @param {object} data - Update data
+   * @param {string} [data.name] - New column name
+   * @param {number} [data.position] - New column position
+   * @param {number} [data.wip_limit] - New WIP limit
+   * @returns {Promise<Column>} Updated column
+   * @throws {ServiceError} If column not found or update fails
+   *
+   * @example
+   * ```typescript
+   * const column = await boardService.updateColumn('col-123', {
+   *   name: 'In Progress',
+   *   wip_limit: 5
+   * });
+   * ```
+   */
+  async updateColumn(
+    id: string,
+    data: {
+      name?: string;
+      position?: number;
+      wip_limit?: number;
+    }
+  ): Promise<Column> {
+    try {
+      // Verify column exists
+      const existingColumn = await this.db.queryFirst<Column>(
+        'SELECT * FROM columns WHERE id = ?',
+        [id]
+      );
+
+      if (!existingColumn) {
+        throw BoardService.createError('COLUMN_NOT_FOUND', 'Column not found', { id });
+      }
+
+      const updateFields: string[] = [];
+      const updateValues: unknown[] = [];
+
+      if (data.name !== undefined) {
+        updateFields.push('name = ?');
+        updateValues.push(data.name);
+      }
+
+      if (data.position !== undefined) {
+        updateFields.push('position = ?');
+        updateValues.push(data.position);
+      }
+
+      if (data.wip_limit !== undefined) {
+        updateFields.push('wip_limit = ?');
+        updateValues.push(data.wip_limit);
+      }
+
+      if (updateFields.length === 0) {
+        // No updates, return existing column
+        return existingColumn;
+      }
+
+      updateFields.push('updated_at = ?');
+      updateValues.push(new Date());
+      updateValues.push(id);
+
+      await this.db.query(
+        `UPDATE columns SET ${updateFields.join(', ')} WHERE id = ?`,
+        updateValues
+      );
+
+      const updatedColumn = await this.db.queryFirst<Column>('SELECT * FROM columns WHERE id = ?', [
+        id,
+      ]);
+
+      if (!updatedColumn) {
+        throw BoardService.createError('COLUMN_UPDATE_FAILED', 'Failed to retrieve updated column');
+      }
+
+      logger.info('Column updated successfully', { id, updates: data });
+      return updatedColumn;
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('COLUMN_')) {
+        throw error;
+      }
+      logger.error('Failed to update column', { error, id, data });
+      throw BoardService.createError('COLUMN_UPDATE_FAILED', 'Failed to update column', error);
+    }
+  }
+
+  /**
+   * Delete a column and handle task reassignment
+   *
+   * @param {string} id - Column ID to delete
+   * @returns {Promise<void>}
+   * @throws {ServiceError} If column not found, has tasks, or deletion fails
+   *
+   * @example
+   * ```typescript
+   * await boardService.deleteColumn('col-123');
+   * ```
+   */
+  async deleteColumn(id: string): Promise<void> {
+    try {
+      // Verify column exists
+      const column = await this.db.queryFirst<Column>('SELECT * FROM columns WHERE id = ?', [id]);
+
+      if (!column) {
+        throw BoardService.createError('COLUMN_NOT_FOUND', 'Column not found', { id });
+      }
+
+      // Check if column has tasks
+      const taskCount = await this.db.queryFirst<{ count: number }>(
+        'SELECT COUNT(*) as count FROM tasks WHERE column_id = ? AND archived = FALSE',
+        [id]
+      );
+
+      if (taskCount && taskCount.count > 0) {
+        throw BoardService.createError(
+          'COLUMN_HAS_TASKS',
+          'Cannot delete column with tasks. Move tasks to another column first.',
+          { id, taskCount: taskCount.count }
+        );
+      }
+
+      await this.db.query('DELETE FROM columns WHERE id = ?', [id]);
+
+      logger.info('Column deleted successfully', { id, board_id: column.board_id });
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('COLUMN_')) {
+        throw error;
+      }
+      logger.error('Failed to delete column', { error, id });
+      throw BoardService.createError('COLUMN_DELETE_FAILED', 'Failed to delete column', error);
+    }
+  }
+
+  /**
    * Create a standardized service error
    *
    * @private
@@ -643,13 +852,18 @@ export class BoardService {
   private static getStatusCodeForError(code: string): number {
     switch (code) {
       case 'BOARD_NOT_FOUND':
+      case 'COLUMN_NOT_FOUND':
         return 404;
       case 'INVALID_NAME':
+      case 'COLUMN_HAS_TASKS':
         return 400;
       case 'BOARD_CREATE_FAILED':
       case 'BOARD_UPDATE_FAILED':
       case 'BOARD_DELETE_FAILED':
       case 'BOARD_DUPLICATE_FAILED':
+      case 'COLUMN_CREATE_FAILED':
+      case 'COLUMN_UPDATE_FAILED':
+      case 'COLUMN_DELETE_FAILED':
         return 500;
       case 'BOARD_FETCH_FAILED':
       case 'BOARDS_FETCH_FAILED':

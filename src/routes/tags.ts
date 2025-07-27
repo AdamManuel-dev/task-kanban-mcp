@@ -29,7 +29,7 @@ export function tagRoutes(): Router {
         offset: parseInt(offset as string, 10),
         sortBy: sortBy as string,
         sortOrder: sortOrder as 'asc' | 'desc',
-        parent_id: parent_id as string,
+        parentId: parent_id as string,
         search: search as string,
         color: color as string,
         includeUsageCount: includeUsageCount === 'true',
@@ -230,13 +230,13 @@ export function tagRoutes(): Router {
       if (!id) {
         throw new NotFoundError('Tag', 'ID is required');
       }
-      const { target_tag_id } = req.body;
+      const { target_tag_id: targetTagId } = req.body;
 
-      if (!target_tag_id) {
+      if (!targetTagId) {
         return res.status(400).apiError('INVALID_INPUT', 'target_tag_id is required');
       }
 
-      await tagService.mergeTags(id, target_tag_id);
+      await tagService.mergeTags(id, targetTagId);
       return res.status(204).send();
     } catch (error) {
       return next(error);

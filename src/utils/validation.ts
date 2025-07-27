@@ -56,6 +56,23 @@ export const BoardValidation = {
     color: optionalWithUndefined(z.string().regex(/^#[0-9A-F]{6}$/i, 'Invalid color format')),
     archived: optionalWithUndefined(z.boolean()),
   }),
+
+  column: {
+    create: z.object({
+      board_id: z.string().uuid('Invalid board ID'),
+      name: z.string().min(1, 'Column name is required').max(50, 'Column name too long'),
+      position: z.number().int().min(0, 'Position must be non-negative'),
+      wip_limit: optionalWithUndefined(z.number().int().min(1, 'WIP limit must be positive')),
+    }),
+
+    update: z.object({
+      name: optionalWithUndefined(
+        z.string().min(1, 'Column name is required').max(50, 'Column name too long')
+      ),
+      position: optionalWithUndefined(z.number().int().min(0, 'Position must be non-negative')),
+      wip_limit: optionalWithUndefined(z.number().int().min(1, 'WIP limit must be positive')),
+    }),
+  },
 };
 
 /**
@@ -565,7 +582,7 @@ export const CommonValidations = {
   sanitizedString: z.string().refine(str => {
     // Check for potential XSS/injection patterns
     const dangerousPatterns = [
-      /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+      /<script\b[^<]*(?:(?!</script>)<[^<]*)*</script>/gi,
       /javascript:/gi,
       /on\w+\s*=/gi,
     ];

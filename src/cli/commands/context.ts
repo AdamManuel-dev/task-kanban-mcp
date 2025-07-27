@@ -24,7 +24,7 @@
 
 import type { Command } from 'commander';
 
-import type { CliComponents, ContextData } from '../types';
+import type { CliComponents, ContextData, TaskContextData } from '../types';
 
 interface ShowContextOptions {
   detailed?: boolean;
@@ -329,38 +329,33 @@ export function registerContextCommands(program: Command): void {
 
       try {
         formatter.info(`Generating context for task ${String(id)}...`);
-        const taskContext = (await apiClient.getTaskContext(id)) as Record<string, unknown>;
+        const taskContext = (await apiClient.getTaskContext(id)) as TaskContextData;
 
         if (!taskContext) {
           formatter.error(`No context available for task ${String(id)}`);
           process.exit(1);
         }
 
-        // eslint-disable-next-line dot-notation
-        formatter.info(`🎯 Task Context: ${String((taskContext['title'] as string) ?? id)}\n`);
+        formatter.info(`🎯 Task Context: ${String(taskContext.title ?? id)}\n`);
 
-        // eslint-disable-next-line dot-notation
-        if (taskContext['description']) {
-          // eslint-disable-next-line dot-notation
-          formatter.info(taskContext['description'] as string);
+        if (taskContext.description) {
+          formatter.info(taskContext.description);
           formatter.info('');
         }
 
-        // eslint-disable-next-line dot-notation
-        if (taskContext['dependencies'] && (taskContext['dependencies'] as any[]).length > 0) {
+        if (taskContext.dependencies && taskContext.dependencies.length > 0) {
           formatter.info('🔗 Dependencies:');
-          // eslint-disable-next-line dot-notation
-          formatter.output(taskContext['dependencies'], {
+          formatter.output(taskContext.dependencies, {
             fields: ['id', 'title', 'status'],
             headers: ['ID', 'Title', 'Status'],
           });
           formatter.info('');
         }
 
-        if (taskContext.blockers && (taskContext.blockers as any[]).length > 0) {
+        if (taskContext.blockers && taskContext.blockers.length > 0) {
           formatter.info('🚫 Blockers:');
-          (taskContext.blockers as any[]).forEach((blocker: any) => {
-            formatter.warn(`• ${String(String(blocker.description))}`);
+          taskContext.blockers.forEach(blocker => {
+            formatter.warn(`• ${String(blocker.description)}`);
           });
           formatter.info('');
         }
@@ -376,22 +371,22 @@ export function registerContextCommands(program: Command): void {
 
         if (options.history && taskContext.history) {
           formatter.info('📜 Task History:');
-          (taskContext.history as any[]).forEach((event: any) => {
-            formatter.info(`• ${String(String(event.date))}: ${String(String(event.description))}`);
+          taskContext.history.forEach(event => {
+            formatter.info(`• ${String(event.date)}: ${String(event.description)}`);
           });
           formatter.info('');
         }
 
         if (taskContext.aiInsights) {
           formatter.info('🤖 AI Insights:');
-          (taskContext.aiInsights as string[]).forEach((insight: string) => {
+          taskContext.aiInsights.forEach(insight => {
             formatter.info(`• ${String(insight)}`);
           });
         }
 
         if (taskContext.suggestions) {
           formatter.info('\n💡 Suggestions:');
-          (taskContext.suggestions as string[]).forEach((suggestion: string) => {
+          taskContext.suggestions.forEach(suggestion => {
             formatter.success(`• ${String(suggestion)}`);
           });
         }
@@ -473,9 +468,9 @@ export function registerContextCommands(program: Command): void {
 
         if (options.bottlenecks && context.bottlenecks) {
           formatter.info('🚧 Identified Bottlenecks:');
-          context.bottlenecks.forEach((bottleneck: any) => {
+          context.bottlenecks.forEach(bottleneck => {
             formatter.warn(
-              `• ${String(String(bottleneck.description))} (Impact: ${String(String(bottleneck.impact))})`
+              `• ${String(bottleneck.description)} (Impact: ${String(bottleneck.impact)})`
             );
           });
           formatter.info('');

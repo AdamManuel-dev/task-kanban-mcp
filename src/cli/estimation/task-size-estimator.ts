@@ -182,7 +182,7 @@ export class TaskSizeEstimator {
   /**
    * Suggest task size based on heuristics
    */
-  suggestTaskSize(task: TaskForEstimation | string): TaskSize {
+  static suggestTaskSize(task: TaskForEstimation | string): TaskSize {
     // Handle string input (for backward compatibility with tests)
     if (typeof task === 'string') {
       return TaskSizeEstimator.suggestTaskSizeInternal({ title: task });
@@ -428,7 +428,7 @@ export class TaskSizeEstimator {
   /**
    * Generate reasoning for estimate
    */
-  private generateReasoning(
+  private static generateReasoning(
     task: TaskForEstimation,
     size: TaskSize,
     complexityMultiplier: number
@@ -520,6 +520,9 @@ export class TaskSizeEstimator {
         break;
       case 'XL':
         reasons.push('Extra large task - major feature or complex refactoring');
+        break;
+      default:
+        reasons.push('Unknown task size - estimation may be inaccurate');
         break;
     }
 

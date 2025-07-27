@@ -483,15 +483,15 @@ export function registerTaskCommands(program: Command): void {
         }
 
         const createTaskRequest: CreateTaskRequest = {
-          title: String(taskData.title),
-          description: taskData.description as string,
-          board_id: String(taskData.boardId),
-          column_id: taskData.columnId as string,
-          priority: taskData.priority as number,
+          title: String(taskData['title']),
+          description: taskData['description'] as string,
+          board_id: String(taskData['boardId']),
+          column_id: taskData['columnId'] as string,
+          priority: taskData['priority'] as number,
           status: 'todo',
-          assignee: taskData.assignee as string,
-          due_date: taskData.dueDate as string,
-          tags: taskData.tags as string[],
+          assignee: taskData['assignee'] as string,
+          due_date: taskData['dueDate'] as string,
+          tags: taskData['tags'] as string[],
         };
 
         spinner.start(`Creating task: ${createTaskRequest.title}`);
@@ -922,6 +922,9 @@ export function registerTaskCommands(program: Command): void {
               case 'exit':
                 shouldExit = true;
                 break;
+              default:
+                formatter.warn(`Unknown action: ${String(action)}`);
+                break;
             }
 
             if (action !== 'continue') {
@@ -1061,10 +1064,10 @@ export function registerTaskCommands(program: Command): void {
         try {
           // Build query parameters
           const params: Record<string, string> = {};
-          if (options.board) params.board_id = options.board;
-          if (options.assignee) params.assignee = options.assignee;
-          if (options.skill) params.skill_context = options.skill;
-          if (options.includeBlocked) params.exclude_blocked = 'false';
+          if (options.board) params['board_id'] = options.board;
+          if (options['assignee']) params['assignee'] = options['assignee'];
+          if (options.skill) params['skill_context'] = options.skill;
+          if (options.includeBlocked) params['exclude_blocked'] = 'false';
 
           // Call the API endpoint for next task recommendation
           const response = await apiClient.request('GET', '/api/tasks/next', undefined, params);
@@ -1098,8 +1101,14 @@ export function registerTaskCommands(program: Command): void {
               (dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
             );
             const dueDateStr = dueDate.toLocaleDateString();
-            const urgencyIndicator =
-              daysUntilDue < 0 ? '🚨 OVERDUE' : daysUntilDue <= 1 ? '⚠️ DUE SOON' : '';
+            let urgencyIndicator: string;
+            if (daysUntilDue < 0) {
+              urgencyIndicator = '🚨 OVERDUE';
+            } else if (daysUntilDue <= 1) {
+              urgencyIndicator = '⚠️ DUE SOON';
+            } else {
+              urgencyIndicator = '';
+            }
             formatter.output(`📅 Due: ${dueDateStr} ${urgencyIndicator}`);
           }
 

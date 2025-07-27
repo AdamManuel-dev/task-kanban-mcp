@@ -125,7 +125,7 @@ export class BoardFormatter {
   /**
    * Format board as a simple list view
    */
-  formatBoardList(board: Board): string {
+  static formatBoardList(board: Board): string {
     const output: string[] = [];
 
     output.push(chalk.bold.cyan(`\n📋 ${String(String(board.name))}\n`));
@@ -232,7 +232,7 @@ export class BoardFormatter {
   /**
    * Format board for export (CSV, JSON, etc.)
    */
-  exportBoard(board: Board, format: 'csv' | 'json' = 'json'): string {
+  static exportBoard(board: Board, format: 'csv' | 'json' = 'json'): string {
     if (format === 'json') {
       return JSON.stringify(board, null, 2);
     }

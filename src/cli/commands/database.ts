@@ -47,7 +47,7 @@ export function registerDatabaseCommands(program: Command): void {
 
       try {
         if (!options.force) {
-          const { confirm } = await inquirer.prompt([
+          const { confirm } = await inquirer.prompt<{ confirm: boolean }>([
             {
               type: 'confirm',
               name: 'confirm',
@@ -64,7 +64,10 @@ export function registerDatabaseCommands(program: Command): void {
 
         formatter.info('Vacuuming database...');
 
-        const result = await apiClient.request('POST', '/api/database/vacuum');
+        const result = await apiClient.request<ApiResponse<DatabaseVacuumResult>>(
+          'POST',
+          '/api/database/vacuum'
+        );
 
         formatter.success('Database vacuum completed');
         formatter.output(result, {
@@ -144,11 +147,15 @@ export function registerDatabaseCommands(program: Command): void {
       try {
         formatter.info('Checking database integrity...');
 
-        const result = await apiClient.request<AnyApiResponse>('POST', '/api/database/check', {
-          repair: options.repair ?? false,
-        });
+        const result = await apiClient.request<DatabaseHealthResponse>(
+          'POST',
+          '/api/database/check',
+          {
+            repair: options.repair ?? false,
+          }
+        );
 
-        if (isSuccessResponse(result) && (result.data as any).healthy) {
+        if (isSuccessResponse(result) && result.data.healthy) {
           formatter.success('Database integrity check passed');
         } else {
           formatter.error('Database integrity issues found');
@@ -159,13 +166,9 @@ export function registerDatabaseCommands(program: Command): void {
           headers: ['Check', 'Status', 'Details'],
         });
 
-        if (
-          isSuccessResponse(result) &&
-          (result.data as any).issues &&
-          (result.data as any).issues.length > 0
-        ) {
+        if (isSuccessResponse(result) && result.data.issues && result.data.issues.length > 0) {
           logger.info('\n--- Issues Found ---');
-          formatter.output((result.data as any).issues, {
+          formatter.output(result.data.issues, {
             fields: ['type', 'severity', 'message', 'suggestion'],
             headers: ['Type', 'Severity', 'Message', 'Suggestion'],
           });
@@ -240,17 +243,17 @@ export function registerDatabaseCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const migrations = await apiClient.request<AnyApiResponse>(
+        const migrations = await apiClient.request<MigrationsResponse>(
           'GET',
           '/api/database/migrations/status'
         );
 
-        if (!migrations || !('length' in migrations) || (migrations as any).length === 0) {
+        if (!isSuccessResponse(migrations) || migrations.data.length === 0) {
           formatter.info('No migrations found');
           return;
         }
 
-        formatter.output(migrations, {
+        formatter.output(migrations.data, {
           fields: ['name', 'version', 'status', 'appliedAt'],
           headers: ['Migration', 'Version', 'Status', 'Applied At'],
         });
@@ -304,7 +307,7 @@ export function registerDatabaseCommands(program: Command): void {
         if (!options.force) {
           formatter.warn('WARNING: Rolling back migrations may cause data loss!');
 
-          const { confirm } = await inquirer.prompt([
+          const { confirm } = await inquirer.prompt<{ confirm: boolean }>([
             {
               type: 'confirm',
               name: 'confirm',
@@ -326,7 +329,7 @@ export function registerDatabaseCommands(program: Command): void {
 
         formatter.info('Rolling back migrations...');
 
-        const result = await apiClient.request(
+        const result = await apiClient.request<ApiResponse<MigrationResult>>(
           'POST',
           '/api/database/migrations/down',
           rollbackData
@@ -352,15 +355,24 @@ export function registerDatabaseCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const migration = (await apiClient.request('POST', '/api/database/migrations/create', {
-          name,
-        })) as any;
+        const migration = await apiClient.request<MigrationResponse>(
+          'POST',
+          '/api/database/migrations/create',
+          {
+            name,
+          }
+        );
 
-        formatter.success(`Migration created: ${String(migration.filename || 'Unknown')}`);
-        formatter.output(migration, {
-          fields: ['name', 'version', 'filename', 'createdAt'],
-          headers: ['Name', 'Version', 'Filename', 'Created At'],
-        });
+        if (isSuccessResponse(migration)) {
+          formatter.success(`Migration created: ${String(migration.data.filename ?? 'Unknown')}`);
+          formatter.output(migration.data, {
+            fields: ['name', 'version', 'filename', 'createdAt'],
+            headers: ['Name', 'Version', 'Filename', 'Created At'],
+          });
+        } else {
+          formatter.error('Failed to create migration');
+          process.exit(1);
+        }
       } catch (error) {
         formatter.error(
           `Failed to create migration: ${String(error instanceof Error ? error.message : 'Unknown error')}`

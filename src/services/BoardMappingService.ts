@@ -160,10 +160,10 @@ export class BoardMappingService {
   private static extractRepoNameFromUrl(url: string): string | null {
     // Handle GitHub URLs like: git@github.com:user/repo.git or https://github.com/user/repo.git
     const patterns = [
-      /\/([^\/]+)\.git$/, // Extract from .git suffix
-      /\/([^\/]+)$/, // Extract from end of path
-      /:([^\/]+)\.git$/, // SSH format with .git
-      /:([^\/]+)$/, // SSH format without .git
+      /\/([^/]+)\.git$/, // Extract from .git suffix
+      /\/([^/]+)$/, // Extract from end of path
+      /:([^/]+)\.git$/, // SSH format with .git
+      /:([^/]+)$/, // SSH format without .git
     ];
 
     for (const pattern of patterns) {

@@ -644,6 +644,9 @@ Press any key to close this help...
         case 'personal':
           this.createPersonalDashboard(data);
           break;
+        default:
+          this.createOverviewDashboard(data);
+          break;
       }
 
       this.screen.render();
@@ -661,6 +664,9 @@ Press any key to close this help...
           break;
         case 'personal':
           this.createPersonalDashboard(fallbackData);
+          break;
+        default:
+          this.createOverviewDashboard(fallbackData);
           break;
       }
 

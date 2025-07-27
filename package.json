@@ -23,9 +23,13 @@
     "start": "node dist/index.js",
     "start:server": "node dist/server.js",
     "start:mcp": "node dist/mcp/server.js",
+    "start:replit": "npm run build && NODE_ENV=production HOST=0.0.0.0 PORT=3000 node dist/server.js",
+    "start:production": "NODE_ENV=production node dist/server.js",
     "dev:server": "nodemon --exec tsx src/server.ts",
     "dev:mcp": "nodemon --exec tsx src/mcp/server.ts",
     "dev:cli": "tsx src/cli/index.ts",
+    "dev:replit": "npm run build && nodemon --exec \"HOST=0.0.0.0 PORT=3000 node dist/server.js\"",
+    "setup:replit": "npm install && npm run build && npm run db:migrate && npm run db:seed",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
@@ -63,7 +67,10 @@
     "seed:run": "tsx scripts/seed.ts run",
     "seed:status": "tsx scripts/seed.ts status",
     "seed:reset": "tsx scripts/seed.ts reset",
-    "seed:create": "tsx scripts/seed.ts create"
+    "seed:create": "tsx scripts/seed.ts create",
+    "db:migrate": "npm run migrate:up",
+    "db:seed": "npm run seed:run",
+    "db:reset": "npm run seed:reset"
   },
   "keywords": [
     "mcp",

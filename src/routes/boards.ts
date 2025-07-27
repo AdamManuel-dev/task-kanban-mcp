@@ -521,10 +521,37 @@ export function boardRoutes(): Router {
     }
   });
 
-  // TODO: Column routes should be implemented in a separate column service
-  // These are commented out as BoardService doesn't have column management methods
-  /*
-  // POST /api/v1/boards/:id/columns - Create column
+  /**
+   * Create a new column in a board
+   *
+   * @route POST /api/v1/boards/:id/columns
+   * @auth Required - Write permission
+   *
+   * @param {string} id - Board ID
+   * @bodyparam {string} name - Column name
+   * @bodyparam {number} position - Column position
+   * @bodyparam {number} [wip_limit] - Optional WIP limit
+   *
+   * @returns {Column} Created column with metadata
+   *
+   * @example
+   * ```bash
+   * curl -X POST "http://localhost:3000/api/v1/boards/board-123/columns" \
+   *   -H "Authorization: Bearer YOUR_API_KEY" \
+   *   -H "Content-Type: application/json" \
+   *   -d '{
+   *     "name": "In Review",
+   *     "position": 2,
+   *     "wip_limit": 3
+   *   }'
+   * ```
+   *
+   * @response 201 - Column created successfully
+   * @response 400 - Invalid input data
+   * @response 401 - Missing or invalid API key
+   * @response 403 - Insufficient permissions
+   * @response 404 - Board not found
+   */
   router.post('/:id/columns', requirePermission('write'), async (req, res, next): Promise<void> => {
     try {
       const { id } = req.params;
@@ -532,37 +559,106 @@ export function boardRoutes(): Router {
         ...req.body,
         board_id: id,
       });
-      
+
       const column = await boardService.createColumn(columnData);
-      res.status(201).apiSuccess(column);
+      res.status(201).json({
+        success: true,
+        data: column,
+        message: 'Column created successfully',
+      });
     } catch (error) {
       return next(error);
     }
   });
 
-  // PATCH /api/v1/boards/:id/columns/:columnId - Update column
-  router.patch('/:id/columns/:columnId', requirePermission('write'), async (req, res, next): Promise<void> => {
-    try {
-      const { columnId } = req.params;
-      const updateData = validateInput(BoardValidation.column.update, req.body);
-      const column = await boardService.updateColumn(columnId, updateData);
-      res.apiSuccess(column);
-    } catch (error) {
-      return next(error);
+  /**
+   * Update an existing column
+   *
+   * @route PATCH /api/v1/boards/:id/columns/:columnId
+   * @auth Required - Write permission
+   *
+   * @param {string} id - Board ID
+   * @param {string} columnId - Column ID to update
+   * @bodyparam {string} [name] - New column name
+   * @bodyparam {number} [position] - New column position
+   * @bodyparam {number} [wip_limit] - New WIP limit
+   *
+   * @returns {Column} Updated column
+   *
+   * @example
+   * ```bash
+   * curl -X PATCH "http://localhost:3000/api/v1/boards/board-123/columns/col-456" \
+   *   -H "Authorization: Bearer YOUR_API_KEY" \
+   *   -H "Content-Type: application/json" \
+   *   -d '{
+   *     "name": "Ready for Review",
+   *     "wip_limit": 5
+   *   }'
+   * ```
+   *
+   * @response 200 - Column updated successfully
+   * @response 400 - Invalid input data
+   * @response 401 - Missing or invalid API key
+   * @response 403 - Insufficient permissions
+   * @response 404 - Column not found
+   */
+  router.patch(
+    '/:id/columns/:columnId',
+    requirePermission('write'),
+    async (req, res, next): Promise<void> => {
+      try {
+        const { columnId } = req.params;
+        const updateData = validateInput(BoardValidation.column.update, req.body);
+        const column = await boardService.updateColumn(columnId, updateData);
+        res.json({
+          success: true,
+          data: column,
+          message: 'Column updated successfully',
+        });
+      } catch (error) {
+        return next(error);
+      }
     }
-  });
+  );
 
-  // DELETE /api/v1/boards/:id/columns/:columnId - Delete column
-  router.delete('/:id/columns/:columnId', requirePermission('write'), async (req, res, next): Promise<void> => {
-    try {
-      const { columnId } = req.params;
-      await boardService.deleteColumn(columnId);
-      res.status(204).send();
-    } catch (error) {
-      return next(error);
+  /**
+   * Delete a column from a board
+   *
+   * @route DELETE /api/v1/boards/:id/columns/:columnId
+   * @auth Required - Write permission
+   *
+   * @param {string} id - Board ID
+   * @param {string} columnId - Column ID to delete
+   *
+   * @returns {void} No content on successful deletion
+   *
+   * @example
+   * ```bash
+   * curl -X DELETE "http://localhost:3000/api/v1/boards/board-123/columns/col-456" \
+   *   -H "Authorization: Bearer YOUR_API_KEY"
+   * ```
+   *
+   * @response 204 - Column deleted successfully
+   * @response 400 - Column has tasks (cannot delete)
+   * @response 401 - Missing or invalid API key
+   * @response 403 - Insufficient permissions
+   * @response 404 - Column not found
+   *
+   * @note Cannot delete columns that contain tasks. Move tasks to another column first.
+   */
+  router.delete(
+    '/:id/columns/:columnId',
+    requirePermission('write'),
+    async (req, res, next): Promise<void> => {
+      try {
+        const { columnId } = req.params;
+        await boardService.deleteColumn(columnId);
+        res.status(204).send();
+      } catch (error) {
+        return next(error);
+      }
     }
-  });
-  */
+  );
 
   /**
    * Get all tasks in a board with filtering and sorting.

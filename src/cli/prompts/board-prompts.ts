@@ -128,6 +128,14 @@ export async function quickBoardSetup(
           { name: 'Published', order: 4 },
         ];
         break;
+      default:
+        // Default to basic template
+        columns = [
+          { name: 'To Do', order: 0 },
+          { name: 'In Progress', order: 1 },
+          { name: 'Done', order: 2 },
+        ];
+        break;
     }
   } else {
     // Custom columns

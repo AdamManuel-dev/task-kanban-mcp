@@ -9,9 +9,9 @@ import exportRoutes from './export';
 import scheduleRoutes from './schedule';
 import { contextRoutes } from './context';
 
-// Import new route modules (temporarily commented out)
-// import analyticsRoutes from './analytics';
-// import performanceRoutes from './performance';
+// Import new route modules
+import analyticsRoutes from './analytics';
+import performanceRoutes from './performance';
 
 const router = Router();
 
@@ -28,8 +28,8 @@ router.use('/v1/export', exportRoutes);
 router.use('/v1/schedule', scheduleRoutes);
 router.use('/v1/context', contextRoutes());
 
-// New feature routes (temporarily commented out)
-// router.use('/v1/analytics', analyticsRoutes);
-// router.use('/v1/performance', performanceRoutes);
+// New feature routes
+router.use('/v1/analytics', analyticsRoutes);
+router.use('/v1/performance', performanceRoutes);
 
 export default router;

@@ -1,5 +1,6 @@
 import type { Command } from 'commander';
 import { TaskHistoryService } from '@/services/TaskHistoryService';
+import { PriorityHistoryService } from '@/services/PriorityHistoryService';
 import { TaskService } from '@/services/TaskService';
 import { dbConnection } from '@/database/connection';
 import chalk from 'chalk';
@@ -439,6 +440,207 @@ export function registerPriorityCommands(program: Command): void {
         process.exit(1);
       }
     });
+
+  // Enhanced priority tracking commands
+  priorityCmd
+    .command('stats')
+    .description('Show priority statistics and trends')
+    .option('-b, --board <boardId>', 'Filter by board ID')
+    .option('--days <days>', 'Time range in days (default: 30)', '30')
+    .option('--json', 'Output as JSON')
+    .action(async options => {
+      const { formatter } = getComponents();
+
+      try {
+        const priorityHistoryService = PriorityHistoryService.getInstance();
+        const days = parseInt(options.days) || 30;
+        const endDate = new Date();
+        const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
+
+        const stats = await priorityHistoryService.getPriorityStats(options.board, {
+          start: startDate,
+          end: endDate,
+        });
+
+        if (options.json) {
+          formatter.output(stats);
+          return;
+        }
+
+        console.log(chalk.blue.bold(`\n📊 Priority Statistics (Last ${days} days)\n`));
+
+        // Summary stats
+        console.log(`${chalk.bold('Summary:')}`);
+        console.log(`   Total Priority Changes: ${chalk.yellow(stats.total_changes)}`);
+        console.log(`   Tasks Affected: ${chalk.cyan(stats.most_changed_tasks.length)}`);
+        console.log(
+          `   Avg Changes per Task: ${chalk.green(stats.avg_changes_per_task.toFixed(1))}`
+        );
+        console.log();
+
+        // Priority trends
+        console.log(`${chalk.bold('Priority Trends:')}`);
+        const total =
+          stats.priority_trends.increases +
+          stats.priority_trends.decreases +
+          stats.priority_trends.unchanged;
+        if (total > 0) {
+          const increasesPct = ((stats.priority_trends.increases / total) * 100).toFixed(1);
+          const decreasesPct = ((stats.priority_trends.decreases / total) * 100).toFixed(1);
+          console.log(
+            `   📈 Increases: ${chalk.red(`${stats.priority_trends.increases} (${increasesPct}%)`)}`
+          );
+          console.log(
+            `   📉 Decreases: ${chalk.green(`${stats.priority_trends.decreases} (${decreasesPct}%)`)}`
+          );
+        }
+        console.log();
+
+        // Most changed tasks
+        if (stats.most_changed_tasks.length > 0) {
+          console.log(`${chalk.bold('Most Changed Tasks:')}`);
+          stats.most_changed_tasks.slice(0, 5).forEach((item, index) => {
+            const changeIcon = getChangeFrequencyIcon(item.change_count);
+            console.log(
+              `   ${index + 1}. ${changeIcon} ${item.task.title} (${chalk.yellow(item.change_count)} changes)`
+            );
+            if (item.latest_reason) {
+              console.log(`      ${chalk.dim('Last reason:')} ${chalk.italic(item.latest_reason)}`);
+            }
+          });
+          console.log();
+        }
+
+        // Common reasons
+        if (stats.common_reasons.length > 0) {
+          console.log(`${chalk.bold('Common Reasons for Priority Changes:')}`);
+          stats.common_reasons.forEach((reason, index) => {
+            console.log(
+              `   ${index + 1}. "${reason.reason}" (${chalk.yellow(reason.count)} times)`
+            );
+          });
+        }
+      } catch (error) {
+        formatter.error(
+          `Failed to get priority statistics: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+        process.exit(1);
+      }
+    });
+
+  priorityCmd
+    .command('patterns')
+    .description('Analyze priority change patterns')
+    .option('-t, --task <taskId>', 'Analyze patterns for specific task')
+    .option('-b, --board <boardId>', 'Analyze patterns for board')
+    .option('--json', 'Output as JSON')
+    .action(async options => {
+      const { formatter } = getComponents();
+
+      try {
+        const priorityHistoryService = PriorityHistoryService.getInstance();
+        const patterns = await priorityHistoryService.analyzePriorityPatterns(
+          options.task,
+          options.board
+        );
+
+        if (options.json) {
+          formatter.output(patterns);
+          return;
+        }
+
+        if (patterns.length === 0) {
+          console.log(chalk.yellow('No significant priority patterns detected.'));
+          return;
+        }
+
+        console.log(chalk.blue.bold('\n🔍 Priority Pattern Analysis\n'));
+
+        patterns.forEach((pattern, index) => {
+          const patternIcon = getPatternIcon(pattern.pattern_type);
+          const scoreColor = getScoreColor(pattern.score);
+
+          console.log(
+            `${index + 1}. ${patternIcon} ${chalk.bold(pattern.pattern_type.replace('_', ' ').toUpperCase())}`
+          );
+          console.log(`   Task: ${pattern.task_id}`);
+          console.log(`   Score: ${scoreColor(pattern.score.toFixed(2))}`);
+          console.log(`   ${chalk.dim(pattern.description)}`);
+          console.log();
+
+          if (pattern.recommendations.length > 0) {
+            console.log(`   ${chalk.bold('Recommendations:')}`);
+            pattern.recommendations.forEach(rec => {
+              console.log(`   • ${chalk.cyan(rec)}`);
+            });
+            console.log();
+          }
+        });
+      } catch (error) {
+        formatter.error(
+          `Failed to analyze priority patterns: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+        process.exit(1);
+      }
+    });
+
+  priorityCmd
+    .command('summary')
+    .description('Get priority change summary for time period')
+    .option('--days <days>', 'Time range in days (default: 7)', '7')
+    .option('-b, --board <boardId>', 'Filter by board ID')
+    .option('--json', 'Output as JSON')
+    .action(async options => {
+      const { formatter } = getComponents();
+
+      try {
+        const priorityHistoryService = PriorityHistoryService.getInstance();
+        const days = parseInt(options.days) || 7;
+        const endDate = new Date();
+        const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
+
+        const summary = await priorityHistoryService.getPriorityChangeSummary(
+          { start: startDate, end: endDate },
+          options.board
+        );
+
+        if (options.json) {
+          formatter.output(summary);
+          return;
+        }
+
+        console.log(chalk.blue.bold(`\n📋 Priority Change Summary (Last ${days} days)\n`));
+
+        console.log(`${chalk.bold('Activity Overview:')}`);
+        console.log(`   Total Changes: ${chalk.yellow(summary.changes_count)}`);
+        console.log(`   Tasks Affected: ${chalk.cyan(summary.affected_tasks)}`);
+        console.log(
+          `   Avg Priority Change: ${chalk.green(summary.avg_priority_change.toFixed(1))}`
+        );
+        console.log();
+
+        if (summary.most_active_day.changes > 0) {
+          console.log(`${chalk.bold('Peak Activity:')}`);
+          console.log(
+            `   Most Active Day: ${chalk.yellow(summary.most_active_day.date)} (${summary.most_active_day.changes} changes)`
+          );
+          console.log();
+        }
+
+        if (summary.busiest_hours.length > 0) {
+          console.log(`${chalk.bold('Busiest Hours:')}`);
+          summary.busiest_hours.slice(0, 3).forEach((hour, index) => {
+            const hourStr = `${hour.hour}:00`;
+            console.log(`   ${index + 1}. ${chalk.cyan(hourStr)} (${hour.changes} changes)`);
+          });
+        }
+      } catch (error) {
+        formatter.error(
+          `Failed to get priority summary: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+        process.exit(1);
+      }
+    });
 }
 
 // Helper functions
@@ -511,4 +713,33 @@ function getTrendColor(trend: string) {
     default:
       return chalk.gray;
   }
+}
+
+function getChangeFrequencyIcon(changeCount: number): string {
+  if (changeCount >= 10) return '🔥';
+  if (changeCount >= 5) return '⚡';
+  if (changeCount >= 3) return '📈';
+  return '📊';
+}
+
+function getPatternIcon(patternType: string): string {
+  switch (patternType) {
+    case 'frequent_changes':
+      return '🔄';
+    case 'priority_drift':
+      return '📈';
+    case 'emergency_bump':
+      return '🚨';
+    case 'gradual_decline':
+      return '📉';
+    default:
+      return '🔍';
+  }
+}
+
+function getScoreColor(score: number) {
+  if (score >= 0.8) return chalk.red.bold;
+  if (score >= 0.6) return chalk.yellow.bold;
+  if (score >= 0.4) return chalk.blue.bold;
+  return chalk.gray;
 }

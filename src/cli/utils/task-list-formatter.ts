@@ -51,7 +51,7 @@ export class TaskListFormatter {
   /**
    * Format a list of tasks as a table
    */
-  formatTaskTable(tasks: TaskDetails[], options: TaskListOptions = {}): string {
+  static formatTaskTable(tasks: TaskDetails[], options: TaskListOptions = {}): string {
     const {
       showDescription = false,
       showDates = true,
@@ -125,7 +125,7 @@ export class TaskListFormatter {
   /**
    * Format tasks as a detailed list
    */
-  formatTaskList(tasks: TaskDetails[], options: TaskListOptions = {}): string {
+  static formatTaskList(tasks: TaskDetails[], options: TaskListOptions = {}): string {
     const { groupBy = 'none', maxItems } = options;
     const output: string[] = [];
 

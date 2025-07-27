@@ -1695,7 +1695,11 @@ export class TaskService {
         total_impacted_count: impactedTasks.direct.length + impactedTasks.indirect.length,
         upstream_dependencies: dependencyTasks,
         impact_score: impactScore,
-        risk_level: impactScore > 10 ? 'high' : impactScore > 5 ? 'medium' : 'low',
+        risk_level: (() => {
+          if (impactScore > 10) return 'high';
+          if (impactScore > 5) return 'medium';
+          return 'low';
+        })(),
       };
 
       logger.info('Task impact analysis completed', {

@@ -645,7 +645,7 @@ export class CommandInjectionPrevention {
    * }
    * ```
    */
-  validateFilePath(
+  static validateFilePath(
     filePath: string,
     allowedDirectories: string[] = []
   ): {

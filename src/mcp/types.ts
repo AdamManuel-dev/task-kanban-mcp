@@ -287,6 +287,25 @@ export interface UpdatePriorityArgs {
   reasoning?: string;
 }
 
+// New MCP tool argument types
+export interface EstimateTaskComplexityArgs {
+  task_id: string;
+  include_dependencies?: boolean;
+  include_subtasks?: boolean;
+}
+
+export interface AnalyzeBlockingChainArgs {
+  task_id?: string;
+  board_id?: string;
+  max_depth?: number;
+}
+
+export interface GetVelocityInsightsArgs {
+  board_id?: string;
+  timeframe_days?: number;
+  include_predictions?: boolean;
+}
+
 // Response interfaces
 export interface SubtaskResponse extends MCPResponse {
   subtask: Task;
@@ -328,6 +347,59 @@ export interface PriorityUpdateResponse extends MCPResponse {
   reasoning?: string;
 }
 
+// New MCP tool response types
+export interface ComplexityEstimationResponse extends MCPResponse {
+  task_id: string;
+  complexity_score: number;
+  complexity_level: 'low' | 'medium' | 'high' | 'very_high';
+  factors: {
+    description_complexity: number;
+    dependency_count: number;
+    subtask_count: number;
+    estimated_hours?: number;
+  };
+  recommendations: string[];
+  confidence: number;
+}
+
+export interface BlockingChainAnalysisResponse extends MCPResponse {
+  critical_path: {
+    tasks: Task[];
+    total_estimated_hours: number;
+    bottlenecks: Array<{
+      task: Task;
+      blocking_count: number;
+      impact_score: number;
+    }>;
+  };
+  blocking_chains: Array<{
+    root_task: Task;
+    blocked_tasks: Task[];
+    chain_length: number;
+    total_impact: number;
+  }>;
+  recommendations: string[];
+}
+
+export interface VelocityInsightsResponse extends MCPResponse {
+  velocity_metrics: {
+    current_velocity: number;
+    historical_average: number;
+    trend: 'increasing' | 'decreasing' | 'stable';
+    completion_rate: number;
+  };
+  capacity_analysis: {
+    current_capacity: number;
+    recommended_capacity: number;
+    bottlenecks: string[];
+  };
+  predictions?: {
+    estimated_completion_dates: Record<string, string>;
+    capacity_recommendations: string[];
+  };
+  timeframe_days: number;
+}
+
 // Tool argument union type for type-safe tool calling
 export type ToolArgs =
   | CreateTaskArgs
@@ -352,7 +424,10 @@ export type ToolArgs =
   | GetTaskDependenciesArgs
   | PrioritizeTasksArgs
   | GetNextTaskArgs
-  | UpdatePriorityArgs;
+  | UpdatePriorityArgs
+  | EstimateTaskComplexityArgs
+  | AnalyzeBlockingChainArgs
+  | GetVelocityInsightsArgs;
 
 // Tool response union type
 export type ToolResponse =
@@ -376,4 +451,7 @@ export type ToolResponse =
   | PrioritizedTasksResponse
   | NextTaskResponse
   | PriorityUpdateResponse
+  | ComplexityEstimationResponse
+  | BlockingChainAnalysisResponse
+  | VelocityInsightsResponse
   | MCPResponse;

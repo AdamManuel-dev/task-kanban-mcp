@@ -3,6 +3,15 @@ import inquirer from 'inquirer';
 import { logger } from '@/utils/logger';
 import type { CliComponents } from '../types';
 
+interface InquirerAnswers {
+  overwrite?: boolean;
+  serverUrl?: string;
+  apiKey?: string;
+  defaultBoard?: string;
+  autoRefresh?: boolean;
+  confirm?: boolean;
+}
+
 export function registerConfigCommands(program: Command): void {
   const configCmd = program.command('config').alias('c').description('Manage configuration');
 
@@ -107,7 +116,7 @@ export function registerConfigCommands(program: Command): void {
       const { config, formatter, apiClient } = getComponents();
 
       if (config.exists() && !options.force) {
-        const { overwrite } = await inquirer.prompt([
+        const { overwrite } = await inquirer.prompt<{ overwrite: boolean }>([
           {
             type: 'confirm',
             name: 'overwrite',
@@ -125,7 +134,7 @@ export function registerConfigCommands(program: Command): void {
       try {
         formatter.info('Initializing configuration...');
 
-        const answers = await inquirer.prompt([
+        const answers = await inquirer.prompt<InquirerAnswers>([
           {
             type: 'input',
             name: 'serverUrl',
@@ -154,10 +163,10 @@ export function registerConfigCommands(program: Command): void {
         ]);
 
         // Set configuration values
-        config.set('server.url', answers.serverUrl);
+        if (answers.serverUrl) config.set('server.url', answers.serverUrl);
         if (answers.apiKey) config.set('auth.apiKey', answers.apiKey);
         if (answers.defaultBoard) config.set('defaultBoard', answers.defaultBoard);
-        config.set('ui.autoRefresh', answers.autoRefresh);
+        if (answers.autoRefresh !== undefined) config.set('ui.autoRefresh', answers.autoRefresh);
 
         config.save();
 
@@ -207,11 +216,11 @@ export function registerConfigCommands(program: Command): void {
     .command('reset')
     .description('Reset configuration to defaults')
     .option('--force', 'skip confirmation')
-    .action(async options => {
+    .action(async (options: { force?: boolean }) => {
       const { config, formatter } = getComponents();
 
       if (!options.force) {
-        const { confirm } = await inquirer.prompt([
+        const { confirm } = await inquirer.prompt<{ confirm: boolean }>([
           {
             type: 'confirm',
             name: 'confirm',

@@ -155,7 +155,7 @@ export class MaintenanceManager {
         logger.info('Vacuum operation completed', {
           duration: `${String(duration)}ms`,
           spaceReclaimed: `${String(String((spaceReclaimed / 1024 / 1024).toFixed(2)))}MB`,
-          percentageReduced: `${String(String(result.details?.percentageReduced))}%`,
+          percentageReduced: `${String(String(result.details?.['percentageReduced']))}%`,
         });
       }
 

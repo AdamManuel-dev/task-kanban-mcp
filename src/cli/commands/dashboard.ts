@@ -36,7 +36,7 @@ export const dashboardCommand = new Command('dashboard')
 
         // Validate theme
         const availableThemes = getThemeNames();
-        if (!availableThemes.includes(options.theme || '')) {
+        if (!availableThemes.includes(options.theme ?? '')) {
           logger.warn('Invalid dashboard theme provided', {
             theme: options.theme,
             availableThemes,
@@ -52,8 +52,8 @@ export const dashboardCommand = new Command('dashboard')
         console.log(chalk.cyan('🚀 Launching Kanban Dashboard...'));
 
         const config = {
-          refreshInterval: parseInt(options.refresh || '30', 10) * 1000,
-          theme: options.theme || 'dark',
+          refreshInterval: parseInt(options.refresh ?? '30', 10) * 1000,
+          theme: options.theme ?? 'dark',
           autoRefresh: options.autoRefresh !== false,
           showHelp: true,
         };

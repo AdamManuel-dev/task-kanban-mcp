@@ -29,6 +29,7 @@ import type { BoardService } from '@/services/BoardService';
 import type { NoteService } from '@/services/NoteService';
 import type { TagService } from '@/services/TagService';
 import type { ContextService } from '@/services/ContextService';
+import { AIContextualPrioritizer } from '@/services/AIContextualPrioritizer';
 import type { Task, Note as NoteType, Tag as TagType } from '@/types';
 import type {
   MCPResponse as ToolResponse,
@@ -56,6 +57,9 @@ import type {
   PrioritizeTasksArgs,
   GetNextTaskArgs,
   UpdatePriorityArgs,
+  EstimateTaskComplexityArgs,
+  AnalyzeBlockingChainArgs,
+  GetVelocityInsightsArgs,
   TaskResponse,
   TasksResponse,
   BoardResponse,
@@ -75,6 +79,9 @@ import type {
   PrioritizedTasksResponse,
   NextTaskResponse,
   PriorityUpdateResponse,
+  ComplexityEstimationResponse,
+  BlockingChainAnalysisResponse,
+  VelocityInsightsResponse,
 } from './types';
 
 /**
@@ -133,6 +140,9 @@ export class MCPToolRegistry {
   /** Services used by tools */
   private readonly services: MCPServices;
 
+  /** Enhanced AI prioritizer */
+  private readonly aiPrioritizer: AIContextualPrioritizer;
+
   /**
    * Creates a new MCPToolRegistry instance
    *
@@ -140,6 +150,7 @@ export class MCPToolRegistry {
    */
   constructor(services: MCPServices) {
     this.services = services;
+    this.aiPrioritizer = new AIContextualPrioritizer(services.taskService);
   }
 
   /**
@@ -662,6 +673,80 @@ export class MCPToolRegistry {
           required: ['task_id', 'priority'],
         },
       },
+      {
+        name: 'estimate_task_complexity',
+        description:
+          'Estimate task complexity using AI analysis of description, dependencies, and subtasks',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            task_id: { type: 'string', description: 'Task ID to analyze for complexity' },
+            include_dependencies: {
+              type: 'boolean',
+              description: 'Include dependency count in complexity calculation',
+              default: true,
+            },
+            include_subtasks: {
+              type: 'boolean',
+              description: 'Include subtask count in complexity calculation',
+              default: true,
+            },
+          },
+          required: ['task_id'],
+        },
+      },
+      {
+        name: 'analyze_blocking_chain',
+        description:
+          'Analyze critical path and blocking chains to identify bottlenecks and optimization opportunities',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            task_id: {
+              type: 'string',
+              description: 'Specific task ID to analyze blocking chain for (optional)',
+            },
+            board_id: {
+              type: 'string',
+              description: 'Board ID to analyze entire board blocking chains (optional)',
+            },
+            max_depth: {
+              type: 'number',
+              description: 'Maximum depth to traverse in blocking chains',
+              minimum: 1,
+              maximum: 20,
+              default: 10,
+            },
+          },
+        },
+      },
+      {
+        name: 'get_velocity_insights',
+        description:
+          'Get velocity metrics, capacity analysis, and completion predictions for sprint planning',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            board_id: {
+              type: 'string',
+              description:
+                'Board ID to analyze velocity for (optional, analyzes all boards if not provided)',
+            },
+            timeframe_days: {
+              type: 'number',
+              description: 'Number of days to look back for velocity calculation',
+              minimum: 7,
+              maximum: 365,
+              default: 30,
+            },
+            include_predictions: {
+              type: 'boolean',
+              description: 'Include AI-powered completion date predictions',
+              default: true,
+            },
+          },
+        },
+      },
     ]);
   }
 
@@ -747,6 +832,12 @@ export class MCPToolRegistry {
           return await this.getNextTask(args as GetNextTaskArgs);
         case 'update_priority':
           return await this.updatePriority(args as UpdatePriorityArgs);
+        case 'estimate_task_complexity':
+          return await this.estimateTaskComplexity(args as EstimateTaskComplexityArgs);
+        case 'analyze_blocking_chain':
+          return await this.analyzeBlockingChain(args as AnalyzeBlockingChainArgs);
+        case 'get_velocity_insights':
+          return await this.getVelocityInsights(args as GetVelocityInsightsArgs);
         default:
           throw new Error(`Unknown tool: ${String(name)}`);
       }
@@ -1376,7 +1467,11 @@ export class MCPToolRegistry {
       detail_level: 'comprehensive' | 'summary';
     }
     const options: AnalyzeOptions = {
-      days_back: args.time_range === 'week' ? 7 : args.time_range === 'month' ? 30 : 90,
+      days_back: (() => {
+        if (args.time_range === 'week') return 7;
+        if (args.time_range === 'month') return 30;
+        return 90;
+      })(),
       include_metrics: true,
       detail_level: 'comprehensive',
     };
@@ -1659,61 +1754,22 @@ export class MCPToolRegistry {
       throw new Error('board_id is required');
     }
 
-    // Get all tasks for the board
-    const tasks = await this.services.taskService.getTasks({
-      board_id: boardId,
-      limit: maxTasks,
-    });
+    // Use enhanced AI prioritization algorithm
+    const enhancedResults = await this.aiPrioritizer.prioritizeTasksWithContext(
+      boardId,
+      contextFactors,
+      maxTasks
+    );
 
-    // Simple prioritization algorithm
-    const prioritizedTasks = tasks
-      .filter(task => task.status !== 'done' && task.status !== 'archived')
-      .map(task => {
-        let score = (task.priority ?? 1) * 20; // Base priority score
-
-        // Add urgency based on due date
-        if (task.due_date) {
-          const dueDate = new Date(task.due_date);
-          const now = new Date();
-          const daysUntilDue = Math.ceil(
-            (dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-          );
-
-          if (daysUntilDue < 0) {
-            score += 50; // Overdue
-          } else if (daysUntilDue <= 1) {
-            score += 30; // Due soon
-          } else if (daysUntilDue <= 7) {
-            score += 10; // Due this week
-          }
-        }
-
-        // Add blocking factor
-        if (task.status === 'blocked') {
-          score -= 20;
-        }
-
-        // Consider context factors
-        let reasoning = `Priority: ${String(task.priority ?? 1)}`;
-        if (task.due_date) {
-          const dueDate = new Date(task.due_date);
-          const now = new Date();
-          const daysUntilDue = Math.ceil(
-            (dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-          );
-          reasoning += `, Due in ${String(daysUntilDue)} days`;
-        }
-        if (task.status === 'blocked') {
-          reasoning += ', Currently blocked';
-        }
-
-        return {
-          task,
-          priority_score: Math.max(0, score),
-          reasoning,
-        };
-      })
-      .sort((a, b) => b.priority_score - a.priority_score);
+    // Convert enhanced results to expected format
+    const prioritizedTasks = enhancedResults.map(result => ({
+      task: result.task,
+      priority_score: result.priorityScore,
+      reasoning: result.reasoning.join('; '),
+      confidence: result.confidence,
+      context_factors: result.contextFactors,
+      ml_similarity: result.mlSimilarity,
+    }));
 
     return {
       success: true,
@@ -1751,17 +1807,28 @@ export class MCPToolRegistry {
       filters.assignee = assignee;
     }
 
-    const tasks = await this.services.taskService.getTasks(filters);
+    // Use enhanced prioritization to get the best next task
+    const contextFactors = skillContext ? [skillContext] : [];
+    const enhancedResults = await this.aiPrioritizer.prioritizeTasksWithContext(
+      boardId || '',
+      contextFactors,
+      20
+    );
 
-    // Filter out completed/archived tasks
-    let availableTasks = tasks.filter(task => task.status !== 'done' && task.status !== 'archived');
+    // Apply additional filters
+    let availableTasks = enhancedResults.map(result => result.task);
 
     // Exclude blocked tasks if requested
     if (excludeBlocked) {
       availableTasks = availableTasks.filter(task => task.status !== 'blocked');
     }
 
-    // Filter by skill context if provided
+    // Filter by assignee if provided
+    if (assignee) {
+      availableTasks = availableTasks.filter(task => task.assignee === assignee);
+    }
+
+    // Filter by skill context if provided (additional filtering on enhanced results)
     if (skillContext) {
       availableTasks = availableTasks.filter(
         task =>
@@ -1778,32 +1845,20 @@ export class MCPToolRegistry {
       };
     }
 
-    // Sort by priority (highest first), then by due date
-    availableTasks.sort((a, b) => {
-      const priorityDiff = (b.priority ?? 1) - (a.priority ?? 1);
-      if (priorityDiff !== 0) return priorityDiff;
-
-      // If same priority, sort by due date
-      if (a.due_date && b.due_date) {
-        return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
-      }
-      if (a.due_date) return -1;
-      if (b.due_date) return 1;
-      return 0;
-    });
-
+    // Get the enhanced result for the top task
     const nextTask = availableTasks[0];
-    let reasoning = `Highest priority available task (Priority: ${String(nextTask.priority ?? 1)})`;
+    const enhancedResult = enhancedResults.find(result => result.task.id === nextTask.id);
 
-    if (nextTask.due_date) {
-      const dueDate = new Date(nextTask.due_date);
-      const now = new Date();
-      const daysUntilDue = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      reasoning += `, Due in ${String(daysUntilDue)} days`;
+    let reasoning = enhancedResult
+      ? enhancedResult.reasoning.join('; ')
+      : `Priority: ${String(nextTask.priority ?? 1)}`;
+
+    if (enhancedResult?.confidence) {
+      reasoning += ` (Confidence: ${Math.round(enhancedResult.confidence * 100)}%)`;
     }
 
     if (skillContext) {
-      reasoning += `, Matches skill context: ${String(skillContext)}`;
+      reasoning += ` | Skill match: ${String(skillContext)}`;
     }
 
     return {
@@ -1865,6 +1920,383 @@ export class MCPToolRegistry {
       old_priority: oldPriority,
       new_priority: priority,
       reasoning,
+    };
+  }
+
+  /**
+   * Estimate task complexity using AI analysis
+   *
+   * @private
+   * @param {EstimateTaskComplexityArgs} args - Arguments containing task ID and analysis options
+   * @returns {Promise<ComplexityEstimationResponse>} Complexity analysis result
+   */
+  private async estimateTaskComplexity(
+    args: EstimateTaskComplexityArgs
+  ): Promise<ComplexityEstimationResponse> {
+    const { task_id, include_dependencies = true, include_subtasks = true } = args;
+
+    // Get the task with detailed information
+    const task = await this.services.taskService.getTaskById(task_id);
+    if (!task) {
+      throw new Error(`Task not found: ${task_id}`);
+    }
+
+    // Calculate complexity factors
+    const factors = {
+      description_complexity: 0,
+      dependency_count: 0,
+      subtask_count: 0,
+      estimated_hours: task.estimated_hours,
+    };
+
+    // Description complexity (based on length and content)
+    if (task.description) {
+      const wordCount = task.description.split(/\s+/).length;
+      const hasComplexTerms =
+        /\b(integrate|implement|refactor|optimize|algorithm|architecture|complex|multiple|various)\b/i.test(
+          task.description
+        );
+      factors.description_complexity = Math.min(10, wordCount / 10 + (hasComplexTerms ? 3 : 0));
+    }
+
+    // Dependency and subtask analysis
+    if (include_dependencies) {
+      const dependencies = await this.services.taskService.getTaskDependencies(task_id);
+      factors.dependency_count = dependencies.dependencies.length + dependencies.dependents.length;
+    }
+
+    if (include_subtasks) {
+      const subtasks = await this.services.taskService.getSubtasks(task_id);
+      factors.subtask_count = subtasks.length;
+    }
+
+    // Calculate overall complexity score (0-10)
+    let complexityScore =
+      factors.description_complexity * 0.4 +
+      factors.dependency_count * 0.3 +
+      factors.subtask_count * 0.2 +
+      (factors.estimated_hours ? Math.min(10, factors.estimated_hours / 4) : 2) * 0.1;
+
+    complexityScore = Math.max(1, Math.min(10, complexityScore));
+
+    // Determine complexity level
+    let complexityLevel: 'low' | 'medium' | 'high' | 'very_high';
+    if (complexityScore <= 3) {
+      complexityLevel = 'low';
+    } else if (complexityScore <= 6) {
+      complexityLevel = 'medium';
+    } else if (complexityScore <= 8) {
+      complexityLevel = 'high';
+    } else {
+      complexityLevel = 'very_high';
+    }
+
+    // Generate recommendations based on complexity
+    const recommendations: string[] = [];
+
+    if (complexityLevel === 'very_high') {
+      recommendations.push('Consider breaking this task into smaller subtasks');
+      recommendations.push(
+        'Review dependencies to identify potential parallelization opportunities'
+      );
+    }
+
+    if (factors.dependency_count > 3) {
+      recommendations.push('High dependency count - review for potential blocking risks');
+    }
+
+    if (factors.subtask_count > 5) {
+      recommendations.push('Many subtasks - ensure proper task breakdown and sequencing');
+    }
+
+    if (!factors.estimated_hours) {
+      recommendations.push('Add time estimation to improve complexity analysis accuracy');
+    }
+
+    // Calculate confidence based on available information
+    let confidence = 0.6; // Base confidence
+    if (task.description && task.description.length > 50) confidence += 0.2;
+    if (factors.estimated_hours) confidence += 0.1;
+    if (include_dependencies && factors.dependency_count > 0) confidence += 0.1;
+
+    logger.info('Task complexity estimated', {
+      task_id,
+      complexityScore,
+      complexityLevel,
+      confidence,
+    });
+
+    return {
+      success: true,
+      task_id,
+      complexity_score: Math.round(complexityScore * 10) / 10,
+      complexity_level: complexityLevel,
+      factors,
+      recommendations,
+      confidence: Math.round(confidence * 100) / 100,
+    };
+  }
+
+  /**
+   * Analyze blocking chains and critical path
+   *
+   * @private
+   * @param {AnalyzeBlockingChainArgs} args - Arguments for blocking chain analysis
+   * @returns {Promise<BlockingChainAnalysisResponse>} Blocking chain analysis result
+   */
+  private async analyzeBlockingChain(
+    args: AnalyzeBlockingChainArgs
+  ): Promise<BlockingChainAnalysisResponse> {
+    const { task_id, board_id, max_depth = 10 } = args;
+
+    let tasksToAnalyze: Task[] = [];
+
+    if (task_id) {
+      // Analyze specific task's blocking chain
+      const task = await this.services.taskService.getTaskById(task_id);
+      if (!task) {
+        throw new Error(`Task not found: ${task_id}`);
+      }
+      tasksToAnalyze = [task];
+    } else if (board_id) {
+      // Analyze entire board
+      tasksToAnalyze = await this.services.taskService.getTasks({ board_id });
+    } else {
+      throw new Error('Either task_id or board_id must be provided');
+    }
+
+    // Get critical path analysis from TaskService
+    const criticalPath = await this.services.taskService.getCriticalPath(board_id || '');
+
+    // Build blocking chain analysis
+    const blockingChains: Array<{
+      root_task: Task;
+      blocked_tasks: Task[];
+      chain_length: number;
+      total_impact: number;
+    }> = [];
+
+    // Find tasks that block multiple others
+    const bottlenecks: Array<{
+      task: Task;
+      blocking_count: number;
+      impact_score: number;
+    }> = [];
+
+    for (const task of tasksToAnalyze) {
+      if (task.status === 'done') continue;
+
+      const dependencies = await this.services.taskService.getTaskDependencies(task.id);
+      const blockingCount = dependencies.dependents.length;
+
+      if (blockingCount > 0) {
+        // Get all tasks this task blocks (transitively)
+        const blockedTasks: Task[] = [];
+        const visited = new Set<string>();
+
+        const findBlockedTasks = async (taskId: string, depth: number): Promise<void> => {
+          if (depth >= max_depth || visited.has(taskId)) return;
+          visited.add(taskId);
+
+          const deps = await this.services.taskService.getTaskDependencies(taskId);
+          for (const dependent of deps.dependents) {
+            const dependentTask = await this.services.taskService.getTaskById(dependent.task_id);
+            if (dependentTask && dependentTask.status !== 'done') {
+              blockedTasks.push(dependentTask);
+              await findBlockedTasks(dependent.task_id, depth + 1);
+            }
+          }
+        };
+
+        await findBlockedTasks(task.id, 0);
+
+        if (blockedTasks.length > 0) {
+          blockingChains.push({
+            root_task: task,
+            blocked_tasks: blockedTasks,
+            chain_length: blockedTasks.length,
+            total_impact: blockedTasks.reduce((sum, t) => sum + (t.priority || 1), 0),
+          });
+        }
+
+        if (blockingCount > 1) {
+          bottlenecks.push({
+            task,
+            blocking_count: blockingCount,
+            impact_score: blockingCount * (task.priority || 1),
+          });
+        }
+      }
+    }
+
+    // Sort by impact
+    blockingChains.sort((a, b) => b.total_impact - a.total_impact);
+    bottlenecks.sort((a, b) => b.impact_score - a.impact_score);
+
+    // Generate recommendations
+    const recommendations: string[] = [];
+
+    if (bottlenecks.length > 0) {
+      recommendations.push(
+        `Focus on completing high-impact bottleneck tasks: ${bottlenecks
+          .slice(0, 3)
+          .map(b => b.task.title)
+          .join(', ')}`
+      );
+    }
+
+    if (blockingChains.length > 0) {
+      const longestChain = blockingChains[0];
+      recommendations.push(
+        `Longest blocking chain has ${longestChain.chain_length} affected tasks`
+      );
+    }
+
+    recommendations.push('Consider parallelizing independent tasks to reduce critical path');
+    recommendations.push('Review task dependencies for optimization opportunities');
+
+    logger.info('Blocking chain analysis completed', {
+      analyzedTasks: tasksToAnalyze.length,
+      blockingChains: blockingChains.length,
+      bottlenecks: bottlenecks.length,
+    });
+
+    return {
+      success: true,
+      critical_path: {
+        tasks: criticalPath.path,
+        total_estimated_hours: criticalPath.totalDuration,
+        bottlenecks: bottlenecks.slice(0, 10), // Top 10 bottlenecks
+      },
+      blocking_chains: blockingChains.slice(0, 20), // Top 20 chains
+      recommendations,
+    };
+  }
+
+  /**
+   * Get velocity insights and capacity analysis
+   *
+   * @private
+   * @param {GetVelocityInsightsArgs} args - Arguments for velocity analysis
+   * @returns {Promise<VelocityInsightsResponse>} Velocity insights result
+   */
+  private async getVelocityInsights(
+    args: GetVelocityInsightsArgs
+  ): Promise<VelocityInsightsResponse> {
+    const { board_id, timeframe_days = 30, include_predictions = true } = args;
+
+    // Get completed tasks in the timeframe
+    const endDate = new Date();
+    const startDate = new Date(endDate.getTime() - timeframe_days * 24 * 60 * 60 * 1000);
+
+    const filters: { board_id?: string; completed_after?: Date; status?: 'done' } = {
+      status: 'done',
+      completed_after: startDate,
+    };
+
+    if (board_id) {
+      filters.board_id = board_id;
+    }
+
+    const completedTasks = await this.services.taskService.getTasks(filters);
+
+    // Calculate velocity metrics
+    const currentVelocity = completedTasks.length / (timeframe_days / 7); // Tasks per week
+
+    // Get historical data for comparison (double the timeframe)
+    const historicalStartDate = new Date(
+      startDate.getTime() - timeframe_days * 24 * 60 * 60 * 1000
+    );
+    const historicalTasks = await this.services.taskService.getTasks({
+      ...filters,
+      completed_after: historicalStartDate,
+    });
+
+    const historicalCount = historicalTasks.length - completedTasks.length;
+    const historicalAverage = historicalCount / (timeframe_days / 7);
+
+    // Determine trend
+    let trend: 'increasing' | 'decreasing' | 'stable';
+    const velocityChange = currentVelocity - historicalAverage;
+    const changeThreshold = historicalAverage * 0.1; // 10% threshold
+
+    if (velocityChange > changeThreshold) {
+      trend = 'increasing';
+    } else if (velocityChange < -changeThreshold) {
+      trend = 'decreasing';
+    } else {
+      trend = 'stable';
+    }
+
+    // Calculate completion rate (completed vs total tasks worked on)
+    const allTasks = await this.services.taskService.getTasks(board_id ? { board_id } : {});
+    const inProgressTasks = allTasks.filter(t =>
+      ['in_progress', 'done'].includes(t.status || 'todo')
+    );
+    const completionRate =
+      inProgressTasks.length > 0 ? completedTasks.length / inProgressTasks.length : 0;
+
+    // Capacity analysis
+    const activeTasks = allTasks.filter(t => ['todo', 'in_progress'].includes(t.status || 'todo'));
+    const currentCapacity = activeTasks.length;
+
+    // Recommend capacity based on current velocity
+    const recommendedCapacity = Math.max(5, Math.round(currentVelocity * 1.5));
+
+    // Identify bottlenecks
+    const bottlenecks: string[] = [];
+    const blockedTasks = allTasks.filter(t => t.status === 'blocked');
+    if (blockedTasks.length > currentCapacity * 0.2) {
+      bottlenecks.push(`${blockedTasks.length} blocked tasks need attention`);
+    }
+
+    if (currentVelocity < historicalAverage * 0.8) {
+      bottlenecks.push('Velocity decline detected - review team capacity');
+    }
+
+    // Generate predictions if requested
+    let predictions;
+    if (include_predictions) {
+      const remainingTasks = activeTasks.length;
+      const estimatedWeeksToComplete = remainingTasks / Math.max(currentVelocity, 0.5);
+      const estimatedCompletionDate = new Date(
+        endDate.getTime() + estimatedWeeksToComplete * 7 * 24 * 60 * 60 * 1000
+      );
+
+      predictions = {
+        estimated_completion_dates: {
+          current_sprint: estimatedCompletionDate.toISOString(),
+        },
+        capacity_recommendations: [
+          `Target ${Math.round(currentVelocity * 1.2)} tasks per week for optimal flow`,
+          `Consider reducing WIP if current capacity (${currentCapacity}) exceeds recommended (${recommendedCapacity})`,
+        ],
+      };
+    }
+
+    logger.info('Velocity insights generated', {
+      board_id,
+      currentVelocity,
+      historicalAverage,
+      trend,
+      timeframe_days,
+    });
+
+    return {
+      success: true,
+      velocity_metrics: {
+        current_velocity: Math.round(currentVelocity * 10) / 10,
+        historical_average: Math.round(historicalAverage * 10) / 10,
+        trend,
+        completion_rate: Math.round(completionRate * 100) / 100,
+      },
+      capacity_analysis: {
+        current_capacity: currentCapacity,
+        recommended_capacity: recommendedCapacity,
+        bottlenecks,
+      },
+      predictions,
+      timeframe_days,
     };
   }
 }
