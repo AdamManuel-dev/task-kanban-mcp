@@ -54,7 +54,12 @@ export function responseFormattingMiddleware(req: Request, res: Response, next: 
   };
 
   // Add error response helper
-  res.apiError = function (code: string, message: string, statusCode = 500, details?: any) {
+  res.apiError = function sendApiError(
+    code: string,
+    message: string,
+    statusCode = 500,
+    details?: any
+  ) {
     const response: ApiResponse = {
       success: false,
       error: {

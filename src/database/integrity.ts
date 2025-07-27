@@ -510,11 +510,11 @@ export class DatabaseIntegrityChecker {
         // Group by task for better reporting
         const taskGroups = circularDependencies.reduce(
           (groups, dep) => {
-            if (!groups[dep.task_id]) {
-              groups[dep.task_id] = [];
-            }
-            groups[dep.task_id].push(dep);
-            return groups;
+            const taskId = dep.task_id;
+            return {
+              ...groups,
+              [taskId]: [...(groups[taskId] || []), dep],
+            };
           },
           {} as Record<string, any[]>
         );

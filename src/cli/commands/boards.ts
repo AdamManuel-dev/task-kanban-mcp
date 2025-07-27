@@ -93,6 +93,7 @@ interface ViewBoardOptions {
 interface CreateBoardData {
   name?: string;
   description?: string;
+  useAsDefault?: boolean;
 }
 
 interface CreateBoardOptions {
@@ -116,6 +117,7 @@ interface UpdateBoardOptions {
 interface UpdateBoardPromptResult {
   name?: string;
   description?: string;
+  [key: string]: unknown;
 }
 
 interface DeleteBoardOptions {
@@ -263,47 +265,49 @@ export function registerBoardCommands(program: Command): void {
     .description('Show board details')
     .option('--tasks', 'include tasks in board')
     .option('--stats', 'include board statistics')
-    .action(async (id: string, options: ShowBoardOptions) => {
-      const { apiClient, formatter } = getComponents();
+    .action((id: string, options: ShowBoardOptions) => {
+      void (async () => {
+        const { apiClient, formatter } = getComponents();
 
-      try {
-        const response = await apiClient.getBoard(id);
-        const board = 'data' in response ? (response.data as BoardData) : undefined;
+        try {
+          const response = await apiClient.getBoard(id);
+          const board = 'data' in response ? (response.data as BoardData) : undefined;
 
-        if (!board) {
-          formatter.error(`Board ${String(id)} not found`);
+          if (!board) {
+            formatter.error(`Board ${String(id)} not found`);
+            process.exit(1);
+          }
+
+          formatter.output(board);
+
+          if (options.tasks && board.tasks) {
+            formatter.info('\n--- Tasks ---');
+            formatter.output(board.tasks, {
+              fields: ['id', 'title', 'status', 'priority'],
+              headers: ['ID', 'Title', 'Status', 'Priority'],
+            });
+          }
+
+          if (options.stats) {
+            formatter.info('\n--- Statistics ---');
+            try {
+              const statsResponse = await apiClient.getBoardStats(id);
+              if ('data' in statsResponse) {
+                formatter.output(statsResponse.data);
+              } else {
+                formatter.warn('No statistics data available');
+              }
+            } catch (error) {
+              formatter.warn('Could not retrieve board statistics');
+            }
+          }
+        } catch (error) {
+          formatter.error(
+            `Failed to get board: ${String(error instanceof Error ? error.message : 'Unknown error')}`
+          );
           process.exit(1);
         }
-
-        formatter.output(board);
-
-        if (options.tasks && board.tasks) {
-          formatter.info('\n--- Tasks ---');
-          formatter.output(board.tasks, {
-            fields: ['id', 'title', 'status', 'priority'],
-            headers: ['ID', 'Title', 'Status', 'Priority'],
-          });
-        }
-
-        if (options.stats) {
-          formatter.info('\n--- Statistics ---');
-          try {
-            const statsResponse = await apiClient.getBoardStats(id);
-            if ('data' in statsResponse) {
-              formatter.output(statsResponse.data);
-            } else {
-              formatter.warn('No statistics data available');
-            }
-          } catch (error) {
-            formatter.warn('Could not retrieve board statistics');
-          }
-        }
-      } catch (error) {
-        formatter.error(
-          `Failed to get board: ${String(error instanceof Error ? error.message : 'Unknown error')}`
-        );
-        process.exit(1);
-      }
+      })();
     });
 
   /**
@@ -353,130 +357,132 @@ export function registerBoardCommands(program: Command): void {
     .option('--refresh <seconds>', 'auto-refresh interval', '30')
     .option('--max-height <number>', 'maximum column height', '8')
     .option('--column-width <number>', 'column width', '25')
-    .action(async (id?: string, options?: ViewBoardOptions) => {
-      const { config, apiClient, formatter } = getComponents();
+    .action((id?: string, options?: ViewBoardOptions) => {
+      void (async () => {
+        const { config, apiClient, formatter } = getComponents();
 
-      try {
-        // Determine board ID
-        const boardId = id ?? config.getDefaultBoard();
-        if (!boardId) {
+        try {
+          // Determine board ID
+          const boardId = id ?? config.getDefaultBoard();
+          if (!boardId) {
+            formatter.error(
+              'Board ID is required. Specify an ID or set default board with "kanban board use <id>"'
+            );
+            process.exit(1);
+          }
+
+          // Fetch board data with spinner
+          const spinner = new SpinnerManager();
+          const boardData = await spinner.withSpinner(
+            `Loading board: ${String(boardId)}`,
+            apiClient.getBoard(boardId),
+            {
+              successText: 'Board loaded successfully',
+              failText: 'Failed to load board',
+            }
+          );
+
+          if (!boardData) {
+            formatter.error(`Board ${String(boardId)} not found`);
+            process.exit(1);
+          }
+
+          // Transform API data to component format
+          const apiResponse = boardData as ApiBoardResponse;
+          const board: Board = {
+            id: apiResponse.id,
+            name: apiResponse.name,
+            description: apiResponse.description,
+            color: '#007acc',
+            created_at: new Date(),
+            updated_at: new Date(),
+            archived: false,
+          };
+
+          if (!options?.interactive) {
+            // Non-interactive mode - just show board data
+            formatter.output(board);
+            return;
+          }
+
+          // Interactive mode with React component
+          spinner.info(`Starting interactive board view for: ${board.name}`);
+
+          let refreshInterval: NodeJS.Timeout | null = null;
+          let shouldRefresh = false;
+
+          const InteractiveBoardView = (): React.ReactElement => {
+            const [currentBoard, setCurrentBoard] = React.useState<Board>(board);
+
+            // Auto-refresh functionality
+            React.useEffect(() => {
+              if (options?.refresh && parseInt(options.refresh, 10) > 0) {
+                const interval = parseInt(options.refresh, 10) * 1000;
+                refreshInterval = setInterval(() => {
+                  if (!shouldRefresh) return;
+
+                  (async (): Promise<void> => {
+                    try {
+                      const refreshedData = await apiClient.getBoard(boardId);
+                      if (refreshedData) {
+                        const refreshedApiResponse = refreshedData as ApiBoardResponse;
+                        const refreshedBoard: Board = {
+                          id: refreshedApiResponse.id,
+                          name: refreshedApiResponse.name,
+                          description: refreshedApiResponse.description,
+                          color: '#2196F3', // Default color
+                          created_at: new Date(),
+                          updated_at: new Date(),
+                          archived: false,
+                        };
+
+                        // TODO: Process refreshed columns and tasks when needed
+                        // const refreshedColumns: Column[] = (apiResponse.columns ?? []).map(...);
+                        // const refreshedTasks: Task[] = (apiResponse.columns ?? []).flatMap(...);
+                        setCurrentBoard(refreshedBoard);
+                      }
+                    } catch (error) {
+                      // Silently fail refresh
+                    }
+                  })().catch((err: Error) => {
+                    logger.error('Auto-refresh failed', { error: err.message });
+                  });
+                }, interval);
+              }
+
+              return () => {
+                if (refreshInterval) {
+                  clearInterval(refreshInterval);
+                }
+              };
+            }, []);
+
+            // Enable refresh after initial render
+            React.useEffect(() => {
+              shouldRefresh = true;
+            }, []);
+
+            return React.createElement(BoardView, {
+              board: currentBoard,
+              columns: [], // TODO: Get columns from API
+              tasks: [], // TODO: Get tasks from API
+              showDetails: false,
+            });
+          };
+
+          // Show loading indicator and instructions
+          formatter.info(`Starting interactive board view for: ${String(board.name)}`);
+          formatter.info('Press ? for help, q to quit');
+
+          // Render the interactive board view
+          render(React.createElement(InteractiveBoardView));
+        } catch (error) {
           formatter.error(
-            'Board ID is required. Specify an ID or set default board with "kanban board use <id>"'
+            `Failed to start board view: ${String(error instanceof Error ? error.message : 'Unknown error')}`
           );
           process.exit(1);
         }
-
-        // Fetch board data with spinner
-        const spinner = new SpinnerManager();
-        const boardData = await spinner.withSpinner(
-          `Loading board: ${String(boardId)}`,
-          apiClient.getBoard(boardId),
-          {
-            successText: 'Board loaded successfully',
-            failText: 'Failed to load board',
-          }
-        );
-
-        if (!boardData) {
-          formatter.error(`Board ${String(boardId)} not found`);
-          process.exit(1);
-        }
-
-        // Transform API data to component format
-        const apiResponse = boardData as ApiBoardResponse;
-        const board: Board = {
-          id: apiResponse.id,
-          name: apiResponse.name,
-          description: apiResponse.description,
-          color: '#007acc',
-          created_at: new Date(),
-          updated_at: new Date(),
-          archived: false,
-        };
-
-        if (!options?.interactive) {
-          // Non-interactive mode - just show board data
-          formatter.output(board);
-          return;
-        }
-
-        // Interactive mode with React component
-        spinner.info(`Starting interactive board view for: ${board.name}`);
-
-        let refreshInterval: NodeJS.Timeout | null = null;
-        let shouldRefresh = false;
-
-        const InteractiveBoardView = (): React.ReactElement => {
-          const [currentBoard, setCurrentBoard] = React.useState<Board>(board);
-
-          // Auto-refresh functionality
-          React.useEffect(() => {
-            if (options?.refresh && parseInt(options.refresh, 10) > 0) {
-              const interval = parseInt(options.refresh, 10) * 1000;
-              refreshInterval = setInterval(() => {
-                if (!shouldRefresh) return;
-
-                (async (): Promise<void> => {
-                  try {
-                    const refreshedData = await apiClient.getBoard(boardId);
-                    if (refreshedData) {
-                      const refreshedApiResponse = refreshedData as ApiBoardResponse;
-                      const refreshedBoard: Board = {
-                        id: refreshedApiResponse.id,
-                        name: refreshedApiResponse.name,
-                        description: refreshedApiResponse.description,
-                        color: '#2196F3', // Default color
-                        created_at: new Date(),
-                        updated_at: new Date(),
-                        archived: false,
-                      };
-
-                      // TODO: Process refreshed columns and tasks when needed
-                      // const refreshedColumns: Column[] = (apiResponse.columns ?? []).map(...);
-                      // const refreshedTasks: Task[] = (apiResponse.columns ?? []).flatMap(...);
-                      setCurrentBoard(refreshedBoard);
-                    }
-                  } catch (error) {
-                    // Silently fail refresh
-                  }
-                })().catch((err: Error) => {
-                  logger.error('Auto-refresh failed', { error: err.message });
-                });
-              }, interval);
-            }
-
-            return () => {
-              if (refreshInterval) {
-                clearInterval(refreshInterval);
-              }
-            };
-          }, []);
-
-          // Enable refresh after initial render
-          React.useEffect(() => {
-            shouldRefresh = true;
-          }, []);
-
-          return React.createElement(BoardView, {
-            board: currentBoard,
-            columns: [], // TODO: Get columns from API
-            tasks: [], // TODO: Get tasks from API
-            showDetails: false,
-          });
-        };
-
-        // Show loading indicator and instructions
-        formatter.info(`Starting interactive board view for: ${String(board.name)}`);
-        formatter.info('Press ? for help, q to quit');
-
-        // Render the interactive board view
-        render(React.createElement(InteractiveBoardView));
-      } catch (error) {
-        formatter.error(
-          `Failed to start board view: ${String(error instanceof Error ? error.message : 'Unknown error')}`
-        );
-        process.exit(1);
-      }
+      })();
     });
 
   /**
@@ -549,27 +555,29 @@ export function registerBoardCommands(program: Command): void {
         });
 
         const answers = await inquirer.prompt<CreateBoardPromptResult>(questions);
-        boardData = { ...boardData, ...answers };
+        const { useAsDefault, ...restAnswers } = answers;
+        boardData = { ...boardData, ...restAnswers, useAsDefault: useAsDefault ?? false };
       }
 
       // Use command line options or answers
-      boardData.name = options.name ?? boardData.name;
-      boardData.description = options.description ?? boardData.description;
+      if (options.name !== undefined) boardData.name = options.name;
+      if (options.description !== undefined) boardData.description = options.description;
 
       try {
-        const board = await apiClient.createBoard(boardData as CreateBoardRequest);
+        const { useAsDefault: _, ...createData } = boardData;
+        const board = await apiClient.createBoard(createData as CreateBoardRequest);
         if (isSuccessResponse(board)) {
           formatter.success(`Board created successfully: ${String(board.data.id)}`);
           formatter.output(board.data);
+
+          // Set as default if requested from interactive prompt
+          if (boardData.useAsDefault) {
+            config.setDefaultBoard(board.data.id);
+            formatter.info(`Set as default board`);
+          }
         } else {
           formatter.error('Failed to create board');
           process.exit(1);
-        }
-
-        // Set as default if requested
-        if (boardData.useAsDefault && isSuccessResponse(board)) {
-          config.setDefaultBoard(board.data.id);
-          formatter.info(`Set as default board`);
         }
       } catch (error) {
         formatter.error(

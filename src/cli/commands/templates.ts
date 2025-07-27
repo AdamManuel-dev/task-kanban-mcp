@@ -10,7 +10,11 @@ import { TaskTemplateService } from '@/services/TaskTemplateService';
 import { BoardService } from '@/services/BoardService';
 import { formatter } from '@/cli/formatter';
 import { logger } from '@/utils/logger';
-import type { TaskTemplate, TaskTemplateCreateRequest, TaskFromTemplateRequest } from '@/types/templates';
+import type {
+  TaskTemplate,
+  TaskTemplateCreateRequest,
+  TaskFromTemplateRequest,
+} from '@/types/templates';
 
 export function createTemplatesCommand(): Command {
   const templates = new Command('templates')
@@ -25,8 +29,9 @@ export function createTemplatesCommand(): Command {
     .option('-c, --category <category>', 'Filter by category')
     .option('-a, --all', 'Include inactive templates')
     .option('-s, --system', 'Show only system templates')
-    .action(async (options) => {
+    .action(async options => {
       try {
+        logger.debug('Listing templates with options', { options });
         const templateService = TaskTemplateService.getInstance();
         const templates = await templateService.getTemplates({
           category: options.category,
@@ -35,34 +40,43 @@ export function createTemplatesCommand(): Command {
         });
 
         if (templates.length === 0) {
+          logger.info('No templates found for listing', { options });
           console.log(chalk.yellow('No templates found.'));
           return;
         }
 
+        logger.info('Successfully retrieved templates for listing', { count: templates.length });
+
         console.log(chalk.blue.bold('\n📋 Task Templates\n'));
-        
+
         const categories = templateService.getCategories();
-        const groupedTemplates = templates.reduce((acc, template) => {
-          if (!acc[template.category]) {
-            acc[template.category] = [];
-          }
-          acc[template.category].push(template);
-          return acc;
-        }, {} as Record<string, TaskTemplate[]>);
+        const groupedTemplates = templates.reduce(
+          (acc, template) => {
+            if (!acc[template.category]) {
+              acc[template.category] = [];
+            }
+            acc[template.category].push(template);
+            return acc;
+          },
+          {} as Record<string, TaskTemplate[]>
+        );
 
         for (const [categoryName, categoryTemplates] of Object.entries(groupedTemplates)) {
           const category = categories.find(c => c.name === categoryName);
           const categoryIcon = category?.icon || '📄';
           const categoryDisplayName = category?.display_name || categoryName;
-          
+
           console.log(chalk.cyan.bold(`${categoryIcon} ${categoryDisplayName}`));
-          
+
           for (const template of categoryTemplates) {
             const statusIcon = template.is_active ? '✅' : '❌';
             const systemIcon = template.is_system ? '🔧' : '👤';
-            const usageCount = template.usage_count > 0 ? chalk.gray(`(used ${template.usage_count}x)`) : '';
-            
-            console.log(`  ${statusIcon} ${systemIcon} ${chalk.white.bold(template.name)} ${usageCount}`);
+            const usageCount =
+              template.usage_count > 0 ? chalk.gray(`(used ${template.usage_count}x)`) : '';
+
+            console.log(
+              `  ${statusIcon} ${systemIcon} ${chalk.white.bold(template.name)} ${usageCount}`
+            );
             if (template.description) {
               console.log(`     ${chalk.gray(template.description)}`);
             }
@@ -82,13 +96,20 @@ export function createTemplatesCommand(): Command {
     .description('Show template details')
     .action(async (id: string) => {
       try {
+        logger.debug('Showing template details', { templateId: id });
         const templateService = TaskTemplateService.getInstance();
         const template = await templateService.getTemplate(id);
 
         if (!template) {
+          logger.warn('Template not found for show command', { templateId: id });
           console.error(chalk.red('❌ Template not found'));
           return;
         }
+
+        logger.info('Successfully retrieved template for display', {
+          templateId: id,
+          templateName: template.name,
+        });
 
         console.log(chalk.blue.bold('\n📋 Template Details\n'));
         console.log(`${chalk.bold('Name:')} ${template.name}`);
@@ -99,7 +120,7 @@ export function createTemplatesCommand(): Command {
         console.log(`${chalk.bold('System Template:')} ${template.is_system ? 'Yes' : 'No'}`);
         console.log(`${chalk.bold('Active:')} ${template.is_active ? 'Yes' : 'No'}`);
         console.log(`${chalk.bold('Usage Count:')} ${template.usage_count}`);
-        
+
         if (template.tags.length > 0) {
           console.log(`${chalk.bold('Tags:')} ${template.tags.join(', ')}`);
         }
@@ -119,7 +140,9 @@ export function createTemplatesCommand(): Command {
           });
         }
 
-        console.log(`\n${chalk.bold('Created:')} ${new Date(template.created_at).toLocaleString()}`);
+        console.log(
+          `\n${chalk.bold('Created:')} ${new Date(template.created_at).toLocaleString()}`
+        );
         console.log(`${chalk.bold('Updated:')} ${new Date(template.updated_at).toLocaleString()}`);
       } catch (error) {
         logger.error('Failed to show template:', error);
@@ -133,8 +156,9 @@ export function createTemplatesCommand(): Command {
     .description('Create a new template')
     .option('-n, --name <name>', 'Template name')
     .option('-c, --category <category>', 'Template category')
-    .action(async (options) => {
+    .action(async options => {
       try {
+        logger.debug('Creating new template with options', { options });
         const templateService = TaskTemplateService.getInstance();
         const categories = templateService.getCategories();
 
@@ -145,7 +169,7 @@ export function createTemplatesCommand(): Command {
             name: 'name',
             message: 'Template name:',
             default: options.name,
-            validate: (input) => input.trim().length > 0 || 'Name is required',
+            validate: input => input.trim().length > 0 || 'Name is required',
           },
           {
             type: 'list',
@@ -166,7 +190,7 @@ export function createTemplatesCommand(): Command {
             type: 'input',
             name: 'title_template',
             message: 'Title template (use {{variable}} for placeholders):',
-            validate: (input) => input.trim().length > 0 || 'Title template is required',
+            validate: input => input.trim().length > 0 || 'Title template is required',
           },
           {
             type: 'editor',
@@ -178,7 +202,7 @@ export function createTemplatesCommand(): Command {
             name: 'priority',
             message: 'Default priority (0-5):',
             default: 1,
-            validate: (input) => (input >= 0 && input <= 5) || 'Priority must be between 0 and 5',
+            validate: input => (input >= 0 && input <= 5) || 'Priority must be between 0 and 5',
           },
           {
             type: 'number',
@@ -206,12 +230,17 @@ export function createTemplatesCommand(): Command {
           priority: answers.priority,
           estimated_hours: answers.estimated_hours || undefined,
           tags: answers.tags ? answers.tags.split(',').map((tag: string) => tag.trim()) : [],
-          checklist_items: answers.checklist_items 
+          checklist_items: answers.checklist_items
             ? answers.checklist_items.split(',').map((item: string) => item.trim())
             : [],
         };
 
         const template = await templateService.createTemplate(createRequest);
+        logger.info('Template created successfully', {
+          templateId: template.id,
+          templateName: template.name,
+          createRequest,
+        });
         console.log(chalk.green(`✅ Template "${template.name}" created successfully!`));
         console.log(chalk.dim(`ID: ${template.id}`));
       } catch (error) {
@@ -230,12 +259,14 @@ export function createTemplatesCommand(): Command {
     .option('-p, --parent <parent-id>', 'Parent task ID')
     .action(async (templateId: string, options) => {
       try {
+        logger.debug('Using template to create task', { templateId, options });
         const templateService = TaskTemplateService.getInstance();
         const boardService = BoardService.getInstance();
 
         // Get template
         const template = await templateService.getTemplate(templateId);
         if (!template) {
+          logger.warn('Template not found for use command', { templateId });
           console.error(chalk.red('❌ Template not found'));
           return;
         }
@@ -245,6 +276,7 @@ export function createTemplatesCommand(): Command {
         if (!boardId) {
           const boards = await boardService.getBoards();
           if (boards.length === 0) {
+            logger.warn('No boards available for task creation');
             console.error(chalk.red('❌ No boards available'));
             return;
           }
@@ -264,10 +296,11 @@ export function createTemplatesCommand(): Command {
         }
 
         // Extract variables from template
-        const variables = extractTemplateVariables(template.title_template + ' ' + (template.description_template || ''));
-        
+        const variables = extractTemplateVariables(`${template.title_template} ${template.description_template || ''}`);
+
         let variableValues: Record<string, any> = {};
         if (variables.length > 0) {
+          logger.debug('Template requires variables', { templateId, variables });
           console.log(chalk.blue('\n📝 Template Variables\n'));
           const variableAnswers = await inquirer.prompt(
             variables.map(variable => ({
@@ -290,7 +323,14 @@ export function createTemplatesCommand(): Command {
         };
 
         const result = await templateService.createTaskFromTemplate(createRequest);
-        
+        logger.info('Task created from template successfully', {
+          templateId,
+          taskId: result.task_id,
+          templateName: result.template_name,
+          appliedTags: result.applied_tags,
+          checklistItems: result.created_checklist_items,
+        });
+
         console.log(chalk.green(`\n✅ Task created from template "${result.template_name}"!`));
         console.log(`${chalk.bold('Task ID:')} ${result.task_id}`);
         console.log(`${chalk.bold('Title:')} ${result.title}`);
@@ -298,7 +338,9 @@ export function createTemplatesCommand(): Command {
           console.log(`${chalk.bold('Tags:')} ${result.applied_tags.join(', ')}`);
         }
         if (result.created_checklist_items > 0) {
-          console.log(`${chalk.bold('Checklist Items:')} ${result.created_checklist_items} created`);
+          console.log(
+            `${chalk.bold('Checklist Items:')} ${result.created_checklist_items} created`
+          );
         }
       } catch (error) {
         logger.error('Failed to create task from template:', error);
@@ -313,15 +355,21 @@ export function createTemplatesCommand(): Command {
     .option('-f, --force', 'Skip confirmation')
     .action(async (id: string, options) => {
       try {
+        logger.debug('Deleting template', { templateId: id, options });
         const templateService = TaskTemplateService.getInstance();
         const template = await templateService.getTemplate(id);
 
         if (!template) {
+          logger.warn('Template not found for delete command', { templateId: id });
           console.error(chalk.red('❌ Template not found'));
           return;
         }
 
         if (template.is_system) {
+          logger.warn('Attempted to delete system template', {
+            templateId: id,
+            templateName: template.name,
+          });
           console.error(chalk.red('❌ Cannot delete system templates'));
           return;
         }
@@ -337,12 +385,20 @@ export function createTemplatesCommand(): Command {
           ]);
 
           if (!confirmation.delete) {
+            logger.info('Template deletion cancelled by user', {
+              templateId: id,
+              templateName: template.name,
+            });
             console.log(chalk.yellow('❌ Template deletion cancelled'));
             return;
           }
         }
 
         await templateService.deleteTemplate(id);
+        logger.info('Template deleted successfully', {
+          templateId: id,
+          templateName: template.name,
+        });
         console.log(chalk.green(`✅ Template "${template.name}" deleted successfully!`));
       } catch (error) {
         logger.error('Failed to delete template:', error);
@@ -356,16 +412,22 @@ export function createTemplatesCommand(): Command {
     .description('Show template usage statistics')
     .action(async () => {
       try {
+        logger.debug('Retrieving template usage statistics');
         const templateService = TaskTemplateService.getInstance();
         const stats = await templateService.getUsageStats();
 
         if (stats.length === 0) {
+          logger.info('No template usage statistics available');
           console.log(chalk.yellow('No template usage statistics available.'));
           return;
         }
 
+        logger.info('Successfully retrieved template usage statistics', {
+          statsCount: stats.length,
+        });
+
         console.log(chalk.blue.bold('\n📊 Template Usage Statistics\n'));
-        
+
         stats.forEach((stat, index) => {
           console.log(`${index + 1}. ${chalk.bold(stat.template_name)}`);
           console.log(`   Usage Count: ${stat.usage_count}`);
@@ -385,8 +447,10 @@ export function createTemplatesCommand(): Command {
     .description('Initialize system templates')
     .action(async () => {
       try {
+        logger.debug('Initializing system templates');
         const templateService = TaskTemplateService.getInstance();
         await templateService.initializeSystemTemplates();
+        logger.info('System templates initialized successfully');
         console.log(chalk.green('✅ System templates initialized successfully!'));
       } catch (error) {
         logger.error('Failed to initialize system templates:', error);
@@ -404,8 +468,11 @@ function extractTemplateVariables(template: string): string[] {
   let match;
 
   while ((match = variableRegex.exec(template)) !== null) {
-    variables.add(match[1]);
+    if (match[1]) {
+      variables.add(match[1]);
+    }
   }
 
   return Array.from(variables).sort();
 }
+

@@ -1,4 +1,6 @@
 import type { WebSocket } from 'ws';
+import { SubscriptionManager } from './subscriptions';
+import { WebSocketManager } from './server';
 
 export interface WebSocketMessage {
   type: string;
@@ -167,6 +169,8 @@ export enum SubscriptionChannel {
   USER_PRESENCE = 'user_presence',
   SYSTEM_NOTIFICATIONS = 'system_notifications',
   BOARD_ANALYTICS = 'board_analytics',
+  DEPENDENCIES = 'dependencies',
+  SUBTASKS = 'subtasks',
 }
 
 // WebSocket Events
@@ -176,6 +180,87 @@ export enum WebSocketEvent {
   DISCONNECT = 'disconnect',
   ERROR = 'error',
   HEARTBEAT = 'heartbeat',
+}
+
+// Event Filter for client-side filtering
+export interface EventFilter {
+  includeEvents?: string[];
+  excludeEvents?: string[];
+  boardIds?: string[];
+  taskIds?: string[];
+  userIds?: string[];
+  priority?: {
+    min?: number;
+    max?: number;
+  };
+  tags?: string[];
+  status?: string[];
+}
+
+// Add dependency message types
+export interface AddDependencyMessage extends WebSocketMessage {
+  type: 'add_dependency';
+  payload: {
+    taskId: string;
+    dependsOnTaskId: string;
+    dependencyType?: 'blocks' | 'relates_to' | 'duplicates';
+  };
+}
+
+export interface RemoveDependencyMessage extends WebSocketMessage {
+  type: 'remove_dependency';
+  payload: {
+    taskId: string;
+    dependsOnTaskId: string;
+  };
+}
+
+// Add subtask message types
+export interface CreateSubtaskMessage extends WebSocketMessage {
+  type: 'create_subtask';
+  payload: {
+    parentTaskId: string;
+    title: string;
+    description?: string;
+    priority?: number;
+    assignee?: string;
+    due_date?: string;
+  };
+}
+
+export interface UpdateSubtaskMessage extends WebSocketMessage {
+  type: 'update_subtask';
+  payload: {
+    taskId: any;
+    subtaskId: string;
+    updates: Record<string, unknown>;
+  };
+}
+
+export interface DeleteSubtaskMessage extends WebSocketMessage {
+  type: 'delete_subtask';
+  payload: {
+    subtaskId: string;
+  };
+}
+
+// Bulk operation message
+export interface BulkOperationMessage extends WebSocketMessage {
+  type: 'bulk_operation';
+  payload: {
+    operation: 'update' | 'delete' | 'move' | 'assign';
+    taskIds: string[];
+    changes?: Record<string, unknown>;
+  };
+}
+
+// Filter subscription message
+export interface FilterSubscriptionMessage extends WebSocketMessage {
+  type: 'filter_subscription';
+  payload: {
+    channel: string;
+    filter: EventFilter;
+  };
 }
 
 // Rate Limiting
@@ -202,6 +287,6 @@ export interface MessageContext {
   clientId: string;
   client: WebSocketClient;
   message: WebSocketMessage;
-  subscriptionManager: Record<string, unknown>;
-  webSocketManager: Record<string, unknown>;
+  subscriptionManager: SubscriptionManager;
+  webSocketManager: WebSocketManager;
 }

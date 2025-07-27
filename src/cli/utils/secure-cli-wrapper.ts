@@ -727,6 +727,7 @@ export function addSecurityMiddleware(program: Command): Command {
 
   // Hook into the program's action handling
   const originalParse = program.parse.bind(program);
+  // eslint-disable-next-line no-param-reassign
   program.parse = function secureParse(argv?: readonly string[], options?: any) {
     const args = argv || process.argv;
 

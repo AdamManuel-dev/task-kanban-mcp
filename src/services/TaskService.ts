@@ -43,6 +43,7 @@ import type {
   CriticalPathResult,
   TaskImpactAnalysis,
 } from '@/types';
+import { TaskHistoryService } from './TaskHistoryService';
 
 /**
  * Request interface for creating new tasks
@@ -86,6 +87,7 @@ export interface UpdateTaskRequest {
   parent_task_id?: string | undefined;
   metadata?: string | undefined;
   progress?: number | undefined;
+  change_reason?: string | undefined; // Optional reason for the change
 }
 
 /**
@@ -671,12 +673,15 @@ export class TaskService {
         throw TaskService.createError('TASK_UPDATE_FAILED', 'Task disappeared after update');
       }
 
+      // Record history for changed fields
+      await this.recordTaskHistory(existingTask, data);
+
       // Auto-update parent task progress if this is a subtask and status changed
       if (
         (data.status !== undefined || data.progress !== undefined) &&
         existingTask.parent_task_id
       ) {
-        this.updateParentProgressOnSubtaskChange(id).catch(error => 
+        this.updateParentProgressOnSubtaskChange(id).catch(error =>
           logger.error('Failed to update parent progress on subtask change', { error, taskId: id })
         );
       }
@@ -1830,6 +1835,841 @@ export class TaskService {
     } catch (error) {
       logger.error('Failed to update parent progress on subtask change', { subtaskId, error });
       // Don't throw error - this is a background update that shouldn't fail the main operation
+    }
+  }
+
+  /**
+   * Record task history for changed fields
+   *
+   * @private
+   * @param {Task} existingTask - Task before changes
+   * @param {UpdateTaskRequest} updateData - Update request data
+   */
+  private async recordTaskHistory(
+    existingTask: Task,
+    updateData: UpdateTaskRequest
+  ): Promise<void> {
+    try {
+      const historyService = TaskHistoryService.getInstance();
+      const trackableFields = [
+        'title',
+        'description',
+        'priority',
+        'status',
+        'assignee',
+        'due_date',
+        'estimated_hours',
+        'actual_hours',
+        'progress',
+      ];
+
+      for (const field of trackableFields) {
+        const fieldKey = field as keyof UpdateTaskRequest;
+
+        if (updateData[fieldKey] !== undefined) {
+          const oldValue = existingTask[field as keyof Task];
+          const newValue = updateData[fieldKey];
+
+          // Only record if value actually changed
+          if (oldValue !== newValue) {
+            await historyService.recordChange({
+              task_id: existingTask.id,
+              field_name: field,
+              old_value: oldValue,
+              new_value: newValue,
+              changed_by: updateData.change_reason ? 'system' : null,
+              reason: updateData.change_reason,
+            });
+
+            logger.debug('Task history recorded', {
+              taskId: existingTask.id,
+              field,
+              oldValue,
+              newValue,
+              reason: updateData.change_reason,
+            });
+          }
+        }
+      }
+    } catch (error) {
+      logger.error('Failed to record task history', {
+        taskId: existingTask.id,
+        error,
+      });
+      // Don't throw error - history recording shouldn't fail the main operation
+    }
+  }
+
+  // ==============================================
+  // ENHANCED SUBTASK PROGRESS METHODS
+  // ==============================================
+
+  /**
+   * Calculates weighted parent task progress using advanced algorithms
+   *
+   * @param {string} parentTaskId - Parent task identifier
+   * @param {SubtaskWeight[]} weights - Optional custom weights for subtasks
+   * @returns {Promise<ProgressCalculationResult>} Detailed progress calculation result
+   */
+  async calculateWeightedParentProgress(
+    parentTaskId: string,
+    weights?: Array<{ subtask_id: string; weight_factor: number; weight_type: string }>
+  ): Promise<ProgressCalculationResult> {
+    try {
+      const subtasks = await this.getSubtasks(parentTaskId);
+
+      if (subtasks.length === 0) {
+        return {
+          parent_task_id: parentTaskId,
+          calculated_progress: 0,
+          subtask_breakdown: [],
+          total_weight: 0,
+          auto_complete_eligible: false,
+        };
+      }
+
+      const subtaskBreakdown: ProgressCalculationResult['subtask_breakdown'] = [];
+      let totalWeightedProgress = 0;
+      let totalWeight = 0;
+
+      for (const subtask of subtasks) {
+        // Determine weight factor
+        let weightFactor = 1; // Default equal weight
+        const customWeight = weights?.find(w => w.subtask_id === subtask.id);
+
+        if (customWeight) {
+          weightFactor = customWeight.weight_factor;
+        } else {
+          // Auto-calculate weight based on available data
+          weightFactor = this.calculateAutoWeight(subtask);
+        }
+
+        // Calculate individual progress
+        const individualProgress = this.calculateIndividualTaskProgress(subtask);
+
+        // Calculate weighted contribution
+        const weightedContribution = (individualProgress / 100) * weightFactor;
+
+        subtaskBreakdown.push({
+          subtask_id: subtask.id,
+          title: subtask.title,
+          status: subtask.status,
+          individual_progress: individualProgress,
+          weight_factor: weightFactor,
+          weighted_contribution: weightedContribution,
+        });
+
+        totalWeightedProgress += weightedContribution;
+        totalWeight += weightFactor;
+      }
+
+      // Calculate final progress percentage
+      const calculatedProgress =
+        totalWeight > 0 ? Math.round((totalWeightedProgress / totalWeight) * 100) : 0;
+
+      // Check auto-completion eligibility
+      const autoCompleteEligible = this.checkAutoCompleteEligibility(subtaskBreakdown);
+
+      const result: ProgressCalculationResult = {
+        parent_task_id: parentTaskId,
+        calculated_progress: calculatedProgress,
+        subtask_breakdown: subtaskBreakdown,
+        total_weight: totalWeight,
+        auto_complete_eligible: autoCompleteEligible,
+      };
+
+      // Update parent task progress
+      await this.updateTask(parentTaskId, { progress: calculatedProgress });
+
+      logger.info('Weighted parent task progress calculated', {
+        parentTaskId,
+        subtaskCount: subtasks.length,
+        calculatedProgress,
+        totalWeight,
+        autoCompleteEligible,
+      });
+
+      return result;
+    } catch (error) {
+      logger.error('Failed to calculate weighted parent progress', { parentTaskId, error });
+      throw error;
+    }
+  }
+
+  /**
+   * Calculates hierarchical progress for multi-level subtask structures
+   *
+   * @param {string} rootTaskId - Root task identifier
+   * @param {number} maxDepth - Maximum depth to traverse (default: 10)
+   * @returns {Promise<ProgressCalculationResult>} Hierarchical progress result
+   */
+  async calculateHierarchicalProgress(
+    rootTaskId: string,
+    maxDepth: number = 10
+  ): Promise<ProgressCalculationResult> {
+    try {
+      const result = await this.calculateHierarchicalProgressRecursive(
+        rootTaskId,
+        0,
+        maxDepth,
+        new Set()
+      );
+
+      logger.info('Hierarchical progress calculated', {
+        rootTaskId,
+        maxDepth,
+        finalProgress: result.calculated_progress,
+      });
+
+      return result;
+    } catch (error) {
+      logger.error('Failed to calculate hierarchical progress', { rootTaskId, error });
+      throw error;
+    }
+  }
+
+  /**
+   * Gets detailed subtask hierarchy information
+   *
+   * @param {string} rootTaskId - Root task identifier
+   * @returns {Promise<SubtaskHierarchy>} Hierarchical structure
+   */
+  async getSubtaskHierarchy(rootTaskId: string): Promise<SubtaskHierarchy> {
+    try {
+      const hierarchy = await this.buildSubtaskHierarchy(rootTaskId, [], 0);
+
+      logger.info('Subtask hierarchy retrieved', {
+        rootTaskId,
+        depth: hierarchy.depth,
+        totalDescendants: hierarchy.total_descendants,
+      });
+
+      return hierarchy;
+    } catch (error) {
+      logger.error('Failed to get subtask hierarchy', { rootTaskId, error });
+      throw error;
+    }
+  }
+
+  /**
+   * Sets custom weight for a subtask in progress calculations
+   *
+   * @param {string} subtaskId - Subtask identifier
+   * @param {number} weightFactor - Weight factor (0.1 to 5.0)
+   * @param {'hours' | 'priority' | 'custom'} weightType - Type of weighting
+   * @returns {Promise<void>}
+   */
+  async setSubtaskWeight(
+    subtaskId: string,
+    weightFactor: number,
+    weightType: 'hours' | 'priority' | 'custom' = 'custom'
+  ): Promise<void> {
+    try {
+      if (weightFactor < 0.1 || weightFactor > 5.0) {
+        throw new Error('Weight factor must be between 0.1 and 5.0');
+      }
+
+      // Store weight configuration in task metadata
+      const subtask = await this.getTaskById(subtaskId);
+      if (!subtask) {
+        throw new Error('Subtask not found');
+      }
+
+      const metadata = subtask.metadata ? JSON.parse(subtask.metadata) : {};
+      metadata.weight_config = {
+        weight_factor: weightFactor,
+        weight_type: weightType,
+        updated_at: new Date().toISOString(),
+      };
+
+      await this.updateTask(subtaskId, {
+        metadata: JSON.stringify(metadata),
+      });
+
+      // Recalculate parent progress if this is a subtask
+      if (subtask.parent_task_id) {
+        await this.calculateWeightedParentProgress(subtask.parent_task_id);
+      }
+
+      logger.info('Subtask weight updated', {
+        subtaskId,
+        weightFactor,
+        weightType,
+        parentTaskId: subtask.parent_task_id,
+      });
+    } catch (error) {
+      logger.error('Failed to set subtask weight', { subtaskId, weightFactor, error });
+      throw error;
+    }
+  }
+
+  // ==============================================
+  // PRIVATE HELPER METHODS FOR SUBTASK PROGRESS
+  // ==============================================
+
+  /**
+   * Calculates automatic weight based on task properties
+   *
+   * @private
+   * @param {Task} task - Task to calculate weight for
+   * @returns {number} Calculated weight factor
+   */
+  private calculateAutoWeight(task: Task): number {
+    // Check for custom weight in metadata
+    if (task.metadata) {
+      try {
+        const metadata = JSON.parse(task.metadata);
+        if (metadata.weight_config?.weight_factor) {
+          return metadata.weight_config.weight_factor;
+        }
+      } catch {
+        // Ignore JSON parse errors
+      }
+    }
+
+    // Auto-calculate based on estimated hours and priority
+    let weight = 1;
+
+    // Factor in estimated hours (normalize to reasonable range)
+    if (task.estimated_hours && task.estimated_hours > 0) {
+      weight = Math.min(task.estimated_hours / 8, 3); // Max 3x weight for effort
+    }
+
+    // Factor in priority (1-5 scale)
+    if (task.priority && task.priority > 0) {
+      const priorityMultiplier = 1 + (task.priority - 1) * 0.2; // 1.0 to 1.8 multiplier
+      weight *= priorityMultiplier;
+    }
+
+    // Ensure weight is within reasonable bounds
+    return Math.max(0.1, Math.min(weight, 5.0));
+  }
+
+  /**
+   * Calculates individual task progress considering status and custom progress
+   *
+   * @private
+   * @param {Task} task - Task to calculate progress for
+   * @returns {number} Progress percentage (0-100)
+   */
+  private calculateIndividualTaskProgress(task: Task): number {
+    // Use explicit progress if set
+    if (task.progress !== undefined && task.progress !== null) {
+      return Math.min(100, Math.max(0, task.progress));
+    }
+
+    // Fall back to status-based progress
+    switch (task.status) {
+      case 'done':
+        return 100;
+      case 'in_progress':
+        return 50; // Default for in-progress without explicit progress
+      case 'blocked':
+        return 25; // Some credit for blocked tasks that have been started
+      case 'todo':
+      case 'archived':
+      default:
+        return 0;
+    }
+  }
+
+  /**
+   * Checks if parent task is eligible for auto-completion
+   *
+   * @private
+   * @param {ProgressCalculationResult['subtask_breakdown']} breakdown - Subtask breakdown
+   * @returns {boolean} True if eligible for auto-completion
+   */
+  private checkAutoCompleteEligibility(
+    breakdown: ProgressCalculationResult['subtask_breakdown']
+  ): boolean {
+    // Auto-complete if all subtasks are done
+    return breakdown.every(item => item.status === 'done');
+  }
+
+  /**
+   * Recursively calculates hierarchical progress
+   *
+   * @private
+   * @param {string} taskId - Current task identifier
+   * @param {number} currentDepth - Current recursion depth
+   * @param {number} maxDepth - Maximum depth allowed
+   * @param {Set<string>} visited - Set of visited task IDs
+   * @returns {Promise<ProgressCalculationResult>} Progress calculation result
+   */
+  private async calculateHierarchicalProgressRecursive(
+    taskId: string,
+    currentDepth: number,
+    maxDepth: number,
+    visited: Set<string>
+  ): Promise<ProgressCalculationResult> {
+    if (currentDepth >= maxDepth || visited.has(taskId)) {
+      // Return basic progress for leaf nodes or cycle prevention
+      const task = await this.getTaskById(taskId);
+      return {
+        parent_task_id: taskId,
+        calculated_progress: task ? this.calculateIndividualTaskProgress(task) : 0,
+        subtask_breakdown: [],
+        total_weight: 1,
+        auto_complete_eligible: task?.status === 'done',
+      };
+    }
+
+    visited.add(taskId);
+
+    // Get direct subtasks
+    const subtasks = await this.getSubtasks(taskId);
+
+    if (subtasks.length === 0) {
+      // Leaf task - return individual progress
+      const task = await this.getTaskById(taskId);
+      return {
+        parent_task_id: taskId,
+        calculated_progress: task ? this.calculateIndividualTaskProgress(task) : 0,
+        subtask_breakdown: [],
+        total_weight: 1,
+        auto_complete_eligible: task?.status === 'done',
+      };
+    }
+
+    // Recursively calculate progress for each subtask
+    const subtaskResults: ProgressCalculationResult[] = [];
+    for (const subtask of subtasks) {
+      const subtaskResult = await this.calculateHierarchicalProgressRecursive(
+        subtask.id,
+        currentDepth + 1,
+        maxDepth,
+        new Set(visited)
+      );
+      subtaskResults.push(subtaskResult);
+    }
+
+    // Aggregate results
+    let totalWeightedProgress = 0;
+    let totalWeight = 0;
+    const subtaskBreakdown: ProgressCalculationResult['subtask_breakdown'] = [];
+
+    for (let i = 0; i < subtasks.length; i++) {
+      const subtask = subtasks[i];
+      const result = subtaskResults[i];
+      const weight = this.calculateAutoWeight(subtask);
+
+      subtaskBreakdown.push({
+        subtask_id: subtask.id,
+        title: subtask.title,
+        status: subtask.status,
+        individual_progress: result.calculated_progress,
+        weight_factor: weight,
+        weighted_contribution: (result.calculated_progress / 100) * weight,
+      });
+
+      totalWeightedProgress += (result.calculated_progress / 100) * weight;
+      totalWeight += weight;
+    }
+
+    const calculatedProgress =
+      totalWeight > 0 ? Math.round((totalWeightedProgress / totalWeight) * 100) : 0;
+
+    visited.delete(taskId);
+
+    return {
+      parent_task_id: taskId,
+      calculated_progress: calculatedProgress,
+      subtask_breakdown: subtaskBreakdown,
+      total_weight: totalWeight,
+      auto_complete_eligible: subtaskBreakdown.every(item => item.status === 'done'),
+    };
+  }
+
+  /**
+   * Builds hierarchical subtask structure
+   *
+   * @private
+   * @param {string} taskId - Current task identifier
+   * @param {string[]} path - Current path from root
+   * @param {number} depth - Current depth
+   * @returns {Promise<SubtaskHierarchy>} Hierarchical structure
+   */
+  private async buildSubtaskHierarchy(
+    taskId: string,
+    path: string[],
+    depth: number
+  ): Promise<SubtaskHierarchy> {
+    const subtasks = await this.getSubtasks(taskId);
+    const children: SubtaskHierarchy[] = [];
+    let totalDescendants = subtasks.length;
+
+    for (const subtask of subtasks) {
+      const childHierarchy = await this.buildSubtaskHierarchy(
+        subtask.id,
+        [...path, taskId],
+        depth + 1
+      );
+      children.push(childHierarchy);
+      totalDescendants += childHierarchy.total_descendants;
+    }
+
+    const parentTaskId = path.length > 0 ? path[path.length - 1] : undefined;
+
+    return {
+      task_id: taskId,
+      parent_task_id: parentTaskId,
+      depth,
+      path,
+      children,
+      total_descendants: totalDescendants,
+    };
+  }
+
+  // ==============================================
+  // ENHANCED DEPENDENCY ANALYSIS METHODS
+  // ==============================================
+
+  /**
+   * Gets tasks that can be executed in parallel (no dependency conflicts)
+   *
+   * @param {string} boardId - Board identifier
+   * @returns {Promise<Task[][]>} Array of parallel execution groups
+   * @description Analyzes the dependency graph to identify groups of tasks
+   * that can be executed simultaneously without conflicts
+   */
+  async getParallelExecutableTasks(boardId: string): Promise<Task[][]> {
+    try {
+      const tasks = await this.getTasks({
+        board_id: boardId,
+        status: ['todo', 'in_progress'] as any,
+      });
+
+      const parallelGroups: Task[][] = [];
+      const processedTasks = new Set<string>();
+
+      for (const task of tasks) {
+        if (processedTasks.has(task.id)) continue;
+
+        const currentGroup: Task[] = [task];
+        processedTasks.add(task.id);
+
+        // Find other tasks that don't depend on this task or vice versa
+        for (const otherTask of tasks) {
+          if (processedTasks.has(otherTask.id)) continue;
+
+          const hasConflict = await this.hasDependencyConflict(task.id, otherTask.id);
+          if (!hasConflict) {
+            currentGroup.push(otherTask);
+            processedTasks.add(otherTask.id);
+          }
+        }
+
+        parallelGroups.push(currentGroup);
+      }
+
+      logger.info('Generated parallel execution groups', {
+        boardId,
+        groupCount: parallelGroups.length,
+        totalTasks: tasks.length,
+      });
+
+      return parallelGroups;
+    } catch (error) {
+      logger.error('Failed to get parallel executable tasks', { boardId, error });
+      throw error;
+    }
+  }
+
+  /**
+   * Gets tasks filtered by dependency depth from root tasks
+   *
+   * @param {string} boardId - Board identifier
+   * @param {number} maxDepth - Maximum dependency depth
+   * @returns {Promise<Task[]>} Tasks within the specified depth
+   */
+  async getTasksByDependencyDepth(boardId: string, maxDepth: number): Promise<Task[]> {
+    try {
+      const allTasks = await this.getTasks({ board_id: boardId });
+      const tasksWithDepth: Array<{ task: Task; depth: number }> = [];
+
+      for (const task of allTasks) {
+        const depth = await this.calculateDependencyDepth(task.id);
+        if (depth <= maxDepth) {
+          tasksWithDepth.push({ task, depth });
+        }
+      }
+
+      // Sort by depth, then by priority
+      tasksWithDepth.sort((a, b) => {
+        if (a.depth !== b.depth) return a.depth - b.depth;
+        return (b.task.priority ?? 0) - (a.task.priority ?? 0);
+      });
+
+      logger.info('Retrieved tasks by dependency depth', {
+        boardId,
+        maxDepth,
+        resultCount: tasksWithDepth.length,
+      });
+
+      return tasksWithDepth.map(item => item.task);
+    } catch (error) {
+      logger.error('Failed to get tasks by dependency depth', { boardId, maxDepth, error });
+      throw error;
+    }
+  }
+
+  /**
+   * Calculates the dependency chain length for a task
+   *
+   * @param {string} taskId - Task identifier
+   * @returns {Promise<number>} Length of the longest dependency chain
+   */
+  async getDependencyChainLength(taskId: string): Promise<number> {
+    try {
+      const visited = new Set<string>();
+      return await this.calculateMaxDepthRecursive(taskId, visited);
+    } catch (error) {
+      logger.error('Failed to get dependency chain length', { taskId, error });
+      throw error;
+    }
+  }
+
+  /**
+   * Gets all tasks that are part of the critical path
+   *
+   * @param {string} boardId - Board identifier
+   * @returns {Promise<Set<string>>} Set of task IDs in critical path
+   */
+  async getTasksInCriticalPath(boardId: string): Promise<Set<string>> {
+    try {
+      const criticalPath = await this.getCriticalPath(boardId);
+      const criticalTaskIds = new Set<string>();
+
+      criticalPath.critical_path.forEach(task => {
+        criticalTaskIds.add(task.id);
+      });
+
+      logger.info('Retrieved critical path task IDs', {
+        boardId,
+        criticalTaskCount: criticalTaskIds.size,
+      });
+
+      return criticalTaskIds;
+    } catch (error) {
+      logger.error('Failed to get tasks in critical path', { boardId, error });
+      throw error;
+    }
+  }
+
+  /**
+   * Calculates optimal earliest start dates for tasks based on dependencies
+   *
+   * @param {string[]} taskIds - Array of task identifiers
+   * @returns {Promise<Map<string, Date>>} Map of task ID to earliest start date
+   */
+  async getEarliestStartDates(taskIds: string[]): Promise<Map<string, Date>> {
+    try {
+      const startDates = new Map<string, Date>();
+      const now = new Date();
+
+      for (const taskId of taskIds) {
+        const earliestStart = await this.calculateEarliestStartDate(taskId, now);
+        startDates.set(taskId, earliestStart);
+      }
+
+      logger.info('Calculated earliest start dates', {
+        taskCount: taskIds.length,
+        calculatedDates: startDates.size,
+      });
+
+      return startDates;
+    } catch (error) {
+      logger.error('Failed to get earliest start dates', { taskIds, error });
+      throw error;
+    }
+  }
+
+  /**
+   * Performs bulk dependency operations with validation
+   *
+   * @param {Array<{taskId: string; dependsOnTaskId: string; operation: 'add' | 'remove'}>} operations
+   * @returns {Promise<void>}
+   */
+  async bulkDependencyOperations(
+    operations: Array<{ taskId: string; dependsOnTaskId: string; operation: 'add' | 'remove' }>
+  ): Promise<void> {
+    try {
+      // Validate all operations first
+      for (const op of operations) {
+        if (op.operation === 'add') {
+          const wouldCreateCycle = await this.wouldCreateCircularDependency(
+            op.taskId,
+            op.dependsOnTaskId
+          );
+          if (wouldCreateCycle) {
+            throw new Error(
+              `Operation would create circular dependency: ${op.taskId} -> ${op.dependsOnTaskId}`
+            );
+          }
+        }
+      }
+
+      // Execute all operations
+      for (const op of operations) {
+        if (op.operation === 'add') {
+          await this.addDependency(op.taskId, op.dependsOnTaskId, 'blocks');
+        } else {
+          await this.removeDependency(op.taskId, op.dependsOnTaskId);
+        }
+      }
+
+      logger.info('Completed bulk dependency operations', {
+        operationCount: operations.length,
+        addOperations: operations.filter(op => op.operation === 'add').length,
+        removeOperations: operations.filter(op => op.operation === 'remove').length,
+      });
+    } catch (error) {
+      logger.error('Failed to execute bulk dependency operations', { operations, error });
+      throw error;
+    }
+  }
+
+  // ==============================================
+  // PRIVATE HELPER METHODS FOR ENHANCED FEATURES
+  // ==============================================
+
+  /**
+   * Checks if two tasks have a dependency conflict (direct or indirect)
+   *
+   * @private
+   * @param {string} taskId1 - First task ID
+   * @param {string} taskId2 - Second task ID
+   * @returns {Promise<boolean>} True if there's a dependency conflict
+   */
+  private async hasDependencyConflict(taskId1: string, taskId2: string): Promise<boolean> {
+    try {
+      // Check if either task depends on the other (direct or indirect)
+      const task1Dependencies = await this.getUpstreamTasks(taskId1);
+      const task2Dependencies = await this.getUpstreamTasks(taskId2);
+
+      return task1Dependencies.has(taskId2) || task2Dependencies.has(taskId1);
+    } catch (error) {
+      logger.error('Failed to check dependency conflict', { taskId1, taskId2, error });
+      return true; // Err on the side of caution
+    }
+  }
+
+  /**
+   * Calculates the dependency depth of a task (distance from root tasks)
+   *
+   * @private
+   * @param {string} taskId - Task identifier
+   * @returns {Promise<number>} Dependency depth
+   */
+  private async calculateDependencyDepth(taskId: string): Promise<number> {
+    try {
+      const visited = new Set<string>();
+      return await this.calculateDepthFromRoot(taskId, visited, 0);
+    } catch (error) {
+      logger.error('Failed to calculate dependency depth', { taskId, error });
+      return 0;
+    }
+  }
+
+  /**
+   * Recursively calculates maximum dependency depth
+   *
+   * @private
+   * @param {string} taskId - Task identifier
+   * @param {Set<string>} visited - Set of visited task IDs
+   * @returns {Promise<number>} Maximum depth
+   */
+  private async calculateMaxDepthRecursive(taskId: string, visited: Set<string>): Promise<number> {
+    if (visited.has(taskId)) return 0;
+    visited.add(taskId);
+
+    const dependencies = await this.getTaskDependencies(taskId);
+    if (dependencies.length === 0) return 1;
+
+    let maxDepth = 0;
+    for (const dep of dependencies) {
+      const depth = await this.calculateMaxDepthRecursive(dep.depends_on_task_id, visited);
+      maxDepth = Math.max(maxDepth, depth);
+    }
+
+    return maxDepth + 1;
+  }
+
+  /**
+   * Recursively calculates depth from root tasks
+   *
+   * @private
+   * @param {string} taskId - Task identifier
+   * @param {Set<string>} visited - Set of visited task IDs
+   * @param {number} currentDepth - Current depth level
+   * @returns {Promise<number>} Depth from root
+   */
+  private async calculateDepthFromRoot(
+    taskId: string,
+    visited: Set<string>,
+    currentDepth: number
+  ): Promise<number> {
+    if (visited.has(taskId)) return currentDepth;
+    visited.add(taskId);
+
+    const dependencies = await this.getTaskDependencies(taskId);
+    if (dependencies.length === 0) return currentDepth; // Root task
+
+    let minDepth = Infinity;
+    for (const dep of dependencies) {
+      const depth = await this.calculateDepthFromRoot(
+        dep.depends_on_task_id,
+        new Set(visited),
+        currentDepth + 1
+      );
+      minDepth = Math.min(minDepth, depth);
+    }
+
+    return minDepth === Infinity ? currentDepth : minDepth;
+  }
+
+  /**
+   * Calculates the earliest possible start date for a task
+   *
+   * @private
+   * @param {string} taskId - Task identifier
+   * @param {Date} projectStart - Project start date
+   * @returns {Promise<Date>} Earliest start date
+   */
+  private async calculateEarliestStartDate(taskId: string, projectStart: Date): Promise<Date> {
+    try {
+      const dependencies = await this.getTaskDependencies(taskId);
+      if (dependencies.length === 0) {
+        return projectStart; // No dependencies, can start immediately
+      }
+
+      let latestFinish = projectStart;
+
+      for (const dep of dependencies) {
+        const depTask = await this.getTaskById(dep.depends_on_task_id);
+        if (!depTask) continue;
+
+        // Recursively calculate earliest start for dependency
+        const depEarliestStart = await this.calculateEarliestStartDate(
+          dep.depends_on_task_id,
+          projectStart
+        );
+
+        // Add estimated duration to get finish date
+        const estimatedDays = depTask.estimated_hours ? Math.ceil(depTask.estimated_hours / 8) : 1;
+        const depFinish = new Date(depEarliestStart);
+        depFinish.setDate(depFinish.getDate() + estimatedDays);
+
+        if (depFinish > latestFinish) {
+          latestFinish = depFinish;
+        }
+      }
+
+      return latestFinish;
+    } catch (error) {
+      logger.error('Failed to calculate earliest start date', { taskId, error });
+      return projectStart;
     }
   }
 }

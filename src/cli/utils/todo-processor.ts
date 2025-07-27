@@ -176,7 +176,8 @@ export class TodoProcessor {
               if (!options.dryRun) {
                 // Simulate task implementation
                 await new Promise(resolve => setTimeout(resolve, 100));
-                todo.completed = true;
+                const updatedTodo = { ...todo, completed: true };
+                todos.set(todo.id, updatedTodo);
               }
             },
             skip: () => {
@@ -216,7 +217,8 @@ export class TodoProcessor {
             task: async () => {
               if (!options.dryRun) {
                 await new Promise(resolve => setTimeout(resolve, 100));
-                todo.completed = true;
+                const updatedTodo = { ...todo, completed: true };
+                todos.set(todo.id, updatedTodo);
               }
             },
           }));

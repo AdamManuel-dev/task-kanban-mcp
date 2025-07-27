@@ -14,7 +14,7 @@ describe('Validation Type Safety Tests', () => {
           title: 'Test Task',
           description: 'Test Description',
           board_id: 'board-123',
-          priority: 5
+          priority: 5,
         };
 
         expect(() => validateInput(TaskValidation.create, validData)).not.toThrow();
@@ -42,7 +42,7 @@ describe('Validation Type Safety Tests', () => {
 
       it('should handle optional fields correctly', () => {
         const minimalData = {
-          title: 'Minimal Task'
+          title: 'Minimal Task',
         };
 
         expect(() => validateInput(TaskValidation.create, minimalData)).not.toThrow();
@@ -56,7 +56,7 @@ describe('Validation Type Safety Tests', () => {
         const dataWithWhitespace = {
           title: '  Test Task  ',
           description: '  Test Description  ',
-          tags: ['  tag1  ', '  tag2  ']
+          tags: ['  tag1  ', '  tag2  '],
         };
 
         const result = validateInput(TaskValidation.create, dataWithWhitespace);
@@ -66,16 +66,12 @@ describe('Validation Type Safety Tests', () => {
       });
 
       it('should validate date formats', () => {
-        const validDates = [
-          '2024-12-31',
-          '2024-01-01T00:00:00Z',
-          '2024-06-15T14:30:00.000Z'
-        ];
+        const validDates = ['2024-12-31', '2024-01-01T00:00:00Z', '2024-06-15T14:30:00.000Z'];
 
         validDates.forEach(date => {
           const data = {
             title: 'Test Task',
-            due_date: date
+            due_date: date,
           };
           expect(() => validateInput(TaskValidation.create, data)).not.toThrow();
         });
@@ -85,13 +81,13 @@ describe('Validation Type Safety Tests', () => {
           '31-12-2024',
           '2024/12/31',
           '2024-13-01',
-          '2024-12-32'
+          '2024-12-32',
         ];
 
         invalidDates.forEach(date => {
           const data = {
             title: 'Test Task',
-            due_date: date
+            due_date: date,
           };
           expect(() => validateInput(TaskValidation.create, data)).toThrow();
         });
@@ -105,7 +101,7 @@ describe('Validation Type Safety Tests', () => {
           { description: 'Updated Description' },
           { priority: 8 },
           { status: 'in_progress' },
-          { tags: ['updated', 'tags'] }
+          { tags: ['updated', 'tags'] },
         ];
 
         partialUpdates.forEach(update => {
@@ -123,7 +119,7 @@ describe('Validation Type Safety Tests', () => {
           { priority: 15 }, // priority too high
           { status: 'invalid' }, // invalid status
           { estimated_hours: -5 }, // negative hours
-          { actual_hours: 'not_number' } // wrong type
+          { actual_hours: 'not_number' }, // wrong type
         ];
 
         invalidUpdates.forEach(update => {
@@ -141,7 +137,7 @@ describe('Validation Type Safety Tests', () => {
           { assignee: 'user@example.com' },
           { has_due_date: true },
           { tags: ['urgent', 'bug'] },
-          { search: 'search term' }
+          { search: 'search term' },
         ];
 
         validFilters.forEach(filter => {
@@ -157,7 +153,7 @@ describe('Validation Type Safety Tests', () => {
           { tags: 'not_array' }, // wrong tags type
           { limit: 0 }, // zero limit
           { limit: 1001 }, // limit too high
-          { offset: -1 } // negative offset
+          { offset: -1 }, // negative offset
         ];
 
         invalidFilters.forEach(filter => {
@@ -173,7 +169,7 @@ describe('Validation Type Safety Tests', () => {
         const validData = {
           content: 'This is a test note',
           category: 'general',
-          pinned: false
+          pinned: false,
         };
 
         expect(() => validateInput(NoteValidation.create, validData)).not.toThrow();
@@ -185,7 +181,7 @@ describe('Validation Type Safety Tests', () => {
 
       it('should require content field', () => {
         const invalidData = {
-          category: 'general'
+          category: 'general',
         };
 
         expect(() => validateInput(NoteValidation.create, invalidData)).toThrow();
@@ -193,25 +189,25 @@ describe('Validation Type Safety Tests', () => {
 
       it('should validate note categories', () => {
         const validCategories = ['general', 'progress', 'blocker', 'decision', 'question'];
-        
+
         validCategories.forEach(category => {
           const data = {
             content: 'Test note',
-            category
+            category,
           };
           expect(() => validateInput(NoteValidation.create, data)).not.toThrow();
         });
 
         const invalidCategory = {
           content: 'Test note',
-          category: 'invalid_category'
+          category: 'invalid_category',
         };
         expect(() => validateInput(NoteValidation.create, invalidCategory)).toThrow();
       });
 
       it('should handle optional fields', () => {
         const minimalData = {
-          content: 'Minimal note'
+          content: 'Minimal note',
         };
 
         expect(() => validateInput(NoteValidation.create, minimalData)).not.toThrow();
@@ -227,7 +223,7 @@ describe('Validation Type Safety Tests', () => {
         const partialUpdates = [
           { content: 'Updated content' },
           { category: 'progress' },
-          { pinned: true }
+          { pinned: true },
         ];
 
         partialUpdates.forEach(update => {
@@ -249,15 +245,15 @@ describe('Validation Type Safety Tests', () => {
           "' OR '1'='1",
           "'; DELETE FROM tasks WHERE '1'='1'; --",
           "admin'--",
-          "' UNION SELECT * FROM users --"
+          "' UNION SELECT * FROM users --",
         ];
 
         sqlInjectionAttempts.forEach(maliciousInput => {
           const data = {
             title: maliciousInput,
-            description: 'Test'
+            description: 'Test',
           };
-          
+
           // The validation should not throw, but the input should be sanitized
           const result = validateInput(TaskValidation.create, data);
           expect(result.title).toBe(maliciousInput); // But it will be escaped at the DB level
@@ -272,15 +268,15 @@ describe('Validation Type Safety Tests', () => {
           '<img src="x" onerror="alert(1)">',
           'javascript:void(0)',
           '<svg onload="alert(1)">',
-          '"><script>alert("xss")</script>'
+          '"><script>alert("xss")</script>',
         ];
 
         xssAttempts.forEach(maliciousInput => {
           const data = {
             title: 'Test Task',
-            description: maliciousInput
+            description: maliciousInput,
           };
-          
+
           // Should not throw - input sanitization happens at rendering level
           expect(() => validateInput(TaskValidation.create, data)).not.toThrow();
         });
@@ -292,7 +288,7 @@ describe('Validation Type Safety Tests', () => {
         const unicodeData = {
           title: '测试任务 🚀',
           description: 'Тестовое описание с émojis 🎉',
-          tags: ['العربية', '日本語', 'Ελληνικά']
+          tags: ['العربية', '日本語', 'Ελληνικά'],
         };
 
         expect(() => validateInput(TaskValidation.create, unicodeData)).not.toThrow();
@@ -305,7 +301,7 @@ describe('Validation Type Safety Tests', () => {
         const longUnicodeString = '🚀'.repeat(1000);
         const data = {
           title: 'Test',
-          description: longUnicodeString
+          description: longUnicodeString,
         };
 
         // Should validate without issues (length limits enforced elsewhere)
@@ -344,7 +340,7 @@ describe('Validation Type Safety Tests', () => {
       it('should not auto-convert string numbers to numbers', () => {
         const data = {
           title: 'Test',
-          priority: '5' // String instead of number
+          priority: '5', // String instead of number
         };
 
         expect(() => validateInput(TaskValidation.create, data)).toThrow();
@@ -353,7 +349,7 @@ describe('Validation Type Safety Tests', () => {
       it('should not auto-convert string booleans to booleans', () => {
         const data = {
           content: 'Test note',
-          pinned: 'true' // String instead of boolean
+          pinned: 'true', // String instead of boolean
         };
 
         expect(() => validateInput(NoteValidation.create, data)).toThrow();
@@ -362,12 +358,12 @@ describe('Validation Type Safety Tests', () => {
       it('should handle null vs undefined correctly', () => {
         const dataWithNull = {
           title: 'Test',
-          description: null
+          description: null,
         };
 
         const dataWithUndefined = {
           title: 'Test',
-          description: undefined
+          description: undefined,
         };
 
         // Both should be handled consistently
@@ -381,7 +377,7 @@ describe('Validation Type Safety Tests', () => {
         const largeData = {
           title: 'Test Task',
           description: 'A'.repeat(10000), // Large description
-          tags: Array.from({ length: 100 }, (_, i) => `tag${i}`) // Many tags
+          tags: Array.from({ length: 100 }, (_, i) => `tag${i}`), // Many tags
         };
 
         const start = performance.now();
@@ -402,7 +398,7 @@ describe('Validation Type Safety Tests', () => {
           has_due_date: true,
           assignee: 'user@example.com',
           limit: 100,
-          offset: 0
+          offset: 0,
         };
 
         const start = performance.now();
@@ -421,7 +417,7 @@ describe('Validation Type Safety Tests', () => {
         description: 'Test Description',
         priority: 5,
         unknownField: 'should be ignored',
-        anotherUnknownField: 123
+        anotherUnknownField: 123,
       };
 
       // Zod should strip unknown fields by default
@@ -434,7 +430,7 @@ describe('Validation Type Safety Tests', () => {
     it('should maintain type safety with partial schemas', () => {
       // Test that partial validation maintains type safety
       const partialUpdate = {
-        priority: 8
+        priority: 8,
       };
 
       const result = validateInput(TaskValidation.update, partialUpdate);

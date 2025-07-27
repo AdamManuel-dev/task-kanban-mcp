@@ -31,11 +31,13 @@ export class TaskTemplateService {
   /**
    * Get all active templates
    */
-  async getTemplates(options: {
-    category?: string;
-    includeInactive?: boolean;
-    onlySystem?: boolean;
-  } = {}): Promise<TaskTemplate[]> {
+  async getTemplates(
+    options: {
+      category?: string;
+      includeInactive?: boolean;
+      onlySystem?: boolean;
+    } = {}
+  ): Promise<TaskTemplate[]> {
     try {
       let query = 'SELECT * FROM task_templates WHERE 1=1';
       const params: any[] = [];
@@ -61,7 +63,9 @@ export class TaskTemplateService {
       return rows.map(this.mapRowToTemplate);
     } catch (error) {
       logger.error('Failed to get templates:', error);
-      throw new Error(`Failed to get templates: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to get templates: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -70,14 +74,13 @@ export class TaskTemplateService {
    */
   async getTemplate(id: string): Promise<TaskTemplate | null> {
     try {
-      const row = await dbConnection.queryOne(
-        'SELECT * FROM task_templates WHERE id = ?',
-        [id]
-      );
+      const row = await dbConnection.queryOne('SELECT * FROM task_templates WHERE id = ?', [id]);
       return row ? this.mapRowToTemplate(row) : null;
     } catch (error) {
       logger.error(`Failed to get template ${id}:`, error);
-      throw new Error(`Failed to get template: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to get template: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -125,7 +128,9 @@ export class TaskTemplateService {
       return template;
     } catch (error) {
       logger.error('Failed to create template:', error);
-      throw new Error(`Failed to create template: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to create template: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -143,8 +148,14 @@ export class TaskTemplateService {
       const params: any[] = [];
 
       const fields = [
-        'name', 'description', 'category', 'title_template', 'description_template',
-        'priority', 'estimated_hours', 'is_active'
+        'name',
+        'description',
+        'category',
+        'title_template',
+        'description_template',
+        'priority',
+        'estimated_hours',
+        'is_active',
       ];
 
       for (const field of fields) {
@@ -188,7 +199,9 @@ export class TaskTemplateService {
       return updated;
     } catch (error) {
       logger.error(`Failed to update template ${id}:`, error);
-      throw new Error(`Failed to update template: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to update template: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -206,7 +219,9 @@ export class TaskTemplateService {
       logger.info(`Deleted template: ${id}`);
     } catch (error) {
       logger.error(`Failed to delete template ${id}:`, error);
-      throw new Error(`Failed to delete template: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to delete template: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -226,7 +241,7 @@ export class TaskTemplateService {
 
       // Process template variables
       const title = this.processTemplate(template.title_template, request.variables);
-      const description = template.description_template 
+      const description = template.description_template
         ? this.processTemplate(template.description_template, request.variables)
         : '';
 
@@ -270,7 +285,9 @@ export class TaskTemplateService {
       };
     } catch (error) {
       logger.error('Failed to create task from template:', error);
-      throw new Error(`Failed to create task from template: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to create task from template: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -300,7 +317,9 @@ export class TaskTemplateService {
       }));
     } catch (error) {
       logger.error('Failed to get usage stats:', error);
-      throw new Error(`Failed to get usage stats: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to get usage stats: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -380,7 +399,7 @@ export class TaskTemplateService {
       }
 
       const systemTemplates = this.getDefaultSystemTemplates();
-      
+
       for (const template of systemTemplates) {
         await this.createSystemTemplate(template);
       }
@@ -418,7 +437,7 @@ export class TaskTemplateService {
 
   private processTemplate(template: string, variables: Record<string, any>): string {
     let result = template;
-    
+
     // Replace variables in format {{variable_name}}
     for (const [key, value] of Object.entries(variables)) {
       const pattern = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
@@ -435,7 +454,9 @@ export class TaskTemplateService {
     );
   }
 
-  private async createSystemTemplate(template: TaskTemplateCreateRequest & { is_system: boolean }): Promise<void> {
+  private async createSystemTemplate(
+    template: TaskTemplateCreateRequest & { is_system: boolean }
+  ): Promise<void> {
     const id = randomUUID();
     const now = new Date().toISOString();
 
@@ -500,7 +521,7 @@ export class TaskTemplateService {
           'Identify root cause',
           'Implement fix',
           'Test fix',
-          'Update documentation'
+          'Update documentation',
         ],
         custom_fields: {},
         is_system: true,
@@ -531,7 +552,7 @@ As a {{user_type}}, I want {{goal}} so that {{benefit}}.
           'Create design mockups',
           'Implement feature',
           'Write tests',
-          'Update documentation'
+          'Update documentation',
         ],
         custom_fields: {},
         is_system: true,
@@ -556,11 +577,7 @@ As a {{user_type}}, I want {{goal}} so that {{benefit}}.
         priority: 2,
         estimated_hours: 1,
         tags: ['meeting', 'action-item'],
-        checklist_items: [
-          'Clarify requirements',
-          'Complete action',
-          'Report back to team'
-        ],
+        checklist_items: ['Clarify requirements', 'Complete action', 'Report back to team'],
         custom_fields: {},
         is_system: true,
       },

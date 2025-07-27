@@ -693,8 +693,8 @@ class GlobalErrorHandler {
         }
         if (error instanceof NotFoundError) {
           return new NotFoundError(
-            ((error.details as Record<string, unknown>)?.resource as string) || 'Resource',
-            ((error.details as Record<string, unknown>)?.identifier as string | number) ||
+            ((error.details as Record<string, unknown>)?.['resource'] as string) || 'Resource',
+            ((error.details as Record<string, unknown>)?.['identifier'] as string | number) ||
               'unknown',
             context
           );
@@ -779,7 +779,10 @@ export function createServiceErrorHandler(serviceName: string) {
   ): PropertyDescriptor {
     const originalMethod = descriptor.value;
 
-    descriptor.value = async function (this: T, ...args: unknown[]): Promise<unknown> {
+    descriptor.value = async function wrappedErrorHandlerMethod(
+      this: T,
+      ...args: unknown[]
+    ): Promise<unknown> {
       const context: ErrorContext = {
         service: serviceName,
         method: propertyKey,

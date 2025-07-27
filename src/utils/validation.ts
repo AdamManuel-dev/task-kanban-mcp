@@ -611,7 +611,7 @@ export function createValidatedService<T extends object>(
         return originalMethod;
       }
 
-      return function (this: any, ...args: any[]) {
+      return function validatedMethod(this: any, ...args: any[]) {
         // Validate the first argument (usually the data)
         if (args.length > 0 && args[0] !== undefined) {
           validateInput(validationSchema, args[0]);

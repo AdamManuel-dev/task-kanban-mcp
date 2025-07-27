@@ -24,6 +24,12 @@ export interface AuthPayload {
   };
 }
 
+// Authentication message
+export interface AuthMessage extends WebSocketMessage {
+  type: 'auth';
+  payload: AuthPayload;
+}
+
 // System notification payload
 export interface SystemNotification {
   type: 'info' | 'warning' | 'error' | 'success';
@@ -205,6 +211,61 @@ export interface DependencyBlockedMessage extends WebSocketMessage {
   };
 }
 
+export interface DependencyAddedMessage extends WebSocketMessage {
+  type: 'dependency:added';
+  data: {
+    taskId: string;
+    dependsOnTaskId: string;
+    dependencyType: 'blocks' | 'relates_to' | 'duplicates';
+    addedBy: string;
+    boardId: string;
+  };
+}
+
+export interface DependencyRemovedMessage extends WebSocketMessage {
+  type: 'dependency:removed';
+  data: {
+    taskId: string;
+    dependsOnTaskId: string;
+    removedBy: string;
+    boardId: string;
+  };
+}
+
+export interface SubtaskCreatedMessage extends WebSocketMessage {
+  type: 'subtask:created';
+  data: {
+    subtask: Task;
+    parentTaskId: string;
+    createdBy: string;
+    boardId: string;
+    parentProgress?: number;
+  };
+}
+
+export interface SubtaskUpdatedMessage extends WebSocketMessage {
+  type: 'subtask:updated';
+  data: {
+    subtask: Task;
+    changes: Record<string, unknown>;
+    parentTaskId: string;
+    updatedBy: string;
+    boardId: string;
+    parentProgress?: number;
+  };
+}
+
+export interface SubtaskDeletedMessage extends WebSocketMessage {
+  type: 'subtask:deleted';
+  data: {
+    subtaskId: string;
+    parentTaskId: string;
+    deletedBy: string;
+    boardId: string;
+    parentProgress?: number;
+  };
+}
+
 export interface SubtaskCompletedMessage extends WebSocketMessage {
   type: 'subtask:completed';
   data: {
@@ -213,6 +274,18 @@ export interface SubtaskCompletedMessage extends WebSocketMessage {
     completedBy: string;
     boardId: string;
     parentProgress?: number;
+  };
+}
+
+export interface BulkOperationMessage extends WebSocketMessage {
+  type: 'bulk:operation';
+  data: {
+    operation: 'update' | 'delete' | 'move' | 'assign';
+    taskIds: string[];
+    changes?: Record<string, unknown>;
+    operatedBy: string;
+    boardId: string;
+    affectedCount: number;
   };
 }
 
@@ -235,7 +308,13 @@ export type AllWebSocketMessages =
   | SubscriptionErrorMessage
   | PriorityChangedMessage
   | DependencyBlockedMessage
-  | SubtaskCompletedMessage;
+  | DependencyAddedMessage
+  | DependencyRemovedMessage
+  | SubtaskCreatedMessage
+  | SubtaskUpdatedMessage
+  | SubtaskDeletedMessage
+  | SubtaskCompletedMessage
+  | BulkOperationMessage;
 
 // Publication context
 export interface PublicationContext {

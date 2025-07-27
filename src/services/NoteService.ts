@@ -595,14 +595,18 @@ export class NoteService {
       >(sql, params);
 
       return results.map(result => {
-        NoteService.convertNoteDates(result);
+        const processedResult = { ...result };
+        NoteService.convertNoteDates(processedResult);
 
         if (highlight) {
-          result.highlighted_content = NoteService.highlightSearchTerm(result.content, query);
+          processedResult.highlighted_content = NoteService.highlightSearchTerm(
+            result.content,
+            query
+          );
         }
 
         return {
-          ...result,
+          ...processedResult,
           task_title: result.task_title,
           board_name: result.board_name,
           relevance_score: result.relevance_score,
@@ -995,8 +999,12 @@ export class NoteService {
    * @param note Note object with potentially string-based dates
    */
   private static convertNoteDates(note: Note): void {
-    note.created_at = new Date(note.created_at);
-    note.updated_at = new Date(note.updated_at);
+    if (typeof note.created_at === 'string') {
+      note.created_at = new Date(note.created_at);
+    }
+    if (typeof note.updated_at === 'string') {
+      note.updated_at = new Date(note.updated_at);
+    }
   }
 
   /**

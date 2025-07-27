@@ -80,6 +80,7 @@ export interface Task {
   estimated_hours?: number | undefined;
   actual_hours?: number | undefined;
   parent_task_id?: string | undefined;
+  progress?: number | undefined;
   created_at: Date;
   updated_at: Date;
   completed_at?: Date | undefined;
@@ -270,4 +271,75 @@ export interface TaskImpactAnalysis {
   upstream_dependencies: Task[];
   impact_score: number;
   risk_level: 'low' | 'medium' | 'high';
+}
+
+/**
+ * Subtask weight configuration for weighted progress calculation
+ *
+ * @interface SubtaskWeight
+ * @description Defines how much weight a specific subtask contributes to parent task progress.
+ * Allows for different weighting strategies based on effort, priority, or custom values.
+ */
+export interface SubtaskWeight {
+  subtask_id: string;
+  weight_factor: number;
+  weight_type: 'hours' | 'priority' | 'custom' | 'equal';
+  custom_weight?: number;
+  created_at: Date;
+  updated_at: Date;
+}
+
+/**
+ * Completion rule configuration for parent tasks
+ *
+ * @interface CompletionRule
+ * @description Defines how parent task completion is determined based on subtask completion.
+ * Supports different strategies like requiring all subtasks, percentage thresholds, or critical subtasks only.
+ */
+export interface CompletionRule {
+  id: string;
+  parent_task_id: string;
+  rule_type: 'all_complete' | 'percentage_threshold' | 'critical_only' | 'weighted_threshold';
+  threshold?: number;
+  critical_subtasks?: string[];
+  created_at: Date;
+  updated_at: Date;
+}
+
+/**
+ * Enhanced progress calculation result
+ *
+ * @interface ProgressCalculationResult
+ * @description Detailed result of parent task progress calculation including breakdown
+ * by subtask and weighting factors applied.
+ */
+export interface ProgressCalculationResult {
+  parent_task_id: string;
+  calculated_progress: number;
+  subtask_breakdown: Array<{
+    subtask_id: string;
+    title: string;
+    status: Task['status'];
+    individual_progress: number;
+    weight_factor: number;
+    weighted_contribution: number;
+  }>;
+  total_weight: number;
+  completion_rule?: CompletionRule;
+  auto_complete_eligible: boolean;
+}
+
+/**
+ * Subtask hierarchy information
+ *
+ * @interface SubtaskHierarchy
+ * @description Represents the hierarchical structure of subtasks with depth and parent relationships.
+ */
+export interface SubtaskHierarchy {
+  task_id: string;
+  parent_task_id?: string;
+  depth: number;
+  path: string[];
+  children: SubtaskHierarchy[];
+  total_descendants: number;
 }

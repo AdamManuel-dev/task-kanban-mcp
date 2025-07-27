@@ -866,7 +866,13 @@ export class MCPToolRegistry {
    * - Tags
    */
   private async getTask(args: GetTaskArgs): Promise<GetTaskDetailedResponse> {
-    const { task_id: taskId, include_subtasks: includeSubtasks, include_dependencies: includeDependencies, include_notes: includeNotes, include_tags: includeTags } = args;
+    const {
+      task_id: taskId,
+      include_subtasks: includeSubtasks,
+      include_dependencies: includeDependencies,
+      include_notes: includeNotes,
+      include_tags: includeTags,
+    } = args;
 
     if (!taskId) {
       throw new Error('task_id (or id) is required');
@@ -1041,7 +1047,11 @@ export class MCPToolRegistry {
    * - All tasks in the board
    */
   private async getBoard(args: GetBoardArgs): Promise<BoardResponse> {
-    const { board_id: boardId, include_columns: includeColumns, include_tasks: includeTasks } = args;
+    const {
+      board_id: boardId,
+      include_columns: includeColumns,
+      include_tasks: includeTasks,
+    } = args;
 
     let board;
     if (includeColumns) {
@@ -1286,7 +1296,12 @@ export class MCPToolRegistry {
    * Optimized for AI agent task understanding.
    */
   private async getTaskContext(args: GetTaskContextArgs): Promise<TaskContextResponse> {
-    const { task_id: taskId, include_history: includeHistory, include_related: includeRelated, include_blockers: includeBlockers } = args;
+    const {
+      task_id: taskId,
+      include_history: includeHistory,
+      include_related: includeRelated,
+      include_blockers: includeBlockers,
+    } = args;
 
     // Map args to ContextOptions
     interface TaskContextOptions {
@@ -1450,7 +1465,14 @@ export class MCPToolRegistry {
    * plus optional fields. Validates parent task existence before creation.
    */
   private async createSubtask(args: CreateSubtaskArgs): Promise<SubtaskResponse> {
-    const { parent_task_id: parentTaskId, title, description, priority, assignee, due_date: dueDate } = args;
+    const {
+      parent_task_id: parentTaskId,
+      title,
+      description,
+      priority,
+      assignee,
+      due_date: dueDate,
+    } = args;
 
     if (!parentTaskId) {
       throw new Error('parent_task_id is required');
@@ -1503,7 +1525,11 @@ export class MCPToolRegistry {
    * Validates both tasks exist and prevents circular dependencies.
    */
   private async setTaskDependency(args: SetTaskDependencyArgs): Promise<TaskDependencyResponse> {
-    const { task_id: taskId, depends_on_task_id: dependsOnTaskId, dependency_type: dependencyType = 'blocks' } = args;
+    const {
+      task_id: taskId,
+      depends_on_task_id: dependsOnTaskId,
+      dependency_type: dependencyType = 'blocks',
+    } = args;
 
     if (!taskId || !dependsOnTaskId) {
       throw new Error('Both task_id and depends_on_task_id are required');
@@ -1560,7 +1586,11 @@ export class MCPToolRegistry {
   private async getTaskDependencies(
     args: GetTaskDependenciesArgs
   ): Promise<TaskDependenciesResponse> {
-    const { task_id: taskId, include_dependents: includeDependents = true, include_blocking: includeBlocking = true } = args;
+    const {
+      task_id: taskId,
+      include_dependents: includeDependents = true,
+      include_blocking: includeBlocking = true,
+    } = args;
 
     if (!taskId) {
       throw new Error('task_id is required');
@@ -1619,7 +1649,11 @@ export class MCPToolRegistry {
    * - Task status and progress
    */
   private async prioritizeTasks(args: PrioritizeTasksArgs): Promise<PrioritizedTasksResponse> {
-    const { board_id: boardId, context_factors: contextFactors = [], max_tasks: maxTasks = 50 } = args;
+    const {
+      board_id: boardId,
+      context_factors: contextFactors = [],
+      max_tasks: maxTasks = 50,
+    } = args;
 
     if (!boardId) {
       throw new Error('board_id is required');
@@ -1698,7 +1732,12 @@ export class MCPToolRegistry {
    * and matches the provided filters.
    */
   private async getNextTask(args: GetNextTaskArgs): Promise<NextTaskResponse> {
-    const { board_id: boardId, assignee, skill_context: skillContext, exclude_blocked: excludeBlocked = true } = args;
+    const {
+      board_id: boardId,
+      assignee,
+      skill_context: skillContext,
+      exclude_blocked: excludeBlocked = true,
+    } = args;
 
     // Build filters
     const filters: any = {

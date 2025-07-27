@@ -5,12 +5,12 @@
  * optimize queries, and ensure efficient data access patterns.
  */
 
+import { v4 as uuidv4 } from 'uuid';
 import { dbConnection } from '../../src/database/connection';
 import { TaskService } from '../../src/services/TaskService';
 import { BoardService } from '../../src/services/BoardService';
 import { NoteService } from '../../src/services/NoteService';
 import { TagService } from '../../src/services/TagService';
-import { v4 as uuidv4 } from 'uuid';
 import type { Task, Board } from '../../src/types';
 
 describe('Database Performance Tests', () => {
@@ -74,10 +74,10 @@ describe('Database Performance Tests', () => {
       // Use database transaction for batch insert
       await dbConnection.transaction(async db => {
         await Promise.all(
-  batch.map(async (taskData) => {
-    await taskService.createTask(taskData);
-  })
-);
+          batch.map(async taskData => {
+            await taskService.createTask(taskData);
+          })
+        );
       });
     }
 
@@ -95,7 +95,7 @@ describe('Database Performance Tests', () => {
       const startTime = Date.now();
 
       await dbConnection.transaction(async db => {
-        Array.from({ length: taskCount }, (_, i) => i).forEach(async (i) => {
+        Array.from({ length: taskCount }, (_, i) => i).forEach(async i => {
           await db.run(
             `INSERT INTO tasks (id, title, description, board_id, column_id, status, priority, position, created_at) 
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -119,7 +119,9 @@ describe('Database Performance Tests', () => {
 
       expect(duration).toBeLessThan(10000); // Should complete within 10 seconds
       logger.log(`✓ Bulk created ${String(taskCount)} tasks in ${String(duration)}ms`);
-      logger.log(`✓ Throughput: ${String(String(Math.round(taskCount / (duration / 1000))))} tasks/sec`);
+      logger.log(
+        `✓ Throughput: ${String(String(Math.round(taskCount / (duration / 1000))))} tasks/sec`
+      );
     });
 
     it('should handle bulk updates efficiently', async () => {
@@ -130,15 +132,15 @@ describe('Database Performance Tests', () => {
 
       await dbConnection.transaction(async db => {
         await Promise.all(
-  tasks.map(async (task) => {
-    await db.run('UPDATE tasks SET title = ?, priority = ?, updated_at = ? WHERE id = ?', [
-            `Updated ${String(String(task.title))}`,
-            (task.priority || 0) + 1,
-            new Date().toISOString(),
-            task.id,
-          ]);
-  })
-);
+          tasks.map(async task => {
+            await db.run('UPDATE tasks SET title = ?, priority = ?, updated_at = ? WHERE id = ?', [
+              `Updated ${String(String(task.title))}`,
+              (task.priority || 0) + 1,
+              new Date().toISOString(),
+              task.id,
+            ]);
+          })
+        );
       });
 
       const endTime = Date.now();
@@ -234,7 +236,9 @@ describe('Database Performance Tests', () => {
 
       expect(duration).toBeLessThan(5000); // Should complete within 5 seconds
       logger.log(`✓ ${String(iterations)} complex JOIN queries completed in ${String(duration)}ms`);
-      logger.log(`✓ Average complex query time: ${String(String(Math.round(duration / iterations)))}ms`);
+      logger.log(
+        `✓ Average complex query time: ${String(String(Math.round(duration / iterations)))}ms`
+      );
     });
 
     it('should handle full-text search efficiently', async () => {
@@ -243,7 +247,7 @@ describe('Database Performance Tests', () => {
       const startTime = Date.now();
 
       await Promise.all(
-        searchTerms.map(async (term) => {
+        searchTerms.map(async term => {
           await dbConnection.query(
             `
             SELECT id, title, description, status
@@ -259,7 +263,13 @@ describe('Database Performance Tests', () => {
               created_at DESC
             LIMIT 50
           `,
-            [`%${String(term)}%`, `%${String(term)}%`, testBoard.id, `%${String(term)}%`, `%${String(term)}%`]
+            [
+              `%${String(term)}%`,
+              `%${String(term)}%`,
+              testBoard.id,
+              `%${String(term)}%`,
+              `%${String(term)}%`,
+            ]
           );
         })
       );
@@ -283,12 +293,15 @@ describe('Database Performance Tests', () => {
       const iterations = filterCombinations.length;
 
       await Promise.all(
-        filterCombinations.map(async (filters) => {
-          const whereClause = Object.keys(filters).length > 0 
-            ? 'WHERE ' + Object.entries(filters).map(([key, value]) => `${key} = ?`).join(' AND ')
-            : '';
+        filterCombinations.map(async filters => {
+          const whereClause =
+            Object.keys(filters).length > 0
+              ? `WHERE ${Object.entries(filters)
+                  .map(([key, value]) => `${key} = ?`)
+                  .join(' AND ')}`
+              : '';
           const params = Object.values(filters);
-          
+
           await dbConnection.query(
             `
             SELECT id, title, status, priority, created_at
@@ -306,9 +319,7 @@ describe('Database Performance Tests', () => {
       const duration = endTime - startTime;
 
       expect(duration).toBeLessThan(2000); // Should complete within 2 seconds
-      logger.log(
-        `✓ ${String(iterations)} filtered queries completed in ${String(duration)}ms`
-      );
+      logger.log(`✓ ${String(iterations)} filtered queries completed in ${String(duration)}ms`);
     });
   });
 
@@ -390,8 +401,12 @@ describe('Database Performance Tests', () => {
       const duration = endTime - startTime;
 
       expect(duration).toBeLessThan(15000); // Should complete within 15 seconds
-      logger.log(`✓ ${String(operationCount)} mixed service operations completed in ${String(duration)}ms`);
-      logger.log(`✓ Average operation time: ${String(String(Math.round(duration / operationCount)))}ms`);
+      logger.log(
+        `✓ ${String(operationCount)} mixed service operations completed in ${String(duration)}ms`
+      );
+      logger.log(
+        `✓ Average operation time: ${String(String(Math.round(duration / operationCount)))}ms`
+      );
     });
 
     it('should handle concurrent service operations', async () => {
@@ -427,7 +442,9 @@ describe('Database Performance Tests', () => {
       expect(duration).toBeLessThan(20000); // Should complete within 20 seconds
       expect(results.length).toBe(concurrentBatches);
 
-      logger.log(`✓ ${String(totalOperations)} concurrent operations completed in ${String(duration)}ms`);
+      logger.log(
+        `✓ ${String(totalOperations)} concurrent operations completed in ${String(duration)}ms`
+      );
       logger.log(
         `✓ Concurrent throughput: ${String(String(Math.round(totalOperations / (duration / 1000))))} ops/sec`
       );
@@ -458,8 +475,12 @@ describe('Database Performance Tests', () => {
       const duration = endTime - startTime;
 
       expect(duration).toBeLessThan(8000); // Should complete within 8 seconds
-      logger.log(`✓ ${String(transactionCount)} short transactions completed in ${String(duration)}ms`);
-      logger.log(`✓ Average transaction time: ${String(String(Math.round(duration / transactionCount)))}ms`);
+      logger.log(
+        `✓ ${String(transactionCount)} short transactions completed in ${String(duration)}ms`
+      );
+      logger.log(
+        `✓ Average transaction time: ${String(String(Math.round(duration / transactionCount)))}ms`
+      );
     });
 
     it('should handle long transactions with many operations', async () => {
@@ -475,9 +496,13 @@ describe('Database Performance Tests', () => {
               [
                 uuidv4(),
                 `Long Transaction Tag ${String(i)}-${String(j)}`,
-                `#${String(String(Math.floor(Math.random() * 16777215)
-                  .toString(16)
-                  .padStart(6, '0')))}`,
+                `#${String(
+                  String(
+                    Math.floor(Math.random() * 16777215)
+                      .toString(16)
+                      .padStart(6, '0')
+                  )
+                )}`,
                 new Date().toISOString(),
               ]
             );
@@ -522,7 +547,9 @@ describe('Database Performance Tests', () => {
       expect(duration).toBeLessThan(5000); // Should complete within 5 seconds
       expect(results.length).toBe(simultaneousQueries);
 
-      logger.log(`✓ ${String(simultaneousQueries)} simultaneous queries completed in ${String(duration)}ms`);
+      logger.log(
+        `✓ ${String(simultaneousQueries)} simultaneous queries completed in ${String(duration)}ms`
+      );
       logger.log(
         `✓ Average query time under pressure: ${String(String(Math.round(duration / simultaneousQueries)))}ms`
       );
@@ -575,7 +602,9 @@ describe('Database Performance Tests', () => {
       expect(memoryIncrease).toBeLessThan(100 * 1024 * 1024); // Less than 100MB increase
 
       logger.log(`✓ Large result set queries completed in ${String(duration)}ms`);
-      logger.log(`✓ Memory increase: ${String(String(Math.round(memoryIncrease / 1024 / 1024)))}MB`);
+      logger.log(
+        `✓ Memory increase: ${String(String(Math.round(memoryIncrease / 1024 / 1024)))}MB`
+      );
     });
 
     it('should efficiently clean up resources after operations', async () => {
@@ -616,7 +645,9 @@ describe('Database Performance Tests', () => {
       expect(memoryIncrease).toBeLessThan(50 * 1024 * 1024); // Less than 50MB increase
 
       logger.log(`✓ ${String(operationCount)} create/query/delete cycles completed`);
-      logger.log(`✓ Memory increase after cleanup: ${String(String(Math.round(memoryIncrease / 1024 / 1024)))}MB`);
+      logger.log(
+        `✓ Memory increase after cleanup: ${String(String(Math.round(memoryIncrease / 1024 / 1024)))}MB`
+      );
     });
   });
 
@@ -733,9 +764,15 @@ describe('Database Performance Tests', () => {
       expect(maxTime).toBeLessThan(1000); // No single query should take over 1 second
       expect(totalDuration).toBeLessThan(10000); // All queries should complete within 10 seconds
 
-      logger.log(`✓ ${String(totalQueries)} concurrent queries completed in ${String(totalDuration)}ms`);
-      logger.log(`✓ Average time: ${String(String(Math.round(avgTime)))}ms, Max time: ${String(maxTime)}ms`);
-      logger.log(`✓ Throughput: ${String(String(Math.round(totalQueries / (totalDuration / 1000))))} queries/sec`);
+      logger.log(
+        `✓ ${String(totalQueries)} concurrent queries completed in ${String(totalDuration)}ms`
+      );
+      logger.log(
+        `✓ Average time: ${String(String(Math.round(avgTime)))}ms, Max time: ${String(maxTime)}ms`
+      );
+      logger.log(
+        `✓ Throughput: ${String(String(Math.round(totalQueries / (totalDuration / 1000))))} queries/sec`
+      );
     });
   });
 });

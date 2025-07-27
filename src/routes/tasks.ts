@@ -22,14 +22,80 @@
  */
 
 import { Router } from 'express';
+import { z } from 'zod';
 import { TaskService, type CreateTaskRequest } from '@/services/TaskService';
 import { NoteService } from '@/services/NoteService';
 import { TagService } from '@/services/TagService';
 import { dbConnection } from '@/database/connection';
 import { requirePermission } from '@/middleware/auth';
+import { validateRequest } from '@/middleware/validation';
 import { TaskValidation, NoteValidation, validateInput } from '@/utils/validation';
 import type { Task } from '@/types';
 import { NotFoundError, ValidationError } from '@/utils/errors';
+
+// Validation schemas
+const CreateTaskSchema = z.object({
+  title: z.string().min(1).max(200),
+  description: z.string().optional(),
+  board_id: z.string().uuid(),
+  column_id: z.string().default('todo'),
+  status: z.enum(['todo', 'in-progress', 'done', 'blocked', 'archived']).default('todo'),
+  priority: z.number().int().min(1).max(5).optional(),
+  assignee: z.string().optional(),
+  due_date: z.string().datetime().optional(),
+  tags: z.array(z.string()).optional(),
+  parent_task_id: z.string().uuid().optional(),
+});
+
+const UpdateTaskSchema = z.object({
+  title: z.string().min(1).max(200).optional(),
+  description: z.string().optional(),
+  status: z.enum(['todo', 'in-progress', 'done', 'blocked', 'archived']).optional(),
+  priority: z.number().int().min(1).max(5).optional(),
+  assignee: z.string().optional(),
+  due_date: z.string().datetime().optional(),
+  column_id: z.string().optional(),
+  position: z.number().int().min(0).optional(),
+});
+
+const ListTasksSchema = z.object({
+  board_id: z.string().uuid().optional(),
+  status: z.string().optional(),
+  assignee: z.string().optional(),
+  priority: z.string().optional(),
+  tag: z.string().optional(),
+  search: z.string().optional(),
+  parent_task_id: z.string().uuid().optional(),
+  sort: z.enum(['created_at', 'updated_at', 'priority', 'due_date', 'title']).optional(),
+  order: z.enum(['asc', 'desc']).optional(),
+  limit: z
+    .union([z.string().transform(Number), z.number()])
+    .pipe(z.number().int().min(1).max(1000))
+    .optional(),
+  offset: z
+    .union([z.string().transform(Number), z.number()])
+    .pipe(z.number().int().min(0))
+    .optional(),
+});
+
+const MoveTaskSchema = z.object({
+  column_id: z.string(),
+  position: z.number().int().min(0).optional(),
+});
+
+const AddDependencySchema = z.object({
+  depends_on_task_id: z.string().uuid(),
+  dependency_type: z.enum(['blocks', 'required-by', 'related-to']).default('blocks'),
+});
+
+const CreateTaskNoteSchema = z.object({
+  content: z.string().min(1),
+  category: z.enum(['general', 'meeting', 'idea', 'todo', 'reminder']).default('general'),
+});
+
+const AssignTagsSchema = z.object({
+  tags: z.array(z.string()).min(1),
+});
 
 /**
  * Create and configure task routes.
@@ -89,81 +155,86 @@ export function taskRoutes(): Router {
    * @response 403 - Insufficient permissions
    */
   // GET /api/v1/tasks - List tasks with filters
-  router.get('/', requirePermission('read'), async (req, res, next): Promise<void> => {
-    try {
-      const {
-        limit = 50,
-        offset = 0,
-        sortBy = 'updated_at',
-        sortOrder = 'desc',
-        board_id,
-        column_id,
-        status,
-        assignee,
-        parent_task_id,
-        search,
-        priority_min,
-        priority_max,
-        overdue,
-      } = req.query;
+  router.get(
+    '/',
+    requirePermission('read'),
+    validateRequest(ListTasksSchema),
+    async (req, res, next): Promise<void> => {
+      try {
+        const {
+          limit = 50,
+          offset = 0,
+          sortBy = 'updated_at',
+          sortOrder = 'desc',
+          board_id,
+          column_id,
+          status,
+          assignee,
+          parent_task_id,
+          search,
+          priority_min: priorityMin,
+          priority_max: priorityMax,
+          overdue,
+        } = req.query;
 
-      interface TaskListOptions {
-        limit: number;
-        offset: number;
-        sortBy: string;
-        sortOrder: 'asc' | 'desc';
-        overdue: boolean;
-        board_id?: string;
-        column_id?: string;
-        status?: Task['status'];
-        assignee?: string;
-        parent_task_id?: string;
-        search?: string;
-        priority_min?: number;
-        priority_max?: number;
+        interface TaskListOptions {
+          limit: number;
+          offset: number;
+          sortBy: string;
+          sortOrder: 'asc' | 'desc';
+          overdue: boolean;
+          board_id?: string;
+          column_id?: string;
+          status?: Task['status'];
+          assignee?: string;
+          parent_task_id?: string;
+          search?: string;
+          priority_min?: number;
+          priority_max?: number;
+        }
+
+        const options: TaskListOptions = {
+          limit: parseInt(limit as string, 10),
+          offset: parseInt(offset as string, 10),
+          sortBy: sortBy as string,
+          sortOrder: sortOrder as 'asc' | 'desc',
+          overdue: overdue === 'true',
+        };
+
+        // Add optional properties only if they have values
+        if (board_id) options.board_id = board_id as string;
+        if (column_id) options.column_id = column_id as string;
+        if (
+          status &&
+          typeof status === 'string' &&
+          ['todo', 'in_progress', 'done', 'blocked', 'archived'].includes(status)
+        ) {
+          options.status = status as Task['status'];
+        }
+        if (assignee) options.assignee = assignee as string;
+        if (parent_task_id) options.parent_task_id = parent_task_id as string;
+        if (search) options.search = search as string;
+        if (priorityMin) options.priority_min = parseInt(priorityMin as string, 10);
+        if (priorityMax) options.priority_max = parseInt(priorityMax as string, 10);
+
+        const tasks = await taskService.getTasks(options);
+
+        // Get total count for pagination
+        const { limit: _, offset: __, ...countOptions } = options;
+        const totalTasks = await taskService.getTasks(countOptions);
+        const total = totalTasks.length;
+
+        return res.apiPagination(
+          tasks,
+          Math.floor(options.offset / options.limit) + 1,
+          options.limit,
+          total
+        );
+      } catch (error) {
+        return next(error);
       }
-
-      const options: TaskListOptions = {
-        limit: parseInt(limit as string, 10),
-        offset: parseInt(offset as string, 10),
-        sortBy: sortBy as string,
-        sortOrder: sortOrder as 'asc' | 'desc',
-        overdue: overdue === 'true',
-      };
-
-      // Add optional properties only if they have values
-      if (board_id) options.board_id = board_id as string;
-      if (column_id) options.column_id = column_id as string;
-      if (
-        status &&
-        typeof status === 'string' &&
-        ['todo', 'in_progress', 'done', 'blocked', 'archived'].includes(status)
-      ) {
-        options.status = status as Task['status'];
-      }
-      if (assignee) options.assignee = assignee as string;
-      if (parent_task_id) options.parent_task_id = parent_task_id as string;
-      if (search) options.search = search as string;
-      if (priority_min) options.priority_min = parseInt(priority_min as string, 10);
-      if (priority_max) options.priority_max = parseInt(priority_max as string, 10);
-
-      const tasks = await taskService.getTasks(options);
-
-      // Get total count for pagination
-      const { limit: _, offset: __, ...countOptions } = options;
-      const totalTasks = await taskService.getTasks(countOptions);
-      const total = totalTasks.length;
-
-      return res.apiPagination(
-        tasks,
-        Math.floor(options.offset / options.limit) + 1,
-        options.limit,
-        total
-      );
-    } catch (error) {
-      return next(error);
     }
-  });
+  );
 
   /**
    * Create a new task.
@@ -203,19 +274,24 @@ export function taskRoutes(): Router {
    * @response 403 - Insufficient permissions
    */
   // POST /api/v1/tasks - Create task
-  router.post('/', requirePermission('write'), async (req, res, next): Promise<void> => {
-    try {
-      const rawTaskData = validateInput(TaskValidation.create, req.body);
-      // Filter out undefined values to comply with exactOptionalPropertyTypes
-      const taskData = Object.fromEntries(
-        Object.entries(rawTaskData).filter(([, value]) => value !== undefined)
-      ) as unknown as CreateTaskRequest;
-      const task = await taskService.createTask(taskData);
-      return res.status(201).apiSuccess(task);
-    } catch (error) {
-      return next(error);
+  router.post(
+    '/',
+    requirePermission('write'),
+    validateRequest(CreateTaskSchema),
+    async (req, res, next): Promise<void> => {
+      try {
+        const rawTaskData = validateInput(TaskValidation.create, req.body);
+        // Filter out undefined values to comply with exactOptionalPropertyTypes
+        const taskData = Object.fromEntries(
+          Object.entries(rawTaskData).filter(([, value]) => value !== undefined)
+        ) as unknown as CreateTaskRequest;
+        const task = await taskService.createTask(taskData);
+        return res.status(201).apiSuccess(task);
+      } catch (error) {
+        return next(error);
+      }
     }
-  });
+  );
 
   /**
    * Get detailed information about a specific task.
@@ -314,19 +390,24 @@ export function taskRoutes(): Router {
    * @response 404 - Task not found
    */
   // PATCH /api/v1/tasks/:id - Update task
-  router.patch('/:id', requirePermission('write'), async (req, res, next): Promise<void> => {
-    try {
-      const { id } = req.params;
-      if (!id) {
-        throw new NotFoundError('Task', 'ID is required');
+  router.patch(
+    '/:id',
+    requirePermission('write'),
+    validateRequest(UpdateTaskSchema),
+    async (req, res, next): Promise<void> => {
+      try {
+        const { id } = req.params;
+        if (!id) {
+          throw new NotFoundError('Task', 'ID is required');
+        }
+        const updateData = validateInput(TaskValidation.update, req.body);
+        const task = await taskService.updateTask(id, updateData);
+        return res.apiSuccess(task);
+      } catch (error) {
+        return next(error);
       }
-      const updateData = validateInput(TaskValidation.update, req.body);
-      const task = await taskService.updateTask(id, updateData);
-      return res.apiSuccess(task);
-    } catch (error) {
-      return next(error);
     }
-  });
+  );
 
   /**
    * Delete a task permanently.
@@ -387,28 +468,33 @@ export function taskRoutes(): Router {
    * @response 404 - Task not found
    */
   // POST /api/v1/tasks/:id/dependencies - Add dependency
-  router.post('/:id/dependencies', requirePermission('write'), async (req, res, next): Promise<void> => {
-    try {
-      const { id } = req.params;
-      if (!id) {
-        throw new NotFoundError('Task', 'ID is required');
+  router.post(
+    '/:id/dependencies',
+    requirePermission('write'),
+    validateRequest(AddDependencySchema),
+    async (req, res, next): Promise<void> => {
+      try {
+        const { id } = req.params;
+        if (!id) {
+          throw new NotFoundError('Task', 'ID is required');
+        }
+        const dependencyData = validateInput(TaskValidation.dependency, {
+          task_id: id,
+          ...req.body,
+        });
+
+        const dependency = await taskService.addDependency(
+          dependencyData.task_id,
+          dependencyData.depends_on_task_id,
+          dependencyData.dependency_type
+        );
+
+        return res.status(201).apiSuccess(dependency);
+      } catch (error) {
+        return next(error);
       }
-      const dependencyData = validateInput(TaskValidation.dependency, {
-        task_id: id,
-        ...req.body,
-      });
-
-      const dependency = await taskService.addDependency(
-        dependencyData.task_id,
-        dependencyData.depends_on_task_id,
-        dependencyData.dependency_type
-      );
-
-      return res.status(201).apiSuccess(dependency);
-    } catch (error) {
-      return next(error);
     }
-  });
+  );
 
   // DELETE /api/v1/tasks/:id/dependencies/:dependsOnId - Remove dependency
   router.delete(
@@ -432,98 +518,118 @@ export function taskRoutes(): Router {
   );
 
   // GET /api/v1/tasks/:id/dependencies - Get task dependencies
-  router.get('/:id/dependencies', requirePermission('read'), async (req, res, next): Promise<void> => {
-    try {
-      const { id } = req.params;
-      if (!id) {
-        throw new NotFoundError('Task', 'ID is required');
-      }
-      const taskWithDeps = await taskService.getTaskWithDependencies(id);
+  router.get(
+    '/:id/dependencies',
+    requirePermission('read'),
+    async (req, res, next): Promise<void> => {
+      try {
+        const { id } = req.params;
+        if (!id) {
+          throw new NotFoundError('Task', 'ID is required');
+        }
+        const taskWithDeps = await taskService.getTaskWithDependencies(id);
 
-      if (!taskWithDeps) {
-        throw new NotFoundError('Task', id);
-      }
+        if (!taskWithDeps) {
+          throw new NotFoundError('Task', id);
+        }
 
-      return res.apiSuccess({
-        dependencies: taskWithDeps.dependencies,
-        dependents: taskWithDeps.dependents,
-      });
-    } catch (error) {
-      return next(error);
+        return res.apiSuccess({
+          dependencies: taskWithDeps.dependencies,
+          dependents: taskWithDeps.dependents,
+        });
+      } catch (error) {
+        return next(error);
+      }
     }
-  });
+  );
 
   // GET /api/v1/dependencies/graph - Get dependency graph
-  router.get('/dependencies/graph', requirePermission('read'), async (req, res, next): Promise<void> => {
-    try {
-      const { board_id } = req.query;
-      
-      // Import the DependencyVisualizationService
-      const { DependencyVisualizationService } = await import('@/services/DependencyVisualizationService');
-      const depService = DependencyVisualizationService.getInstance();
-      
-      const graph = await depService.getDependencyGraph(board_id as string);
-      
-      // Convert Map to Object for JSON serialization
-      const nodes = Object.fromEntries(graph.nodes);
-      
-      return res.apiSuccess({
-        nodes,
-        edges: graph.edges,
-        roots: graph.roots,
-        leaves: graph.leaves,
-        summary: {
-          totalNodes: graph.nodes.size,
-          totalEdges: graph.edges.length,
-          rootCount: graph.roots.length,
-          leafCount: graph.leaves.length
-        }
-      });
-    } catch (error) {
-      return next(error);
+  router.get(
+    '/dependencies/graph',
+    requirePermission('read'),
+    async (req, res, next): Promise<void> => {
+      try {
+        const { board_id } = req.query;
+
+        // Import the DependencyVisualizationService
+        const { DependencyVisualizationService } = await import(
+          '@/services/DependencyVisualizationService'
+        );
+        const depService = DependencyVisualizationService.getInstance();
+
+        const graph = await depService.getDependencyGraph(board_id as string);
+
+        // Convert Map to Object for JSON serialization
+        const nodes = Object.fromEntries(graph.nodes);
+
+        return res.apiSuccess({
+          nodes,
+          edges: graph.edges,
+          roots: graph.roots,
+          leaves: graph.leaves,
+          summary: {
+            totalNodes: graph.nodes.size,
+            totalEdges: graph.edges.length,
+            rootCount: graph.roots.length,
+            leafCount: graph.leaves.length,
+          },
+        });
+      } catch (error) {
+        return next(error);
+      }
     }
-  });
+  );
 
   // GET /api/v1/dependencies/critical-path - Get critical path
-  router.get('/dependencies/critical-path', requirePermission('read'), async (req, res, next): Promise<void> => {
-    try {
-      const { board_id } = req.query;
-      
-      // Import the DependencyVisualizationService
-      const { DependencyVisualizationService } = await import('@/services/DependencyVisualizationService');
-      const depService = DependencyVisualizationService.getInstance();
-      
-      const criticalPath = await depService.findCriticalPath(board_id as string);
-      
-      return res.apiSuccess(criticalPath);
-    } catch (error) {
-      return next(error);
+  router.get(
+    '/dependencies/critical-path',
+    requirePermission('read'),
+    async (req, res, next): Promise<void> => {
+      try {
+        const { board_id } = req.query;
+
+        // Import the DependencyVisualizationService
+        const { DependencyVisualizationService } = await import(
+          '@/services/DependencyVisualizationService'
+        );
+        const depService = DependencyVisualizationService.getInstance();
+
+        const criticalPath = await depService.findCriticalPath(board_id as string);
+
+        return res.apiSuccess(criticalPath);
+      } catch (error) {
+        return next(error);
+      }
     }
-  });
+  );
 
   // POST /api/v1/tasks/:id/subtasks - Create subtask
-  router.post('/:id/subtasks', requirePermission('write'), async (req, res, next): Promise<void> => {
-    try {
-      const { id } = req.params;
-      if (!id) {
-        throw new NotFoundError('Task', 'ID is required');
+  router.post(
+    '/:id/subtasks',
+    requirePermission('write'),
+    async (req, res, next): Promise<void> => {
+      try {
+        const { id } = req.params;
+        if (!id) {
+          throw new NotFoundError('Task', 'ID is required');
+        }
+        const rawSubtaskData = validateInput(TaskValidation.create, {
+          ...req.body,
+          parent_task_id: id,
+        });
+
+        // Filter out undefined values to comply with exactOptionalPropertyTypes
+        const subtaskData = Object.fromEntries(
+          Object.entries(rawSubtaskData).filter(([, value]) => value !== undefined)
+        );
+
+        const subtask = await taskService.createTask(subtaskData as any);
+        return res.status(201).apiSuccess(subtask);
+      } catch (error) {
+        return next(error);
       }
-      const rawSubtaskData = validateInput(TaskValidation.create, {
-        ...req.body,
-        parent_task_id: id,
-      });
-
-      // Filter out undefined values to comply with exactOptionalPropertyTypes
-      const subtaskData = Object.fromEntries(
-        Object.entries(rawSubtaskData).filter(([, value]) => value !== undefined)
-      );
-
-      const subtask = await taskService.createTask(subtaskData as any);
-      return res.status(201).apiSuccess(subtask);
-    } catch (error) {
-      return next(error);
     }
-  });
+  );
 
   // GET /api/v1/tasks/:id/subtasks - List subtasks
   router.get('/:id/subtasks', requirePermission('read'), async (req, res, next): Promise<void> => {
@@ -545,59 +651,67 @@ export function taskRoutes(): Router {
   });
 
   // PATCH /api/v1/subtasks/:id - Update subtask
-  router.patch('/subtasks/:id', requirePermission('write'), async (req, res, next): Promise<void> => {
-    try {
-      const { id } = req.params;
-      if (!id) {
-        throw new ValidationError('Subtask ID is required');
-      }
+  router.patch(
+    '/subtasks/:id',
+    requirePermission('write'),
+    async (req, res, next): Promise<void> => {
+      try {
+        const { id } = req.params;
+        if (!id) {
+          throw new ValidationError('Subtask ID is required');
+        }
 
-      // First verify this is actually a subtask (has parent_task_id)
-      const existingTask = await taskService.getTask(id);
-      if (!existingTask) {
-        throw new NotFoundError('Subtask', id);
-      }
-      if (!existingTask.parent_task_id) {
-        throw new ValidationError('Task is not a subtask');
-      }
+        // First verify this is actually a subtask (has parent_task_id)
+        const existingTask = await taskService.getTaskById(id);
+        if (!existingTask) {
+          throw new NotFoundError('Subtask', id);
+        }
+        if (!existingTask.parent_task_id) {
+          throw new ValidationError('Task is not a subtask');
+        }
 
-      const validatedBody = validateInput(TaskValidation.update, req.body);
-      
-      // Filter out undefined values to comply with exactOptionalPropertyTypes
-      const updateData = Object.fromEntries(
-        Object.entries(validatedBody).filter(([, value]) => value !== undefined)
-      );
+        const validatedBody = validateInput(TaskValidation.update, req.body);
 
-      const updatedSubtask = await taskService.updateTask(id, updateData as any);
-      return res.apiSuccess(updatedSubtask);
-    } catch (error) {
-      return next(error);
+        // Filter out undefined values to comply with exactOptionalPropertyTypes
+        const updateData = Object.fromEntries(
+          Object.entries(validatedBody).filter(([, value]) => value !== undefined)
+        );
+
+        const updatedSubtask = await taskService.updateTask(id, updateData as any);
+        return res.apiSuccess(updatedSubtask);
+      } catch (error) {
+        return next(error);
+      }
     }
-  });
+  );
 
   // DELETE /api/v1/subtasks/:id - Delete subtask
-  router.delete('/subtasks/:id', requirePermission('write'), async (req, res, next): Promise<void> => {
-    try {
-      const { id } = req.params;
-      if (!id) {
-        throw new ValidationError('Subtask ID is required');
-      }
+  router.delete(
+    '/subtasks/:id',
+    requirePermission('write'),
+    async (req, res, next): Promise<void> => {
+      try {
+        const { id } = req.params;
+        if (!id) {
+          throw new ValidationError('Subtask ID is required');
+        }
 
-      // First verify this is actually a subtask (has parent_task_id)
-      const existingTask = await taskService.getTask(id);
-      if (!existingTask) {
-        throw new NotFoundError('Subtask', id);
-      }
-      if (!existingTask.parent_task_id) {
-        throw new ValidationError('Task is not a subtask');
-      }
+        // First verify this is actually a subtask (has parent_task_id)
+        const existingTask = await taskService.getTaskById(id);
+        if (!existingTask) {
+          throw new NotFoundError('Subtask', id);
+        }
+        if (!existingTask.parent_task_id) {
+          throw new ValidationError('Task is not a subtask');
+        }
 
-      await taskService.deleteTask(id);
-      return res.status(204).send();
-    } catch (error) {
-      return next(error);
+        await taskService.deleteTask(id);
+        return res.status(204).send();
+      } catch (error) {
+        return next(error);
+      }
     }
-  });
+  );
 
   /**
    * Add a note to a task.
@@ -730,21 +844,25 @@ export function taskRoutes(): Router {
   });
 
   // DELETE /api/v1/tasks/:id/tags/:tagId - Remove tag from task
-  router.delete('/:id/tags/:tagId', requirePermission('write'), async (req, res, next): Promise<void> => {
-    try {
-      const { id, tagId } = req.params;
-      if (!id) {
-        throw new NotFoundError('Task', 'ID is required');
+  router.delete(
+    '/:id/tags/:tagId',
+    requirePermission('write'),
+    async (req, res, next): Promise<void> => {
+      try {
+        const { id, tagId } = req.params;
+        if (!id) {
+          throw new NotFoundError('Task', 'ID is required');
+        }
+        if (!tagId) {
+          throw new NotFoundError('Tag', 'Tag ID is required');
+        }
+        await tagService.removeTagFromTask(id, tagId);
+        return res.status(204).send();
+      } catch (error) {
+        return next(error);
       }
-      if (!tagId) {
-        throw new NotFoundError('Tag', 'Tag ID is required');
-      }
-      await tagService.removeTagFromTask(id, tagId);
-      return res.status(204).send();
-    } catch (error) {
-      return next(error);
     }
-  });
+  );
 
   // GET /api/v1/tasks/:id/tags - Get task tags
   router.get('/:id/tags', requirePermission('read'), async (req, res, next): Promise<void> => {

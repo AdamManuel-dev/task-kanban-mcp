@@ -357,41 +357,41 @@ export function registerContextCommands(program: Command): void {
           formatter.info('');
         }
 
-        if (taskContext.blockers && (taskContext.blockers as any[]).length > 0) {
+        if (taskContext['blockers'] && (taskContext['blockers'] as any[]).length > 0) {
           formatter.info('🚫 Blockers:');
-          (taskContext.blockers as any[]).forEach((blocker: any) => {
+          (taskContext['blockers'] as any[]).forEach((blocker: any) => {
             formatter.warn(`• ${String(String(blocker.description))}`);
           });
           formatter.info('');
         }
 
-        if (options.related && taskContext.relatedTasks) {
+        if (options.related && taskContext['relatedTasks']) {
           formatter.info('🔄 Related Tasks:');
-          formatter.output(taskContext.relatedTasks, {
+          formatter.output(taskContext['relatedTasks'], {
             fields: ['id', 'title', 'similarity'],
             headers: ['ID', 'Title', 'Similarity'],
           });
           formatter.info('');
         }
 
-        if (options.history && taskContext.history) {
+        if (options.history && taskContext['history']) {
           formatter.info('📜 Task History:');
-          (taskContext.history as any[]).forEach((event: any) => {
+          (taskContext['history'] as any[]).forEach((event: any) => {
             formatter.info(`• ${String(String(event.date))}: ${String(String(event.description))}`);
           });
           formatter.info('');
         }
 
-        if (taskContext.aiInsights) {
+        if (taskContext['aiInsights']) {
           formatter.info('🤖 AI Insights:');
-          (taskContext.aiInsights as string[]).forEach((insight: string) => {
+          (taskContext['aiInsights'] as string[]).forEach((insight: string) => {
             formatter.info(`• ${String(insight)}`);
           });
         }
 
-        if (taskContext.suggestions) {
+        if (taskContext['suggestions']) {
           formatter.info('\n💡 Suggestions:');
-          (taskContext.suggestions as string[]).forEach((suggestion: string) => {
+          (taskContext['suggestions'] as string[]).forEach((suggestion: string) => {
             formatter.success(`• ${String(suggestion)}`);
           });
         }

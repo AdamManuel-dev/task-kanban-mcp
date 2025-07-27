@@ -334,8 +334,8 @@ export function registerBackupCommands(program: Command): void {
 
         formatter.info(`Exporting backup to: ${String(finalExportPath)}...`);
 
-        const data = await apiClient.request(`/api/backup/${String(id)}/export`, {
-          params: { format: options.format ?? 'json' },
+        const data = await apiClient.request('GET', `/api/backup/${String(id)}/export`, undefined, {
+          format: options.format ?? 'json',
         });
 
         // Ensure directory exists
@@ -455,19 +455,24 @@ export function registerBackupCommands(program: Command): void {
 
         formatter.info(`Starting point-in-time restoration to: ${String(restoreTime)}...`);
 
-        const result = await apiClient.request('/api/backup/restore-to-time', {
-          method: 'POST',
-          body: JSON.stringify({
+        const result = await apiClient.request<AnyApiResponse>(
+          'POST',
+          '/api/backup/restore-to-time',
+          {
             targetTime: restoreTime,
             verify: !options.noVerify,
             preserveExisting: options.preserveExisting,
-          }),
-        });
+          }
+        );
 
         formatter.success('Point-in-time restoration completed successfully');
         formatter.info(`Database restored to: ${String(restoreTime)}`);
 
-        if (hasDataProperty<{ backupsApplied: number }>(result) && result.data.backupsApplied) {
+        if (
+          isSuccessResponse(result) &&
+          hasDataProperty<{ backupsApplied: number }>(result) &&
+          result.data.backupsApplied
+        ) {
           formatter.info(`Applied ${String(String(result.data.backupsApplied))} backup(s)`);
         }
       } catch (error) {
@@ -592,10 +597,10 @@ export function registerBackupCommands(program: Command): void {
 
         formatter.info(`Creating backup schedule: ${String(scheduleData.name)}...`);
 
-        const schedule = await apiClient.request(
+        const schedule = await apiClient.request<AnyApiResponse>(
           'POST',
           '/api/schedule/create',
-          JSON.stringify(scheduleData)
+          scheduleData
         );
 
         formatter.success('Backup schedule created successfully');
@@ -629,10 +634,12 @@ export function registerBackupCommands(program: Command): void {
         // eslint-disable-next-line dot-notation
         if (options.limit) params['limit'] = options.limit;
 
-        const queryString = new URLSearchParams(params).toString();
-        const url = `/api/schedule/list${queryString ? `?${queryString}` : ''}`;
-
-        const response = await apiClient.request(url);
+        const response = await apiClient.request<AnyApiResponse>(
+          'GET',
+          '/api/schedule/list',
+          undefined,
+          params
+        );
         if (isSuccessResponse(response)) {
           const schedules = response.data as BackupSchedule[];
 
@@ -660,7 +667,10 @@ export function registerBackupCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const response = await apiClient.request(`/api/schedule/${String(id)}`);
+        const response = await apiClient.request<AnyApiResponse>(
+          'GET',
+          `/api/schedule/${String(id)}`
+        );
         if (isSuccessResponse(response)) {
           const schedule = response.data;
           formatter.output(schedule);
@@ -683,9 +693,7 @@ export function registerBackupCommands(program: Command): void {
       try {
         formatter.info(`Executing backup schedule: ${String(id)}...`);
 
-        await apiClient.request(`/api/schedule/${String(id)}/execute`, {
-          method: 'POST',
-        });
+        await apiClient.request('POST', `/api/schedule/${String(id)}/execute`);
 
         formatter.success('Backup schedule executed successfully');
       } catch (error) {

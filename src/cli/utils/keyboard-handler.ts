@@ -52,7 +52,7 @@ export class KeyboardHandler {
       process.stdin.resume();
       process.stdin.setEncoding('utf8');
       process.stdin.on('data', (key: string) => {
-        this.handleKeyPress(key).catch(error => 
+        this.handleKeyPress(key).catch(error =>
           console.error('Failed to handle key press:', error)
         );
       });

@@ -1,6 +1,7 @@
 import type { Command } from 'commander';
 import inquirer from 'inquirer';
 import type { CliComponents, AnyApiResponse } from '../types';
+import { buildDatabaseStatsParams } from '../utils/parameter-builder';
 import { logger } from '../../utils/logger';
 import { isSuccessResponse } from '../api-client-wrapper';
 
@@ -112,10 +113,11 @@ export function registerDatabaseCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const params: Record<string, string> = {};
-        if (options.tables) params.tables = 'true';
-        if (options.indexes) params.indexes = 'true';
-        if (options.performance) params.performance = 'true';
+        const params = buildDatabaseStatsParams({
+          ...(options.tables && { tables: options.tables }),
+          ...(options.indexes && { indexes: options.indexes }),
+          ...(options.performance && { performance: options.performance }),
+        });
 
         const result = await apiClient.request('GET', '/api/database/stats', undefined, params);
 

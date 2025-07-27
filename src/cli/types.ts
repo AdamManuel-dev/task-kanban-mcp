@@ -7,11 +7,14 @@ import type { ConfigManager } from './config';
 import type { ApiClientWrapper } from './api-client-wrapper';
 import type { OutputFormatter } from './formatter';
 
+import type { CLIServices } from './services/ServiceContainer';
+
 // Global CLI components interface
 export interface CliComponents {
   config: ConfigManager;
   apiClient: ApiClientWrapper;
   formatter: OutputFormatter;
+  services: CLIServices;
 }
 
 // Global type declaration to extend Node.js global
@@ -430,3 +433,81 @@ export type AnyApiResponse =
   | ExportResponse
   | ErrorResponse
   | ApiResponse;
+
+// API Parameter interfaces - replaces Record<string, string> usage
+export interface SearchTasksParams extends Record<string, string> {
+  board?: string;
+  status?: string;
+  tags?: string;
+  assignee?: string;
+  priority?: string;
+  search?: string;
+  limit?: string;
+  offset?: string;
+  sort?: string;
+  order?: string;
+}
+
+export interface SearchNotesParams extends Record<string, string> {
+  category?: string;
+  limit?: string;
+  search?: string;
+}
+
+export interface BackupParams extends Record<string, string> {
+  compress?: string;
+  encrypt?: string;
+  destination?: string;
+}
+
+export interface RealtimeSubscriptionParams {
+  board?: string;
+  task?: string;
+  events?: string[];
+}
+
+export interface DatabaseStatsParams extends Record<string, string> {
+  tables?: string;
+  indexes?: string;
+  performance?: string;
+}
+
+export interface ExportQueryParams extends Record<string, string> {
+  anonymize?: string;
+  anonymizationOptions?: string;
+}
+
+export interface AdvancedSearchParams extends Record<string, string> {
+  title?: string;
+  description?: string;
+  tags?: string;
+  status?: string;
+  priorityMin?: string;
+  priorityMax?: string;
+  createdAfter?: string;
+  createdBefore?: string;
+  dueAfter?: string;
+  dueBefore?: string;
+}
+
+// Utility type for building parameters safely
+export type SafeParams<T> = {
+  [K in keyof T]?: string;
+};
+
+// Helper function for safe parameter building
+export function buildParams<T extends Record<string, any>>(
+  options: Partial<T>,
+  mapping?: Partial<Record<keyof T, string>>
+): SafeParams<T> {
+  const params: SafeParams<T> = {};
+
+  Object.entries(options).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      const paramKey = mapping?.[key as keyof T] || key;
+      params[paramKey as keyof T] = String(value);
+    }
+  });
+
+  return params;
+}
