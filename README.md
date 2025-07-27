@@ -28,8 +28,8 @@ Instead of wasting tokens on "remember to implement X after Y" or "the previous 
 │  AI Coding Agent 1  │     │  AI Coding Agent 2  │
 │   (Claude Code)     │     │     (Cursor)        │
 └──────────┬──────────┘     └──────────┬──────────┘
-           │                            │
-           └─────────┬──────────────────┘
+           │                           │
+           └─────────┬─────────────────┘
                      │
               ┌──────▼──────┐
               │  MCP Server │
