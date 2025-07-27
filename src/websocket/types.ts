@@ -3,7 +3,7 @@ import type { WebSocket } from 'ws';
 export interface WebSocketMessage {
   type: string;
   id: string;
-  payload?: any;
+  payload?: Record<string, unknown>;
   timestamp: string;
 }
 
@@ -30,7 +30,7 @@ export interface WebSocketUser {
 export interface WebSocketError {
   code: string;
   message: string;
-  details?: any;
+  details?: Record<string, unknown>;
 }
 
 export interface AuthenticationResult {
@@ -68,7 +68,7 @@ export interface SubscribeMessage {
   type: 'subscribe';
   payload: {
     channel: string;
-    filters?: Record<string, any>;
+    filters?: Record<string, unknown>;
   };
 }
 
@@ -82,8 +82,8 @@ export interface UnsubscribeMessage {
 export interface TaskUpdateMessage {
   type: 'task_updated';
   payload: {
-    task: any;
-    changes: Record<string, any>;
+    task: Record<string, unknown>;
+    changes: Record<string, unknown>;
     updatedBy: string;
     boardId: string;
   };
@@ -92,7 +92,7 @@ export interface TaskUpdateMessage {
 export interface TaskCreatedMessage {
   type: 'task_created';
   payload: {
-    task: any;
+    task: Record<string, unknown>;
     createdBy: string;
     boardId: string;
   };
@@ -110,8 +110,8 @@ export interface TaskDeletedMessage {
 export interface BoardUpdateMessage {
   type: 'board_updated';
   payload: {
-    board: any;
-    changes: Record<string, any>;
+    board: Record<string, unknown>;
+    changes: Record<string, unknown>;
     updatedBy: string;
   };
 }
@@ -119,7 +119,7 @@ export interface BoardUpdateMessage {
 export interface NoteAddedMessage {
   type: 'note_added';
   payload: {
-    note: any;
+    note: Record<string, unknown>;
     taskId: string;
     addedBy: string;
     boardId: string;
@@ -155,7 +155,7 @@ export interface SystemNotificationMessage {
     actions?: Array<{
       label: string;
       action: string;
-      data?: any;
+      data?: Record<string, unknown>;
     }>;
   };
 }
@@ -202,6 +202,6 @@ export interface MessageContext {
   clientId: string;
   client: WebSocketClient;
   message: WebSocketMessage;
-  subscriptionManager: any;
-  webSocketManager: any;
+  subscriptionManager: Record<string, unknown>;
+  webSocketManager: Record<string, unknown>;
 }

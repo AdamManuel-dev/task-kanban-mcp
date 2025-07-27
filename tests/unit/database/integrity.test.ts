@@ -36,12 +36,14 @@ describe('DatabaseIntegrityChecker', () => {
       'backup_metadata',
     ];
 
-    for (const table of tables) {
-      try {
-        await db.execute(`DELETE FROM ${table}`);
-      } catch (error) {
-        // Table might not exist, ignore
-      }
+    try {
+      await Promise.all(
+        tables.map(async table => {
+          await db.execute(`DELETE FROM ${String(table)}`);
+        })
+      );
+    } catch (error) {
+      // Table might not exist, ignore
     }
 
     // Reset FTS tables
@@ -468,48 +470,15 @@ describe('DatabaseIntegrityChecker', () => {
       ['task-2', 'board-1', 'col-1', 'Test Task 2', 'high', 2]
     );
 
-    await db.execute(
-      'INSERT INTO notes (id, board_id, task_id, content, category) VALUES (?, ?, ?, ?, ?)',
-      ['note-1', 'board-1', 'task-1', 'Test note content', 'general']
-    );
-
-    await db.execute('INSERT INTO tags (id, name, slug, path) VALUES (?, ?, ?, ?)', [
-      'tag-1',
-      'test',
-      'test',
-      'test',
+    await db.execute('INSERT INTO notes (id, task_id, content, category) VALUES (?, ?, ?, ?)', [
+      'note-1',
+      'task-1',
+      'Test note content',
+      'general',
     ]);
+
+    await db.execute('INSERT INTO tags (id, name) VALUES (?, ?)', ['tag-1', 'test']);
 
     await db.execute('INSERT INTO task_tags (task_id, tag_id) VALUES (?, ?)', ['task-1', 'tag-1']);
-  }
-
-  async function setupTestDataWithIssues(): Promise<void> {
-    // Create test data with various integrity issues using exec to bypass constraints
-    await db.execute('INSERT INTO boards (id, name) VALUES (?, ?)', ['board-1', 'Test Board']);
-
-    await db.execute('INSERT INTO columns (id, board_id, name, position) VALUES (?, ?, ?, ?)', [
-      'col-1',
-      'board-1',
-      'Todo',
-      1,
-    ]);
-
-    // Use exec to bypass constraints for invalid data
-    await db.getDatabase().exec(`
-      INSERT INTO tasks (id, board_id, column_id, title, priority, position) 
-      VALUES ('task-1', 'board-1', 'col-1', 'Task with invalid priority', 'invalid_priority', 1);
-      
-      INSERT INTO tasks (id, board_id, column_id, parent_task_id, title, position) 
-      VALUES ('task-2', 'board-1', 'col-1', 'task-2', 'Self-referencing task', 2);
-      
-      INSERT INTO notes (id, board_id, content, category) 
-      VALUES ('note-1', 'board-1', 'Note with invalid category', 'invalid_category');
-      
-      INSERT INTO task_progress (task_id, subtasks_total, subtasks_completed, percent_complete) 
-      VALUES ('nonexistent-task', 5, 2, 40);
-      
-      INSERT INTO task_progress (task_id, subtasks_total, subtasks_completed, percent_complete) 
-      VALUES ('task-1', 5, 2, 150);
-    `);
   }
 });

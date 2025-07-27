@@ -1,5 +1,6 @@
 import type { Database } from 'sqlite';
 import type { Database as SQLiteDB } from 'sqlite3';
+import { logger } from '@/utils/logger';
 
 export const name = 'Sample Tags and Notes';
 export const description = 'Create sample tags, task-tag relationships, and notes';
@@ -74,5 +75,5 @@ export async function run(db: Database<SQLiteDB>): Promise<void> {
     ('dep-4', 'task-7', 'task-5', 'relates_to') -- Task filtering relates to real-time updates
   `);
 
-  console.log('Sample tags, notes, and dependencies created');
+  logger.info('Sample tags, notes, and dependencies created');
 }

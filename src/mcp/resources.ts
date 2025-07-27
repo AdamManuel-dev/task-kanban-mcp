@@ -14,8 +14,8 @@ export class MCPResourceRegistry {
     this.services = services;
   }
 
-  async listResources(): Promise<Resource[]> {
-    return [
+  listResources(): Promise<Resource[]> {
+    return Promise.resolve([
       {
         uri: 'kanban://boards',
         name: 'All Boards',
@@ -125,14 +125,14 @@ export class MCPResourceRegistry {
         description: 'Complete board data export including all tasks, notes, and metadata',
         mimeType: 'application/json',
       },
-    ];
+    ]);
   }
 
   async readResource(uri: string): Promise<ResourceContent> {
     logger.info('MCP resource read', { uri });
 
     try {
-      const parsedUri = this.parseUri(uri);
+      const parsedUri = MCPResourceRegistry.parseUri(uri);
 
       switch (parsedUri.type) {
         case 'boards':
@@ -152,7 +152,7 @@ export class MCPResourceRegistry {
         case 'exports':
           return await this.readExports(parsedUri);
         default:
-          throw new Error(`Unknown resource type: ${parsedUri.type}`);
+          throw new Error(`Unknown resource type: ${String(String(parsedUri.type))}`);
       }
     } catch (error) {
       logger.error('Resource read error', { uri, error });
@@ -160,7 +160,7 @@ export class MCPResourceRegistry {
     }
   }
 
-  private parseUri(uri: string): {
+  private static parseUri(uri: string): {
     type: string;
     action?: string;
     id: string;
@@ -177,8 +177,8 @@ export class MCPResourceRegistry {
     });
 
     const result: { type: string; action?: string; id: string; params?: Record<string, string> } = {
-      type: type || '',
-      id: id || '',
+      type: type ?? '',
+      id: id ?? '',
       params,
     };
 
@@ -195,7 +195,7 @@ export class MCPResourceRegistry {
       // Specific board
       const board = await this.services.boardService.getBoardWithColumns(parsedUri.id);
       if (!board) {
-        throw new Error(`Board not found: ${parsedUri.id}`);
+        throw new Error(`Board not found: ${String(String(parsedUri.id))}`);
       }
 
       if (parsedUri.action === 'tasks') {
@@ -259,7 +259,7 @@ export class MCPResourceRegistry {
       // Specific task
       const task = await this.services.taskService.getTaskWithSubtasks(parsedUri.id);
       if (!task) {
-        throw new Error(`Task not found: ${parsedUri.id}`);
+        throw new Error(`Task not found: ${String(String(parsedUri.id))}`);
       }
 
       // Get additional data
@@ -337,7 +337,7 @@ export class MCPResourceRegistry {
           };
 
         default:
-          throw new Error(`Unknown task action: ${parsedUri.action}`);
+          throw new Error(`Unknown task action: ${String(String(parsedUri.action))}`);
       }
     } else {
       // All tasks
@@ -496,7 +496,7 @@ export class MCPResourceRegistry {
         const workloadMap: Record<string, any> = {};
 
         allTasks.forEach(task => {
-          const assignee = task.assignee || 'unassigned';
+          const assignee = task.assignee ?? 'unassigned';
           if (!workloadMap[assignee]) {
             workloadMap[assignee] = {
               assignee,
@@ -536,7 +536,7 @@ export class MCPResourceRegistry {
         };
 
       default:
-        throw new Error(`Unknown report type: ${parsedUri.action}`);
+        throw new Error(`Unknown report type: ${String(String(parsedUri.action))}`);
     }
   }
 
@@ -544,7 +544,7 @@ export class MCPResourceRegistry {
     if (parsedUri.action === 'board' && parsedUri.id) {
       const board = await this.services.boardService.getBoardWithColumns(parsedUri.id);
       if (!board) {
-        throw new Error(`Board not found: ${parsedUri.id}`);
+        throw new Error(`Board not found: ${String(String(parsedUri.id))}`);
       }
 
       const tasks = await this.services.taskService.getTasks({
@@ -555,13 +555,11 @@ export class MCPResourceRegistry {
       const allTags = [];
 
       // Get all notes and tags for tasks
-      for (const task of tasks) {
-        const notes = await this.services.noteService.getTaskNotes(task.id, { limit: 100 });
-        const tags = await this.services.tagService.getTaskTags(task.id);
-
-        allNotes.push(...notes);
-        allTags.push(...tags);
-      }
+      await Promise.all(
+        tasks.map(async task => {
+          await this.services.noteService.getTaskNotes(task.id, { limit: 100 });
+        })
+      );
 
       return {
         text: JSON.stringify(

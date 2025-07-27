@@ -1,5 +1,6 @@
 import type { Database } from 'sqlite';
 import type { Database as SQLiteDB } from 'sqlite3';
+import { logger } from '@/utils/logger';
 
 export const name = 'Sample Tasks';
 export const description =
@@ -43,5 +44,5 @@ export async function run(db: Database<SQLiteDB>): Promise<void> {
     ('task-17', 'Add password hashing', 'Implement bcrypt password hashing', 'board-1', 'col-6', 2, 100, 'done', 'task-1', 2.0)
   `);
 
-  console.log('Sample tasks and subtasks created');
+  logger.info('Sample tasks and subtasks created');
 }

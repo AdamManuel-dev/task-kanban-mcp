@@ -14,8 +14,71 @@ export class MCPPromptRegistry {
     this.services = services;
   }
 
-  async listPrompts(): Promise<Prompt[]> {
-    return [
+  listPrompts(): Promise<Prompt[]> {
+    return Promise.resolve([
+      {
+        name: 'task_planning',
+        description: 'Help plan and organize tasks with intelligent suggestions',
+        arguments: [
+          {
+            name: 'board_id',
+            description: 'ID of the board to plan tasks for',
+            required: true,
+          },
+          {
+            name: 'planning_horizon',
+            description: 'Time horizon for planning (day, week, sprint, month)',
+            required: false,
+          },
+          {
+            name: 'focus_area',
+            description: 'Specific area to focus planning on',
+            required: false,
+          },
+        ],
+      },
+      {
+        name: 'task_breakdown',
+        description: 'Break down complex tasks into manageable subtasks',
+        arguments: [
+          {
+            name: 'task_description',
+            description: 'Description of the complex task to break down',
+            required: true,
+          },
+          {
+            name: 'board_id',
+            description: 'ID of the board where tasks will be created',
+            required: false,
+          },
+          {
+            name: 'complexity_level',
+            description: 'Desired complexity level for subtasks',
+            required: false,
+          },
+        ],
+      },
+      {
+        name: 'sprint_planning',
+        description: 'Assist with sprint planning and capacity estimation',
+        arguments: [
+          {
+            name: 'board_id',
+            description: 'ID of the board for sprint planning',
+            required: true,
+          },
+          {
+            name: 'sprint_duration',
+            description: 'Duration of the sprint in days',
+            required: false,
+          },
+          {
+            name: 'team_capacity',
+            description: 'Available team capacity for the sprint',
+            required: false,
+          },
+        ],
+      },
       {
         name: 'analyze_project_status',
         description: 'Analyze the current status of a project/board and provide insights',
@@ -208,7 +271,7 @@ export class MCPPromptRegistry {
           },
         ],
       },
-    ];
+    ]);
   }
 
   async getPrompt(name: string, args: Record<string, any>): Promise<PromptContent> {
@@ -216,6 +279,12 @@ export class MCPPromptRegistry {
 
     try {
       switch (name) {
+        case 'task_planning':
+          return await this.generateTaskPlanningPrompt(args);
+        case 'task_breakdown':
+          return await this.generateTaskBreakdownBasicPrompt(args);
+        case 'sprint_planning':
+          return await this.generateSprintPlanningBasicPrompt(args);
         case 'analyze_project_status':
           return await this.generateProjectStatusPrompt(args);
         case 'task_breakdown_assistant':
@@ -237,7 +306,7 @@ export class MCPPromptRegistry {
         case 'retrospective_insights':
           return await this.generateRetrospectiveInsightsPrompt(args);
         default:
-          throw new Error(`Unknown prompt: ${name}`);
+          throw new Error(`Unknown prompt: ${String(name)}`);
       }
     } catch (error) {
       logger.error('Prompt generation error', { promptName: name, args, error });
@@ -247,9 +316,9 @@ export class MCPPromptRegistry {
 
   // Prompt generators
   private async generateProjectStatusPrompt(args: any): Promise<PromptContent> {
-    const { board_id, focus_area } = args;
+    const { board_id: boardId, focus_area: focusArea } = args;
 
-    if (!board_id) {
+    if (!boardId) {
       throw new Error('board_id is required');
     }
 
@@ -261,11 +330,11 @@ export class MCPPromptRegistry {
       detail_level: 'comprehensive',
     });
 
-    const analytics = await this.services.boardService.getBoardWithStats(board_id);
+    const analytics = await this.services.boardService.getBoardWithStats(boardId);
 
     let focusInstruction = '';
-    if (focus_area) {
-      focusInstruction = `Focus specifically on: ${focus_area}. `;
+    if (focusArea) {
+      focusInstruction = `Focus specifically on: ${String(focusArea)}. `;
     }
 
     return {
@@ -275,13 +344,13 @@ export class MCPPromptRegistry {
           role: 'user',
           content: {
             type: 'text',
-            text: `Please analyze the current status of this project and provide insights. ${focusInstruction}
+            text: `Please analyze the current status of this project and provide insights. ${String(focusInstruction)}
 
 Project Context:
-${context}
+${String(context)}
 
 Analytics Data:
-${JSON.stringify(analytics, null, 2)}
+${String(String(JSON.stringify(analytics, null, 2)))}
 
 Provide a comprehensive analysis including:
 1. Current progress and completion rate
@@ -299,21 +368,21 @@ Format your response in a clear, actionable manner suitable for stakeholders.`,
     };
   }
 
-  private async generateTaskBreakdownPrompt(args: any): Promise<PromptContent> {
-    const { task_description, context, timeline } = args;
+  private generateTaskBreakdownPrompt(args: any): PromptContent {
+    const { task_description: taskDescription, context, timeline } = args;
 
-    if (!task_description) {
+    if (!taskDescription) {
       throw new Error('task_description is required');
     }
 
     let additionalContext = '';
     if (context) {
-      additionalContext = `\n\nAdditional Context:\n${context}`;
+      additionalContext = `\n\nAdditional Context:\n${String(context)}`;
     }
 
     let timelineInfo = '';
     if (timeline) {
-      timelineInfo = `\n\nTarget Timeline: ${timeline}`;
+      timelineInfo = `\n\nTarget Timeline: ${String(timeline)}`;
     }
 
     return {
@@ -326,7 +395,7 @@ Format your response in a clear, actionable manner suitable for stakeholders.`,
             text: `Please help me break down this complex task into smaller, manageable subtasks:
 
 Task Description:
-${task_description}${additionalContext}${timelineInfo}
+${String(taskDescription)}${String(additionalContext)}${String(timelineInfo)}
 
 Please provide:
 1. A list of 3-8 subtasks that logically break down the main task
@@ -347,32 +416,32 @@ Format the subtasks in a way that can be easily added to a kanban board.`,
   }
 
   private async generateBlockerResolutionPrompt(args: any): Promise<PromptContent> {
-    const { board_id, task_id } = args;
+    const { board_id: boardId, task_id: taskId } = args;
 
     let blockedTasks;
     let contextInfo = '';
 
-    if (task_id) {
+    if (taskId) {
       // Single task analysis
-      const task = await this.services.taskService.getTaskById(task_id);
+      const task = await this.services.taskService.getTaskById(taskId);
       if (!task) {
-        throw new Error(`Task not found: ${task_id}`);
+        throw new Error(`Task not found: ${String(taskId)}`);
       }
       blockedTasks = [task];
 
-      const taskContext = await this.services.contextService.getTaskContext(task_id, {
+      const taskContext = await this.services.contextService.getTaskContext(taskId, {
         include_completed: true,
         days_back: 30,
         max_items: 100,
         include_metrics: true,
         detail_level: 'detailed',
       });
-      contextInfo = `\nTask Context:\n${taskContext}`;
+      contextInfo = `\nTask Context:\n${String(taskContext)}`;
     } else {
       // Board-wide analysis
-      blockedTasks = await this.services.taskService.getBlockedTasks(board_id);
+      blockedTasks = await this.services.taskService.getBlockedTasks(boardId);
 
-      if (board_id) {
+      if (boardId) {
         const projectContext = await this.services.contextService.getProjectContext({
           include_completed: false,
           days_back: 30,
@@ -380,7 +449,7 @@ Format the subtasks in a way that can be easily added to a kanban board.`,
           include_metrics: false,
           detail_level: 'summary',
         });
-        contextInfo = `\nProject Context:\n${projectContext}`;
+        contextInfo = `\nProject Context:\n${String(projectContext)}`;
       }
     }
 
@@ -394,7 +463,7 @@ Format the subtasks in a way that can be easily added to a kanban board.`,
             text: `Please analyze these blocked tasks and provide resolution strategies:
 
 Blocked Tasks:
-${JSON.stringify(blockedTasks, null, 2)}${contextInfo}
+${String(String(JSON.stringify(blockedTasks, null, 2)))}${String(contextInfo)}
 
 For each blocked task, please provide:
 1. Root cause analysis of the blocker
@@ -416,9 +485,9 @@ Also provide:
   }
 
   private async generateSprintPlanningPrompt(args: any): Promise<PromptContent> {
-    const { board_id, sprint_duration, team_capacity } = args;
+    const { board_id: boardId, sprint_duration: sprintDuration, team_capacity: teamCapacity } = args;
 
-    if (!board_id) {
+    if (!boardId) {
       throw new Error('board_id is required');
     }
 
@@ -430,10 +499,10 @@ Also provide:
       detail_level: 'detailed',
     });
 
-    const analytics = await this.services.boardService.getBoardWithStats(board_id);
+    const analytics = await this.services.boardService.getBoardWithStats(boardId);
 
-    const durationInfo = sprint_duration ? `\nSprint Duration: ${sprint_duration}` : '';
-    const capacityInfo = team_capacity ? `\nTeam Capacity: ${team_capacity}` : '';
+    const durationInfo = sprintDuration ? `\nSprint Duration: ${String(sprintDuration)}` : '';
+    const capacityInfo = teamCapacity ? `\nTeam Capacity: ${String(teamCapacity)}` : '';
 
     return {
       description: 'Plan sprint based on current board state and team capacity',
@@ -445,10 +514,10 @@ Also provide:
             text: `Please help plan the next sprint based on the current project state:
 
 Project Context:
-${context}
+${String(context)}
 
 Analytics:
-${JSON.stringify(analytics, null, 2)}${durationInfo}${capacityInfo}
+${String(String(JSON.stringify(analytics, null, 2)))}${String(durationInfo)}${String(capacityInfo)}
 
 Please provide:
 1. Recommended tasks for the sprint based on:
@@ -471,9 +540,9 @@ Format the recommendations in a way that can guide sprint planning meetings.`,
   }
 
   private async generatePriorityRecommendationPrompt(args: any): Promise<PromptContent> {
-    const { board_id, criteria } = args;
+    const { board_id: boardId, criteria } = args;
 
-    if (!board_id) {
+    if (!boardId) {
       throw new Error('board_id is required');
     }
 
@@ -485,7 +554,7 @@ Format the recommendations in a way that can guide sprint planning meetings.`,
       detail_level: 'detailed',
     });
 
-    const criteriaInfo = criteria ? `\nPrioritization Criteria: ${criteria}` : '';
+    const criteriaInfo = criteria ? `\nPrioritization Criteria: ${String(criteria)}` : '';
 
     return {
       description: 'Get task prioritization recommendations',
@@ -497,7 +566,7 @@ Format the recommendations in a way that can guide sprint planning meetings.`,
             text: `Please analyze the current tasks and provide prioritization recommendations:
 
 Project Context:
-${context}${criteriaInfo}
+${String(context)}${String(criteriaInfo)}
 
 Please provide:
 1. Task prioritization recommendations with reasoning
@@ -523,9 +592,9 @@ Consider factors like:
   }
 
   private async generateProgressReportPrompt(args: any): Promise<PromptContent> {
-    const { board_id, timeframe, audience } = args;
+    const { board_id: boardId, timeframe, audience } = args;
 
-    if (!board_id) {
+    if (!boardId) {
       throw new Error('board_id is required');
     }
 
@@ -537,10 +606,10 @@ Consider factors like:
       detail_level: 'comprehensive',
     });
 
-    const analytics = await this.services.boardService.getBoardWithStats(board_id);
+    const analytics = await this.services.boardService.getBoardWithStats(boardId);
 
-    const timeframeInfo = timeframe ? `\nTimeframe: ${timeframe}` : '';
-    const audienceInfo = audience ? `\nTarget Audience: ${audience}` : '';
+    const timeframeInfo = timeframe ? `\nTimeframe: ${String(timeframe)}` : '';
+    const audienceInfo = audience ? `\nTarget Audience: ${String(audience)}` : '';
 
     return {
       description: 'Generate comprehensive progress report',
@@ -552,10 +621,10 @@ Consider factors like:
             text: `Please generate a comprehensive progress report for this project:
 
 Project Context:
-${context}
+${String(context)}
 
 Analytics:
-${JSON.stringify(analytics, null, 2)}${timeframeInfo}${audienceInfo}
+${String(String(JSON.stringify(analytics, null, 2)))}${String(timeframeInfo)}${String(audienceInfo)}
 
 Please create a report including:
 1. Executive Summary
@@ -594,25 +663,25 @@ Tailor the language and detail level for the specified audience.`,
   }
 
   private async generateTaskEstimationPrompt(args: any): Promise<PromptContent> {
-    const { task_description, board_id, complexity } = args;
+    const { task_description: taskDescription, board_id: boardId, complexity } = args;
 
-    if (!task_description) {
+    if (!taskDescription) {
       throw new Error('task_description is required');
     }
 
     let historicalContext = '';
-    if (board_id) {
+    if (boardId) {
       const recentTasks = await this.services.taskService.getTasks({
-        board_id,
+        board_id: boardId,
         limit: 50,
         sortBy: 'updated_at',
         sortOrder: 'desc',
       });
 
-      historicalContext = `\nRecent Similar Tasks:\n${JSON.stringify(recentTasks.slice(0, 10), null, 2)}`;
+      historicalContext = `\nRecent Similar Tasks:\n${String(String(JSON.stringify(recentTasks.slice(0, 10), null, 2)))}`;
     }
 
-    const complexityInfo = complexity ? `\nPerceived Complexity: ${complexity}` : '';
+    const complexityInfo = complexity ? `\nPerceived Complexity: ${String(complexity)}` : '';
 
     return {
       description: 'Help estimate task effort and timeline',
@@ -624,7 +693,7 @@ Tailor the language and detail level for the specified audience.`,
             text: `Please help estimate the effort and timeline for this task:
 
 Task Description:
-${task_description}${complexityInfo}${historicalContext}
+${String(taskDescription)}${String(complexityInfo)}${String(historicalContext)}
 
 Please provide:
 1. Effort Estimation
@@ -660,9 +729,9 @@ Base your estimates on the historical data provided and industry best practices.
   }
 
   private async generateWorkflowOptimizationPrompt(args: any): Promise<PromptContent> {
-    const { board_id, optimization_goal } = args;
+    const { board_id: boardId, optimization_goal: optimizationGoal } = args;
 
-    if (!board_id) {
+    if (!boardId) {
       throw new Error('board_id is required');
     }
 
@@ -674,9 +743,9 @@ Base your estimates on the historical data provided and industry best practices.
       detail_level: 'comprehensive',
     });
 
-    const analytics = await this.services.boardService.getBoardWithStats(board_id);
+    const analytics = await this.services.boardService.getBoardWithStats(boardId);
 
-    const goalInfo = optimization_goal ? `\nOptimization Goal: ${optimization_goal}` : '';
+    const goalInfo = optimizationGoal ? `\nOptimization Goal: ${String(optimizationGoal)}` : '';
 
     return {
       description: 'Analyze workflow and suggest optimizations',
@@ -688,10 +757,10 @@ Base your estimates on the historical data provided and industry best practices.
             text: `Please analyze the current workflow and suggest optimizations:
 
 Project Context:
-${context}
+${String(context)}
 
 Analytics:
-${JSON.stringify(analytics, null, 2)}${goalInfo}
+${String(String(JSON.stringify(analytics, null, 2)))}${String(goalInfo)}
 
 Please provide:
 1. Current Workflow Analysis
@@ -730,32 +799,32 @@ Focus on the specified optimization goal while considering overall workflow effi
   }
 
   private async generateStandupPreparationPrompt(args: any): Promise<PromptContent> {
-    const { board_id, team_member, since_date } = args;
+    const { board_id: boardId, team_member: teamMember, since_date: sinceDate } = args;
 
-    if (!board_id) {
+    if (!boardId) {
       throw new Error('board_id is required');
     }
 
-    const sinceDate = since_date
-      ? new Date(since_date)
+    const sinceDateObj = sinceDate
+      ? new Date(sinceDate)
       : new Date(Date.now() - 24 * 60 * 60 * 1000);
 
     const recentTasks = await this.services.taskService.getTasks({
-      board_id,
+      board_id: boardId,
       limit: 100,
       sortBy: 'updated_at',
       sortOrder: 'desc',
     });
 
     // Filter tasks updated since the specified date
-    const updatedTasks = recentTasks.filter(task => new Date(task.updated_at) >= sinceDate);
+    const updatedTasks = recentTasks.filter(task => new Date(task.updated_at) >= sinceDateObj);
 
     // Filter by team member if specified
-    const relevantTasks = team_member
-      ? updatedTasks.filter(task => task.assignee === team_member)
+    const relevantTasks = teamMember
+      ? updatedTasks.filter(task => task.assignee === teamMember)
       : updatedTasks;
 
-    const memberInfo = team_member ? `\nTeam Member: ${team_member}` : '';
+    const memberInfo = teamMember ? `\nTeam Member: ${String(teamMember)}` : '';
 
     return {
       description: 'Prepare content for daily standup meeting',
@@ -766,8 +835,8 @@ Focus on the specified optimization goal while considering overall workflow effi
             type: 'text',
             text: `Please help prepare standup content based on recent activity:
 
-Recent Task Updates (since ${sinceDate.toISOString()}):
-${JSON.stringify(relevantTasks, null, 2)}${memberInfo}
+Recent Task Updates (since ${String(String(sinceDate.toISOString()))}):
+${String(String(JSON.stringify(relevantTasks, null, 2)))}${String(memberInfo)}
 
 Please provide standup talking points for:
 
@@ -803,9 +872,9 @@ Format the content to be concise and suitable for a brief standup meeting (2-3 m
   }
 
   private async generateRetrospectiveInsightsPrompt(args: any): Promise<PromptContent> {
-    const { board_id, timeframe, focus_areas } = args;
+    const { board_id: boardId, timeframe, focus_areas: focusAreas } = args;
 
-    if (!board_id) {
+    if (!boardId) {
       throw new Error('board_id is required');
     }
 
@@ -817,10 +886,10 @@ Format the content to be concise and suitable for a brief standup meeting (2-3 m
       detail_level: 'comprehensive',
     });
 
-    const analytics = await this.services.boardService.getBoardWithStats(board_id);
+    const analytics = await this.services.boardService.getBoardWithStats(boardId);
 
-    const timeframeInfo = timeframe ? `\nTimeframe: ${timeframe}` : '';
-    const focusInfo = focus_areas ? `\nFocus Areas: ${focus_areas}` : '';
+    const timeframeInfo = timeframe ? `\nTimeframe: ${String(timeframe)}` : '';
+    const focusInfo = focusAreas ? `\nFocus Areas: ${String(focusAreas)}` : '';
 
     return {
       description: 'Generate insights for retrospective meeting',
@@ -832,10 +901,10 @@ Format the content to be concise and suitable for a brief standup meeting (2-3 m
             text: `Please generate insights and talking points for a retrospective meeting:
 
 Project Context:
-${context}
+${String(context)}
 
 Analytics:
-${JSON.stringify(analytics, null, 2)}${timeframeInfo}${focusInfo}
+${String(String(JSON.stringify(analytics, null, 2)))}${String(timeframeInfo)}${String(focusInfo)}
 
 Please provide retrospective insights organized by:
 
@@ -874,6 +943,140 @@ Please provide retrospective insights organized by:
    - Customer satisfaction trends
 
 Format the insights to encourage constructive discussion and actionable outcomes.`,
+          },
+        },
+      ],
+    };
+  }
+
+  private async generateTaskPlanningPrompt(args: any): Promise<PromptContent> {
+    const boardId = args.board_id ?? args.boardId;
+    const planningHorizon = args.planning_horizon ?? args.planningHorizon;
+    const focusArea = args.focus_area ?? args.focusArea;
+
+    if (!boardId) {
+      throw new Error('board_id (or boardId) is required');
+    }
+
+    const context = await this.services.contextService.getProjectContext({
+      include_completed: false,
+      days_back: 14,
+      max_items: 100,
+    });
+
+    const horizon = planningHorizon ?? 'sprint';
+    const focus = focusArea ? ` with focus on ${String(focusArea)}` : '';
+
+    return {
+      description: 'Generate a comprehensive task planning strategy',
+      messages: [
+        {
+          role: 'user',
+          content: {
+            type: 'text',
+            text: `You are a project planning assistant. Help create an effective task plan for the ${String(horizon)}${String(focus)}.
+
+Current Context:
+${String(context)}
+
+Create a comprehensive task plan that includes:
+1. Priority assessment of existing tasks
+2. Recommended task sequencing
+3. Capacity planning considerations
+4. Risk assessment and mitigation
+5. Dependencies and blocking factors
+
+Focus on actionable recommendations that will improve team productivity and project outcomes.`,
+          },
+        },
+      ],
+    };
+  }
+
+  private generateTaskBreakdownBasicPrompt(args: any): PromptContent {
+    // Handle both task_description and taskId (if taskId is provided, create a generic description)
+    const taskDescription =
+      args.task_description ||
+      (args.taskId ? `Task ID: ${String(String(args.taskId))}` : args.description);
+    const complexityLevel = args.complexity_level ?? args.complexity;
+
+    if (!taskDescription) {
+      throw new Error('task_description (or taskId) is required');
+    }
+
+    const complexity = complexityLevel ?? 'medium';
+
+    return {
+      description: 'Break down complex tasks into manageable subtasks',
+      messages: [
+        {
+          role: 'user',
+          content: {
+            type: 'text',
+            text: `You are a task breakdown specialist. Help break down this complex task into manageable subtasks.
+
+Task to Break Down: "${String(taskDescription)}"
+Target Complexity Level: ${String(complexity)}
+
+Please provide:
+1. A logical breakdown of the task into 3-7 subtasks
+2. Estimated effort for each subtask
+3. Dependencies between subtasks
+4. Acceptance criteria for each subtask
+5. Recommended order of execution
+
+Make sure each subtask is:
+- Specific and actionable
+- Testable with clear completion criteria
+- Appropriately sized for the target complexity
+- Independent where possible`,
+          },
+        },
+      ],
+    };
+  }
+
+  private async generateSprintPlanningBasicPrompt(args: any): Promise<PromptContent> {
+    const boardId = args.board_id ?? args.boardId;
+    const sprintDuration = args.sprint_duration ?? args.sprintDuration;
+    const teamCapacity = args.team_capacity ?? args.teamCapacity;
+
+    if (!boardId) {
+      throw new Error('board_id (or boardId) is required');
+    }
+
+    const duration = sprintDuration ?? 14;
+    const capacity = teamCapacity ?? 'standard team capacity';
+
+    const context = await this.services.contextService.getProjectContext({
+      include_completed: false,
+      days_back: 30,
+      max_items: 100,
+    });
+
+    return {
+      description: 'Generate sprint planning recommendations',
+      messages: [
+        {
+          role: 'user',
+          content: {
+            type: 'text',
+            text: `You are a sprint planning facilitator. Help plan an effective ${String(duration)}-day sprint.
+
+Current Project State:
+${String(context)}
+
+Team Capacity: ${String(capacity)}
+
+Please provide:
+1. Sprint goal recommendation
+2. Task prioritization for the sprint
+3. Capacity allocation suggestions
+4. Risk assessment for the sprint
+5. Success metrics to track
+6. Recommended scope adjustments if needed
+
+Focus on creating a realistic, achievable sprint plan that balances ambition with deliverability.`,
           },
         },
       ],

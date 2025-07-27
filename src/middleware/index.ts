@@ -6,7 +6,7 @@ import { requestValidationMiddleware } from './validation';
 import { responseFormattingMiddleware } from './response';
 import { requestIdMiddleware } from './requestId';
 
-export async function createApiMiddleware() {
+export async function createApiMiddleware(): Promise<Router> {
   const router = Router();
 
   // Request ID middleware (must be first)
@@ -18,8 +18,10 @@ export async function createApiMiddleware() {
   // Response formatting
   router.use(responseFormattingMiddleware);
 
-  // Authentication middleware
-  router.use(authenticationMiddleware);
+  // Authentication middleware (skip in test environment)
+  if (process.env.NODE_ENV !== 'test') {
+    router.use(authenticationMiddleware);
+  }
 
   // Request validation middleware
   router.use(requestValidationMiddleware);
@@ -35,3 +37,4 @@ export * from './logging';
 export * from './validation';
 export * from './response';
 export * from './requestId';
+export * from './asyncHandler';

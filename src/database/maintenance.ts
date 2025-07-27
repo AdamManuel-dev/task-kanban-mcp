@@ -91,7 +91,7 @@ export class MaintenanceManager {
    * Perform VACUUM operation to reclaim free space and optimize database
    *
    * @param {Object} options - Vacuum options
-   * @param {boolean} [options.incremental=false] - Use incremental vacuum
+   * @param {boolean} [options['incremental'] = false] - Use incremental vacuum
    * @param {number} [options.pages] - Number of pages to vacuum (incremental only)
    * @returns {Promise<MaintenanceResult>} Operation result
    *
@@ -99,7 +99,7 @@ export class MaintenanceManager {
    * ```typescript
    * // Full vacuum
    * const result = await maintenance.vacuum();
-   * console.log(`Reclaimed ${result.spaceReclaimed} bytes`);
+   * logger.log(`Reclaimed ${String(String(result.spaceReclaimed))} bytes`);
    *
    * // Incremental vacuum
    * await maintenance.vacuum({ incremental: true, pages: 1000 });
@@ -125,8 +125,8 @@ export class MaintenanceManager {
 
       // Perform vacuum operation
       if (options.incremental) {
-        const pages = options.pages || 1000;
-        await this.db.getDatabase().exec(`PRAGMA incremental_vacuum(${pages})`);
+        const pages = options.pages ?? 1000;
+        await this.db.getDatabase().exec(`PRAGMA incremental_vacuum(${String(pages)})`);
       } else {
         await this.db.getDatabase().exec('VACUUM');
       }
@@ -153,9 +153,9 @@ export class MaintenanceManager {
 
       if (this.config.enableLogging) {
         logger.info('Vacuum operation completed', {
-          duration: `${duration}ms`,
-          spaceReclaimed: `${(spaceReclaimed / 1024 / 1024).toFixed(2)}MB`,
-          percentageReduced: `${result.details?.['percentageReduced']}%`,
+          duration: `${String(duration)}ms`,
+          spaceReclaimed: `${String(String((spaceReclaimed / 1024 / 1024).toFixed(2)))}MB`,
+          percentageReduced: `${String(String(result.details?.percentageReduced))}%`,
         });
       }
 
@@ -172,7 +172,7 @@ export class MaintenanceManager {
       if (this.config.enableLogging) {
         logger.error('Vacuum operation failed', {
           operation,
-          duration: `${duration}ms`,
+          duration: `${String(duration)}ms`,
           error: (error as Error).message,
         });
       }
@@ -210,20 +210,14 @@ export class MaintenanceManager {
         logger.info('Starting analyze operation', { options });
       }
 
-      const tables = options.tables || (await this.getAllTableNames());
+      const tables = options.tables ?? (await this.getAllTableNames());
       const analyzedTables: string[] = [];
 
-      for (const table of tables) {
-        try {
-          await this.db.getDatabase().exec(`ANALYZE ${table}`);
-          analyzedTables.push(table);
-        } catch (error) {
-          logger.warn('Failed to analyze table', {
-            table,
-            error: (error as Error).message,
-          });
-        }
-      }
+      await Promise.all(
+        tables.map(async table => {
+          await this.db.getDatabase().exec(`ANALYZE ${String(table)}`);
+        })
+      );
 
       // Update general statistics
       await this.db.getDatabase().exec('ANALYZE');
@@ -236,13 +230,13 @@ export class MaintenanceManager {
         details: {
           tablesAnalyzed: analyzedTables,
           totalTables: tables.length,
-          successRate: `${((analyzedTables.length / tables.length) * 100).toFixed(1)}%`,
+          successRate: `${String(String(((analyzedTables.length / tables.length) * 100).toFixed(1)))}%`,
         },
       };
 
       if (this.config.enableLogging) {
         logger.info('Analyze operation completed', {
-          duration: `${duration}ms`,
+          duration: `${String(duration)}ms`,
           tablesAnalyzed: analyzedTables.length,
           totalTables: tables.length,
         });
@@ -260,7 +254,7 @@ export class MaintenanceManager {
 
       if (this.config.enableLogging) {
         logger.error('Analyze operation failed', {
-          duration: `${duration}ms`,
+          duration: `${String(duration)}ms`,
           error: (error as Error).message,
         });
       }
@@ -277,7 +271,7 @@ export class MaintenanceManager {
    * @example
    * ```typescript
    * const result = await maintenance.optimize();
-   * console.log('Optimization completed:', result.success);
+   * logger.log('Optimization completed:', result.success);
    * ```
    */
   public async optimize(): Promise<MaintenanceResult> {
@@ -304,7 +298,7 @@ export class MaintenanceManager {
 
       if (this.config.enableLogging) {
         logger.info('Optimization operation completed', {
-          duration: `${duration}ms`,
+          duration: `${String(duration)}ms`,
         });
       }
 
@@ -320,7 +314,7 @@ export class MaintenanceManager {
 
       if (this.config.enableLogging) {
         logger.error('Optimization operation failed', {
-          duration: `${duration}ms`,
+          duration: `${String(duration)}ms`,
           error: (error as Error).message,
         });
       }
@@ -337,7 +331,7 @@ export class MaintenanceManager {
    * @example
    * ```typescript
    * const result = await maintenance.checkpointWal();
-   * console.log('WAL checkpoint completed:', result.success);
+   * logger.log('WAL checkpoint completed:', result.success);
    * ```
    */
   public async checkpointWal(): Promise<MaintenanceResult> {
@@ -375,15 +369,15 @@ export class MaintenanceManager {
         success: true,
         duration,
         details: {
-          pagesCheckpointed: checkpointResult?.checkpointed || 0,
-          logPages: checkpointResult?.log || 0,
-          busyPages: checkpointResult?.busy || 0,
+          pagesCheckpointed: checkpointResult?.checkpointed ?? 0,
+          logPages: checkpointResult?.log ?? 0,
+          busyPages: checkpointResult?.busy ?? 0,
         },
       };
 
       if (this.config.enableLogging) {
         logger.info('WAL checkpoint completed', {
-          duration: `${duration}ms`,
+          duration: `${String(duration)}ms`,
           pagesCheckpointed: checkpointResult?.checkpointed,
           logPages: checkpointResult?.log,
         });
@@ -401,7 +395,7 @@ export class MaintenanceManager {
 
       if (this.config.enableLogging) {
         logger.error('WAL checkpoint failed', {
-          duration: `${duration}ms`,
+          duration: `${String(duration)}ms`,
           error: (error as Error).message,
         });
       }
@@ -414,7 +408,7 @@ export class MaintenanceManager {
    * Perform comprehensive database maintenance
    *
    * @param {Object} options - Maintenance options
-   * @param {boolean} [options.includeVacuum=true] - Include vacuum operation
+   * @param {boolean} [options['includeVacuum'] = true] - Include vacuum operation
    * @param {boolean} [options.includeAnalyze=true] - Include analyze operation
    * @param {boolean} [options.includeOptimize=true] - Include optimize operation
    * @param {boolean} [options.includeWalCheckpoint=true] - Include WAL checkpoint
@@ -425,7 +419,7 @@ export class MaintenanceManager {
    * // Full maintenance
    * const results = await maintenance.performFullMaintenance();
    * const successful = results.filter(r => r.success).length;
-   * console.log(`${successful}/${results.length} operations successful`);
+   * logger.log(`${String(successful)}/${String(String(results.length))} operations successful`);
    *
    * // Selective maintenance
    * const results = await maintenance.performFullMaintenance({
@@ -492,7 +486,7 @@ export class MaintenanceManager {
 
       if (this.config.enableLogging) {
         logger.info('Full database maintenance completed', {
-          totalDuration: `${totalDuration}ms`,
+          totalDuration: `${String(totalDuration)}ms`,
           operationsRun: results.length,
           successful,
           failed,
@@ -520,7 +514,7 @@ export class MaintenanceManager {
    * @example
    * ```typescript
    * const { recommendations, stats } = await maintenance.getRecommendations();
-   * recommendations.forEach(rec => console.log('Recommendation:', rec));
+   * recommendations.forEach(rec => logger.log('Recommendation:', rec));
    * ```
    */
   public async getRecommendations(): Promise<{

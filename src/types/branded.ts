@@ -81,49 +81,49 @@ export function isRepositoryMappingId(value: unknown): value is RepositoryMappin
  */
 export function createTaskId(value: number): TaskId {
   if (!Number.isInteger(value) || value <= 0) {
-    throw new Error(`Invalid TaskId: ${value}`);
+    throw new Error(`Invalid TaskId: ${String(value)}`);
   }
   return value as TaskId;
 }
 
 export function createBoardId(value: number): BoardId {
   if (!Number.isInteger(value) || value <= 0) {
-    throw new Error(`Invalid BoardId: ${value}`);
+    throw new Error(`Invalid BoardId: ${String(value)}`);
   }
   return value as BoardId;
 }
 
 export function createColumnId(value: number): ColumnId {
   if (!Number.isInteger(value) || value <= 0) {
-    throw new Error(`Invalid ColumnId: ${value}`);
+    throw new Error(`Invalid ColumnId: ${String(value)}`);
   }
   return value as ColumnId;
 }
 
 export function createNoteId(value: number): NoteId {
   if (!Number.isInteger(value) || value <= 0) {
-    throw new Error(`Invalid NoteId: ${value}`);
+    throw new Error(`Invalid NoteId: ${String(value)}`);
   }
   return value as NoteId;
 }
 
 export function createTagId(value: number): TagId {
   if (!Number.isInteger(value) || value <= 0) {
-    throw new Error(`Invalid TagId: ${value}`);
+    throw new Error(`Invalid TagId: ${String(value)}`);
   }
   return value as TagId;
 }
 
 export function createUserId(value: number): UserId {
   if (!Number.isInteger(value) || value <= 0) {
-    throw new Error(`Invalid UserId: ${value}`);
+    throw new Error(`Invalid UserId: ${String(value)}`);
   }
   return value as UserId;
 }
 
 export function createRepositoryMappingId(value: number): RepositoryMappingId {
   if (!Number.isInteger(value) || value <= 0) {
-    throw new Error(`Invalid RepositoryMappingId: ${value}`);
+    throw new Error(`Invalid RepositoryMappingId: ${String(value)}`);
   }
   return value as RepositoryMappingId;
 }

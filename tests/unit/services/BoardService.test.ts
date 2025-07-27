@@ -7,21 +7,16 @@
 
 import { BoardService } from '../../../src/services/BoardService';
 import { DatabaseConnection } from '../../../src/database/connection';
-import type {
-  Board,
-  BoardWithColumns,
-  BoardWithStats,
-  CreateBoardRequest,
-  UpdateBoardRequest,
-} from '../../../src/types';
+import type { CreateBoardRequest } from '../../../src/types';
 
 describe('BoardService', () => {
   let boardService: BoardService;
   let db: DatabaseConnection;
 
   beforeAll(async () => {
+    // Initialize database connection
     db = DatabaseConnection.getInstance();
-    await db.initialize();
+    await db.initialize({ skipSchema: false });
     boardService = new BoardService(db);
   });
 
@@ -182,9 +177,13 @@ describe('BoardService', () => {
 
     it('should handle pagination', async () => {
       // Create multiple boards
-      for (let i = 1; i <= 5; i++) {
-        await boardService.createBoard({ name: `Pagination Board ${i}` });
+      const createBoardPromises = [];
+      for (let i = 1; i <= 5; i += 1) {
+        createBoardPromises.push(
+          boardService.createBoard({ name: `Pagination Board ${String(i)}` })
+        );
       }
+      await Promise.all(createBoardPromises);
 
       const firstPage = await boardService.getBoards({ limit: 2, offset: 0 });
       const secondPage = await boardService.getBoards({ limit: 2, offset: 2 });
@@ -267,7 +266,9 @@ describe('BoardService', () => {
       expect(originalBoard).toBeDefined();
 
       // Wait a bit to ensure timestamp difference
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise<void>(resolve => {
+        setTimeout(resolve, 10);
+      });
 
       const updatedBoard = await boardService.updateBoard(testBoardId, {
         name: 'Timestamp Test',
@@ -425,7 +426,7 @@ describe('BoardService', () => {
         transaction: jest.fn().mockRejectedValue(new Error('Database connection lost')),
       };
 
-      const errorBoardService = new BoardService(mockDb as any);
+      const errorBoardService = new BoardService(mockDb as unknown as DatabaseConnection);
 
       await expect(errorBoardService.getBoards()).rejects.toThrow();
     });

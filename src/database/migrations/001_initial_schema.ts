@@ -229,7 +229,7 @@ export async function up(db: Database): Promise<void> {
       c.name as column_name,
       b.name as board_name,
       COUNT(st.id) as subtask_count,
-      COUNT(CASE WHEN st.status = 'done' THEN 1 END) as completed_subtasks
+      COUNT(CASE WHEN st['status'] = 'done' THEN 1 END) as completed_subtasks
     FROM tasks t
     JOIN columns c ON t.column_id = c.id
     JOIN boards b ON t.board_id = b.id
@@ -249,7 +249,7 @@ export async function up(db: Database): Promise<void> {
       t1.status as task_status,
       t2.status as depends_on_status
     FROM task_dependencies td
-    JOIN tasks t1 ON td.task_id = t1.id
+    JOIN tasks t1 ON td['task_id'] = t1.id
     JOIN tasks t2 ON td.depends_on_task_id = t2.id
     WHERE t1.archived = FALSE AND t2.archived = FALSE
   `);
@@ -260,7 +260,7 @@ export async function up(db: Database): Promise<void> {
       b.id as board_id,
       b.name as board_name,
       COUNT(t.id) as total_tasks,
-      COUNT(CASE WHEN t.status = 'todo' THEN 1 END) as todo_tasks,
+      COUNT(CASE WHEN t['status'] = 'todo' THEN 1 END) as todo_tasks,
       COUNT(CASE WHEN t.status = 'in_progress' THEN 1 END) as in_progress_tasks,
       COUNT(CASE WHEN t.status = 'done' THEN 1 END) as done_tasks,
       COUNT(CASE WHEN t.status = 'blocked' THEN 1 END) as blocked_tasks,

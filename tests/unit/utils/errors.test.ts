@@ -4,6 +4,8 @@
  * @description Tests for custom error classes and error handling utilities
  */
 
+/* eslint-disable max-classes-per-file, class-methods-use-this */
+
 import type { ErrorContext } from '@/utils/errors';
 import {
   BaseServiceError,
@@ -137,7 +139,7 @@ describe('Error Utilities', () => {
       const error = new NotFoundError('User');
 
       expect(error.message).toBe('User not found');
-      expect(error.details).toEqual({ resource: 'User', identifier: undefined });
+      expect(error.details).toEqual({ resource: 'User', identifier: 'unknown' });
     });
   });
 
@@ -389,13 +391,14 @@ describe('Error Utilities', () => {
       const decorator = createServiceErrorHandler(serviceName);
 
       class TestClass {
-        async testMethod() {
+        async testMethod(this: void): Promise<void> {
+          await Promise.resolve();
           throw new Error('Test error');
         }
       }
 
       const descriptor = {
-        value: TestClass.prototype.testMethod,
+        value: TestClass.prototype.testMethod as (this: void) => Promise<void>,
       };
 
       decorator(TestClass.prototype, 'testMethod', descriptor);
@@ -417,13 +420,14 @@ describe('Error Utilities', () => {
       const decorator = createServiceErrorHandler(serviceName);
 
       class TestClass {
-        async testMethod() {
+        async testMethod(this: void): Promise<string> {
+          await Promise.resolve();
           return 'success';
         }
       }
 
       const descriptor = {
-        value: TestClass.prototype.testMethod,
+        value: TestClass.prototype.testMethod as (this: void) => Promise<string>,
       };
 
       decorator(TestClass.prototype, 'testMethod', descriptor);
@@ -450,7 +454,7 @@ describe('Error Utilities', () => {
 
     it('should handle synchronous errors', () => {
       const error = new Error('Sync error');
-      const fn = jest.fn().mockImplementation(() => {
+      const fn = jest.fn<() => void>().mockImplementation(() => {
         throw error;
       });
       const wrappedFn = withErrorContext(fn, context);

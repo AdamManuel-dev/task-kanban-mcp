@@ -24,7 +24,7 @@ export function requestLoggingMiddleware(req: Request, res: Response, next: Next
       method: req.method,
       url: req.originalUrl,
       statusCode: res.statusCode,
-      duration: `${duration}ms`,
+      duration: `${String(duration)}ms`,
       contentLength: res.get('Content-Length'),
     });
 
@@ -34,7 +34,7 @@ export function requestLoggingMiddleware(req: Request, res: Response, next: Next
         requestId: req.requestId,
         method: req.method,
         url: req.originalUrl,
-        duration: `${duration}ms`,
+        duration: `${String(duration)}ms`,
       });
     }
 

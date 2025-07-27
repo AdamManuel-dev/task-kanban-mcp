@@ -1,18 +1,18 @@
 /**
  * TagService Kysely Proof of Concept
- * 
+ *
  * This demonstrates how the TagService would look with Kysely for type-safe queries.
  * Compare this with the existing TagService.ts to evaluate the benefits.
  */
 
 import { logger } from '@/utils/logger';
 import { kyselyDb } from '@/database/kyselyConnection';
-import type { 
-  Tag, 
-  NewTag, 
-  TagUpdate, 
+import type {
+  Tag,
+  NewTag,
+  TagUpdate,
   TagWithUsage,
-  Database as DatabaseSchema 
+  Database as DatabaseSchema,
 } from '@/database/kyselySchema';
 import { BaseServiceError, NotFoundError, ValidationError } from '@/utils/errors';
 import { v4 as uuidv4 } from 'uuid';
@@ -50,7 +50,7 @@ export class TagServiceKysely {
   async createTag(data: CreateTagRequest): Promise<Tag> {
     try {
       const tagId = uuidv4();
-      
+
       // Validate parent tag exists if provided
       if (data.parent_id) {
         const parentExists = await this.db
@@ -68,16 +68,13 @@ export class TagServiceKysely {
       const newTag: NewTag = {
         id: tagId,
         name: data.name,
-        color: data.color || null,
-        description: data.description || null,
-        parent_id: data.parent_id || null,
+        color: data.color ?? null,
+        description: data.description ?? null,
+        parent_id: data.parent_id ?? null,
       };
 
       // Insert and return the created tag
-      await this.db
-        .insertInto('tags')
-        .values(newTag)
-        .execute();
+      await this.db.insertInto('tags').values(newTag).execute();
 
       // Fetch the created tag with full type safety
       const createdTag = await this.db
@@ -92,7 +89,6 @@ export class TagServiceKysely {
 
       logger.info('Tag created successfully', { tagId, name: data.name });
       return createdTag;
-
     } catch (error) {
       logger.error('Failed to create tag', { error, data });
       throw error;
@@ -122,17 +118,19 @@ export class TagServiceKysely {
    */
   async getTags(filters: TagFilters = {}): Promise<Tag[]> {
     try {
-      let query = this.db
-        .selectFrom('tags')
-        .selectAll();
+      let query = this.db.selectFrom('tags').selectAll();
 
       // Type-safe filtering
       if (filters.parent_id !== undefined) {
-        query = query.where('parent_id', filters.parent_id === null ? 'is' : '=', filters.parent_id);
+        query = query.where(
+          'parent_id',
+          filters.parent_id === null ? 'is' : '=',
+          filters.parent_id
+        );
       }
 
       if (filters.name_search) {
-        query = query.where('name', 'like', `%${filters.name_search}%`);
+        query = query.where('name', 'like', `%${String(filters.name_search)}%`);
       }
 
       // Pagination with type safety
@@ -144,9 +142,7 @@ export class TagServiceKysely {
         query = query.offset(filters.offset);
       }
 
-      const tags = await query
-        .orderBy('name', 'asc')
-        .execute();
+      const tags = await query.orderBy('name', 'asc').execute();
 
       return tags;
     } catch (error) {
@@ -190,11 +186,7 @@ export class TagServiceKysely {
         updated_at: new Date().toISOString(),
       };
 
-      await this.db
-        .updateTable('tags')
-        .set(updateData)
-        .where('id', '=', id)
-        .execute();
+      await this.db.updateTable('tags').set(updateData).where('id', '=', id).execute();
 
       // Return updated tag
       const updatedTag = await this.getTagById(id);
@@ -204,7 +196,6 @@ export class TagServiceKysely {
 
       logger.info('Tag updated successfully', { id, changes: data });
       return updatedTag;
-
     } catch (error) {
       logger.error('Failed to update tag', { error, id, data });
       throw error;
@@ -222,12 +213,9 @@ export class TagServiceKysely {
       }
 
       // Use transaction for atomic operation
-      await kyselyDb.transaction(async (trx) => {
+      await kyselyDb.transaction(async trx => {
         // Remove tag from all tasks
-        await trx
-          .deleteFrom('task_tags')
-          .where('tag_id', '=', id)
-          .execute();
+        await trx.deleteFrom('task_tags').where('tag_id', '=', id).execute();
 
         // Update child tags to have no parent
         await trx
@@ -237,10 +225,7 @@ export class TagServiceKysely {
           .execute();
 
         // Delete the tag
-        await trx
-          .deleteFrom('tags')
-          .where('id', '=', id)
-          .execute();
+        await trx.deleteFrom('tags').where('id', '=', id).execute();
       });
 
       logger.info('Tag deleted successfully', { id, name: tag.name });
@@ -276,7 +261,7 @@ export class TagServiceKysely {
 
       return tagsWithUsage.map(tag => ({
         ...tag,
-        usage_count: Number(tag.usage_count)
+        usage_count: Number(tag.usage_count),
       })) as TagWithUsage[];
     } catch (error) {
       logger.error('Failed to get tags with usage', { error });
@@ -290,61 +275,19 @@ export class TagServiceKysely {
   async getTagHierarchy(): Promise<Array<Tag & { children?: Tag[] }>> {
     try {
       // Get all tags
-      const allTags = await this.db
-        .selectFrom('tags')
-        .selectAll()
-        .orderBy('name', 'asc')
-        .execute();
+      const allTags = await this.db.selectFrom('tags').selectAll().orderBy('name', 'asc').execute();
 
       // Build hierarchy
-      const tagMap = new Map(allTags.map(tag => [tag.id, { ...tag, children: [] }]));
-      const rootTags: Array<Tag & { children?: Tag[] }> = [];
 
-      for (const tag of allTags) {
-        const tagWithChildren = tagMap.get(tag.id)!;
-        
-        if (tag.parent_id) {
-          const parent = tagMap.get(tag.parent_id);
-          if (parent) {
-            parent.children = parent.children || [];
-            parent.children.push(tagWithChildren);
-          }
-        } else {
-          rootTags.push(tagWithChildren);
-        }
-      }
-
-      return rootTags;
-    } catch (error) {
-      logger.error('Failed to get tag hierarchy', { error });
-      throw new BaseServiceError('TAG_HIERARCHY_FETCH_FAILED', 'Failed to fetch tag hierarchy', error);
-    }
-  }
-
-  /**
-   * Check for circular references in tag hierarchy
-   */
-  private async wouldCreateCircularReference(tagId: string, parentId: string): Promise<boolean> {
-    try {
-      // Walk up the parent chain to see if we encounter the tag we're trying to move
-      let currentParentId: string | null = parentId;
-      const visited = new Set<string>();
-
-      while (currentParentId && !visited.has(currentParentId)) {
-        if (currentParentId === tagId) {
-          return true; // Circular reference detected
-        }
-
-        visited.add(currentParentId);
-
-        const parent = await this.db
-          .selectFrom('tags')
-          .select(['parent_id'])
-          .where('id', '=', currentParentId)
-          .executeTakeFirst();
-
-        currentParentId = parent?.parent_id || null;
-      }
+      await Promise.all(
+        allTags.map(async _tag => {
+          await this.db
+            .selectFrom('tags')
+            .select(['parent_id'])
+            .where('id', '=', currentParentId)
+            .executeTakeFirst();
+        })
+      );
 
       return false;
     } catch (error) {
@@ -362,10 +305,10 @@ export class TagServiceKysely {
       const tags = await this.db
         .selectFrom('tags')
         .selectAll()
-        .where((eb) => 
+        .where(eb =>
           eb.or([
-            eb('name', 'like', `%${query}%`),
-            eb('description', 'like', `%${query}%`)
+            eb('name', 'like', `%${String(query)}%`),
+            eb('description', 'like', `%${String(query)}%`),
           ])
         )
         .orderBy('name', 'asc')
@@ -382,35 +325,35 @@ export class TagServiceKysely {
 
 /*
  * COMPARISON ANALYSIS:
- * 
+ *
  * Benefits demonstrated in this POC:
- * 
+ *
  * 1. **Compile-time Type Safety**
  *    - Can't misspell column names
  *    - Can't use wrong data types
  *    - Autocomplete for all table columns
  *    - Type errors caught at build time
- * 
+ *
  * 2. **Complex Query Support**
  *    - Type-safe joins and aggregations
  *    - Proper handling of nullable fields
  *    - Complex where conditions with type checking
- * 
+ *
  * 3. **Transaction Safety**
  *    - Type-safe transaction callbacks
  *    - Automatic rollback on errors
  *    - Proper resource cleanup
- * 
+ *
  * 4. **Developer Experience**
  *    - Better IDE support and autocomplete
  *    - Clearer error messages
  *    - Self-documenting query structure
- * 
+ *
  * 5. **Maintainability**
  *    - Schema changes caught at compile time
  *    - Refactoring is safer
  *    - Less runtime type errors
- * 
+ *
  * Performance Impact: Minimal overhead compared to raw SQL
  * Migration Effort: Can be done incrementally, service by service
  * Learning Curve: Moderate, but pays off quickly with better safety

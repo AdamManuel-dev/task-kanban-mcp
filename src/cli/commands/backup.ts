@@ -2,20 +2,86 @@ import type { Command } from 'commander';
 import inquirer from 'inquirer';
 import * as fs from 'fs';
 import * as path from 'path';
-import type { ConfigManager } from '../config';
-import type { ApiClient } from '../client';
-import type { OutputFormatter } from '../formatter';
+import type { CliComponents, BackupInfo, BackupSchedule, AnyApiResponse } from '../types';
+import { isSuccessResponse } from '../api-client-wrapper';
+
+// Type guard to check if response has data property
+function hasDataProperty<T>(response: AnyApiResponse): response is { data: T } {
+  return response && typeof response === 'object' && 'data' in response && !('error' in response);
+}
+
+interface CreateBackupOptions {
+  compress?: boolean;
+  verify?: boolean;
+  description?: string;
+}
+
+interface ListBackupOptions {
+  limit?: string;
+  sort?: string;
+  order?: string;
+}
+
+interface DeleteBackupOptions {
+  force?: boolean;
+}
+
+interface ExportBackupOptions {
+  format?: string;
+}
+
+interface RestoreBackupOptions {
+  noVerify?: boolean;
+  preserveExisting?: boolean;
+  confirmed?: boolean;
+  targetTime?: string;
+  force?: boolean;
+}
+
+// Specific types for inquirer prompts
+interface ConfirmPromptResult {
+  confirm: boolean;
+}
+
+interface RestoreTimePromptResult {
+  targetTime: string;
+  verify: boolean;
+  preserveExisting: boolean;
+  confirmed: boolean;
+}
+
+interface CreateSchedulePromptResult {
+  name: string;
+  cronExpression: string;
+  backupType: 'full' | 'incremental';
+  description: string;
+  retentionDays: number;
+  compressionEnabled: boolean;
+  verificationEnabled: boolean;
+  enabled: boolean;
+}
+
+interface CreateScheduleOptions {
+  cron?: string;
+  type?: string;
+  description?: string;
+  retention?: string;
+  'no-compression'?: boolean;
+  'no-verification'?: boolean;
+  disabled?: boolean;
+}
+
+interface ListScheduleOptions {
+  enabled?: boolean;
+  disabled?: boolean;
+  limit?: string;
+}
 
 export function registerBackupCommands(program: Command): void {
   const backupCmd = program.command('backup').alias('bak').description('Manage database backups');
 
-  // Get global components
-  const getComponents = () =>
-    (global as any).cliComponents as {
-      config: ConfigManager;
-      apiClient: ApiClient;
-      formatter: OutputFormatter;
-    };
+  // Get global components with proper typing
+  const getComponents = (): CliComponents => global.cliComponents;
 
   backupCmd
     .command('create [name]')
@@ -23,34 +89,41 @@ export function registerBackupCommands(program: Command): void {
     .option('-c, --compress', 'compress backup file')
     .option('-v, --verify', 'verify backup after creation')
     .option('--description <desc>', 'backup description')
-    .action(async (name?: string, options = {}) => {
+    .action(async (name?: string, options: CreateBackupOptions = {}) => {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const backupData: any = {};
+        const backupData: Partial<BackupInfo> = {};
 
-        if (!name) {
-          const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-          name = `backup-${timestamp}`;
-        }
+        const backupName =
+          name ??
+          ((): string => {
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            return `backup-${String(timestamp)}`;
+          })();
 
-        backupData.name = name;
-        backupData.compress = options.compress || false;
-        backupData.verify = options.verify || false;
+        backupData.name = backupName;
+        backupData.compress = Boolean(options.compress);
+        backupData.verify = Boolean(options.verify);
 
         if (options.description) {
-          backupData.description = options.description;
+          backupData.description = String(options.description);
         }
 
-        formatter.info(`Creating backup: ${name}...`);
+        formatter.info(`Creating backup: ${String(backupName)}...`);
 
-        const backup = await apiClient.request('/api/backup/create', {
-          method: 'POST',
-          body: backupData,
-        }) as any; // Type assertion for backup response
+        const backup = await apiClient.request<AnyApiResponse>(
+          'POST',
+          '/api/backup/create',
+          backupData
+        );
 
-        formatter.success(`Backup created successfully: ${backup.id}`);
-        formatter.output(backup, {
+        if (!hasDataProperty<BackupInfo>(backup)) {
+          throw new Error('Failed to create backup');
+        }
+
+        formatter.success(`Backup created successfully: ${backup.data.id}`);
+        formatter.output(backup.data, {
           fields: ['id', 'name', 'size', 'compressed', 'verified', 'createdAt'],
           headers: ['ID', 'Name', 'Size', 'Compressed', 'Verified', 'Created'],
         });
@@ -69,27 +142,40 @@ export function registerBackupCommands(program: Command): void {
     .option('-l, --limit <number>', 'limit number of results', '20')
     .option('--sort <field>', 'sort by field', 'createdAt')
     .option('--order <direction>', 'sort order (asc/desc)', 'desc')
-    .action(async options => {
+    .action(async (options: ListBackupOptions) => {
       const { apiClient, formatter } = getComponents();
 
       try {
         const params: Record<string, string> = {
-          limit: options.limit,
-          sort: options.sort,
-          order: options.order,
+          limit: options.limit ?? '20',
+          sort: options.sort ?? 'createdAt',
+          order: options.order ?? 'desc',
         };
 
-        const backups = await apiClient.request('/api/backup/list', { params }) as any[];
+        const response = await apiClient.request<AnyApiResponse>(
+          'GET',
+          '/api/backup/list',
+          undefined,
+          params
+        );
+        if (isSuccessResponse(response)) {
+          const backups = response.data as BackupInfo[];
 
-        if (!backups || !Array.isArray(backups) || backups.length === 0) {
-          formatter.info('No backups found');
-          return;
+          if (backups.length === 0) {
+            formatter.info('No backups found');
+            return;
+          }
+
+          formatter.output(backups, {
+            fields: ['id', 'name', 'size', 'compressed', 'verified', 'createdAt'],
+            headers: ['ID', 'Name', 'Size', 'Compressed', 'Verified', 'Created'],
+          });
+        } else {
+          formatter.error(
+            `Failed to list backups: ${response.error instanceof Error ? response.error.message : 'Unknown error'}`
+          );
+          process.exit(1);
         }
-
-        formatter.output(backups, {
-          fields: ['id', 'name', 'size', 'compressed', 'verified', 'createdAt'],
-          headers: ['ID', 'Name', 'Size', 'Compressed', 'Verified', 'Created'],
-        });
       } catch (error) {
         formatter.error(
           `Failed to list backups: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -103,29 +189,29 @@ export function registerBackupCommands(program: Command): void {
     .description('Restore from a backup')
     .option('-f, --force', 'skip confirmation')
     .option('--verify', 'verify backup before restore')
-    .action(async (id: string, options) => {
+    .action(async (id: string, options: RestoreBackupOptions) => {
       const { apiClient, formatter } = getComponents();
 
       try {
         // Get backup info
-        const backup = await apiClient.request(`/api/backup/${id}`) as any;
-        if (!backup) {
-          formatter.error(`Backup ${id} not found`);
+        const backup = await apiClient.request<AnyApiResponse>('GET', `/api/backup/${String(id)}`);
+        if (!hasDataProperty<BackupInfo>(backup)) {
+          formatter.error(`Backup ${String(id)} not found`);
           process.exit(1);
         }
 
         if (!options.force) {
           formatter.warn('WARNING: This will replace all current data!');
-          formatter.output(backup, {
+          formatter.output([backup.data], {
             fields: ['id', 'name', 'size', 'createdAt'],
             headers: ['ID', 'Name', 'Size', 'Created'],
           });
 
-          const { confirm } = await inquirer.prompt([
+          const { confirm } = await inquirer.prompt<ConfirmPromptResult>([
             {
               type: 'confirm',
               name: 'confirm',
-              message: `Restore from backup "${backup.name}"? This cannot be undone!`,
+              message: `Restore from backup "${String(backup.data.name)}"? This cannot be undone!`,
               default: false,
             },
           ]);
@@ -136,14 +222,15 @@ export function registerBackupCommands(program: Command): void {
           }
         }
 
-        const restoreData: any = { verify: options.verify || false };
+        const restoreData = { verify: !options.noVerify };
 
-        formatter.info(`Restoring from backup: ${backup.name}...`);
+        formatter.info(`Restoring from backup: ${String(backup.data.name)}...`);
 
-        const result = await apiClient.request(`/api/backup/${id}/restore`, {
-          method: 'POST',
-          body: restoreData,
-        }) as any;
+        const result = await apiClient.request<AnyApiResponse>(
+          'POST',
+          `/api/backup/${String(id)}/restore`,
+          restoreData
+        );
 
         formatter.success('Database restored successfully');
         formatter.output(result);
@@ -160,22 +247,25 @@ export function registerBackupCommands(program: Command): void {
     .alias('rm')
     .description('Delete a backup')
     .option('-f, --force', 'skip confirmation')
-    .action(async (id: string, options) => {
+    .action(async (id: string, options: DeleteBackupOptions) => {
       const { apiClient, formatter } = getComponents();
 
       try {
         if (!options.force) {
-          const backup = await apiClient.request(`/api/backup/${id}`) as any;
-          if (!backup) {
-            formatter.error(`Backup ${id} not found`);
+          const backup = await apiClient.request<AnyApiResponse>(
+            'GET',
+            `/api/backup/${String(id)}`
+          );
+          if (!hasDataProperty<BackupInfo>(backup)) {
+            formatter.error(`Backup ${String(id)} not found`);
             process.exit(1);
           }
 
-          const { confirm } = await inquirer.prompt([
+          const { confirm } = await inquirer.prompt<ConfirmPromptResult>([
             {
               type: 'confirm',
               name: 'confirm',
-              message: `Delete backup "${backup.name}"?`,
+              message: `Delete backup "${String(backup.data.name)}"?`,
               default: false,
             },
           ]);
@@ -186,8 +276,8 @@ export function registerBackupCommands(program: Command): void {
           }
         }
 
-        await apiClient.request(`/api/backup/${id}`, { method: 'DELETE' });
-        formatter.success(`Backup ${id} deleted successfully`);
+        await apiClient.request<AnyApiResponse>('DELETE', `/api/backup/${String(id)}`);
+        formatter.success(`Backup ${String(id)} deleted successfully`);
       } catch (error) {
         formatter.error(
           `Failed to delete backup: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -203,13 +293,14 @@ export function registerBackupCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        formatter.info(`Verifying backup: ${id}...`);
+        formatter.info(`Verifying backup: ${String(id)}...`);
 
-        const result = await apiClient.request(`/api/backup/${id}/verify`, {
-          method: 'POST',
-        }) as any;
+        const result = await apiClient.request<AnyApiResponse>(
+          'POST',
+          `/api/backup/${String(id)}/verify`
+        );
 
-        if (result.valid) {
+        if (hasDataProperty<{ valid: boolean }>(result) && result.data.valid) {
           formatter.success('Backup verification passed');
         } else {
           formatter.error('Backup verification failed');
@@ -228,42 +319,41 @@ export function registerBackupCommands(program: Command): void {
     .command('export <id> [path]')
     .description('Export backup to file')
     .option('-f, --format <format>', 'export format (json|sql|csv)', 'json')
-    .action(async (id: string, exportPath?: string, options = {}) => {
+    .action(async (id: string, exportPath?: string, options: ExportBackupOptions = {}) => {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const backup = await apiClient.request(`/api/backup/${id}`) as any;
-        if (!backup) {
-          formatter.error(`Backup ${id} not found`);
+        const backup = await apiClient.request<AnyApiResponse>('GET', `/api/backup/${String(id)}`);
+        if (!hasDataProperty<BackupInfo>(backup)) {
+          formatter.error(`Backup ${String(id)} not found`);
           process.exit(1);
         }
 
-        if (!exportPath) {
-          exportPath = `${backup.name}.${options.format || 'json'}`;
-        }
+        const finalExportPath =
+          exportPath ?? `${String(backup.data.name)}.${String(options.format ?? 'json')}`;
 
-        formatter.info(`Exporting backup to: ${exportPath}...`);
+        formatter.info(`Exporting backup to: ${String(finalExportPath)}...`);
 
-        const data = await apiClient.request(`/api/backup/${id}/export`, {
-          params: { format: options.format || 'json' },
-        }) as any;
+        const data = await apiClient.request(`/api/backup/${String(id)}/export`, {
+          params: { format: options.format ?? 'json' },
+        });
 
         // Ensure directory exists
-        const dir = path.dirname(exportPath);
+        const dir = path.dirname(finalExportPath);
         if (!fs.existsSync(dir)) {
           fs.mkdirSync(dir, { recursive: true });
         }
 
         // Write file
         if (options.format === 'json') {
-          fs.writeFileSync(exportPath, JSON.stringify(data, null, 2));
+          fs.writeFileSync(finalExportPath, JSON.stringify(data, null, 2));
         } else {
-          fs.writeFileSync(exportPath, data as any);
+          fs.writeFileSync(finalExportPath, data as string);
         }
 
-        const stats = fs.statSync(exportPath);
-        formatter.success(`Backup exported successfully to ${exportPath}`);
-        formatter.info(`File size: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
+        const stats = fs.statSync(finalExportPath);
+        formatter.success(`Backup exported successfully to ${String(finalExportPath)}`);
+        formatter.info(`File size: ${String((stats.size / 1024 / 1024).toFixed(2))} MB`);
       } catch (error) {
         formatter.error(
           `Failed to export backup: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -277,7 +367,7 @@ export function registerBackupCommands(program: Command): void {
     .description('Restore database to specific point in time')
     .option('--no-verify', 'skip backup verification before restoration')
     .option('--preserve-existing', 'create backup of current state before restoration')
-    .action(async (targetTime?: string, options = {}) => {
+    .action(async (targetTime?: string, options: RestoreBackupOptions = {}) => {
       const { apiClient, formatter } = getComponents();
 
       try {
@@ -288,15 +378,15 @@ export function registerBackupCommands(program: Command): void {
           const now = new Date();
           const defaultTime = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(); // 24 hours ago
 
-          const answers = await inquirer.prompt([
+          const answers = await inquirer.prompt<RestoreTimePromptResult>([
             {
               type: 'input',
               name: 'targetTime',
               message: 'Target restoration time (ISO format):',
               default: defaultTime,
-              validate: (input: string) => {
+              validate: (input: string): string | boolean => {
                 const date = new Date(input);
-                if (isNaN(date.getTime())) {
+                if (Number.isNaN(date.getTime())) {
                   return 'Invalid date format. Use ISO format (e.g., 2025-07-26T10:30:00Z)';
                 }
                 if (date > now) {
@@ -309,13 +399,13 @@ export function registerBackupCommands(program: Command): void {
               type: 'confirm',
               name: 'verify',
               message: 'Verify backups before restoration?',
-              default: !options['no-verify'],
+              default: !options.noVerify,
             },
             {
               type: 'confirm',
               name: 'preserveExisting',
               message: 'Create backup of current state before restoration?',
-              default: options['preserve-existing'] || false,
+              default: options.preserveExisting ?? false,
             },
             {
               type: 'confirm',
@@ -331,12 +421,11 @@ export function registerBackupCommands(program: Command): void {
           }
 
           restoreTime = answers.targetTime;
-          options.verify = answers.verify;
-          options['preserve-existing'] = answers.preserveExisting;
+          // Note: Can't modify options object directly due to readonly, these values are handled in the API call
         } else {
           // Validate provided time
           const targetDate = new Date(restoreTime);
-          if (isNaN(targetDate.getTime())) {
+          if (Number.isNaN(targetDate.getTime())) {
             formatter.error(
               'Invalid target time format. Use ISO format (e.g., 2025-07-26T10:30:00Z)'
             );
@@ -349,37 +438,37 @@ export function registerBackupCommands(program: Command): void {
           }
 
           // Confirmation for non-interactive mode
-          const { confirmed } = await inquirer.prompt([
+          const { confirm } = await inquirer.prompt<ConfirmPromptResult>([
             {
               type: 'confirm',
-              name: 'confirmed',
-              message: `Restore database to ${restoreTime}? This will replace the current database.`,
+              name: 'confirm',
+              message: `Restore database to ${String(restoreTime)}? This will replace the current database.`,
               default: false,
             },
           ]);
 
-          if (!confirmed) {
+          if (!confirm) {
             formatter.info('Point-in-time restoration cancelled');
             return;
           }
         }
 
-        formatter.info(`Starting point-in-time restoration to: ${restoreTime}...`);
+        formatter.info(`Starting point-in-time restoration to: ${String(restoreTime)}...`);
 
         const result = await apiClient.request('/api/backup/restore-to-time', {
           method: 'POST',
           body: JSON.stringify({
             targetTime: restoreTime,
-            verify: !options['no-verify'],
-            preserveExisting: options['preserve-existing'],
+            verify: !options.noVerify,
+            preserveExisting: options.preserveExisting,
           }),
-        }) as any;
+        });
 
         formatter.success('Point-in-time restoration completed successfully');
-        formatter.info(`Database restored to: ${restoreTime}`);
+        formatter.info(`Database restored to: ${String(restoreTime)}`);
 
-        if (result.data?.backupsApplied) {
-          formatter.info(`Applied ${result.data.backupsApplied} backup(s)`);
+        if (hasDataProperty<{ backupsApplied: number }>(result) && result.data.backupsApplied) {
+          formatter.info(`Applied ${String(String(result.data.backupsApplied))} backup(s)`);
         }
       } catch (error) {
         formatter.error('Point-in-time restoration failed');
@@ -394,17 +483,18 @@ export function registerBackupCommands(program: Command): void {
   backupCmd
     .command('schedule')
     .description('Manage backup schedules')
-    .action(() => {
-      console.log('Available schedule commands:');
-      console.log('  backup schedule create    - Create a new backup schedule');
-      console.log('  backup schedule list      - List all backup schedules');
-      console.log('  backup schedule show <id> - Show schedule details');
-      console.log('  backup schedule update <id> - Update a schedule');
-      console.log('  backup schedule delete <id> - Delete a schedule');
-      console.log('  backup schedule run <id>  - Execute a schedule manually');
-      console.log('  backup schedule start     - Start the backup scheduler');
-      console.log('  backup schedule stop      - Stop the backup scheduler');
-      console.log('  backup schedule cleanup   - Clean up old backups');
+    .action((): void => {
+      const { formatter } = getComponents();
+      formatter.info('Available schedule commands:');
+      formatter.info('  backup schedule create    - Create a new backup schedule');
+      formatter.info('  backup schedule list      - List all backup schedules');
+      formatter.info('  backup schedule show <id> - Show schedule details');
+      formatter.info('  backup schedule update <id> - Update a schedule');
+      formatter.info('  backup schedule delete <id> - Delete a schedule');
+      formatter.info('  backup schedule run <id>  - Execute a schedule manually');
+      formatter.info('  backup schedule start     - Start the backup scheduler');
+      formatter.info('  backup schedule stop      - Stop the backup scheduler');
+      formatter.info('  backup schedule cleanup   - Clean up old backups');
     });
 
   backupCmd
@@ -417,28 +507,29 @@ export function registerBackupCommands(program: Command): void {
     .option('--no-compression', 'disable compression')
     .option('--no-verification', 'disable verification')
     .option('--disabled', 'create schedule as disabled')
-    .action(async (name?: string, options = {}) => {
+    .action(async (name?: string, options: CreateScheduleOptions = {}) => {
       const { apiClient, formatter } = getComponents();
 
       try {
-        let scheduleData: any = {};
+        let scheduleData: Partial<BackupSchedule> = {};
 
         // Interactive mode if no name provided
         if (!name || !options.cron) {
-          const answers = await inquirer.prompt([
+          const answers = await inquirer.prompt<CreateSchedulePromptResult>([
             {
               type: 'input',
               name: 'name',
               message: 'Schedule name:',
-              default: name || `schedule-${Date.now()}`,
-              validate: (input: string) => input.trim().length > 0 || 'Name is required',
+              default: name ?? `schedule-${String(String(Date.now()))}`,
+              validate: (input: string): string | boolean =>
+                input.trim().length > 0 || 'Name is required',
             },
             {
               type: 'input',
               name: 'cronExpression',
               message: 'Cron expression (e.g., "0 2 * * *" for daily at 2 AM):',
-              default: options.cron || '0 2 * * *',
-              validate: (input: string) => {
+              default: options.cron ?? '0 2 * * *',
+              validate: (input: string): string | boolean => {
                 // Basic validation - in production you'd want more thorough validation
                 const parts = input.trim().split(' ');
                 return parts.length === 5 || 'Invalid cron expression format (should have 5 parts)';
@@ -449,20 +540,21 @@ export function registerBackupCommands(program: Command): void {
               name: 'backupType',
               message: 'Backup type:',
               choices: ['full', 'incremental'],
-              default: options.type || 'full',
+              default: options.type ?? 'full',
             },
             {
               type: 'input',
               name: 'description',
               message: 'Description (optional):',
-              default: options.description || '',
+              default: options.description ?? '',
             },
             {
               type: 'number',
               name: 'retentionDays',
               message: 'Retention period (days):',
-              default: parseInt(options.retention) || 30,
-              validate: (input: number) => input > 0 || 'Retention days must be positive',
+              default: parseInt(options.retention ?? '30', 10),
+              validate: (input: number): string | boolean =>
+                input > 0 || 'Retention days must be positive',
             },
             {
               type: 'confirm',
@@ -487,26 +579,31 @@ export function registerBackupCommands(program: Command): void {
           scheduleData = answers;
         } else {
           scheduleData = {
-            name,
-            cronExpression: options.cron,
-            backupType: options.type || 'full',
-            description: options.description,
-            retentionDays: parseInt(options.retention) || 30,
+            ...(name && { name }),
+            ...(options.cron && { cronExpression: options.cron }),
+            backupType: (options.type as 'full' | 'incremental') ?? 'full',
+            ...(options.description && { description: options.description }),
+            retentionDays: parseInt(options.retention ?? '30', 10),
             compressionEnabled: !options['no-compression'],
             verificationEnabled: !options['no-verification'],
             enabled: !options.disabled,
           };
         }
 
-        formatter.info(`Creating backup schedule: ${scheduleData.name}...`);
+        formatter.info(`Creating backup schedule: ${String(scheduleData.name)}...`);
 
-        const schedule = await apiClient.request('/api/schedule/create', {
-          method: 'POST',
-          body: JSON.stringify(scheduleData),
-        }) as any;
+        const schedule = await apiClient.request(
+          'POST',
+          '/api/schedule/create',
+          JSON.stringify(scheduleData)
+        );
 
         formatter.success('Backup schedule created successfully');
-        console.log(formatter.formatSchedule(schedule.data));
+        if (isSuccessResponse(schedule)) {
+          formatter.output(schedule.data);
+        } else {
+          formatter.error('Invalid response format');
+        }
       } catch (error) {
         formatter.error('Failed to create backup schedule');
         process.exit(1);
@@ -519,32 +616,37 @@ export function registerBackupCommands(program: Command): void {
     .option('--enabled', 'show only enabled schedules')
     .option('--disabled', 'show only disabled schedules')
     .option('--limit <count>', 'maximum number of schedules to show', '20')
-    .action(async (options = {}) => {
+    .action(async (options: ListScheduleOptions = {}) => {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const params: any = {};
+        const params: Record<string, string> = {};
 
-        if (options.enabled) params.enabled = true;
-        if (options.disabled) params.enabled = false;
-        if (options.limit) params.limit = parseInt(options.limit);
+        // eslint-disable-next-line dot-notation
+        if (options.enabled) params['enabled'] = 'true';
+        // eslint-disable-next-line dot-notation
+        if (options.disabled) params['enabled'] = 'false';
+        // eslint-disable-next-line dot-notation
+        if (options.limit) params['limit'] = options.limit;
 
         const queryString = new URLSearchParams(params).toString();
         const url = `/api/schedule/list${queryString ? `?${queryString}` : ''}`;
 
-        const response = await apiClient.request(url) as any;
-        const schedules = response.data;
+        const response = await apiClient.request(url);
+        if (isSuccessResponse(response)) {
+          const schedules = response.data as BackupSchedule[];
 
-        if (schedules.length === 0) {
-          formatter.info('No backup schedules found');
-          return;
+          if (schedules.length === 0) {
+            formatter.info('No backup schedules found');
+            return;
+          }
+
+          formatter.success(`Found ${String(schedules.length)} backup schedule(s)`);
+          formatter.output(schedules);
+        } else {
+          formatter.error('Failed to list backup schedules');
+          process.exit(1);
         }
-
-        formatter.success(`Found ${schedules.length} backup schedule(s)`);
-        schedules.forEach((schedule: any) => {
-          console.log(formatter.formatSchedule(schedule));
-          console.log('---');
-        });
       } catch (error) {
         formatter.error('Failed to list backup schedules');
         process.exit(1);
@@ -558,10 +660,14 @@ export function registerBackupCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const response = await apiClient.request(`/api/schedule/${id}`) as any;
-        const schedule = response.data;
-
-        console.log(formatter.formatSchedule(schedule));
+        const response = await apiClient.request(`/api/schedule/${String(id)}`);
+        if (isSuccessResponse(response)) {
+          const schedule = response.data;
+          formatter.output(schedule);
+        } else {
+          formatter.error('Failed to get backup schedule');
+          process.exit(1);
+        }
       } catch (error) {
         formatter.error('Failed to get backup schedule');
         process.exit(1);
@@ -575,9 +681,9 @@ export function registerBackupCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        formatter.info(`Executing backup schedule: ${id}...`);
+        formatter.info(`Executing backup schedule: ${String(id)}...`);
 
-        await apiClient.request(`/api/schedule/${id}/execute`, {
+        await apiClient.request(`/api/schedule/${String(id)}/execute`, {
           method: 'POST',
         });
 
@@ -597,9 +703,7 @@ export function registerBackupCommands(program: Command): void {
       try {
         formatter.info('Starting backup scheduler...');
 
-        await apiClient.request('/api/schedule/start', {
-          method: 'POST',
-        });
+        await apiClient.request('POST', '/api/schedule/start');
 
         formatter.success('Backup scheduler started successfully');
       } catch (error) {
@@ -617,9 +721,7 @@ export function registerBackupCommands(program: Command): void {
       try {
         formatter.info('Stopping backup scheduler...');
 
-        await apiClient.request('/api/schedule/stop', {
-          method: 'POST',
-        });
+        await apiClient.request('POST', '/api/schedule/stop');
 
         formatter.success('Backup scheduler stopped successfully');
       } catch (error) {
@@ -637,9 +739,7 @@ export function registerBackupCommands(program: Command): void {
       try {
         formatter.info('Cleaning up old backups...');
 
-        await apiClient.request('/api/schedule/cleanup', {
-          method: 'POST',
-        });
+        await apiClient.request('POST', '/api/schedule/cleanup');
 
         formatter.success('Backup cleanup completed successfully');
       } catch (error) {

@@ -24,6 +24,10 @@ module.exports = {
     '**/?(*.)+(spec|test).ts'
   ],
   moduleFileExtensions: ['ts', 'js', 'json'],
+  extensionsToTreatAsEsm: ['.ts'],
+  transformIgnorePatterns: [
+    'node_modules/(?!(ink-testing-library|@testing-library)/)',
+  ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
     '^@config/(.*)$': '<rootDir>/src/config/$1',
@@ -38,7 +42,10 @@ module.exports = {
   },
   
   // Setup files
-  setupFilesAfterEnv: ['<rootDir>/tests/jest.setup.ts'],
+  setupFilesAfterEnv: [
+    '<rootDir>/tests/jest.setup.ts',
+    '<rootDir>/tests/cli-setup.ts'
+  ],
   
   // Coverage configuration
   collectCoverage: false,

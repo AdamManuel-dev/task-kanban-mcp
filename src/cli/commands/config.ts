@@ -1,35 +1,30 @@
 import type { Command } from 'commander';
 import inquirer from 'inquirer';
-import type { ConfigManager } from '../config';
-import type { ApiClient } from '../client';
-import type { OutputFormatter } from '../formatter';
+import { logger } from '@/utils/logger';
+import type { CliComponents } from '../types';
 
 export function registerConfigCommands(program: Command): void {
-  const configCmd = program.command('config').description('Manage CLI configuration');
+  const configCmd = program.command('config').alias('c').description('Manage configuration');
 
-  // Get global components
-  const getComponents = () =>
-    (global as any).cliComponents as {
-      config: ConfigManager;
-      apiClient: ApiClient;
-      formatter: OutputFormatter;
-    };
+  // Get global components with proper typing
+  const getComponents = (): CliComponents => global.cliComponents;
 
   configCmd
     .command('show')
+    .alias('ls')
     .description('Show current configuration')
     .option('--path', 'show config file path')
-    .action(async options => {
+    .action((options: { path?: boolean }) => {
       const { config, formatter } = getComponents();
 
       if (options.path) {
-        console.log(config.getConfigPath());
+        logger.info(config.getConfigPath());
         return;
       }
 
       if (!config.exists()) {
         formatter.warn('No configuration file found');
-        console.log('Run "kanban config init" to create initial configuration');
+        logger.info('Run "kanban config init" to create initial configuration');
         return;
       }
 
@@ -39,7 +34,7 @@ export function registerConfigCommands(program: Command): void {
       if (!validation.valid) {
         formatter.warn('Configuration has issues:');
         validation.errors.forEach(error => formatter.error(error));
-        console.log();
+        logger.info('');
       }
 
       formatter.output(configData);
@@ -48,12 +43,12 @@ export function registerConfigCommands(program: Command): void {
   configCmd
     .command('set <key> <value>')
     .description('Set configuration value')
-    .action(async (key: string, value: string) => {
+    .action((key: string, value: string) => {
       const { config, formatter, apiClient } = getComponents();
 
       try {
         // Parse value based on type
-        let parsedValue: any = value;
+        let parsedValue: string | number | boolean = value;
 
         if (value === 'true') parsedValue = true;
         else if (value === 'false') parsedValue = false;
@@ -68,7 +63,7 @@ export function registerConfigCommands(program: Command): void {
           apiClient.updateConfig();
         }
 
-        formatter.success(`Set ${key} = ${parsedValue}`);
+        formatter.success(`Set ${String(key)} = ${String(parsedValue)}`);
 
         // Validate after setting
         const validation = config.validate();
@@ -78,7 +73,7 @@ export function registerConfigCommands(program: Command): void {
         }
       } catch (error) {
         formatter.error(
-          `Failed to set configuration: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to set configuration: ${String(error instanceof Error ? error.message : 'Unknown error')}`
         );
         process.exit(1);
       }
@@ -87,7 +82,7 @@ export function registerConfigCommands(program: Command): void {
   configCmd
     .command('get <key>')
     .description('Get configuration value')
-    .action(async (key: string) => {
+    .action((key: string) => {
       const { config, formatter } = getComponents();
 
       if (!config.exists()) {
@@ -97,7 +92,7 @@ export function registerConfigCommands(program: Command): void {
 
       const value = config.get(key);
       if (value === undefined) {
-        formatter.error(`Configuration key "${key}" not found`);
+        formatter.error(`Configuration key "${String(key)}" not found`);
         process.exit(1);
       }
 
@@ -108,7 +103,7 @@ export function registerConfigCommands(program: Command): void {
     .command('init')
     .description('Initialize configuration interactively')
     .option('--force', 'overwrite existing configuration')
-    .action(async options => {
+    .action(async (options: { force?: boolean }) => {
       const { config, formatter, apiClient } = getComponents();
 
       if (config.exists() && !options.force) {
@@ -127,82 +122,60 @@ export function registerConfigCommands(program: Command): void {
         }
       }
 
-      formatter.info('Initializing MCP Kanban CLI configuration...');
-
-      const answers = await inquirer.prompt([
-        {
-          type: 'input',
-          name: 'serverUrl',
-          message: 'Server URL:',
-          default: 'http://localhost:3000',
-          validate: (input: string) => {
-            try {
-              new URL(input);
-              return true;
-            } catch {
-              return 'Please enter a valid URL';
-            }
-          },
-        },
-        {
-          type: 'input',
-          name: 'apiKey',
-          message: 'API Key (optional):',
-        },
-        {
-          type: 'list',
-          name: 'format',
-          message: 'Default output format:',
-          choices: ['table', 'json', 'csv'],
-          default: 'table',
-        },
-        {
-          type: 'confirm',
-          name: 'verbose',
-          message: 'Enable verbose output by default?',
-          default: false,
-        },
-        {
-          type: 'confirm',
-          name: 'gitEnabled',
-          message: 'Enable Git integration?',
-          default: true,
-        },
-      ]);
-
-      // Update configuration
-      config.set('server.url', answers.serverUrl);
-      if (answers.apiKey) {
-        config.set('auth.apiKey', answers.apiKey);
-      }
-      config.set('defaults.format', answers.format);
-      config.set('defaults.verbose', answers.verbose);
-      config.set('git.enabled', answers.gitEnabled);
-
       try {
-        config.save();
-        apiClient.updateConfig();
-        formatter.success('Configuration saved successfully');
+        formatter.info('Initializing configuration...');
 
-        // Test connection if API key provided
-        if (answers.apiKey) {
-          formatter.info('Testing connection...');
-          try {
-            const connected = await apiClient.testConnection();
-            if (connected) {
-              formatter.success('Successfully connected to server');
-            } else {
-              formatter.warn('Could not connect to server');
-            }
-          } catch (error) {
-            formatter.warn(
-              `Connection test failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-            );
-          }
+        const answers = await inquirer.prompt([
+          {
+            type: 'input',
+            name: 'serverUrl',
+            message: 'Server URL:',
+            default: 'http://localhost:3000',
+            validate: (input: string) => input.length > 0 || 'Server URL is required',
+          },
+          {
+            type: 'input',
+            name: 'apiKey',
+            message: 'API Key (optional):',
+            default: '',
+          },
+          {
+            type: 'input',
+            name: 'defaultBoard',
+            message: 'Default board ID (optional):',
+            default: '',
+          },
+          {
+            type: 'confirm',
+            name: 'autoRefresh',
+            message: 'Enable auto-refresh for real-time updates?',
+            default: true,
+          },
+        ]);
+
+        // Set configuration values
+        config.set('server.url', answers.serverUrl);
+        if (answers.apiKey) config.set('auth.apiKey', answers.apiKey);
+        if (answers.defaultBoard) config.set('defaultBoard', answers.defaultBoard);
+        config.set('ui.autoRefresh', answers.autoRefresh);
+
+        config.save();
+
+        // Update API client
+        apiClient.updateConfig();
+
+        formatter.success('Configuration initialized successfully');
+        formatter.info(`Config file: ${String(config.getConfigPath())}`);
+
+        // Validate configuration
+        const validation = config.validate();
+        if (!validation.valid) {
+          formatter.warn('Configuration validation failed:');
+          validation.errors.forEach(error => formatter.error(error));
         }
       } catch (error) {
         formatter.error(
-          `Failed to save configuration: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to initialize configuration: ${String(error instanceof Error ? error.message : 'Unknown error')}`
         );
         process.exit(1);
       }
@@ -211,7 +184,7 @@ export function registerConfigCommands(program: Command): void {
   configCmd
     .command('validate')
     .description('Validate configuration')
-    .action(async () => {
+    .action(() => {
       const { config, formatter } = getComponents();
 
       if (!config.exists()) {
@@ -225,7 +198,7 @@ export function registerConfigCommands(program: Command): void {
         formatter.success('Configuration is valid');
       } else {
         formatter.error('Configuration validation failed:');
-        validation.errors.forEach(error => formatter.error(`  ${error}`));
+        validation.errors.forEach(error => formatter.error(`  ${String(error)}`));
         process.exit(1);
       }
     });
@@ -259,7 +232,7 @@ export function registerConfigCommands(program: Command): void {
         formatter.success('Configuration reset to defaults');
       } catch (error) {
         formatter.error(
-          `Failed to reset configuration: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to reset configuration: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -279,11 +252,11 @@ export function registerConfigCommands(program: Command): void {
       const validation = config.validate();
       if (!validation.valid) {
         formatter.error('Configuration is invalid:');
-        validation.errors.forEach(error => formatter.error(`  ${error}`));
+        validation.errors.forEach(error => formatter.error(`  ${String(error)}`));
         process.exit(1);
       }
 
-      formatter.info(`Testing connection to ${config.getServerUrl()}...`);
+      formatter.info(`Testing connection to ${String(String(config.getServerUrl()))}...`);
 
       try {
         const connected = await apiClient.testConnection();
@@ -305,7 +278,7 @@ export function registerConfigCommands(program: Command): void {
         }
       } catch (error) {
         formatter.error(
-          `✗ Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `✗ Connection failed: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }

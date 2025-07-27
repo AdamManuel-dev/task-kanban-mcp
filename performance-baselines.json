@@ -1,0 +1,45 @@
+{
+  "baselines": [
+    {
+      "operation": "api_task_list_10",
+      "avgTime": 1.5,
+      "maxTime": 3,
+      "samples": 10,
+      "timestamp": "2025-07-27T10:28:59.637Z",
+      "version": "0.1.0"
+    },
+    {
+      "operation": "api_task_create",
+      "avgTime": 1,
+      "maxTime": 2,
+      "samples": 10,
+      "timestamp": "2025-07-27T10:28:59.648Z",
+      "version": "0.1.0"
+    },
+    {
+      "operation": "api_task_search",
+      "avgTime": 1.4,
+      "maxTime": 2,
+      "samples": 10,
+      "timestamp": "2025-07-27T11:28:23.528Z",
+      "version": "0.1.0"
+    },
+    {
+      "operation": "database_bulk_query",
+      "avgTime": 0.1,
+      "maxTime": 1,
+      "samples": 10,
+      "timestamp": "2025-07-27T11:07:10.519Z",
+      "version": "0.1.0"
+    },
+    {
+      "operation": "database_join_query",
+      "avgTime": 0.1,
+      "maxTime": 1,
+      "samples": 10,
+      "timestamp": "2025-07-27T11:28:23.531Z",
+      "version": "0.1.0"
+    }
+  ],
+  "lastUpdated": "2025-07-27T11:28:23.531Z"
+}

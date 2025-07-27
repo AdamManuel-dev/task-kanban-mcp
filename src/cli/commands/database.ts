@@ -1,33 +1,27 @@
 import type { Command } from 'commander';
 import inquirer from 'inquirer';
-import type { ConfigManager } from '../config';
-import type { ApiClient } from '../client';
-import type { OutputFormatter } from '../formatter';
+import type { CliComponents, AnyApiResponse } from '../types';
+import { logger } from '../../utils/logger';
+import { isSuccessResponse } from '../api-client-wrapper';
 
 export function registerDatabaseCommands(program: Command): void {
-  const dbCmd = program.command('db').description('Database management commands');
+  const dbCmd = program.command('database').alias('db').description('Database management');
 
-  // Get global components
-  const getComponents = () =>
-    (global as any).cliComponents as {
-      config: ConfigManager;
-      apiClient: ApiClient;
-      formatter: OutputFormatter;
-    };
+  // Get global components with proper typing
+  const getComponents = (): CliComponents => global.cliComponents;
 
   dbCmd
     .command('optimize')
     .description('Optimize database performance')
-    .option('-v, --verbose', 'verbose output')
-    .action(async options => {
+    .option('--verbose', 'show detailed output')
+    .action(async (options: { verbose?: boolean }) => {
       const { apiClient, formatter } = getComponents();
 
       try {
         formatter.info('Optimizing database...');
 
-        const result = await apiClient.request('/api/database/optimize', {
-          method: 'POST',
-          body: { verbose: options.verbose || false },
+        const result = await apiClient.request('POST', '/api/database/optimize', {
+          verbose: options.verbose ?? false,
         });
 
         formatter.success('Database optimization completed');
@@ -37,7 +31,7 @@ export function registerDatabaseCommands(program: Command): void {
         });
       } catch (error) {
         formatter.error(
-          `Failed to optimize database: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to optimize database: ${String(error instanceof Error ? error.message : 'Unknown error')}`
         );
         process.exit(1);
       }
@@ -47,7 +41,7 @@ export function registerDatabaseCommands(program: Command): void {
     .command('vacuum')
     .description('Vacuum database to reclaim space')
     .option('-f, --force', 'skip confirmation')
-    .action(async options => {
+    .action(async (options: { force?: boolean }) => {
       const { apiClient, formatter } = getComponents();
 
       try {
@@ -69,9 +63,7 @@ export function registerDatabaseCommands(program: Command): void {
 
         formatter.info('Vacuuming database...');
 
-        const result = await apiClient.request('/api/database/vacuum', {
-          method: 'POST',
-        });
+        const result = await apiClient.request('POST', '/api/database/vacuum');
 
         formatter.success('Database vacuum completed');
         formatter.output(result, {
@@ -80,7 +72,7 @@ export function registerDatabaseCommands(program: Command): void {
         });
       } catch (error) {
         formatter.error(
-          `Failed to vacuum database: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to vacuum database: ${String(error instanceof Error ? error.message : 'Unknown error')}`
         );
         process.exit(1);
       }
@@ -95,9 +87,7 @@ export function registerDatabaseCommands(program: Command): void {
       try {
         formatter.info('Analyzing database...');
 
-        const result = await apiClient.request('/api/database/analyze', {
-          method: 'POST',
-        });
+        const result = await apiClient.request('POST', '/api/database/analyze');
 
         formatter.success('Database analysis completed');
         formatter.output(result, {
@@ -106,7 +96,7 @@ export function registerDatabaseCommands(program: Command): void {
         });
       } catch (error) {
         formatter.error(
-          `Failed to analyze database: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to analyze database: ${String(error instanceof Error ? error.message : 'Unknown error')}`
         );
         process.exit(1);
       }
@@ -118,56 +108,25 @@ export function registerDatabaseCommands(program: Command): void {
     .option('--tables', 'include table statistics')
     .option('--indexes', 'include index statistics')
     .option('--performance', 'include performance metrics')
-    .action(async options => {
+    .action(async (options: { tables?: boolean; indexes?: boolean; performance?: boolean }) => {
       const { apiClient, formatter } = getComponents();
 
       try {
         const params: Record<string, string> = {};
-        if (options.tables) params['tables'] = 'true';
-        if (options.indexes) params['indexes'] = 'true';
-        if (options.performance) params['performance'] = 'true';
+        if (options.tables) params.tables = 'true';
+        if (options.indexes) params.indexes = 'true';
+        if (options.performance) params.performance = 'true';
 
-        const stats = await apiClient.request('/api/database/stats', { params }) as any;
+        const result = await apiClient.request('GET', '/api/database/stats', undefined, params);
 
-        formatter.info('Database Statistics:');
-
-        // General stats
-        if (stats.general) {
-          formatter.output(stats.general, {
-            fields: ['metric', 'value'],
-            headers: ['Metric', 'Value'],
-          });
-        }
-
-        // Table stats
-        if (stats.tables && options.tables) {
-          console.log('\n--- Table Statistics ---');
-          formatter.output(stats.tables, {
-            fields: ['name', 'rowCount', 'size', 'lastModified'],
-            headers: ['Table', 'Rows', 'Size', 'Last Modified'],
-          });
-        }
-
-        // Index stats
-        if (stats.indexes && options.indexes) {
-          console.log('\n--- Index Statistics ---');
-          formatter.output(stats.indexes, {
-            fields: ['name', 'table', 'size', 'usage'],
-            headers: ['Index', 'Table', 'Size', 'Usage'],
-          });
-        }
-
-        // Performance metrics
-        if (stats.performance && options.performance) {
-          console.log('\n--- Performance Metrics ---');
-          formatter.output(stats.performance, {
-            fields: ['metric', 'value', 'unit'],
-            headers: ['Metric', 'Value', 'Unit'],
-          });
-        }
+        formatter.success('Database statistics:');
+        formatter.output(result, {
+          fields: ['metric', 'value', 'unit', 'description'],
+          headers: ['Metric', 'Value', 'Unit', 'Description'],
+        });
       } catch (error) {
         formatter.error(
-          `Failed to get database stats: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to get database stats: ${String(error instanceof Error ? error.message : 'Unknown error')}`
         );
         process.exit(1);
       }
@@ -177,18 +136,17 @@ export function registerDatabaseCommands(program: Command): void {
     .command('check')
     .description('Check database integrity')
     .option('--repair', 'attempt to repair corruption if found')
-    .action(async options => {
+    .action(async (options: { repair?: boolean }) => {
       const { apiClient, formatter } = getComponents();
 
       try {
         formatter.info('Checking database integrity...');
 
-        const result = await apiClient.request('/api/database/check', {
-          method: 'POST',
-          body: { repair: options.repair || false },
-        }) as any;
+        const result = await apiClient.request<AnyApiResponse>('POST', '/api/database/check', {
+          repair: options.repair ?? false,
+        });
 
-        if (result.healthy) {
+        if (isSuccessResponse(result) && (result.data as any).healthy) {
           formatter.success('Database integrity check passed');
         } else {
           formatter.error('Database integrity issues found');
@@ -199,9 +157,13 @@ export function registerDatabaseCommands(program: Command): void {
           headers: ['Check', 'Status', 'Details'],
         });
 
-        if (result.issues && result.issues.length > 0) {
-          console.log('\n--- Issues Found ---');
-          formatter.output(result.issues, {
+        if (
+          isSuccessResponse(result) &&
+          (result.data as any).issues &&
+          (result.data as any).issues.length > 0
+        ) {
+          logger.info('\n--- Issues Found ---');
+          formatter.output((result.data as any).issues, {
             fields: ['type', 'severity', 'message', 'suggestion'],
             headers: ['Type', 'Severity', 'Message', 'Suggestion'],
           });
@@ -219,7 +181,7 @@ export function registerDatabaseCommands(program: Command): void {
     .description('Repair database corruption')
     .option('-f, --force', 'skip confirmation')
     .option('--backup', 'create backup before repair')
-    .action(async options => {
+    .action(async (options: { force?: boolean; backup?: boolean }) => {
       const { apiClient, formatter } = getComponents();
 
       try {
@@ -241,16 +203,17 @@ export function registerDatabaseCommands(program: Command): void {
           }
         }
 
-        const repairData: any = {
-          createBackup: options.backup || false,
+        const repairData = {
+          createBackup: options.backup ?? false,
         };
 
         formatter.info('Repairing database...');
 
-        const result = await apiClient.request('/api/database/repair', {
-          method: 'POST',
-          body: repairData,
-        });
+        const result = await apiClient.request<AnyApiResponse>(
+          'POST',
+          '/api/database/repair',
+          repairData
+        );
 
         formatter.success('Database repair completed');
         formatter.output(result, {
@@ -275,9 +238,12 @@ export function registerDatabaseCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const migrations = await apiClient.request('/api/database/migrations/status') as any;
+        const migrations = await apiClient.request<AnyApiResponse>(
+          'GET',
+          '/api/database/migrations/status'
+        );
 
-        if (!migrations || migrations.length === 0) {
+        if (!migrations || !('length' in migrations) || (migrations as any).length === 0) {
           formatter.info('No migrations found');
           return;
         }
@@ -288,7 +254,7 @@ export function registerDatabaseCommands(program: Command): void {
         });
       } catch (error) {
         formatter.error(
-          `Failed to get migration status: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to get migration status: ${String(error instanceof Error ? error.message : 'Unknown error')}`
         );
         process.exit(1);
       }
@@ -298,21 +264,18 @@ export function registerDatabaseCommands(program: Command): void {
     .command('up')
     .description('Run pending migrations')
     .option('--to <version>', 'migrate to specific version')
-    .action(async options => {
+    .action(async (options: { to?: string }) => {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const migrateData: any = {};
+        const migrateData: { targetVersion?: string } = {};
         if (options.to) {
           migrateData.targetVersion = options.to;
         }
 
         formatter.info('Running migrations...');
 
-        const result = await apiClient.request('/api/database/migrations/up', {
-          method: 'POST',
-          body: migrateData,
-        });
+        const result = await apiClient.request('POST', '/api/database/migrations/up', migrateData);
 
         formatter.success('Migrations completed');
         formatter.output(result, {
@@ -321,7 +284,7 @@ export function registerDatabaseCommands(program: Command): void {
         });
       } catch (error) {
         formatter.error(
-          `Failed to run migrations: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to run migrations: ${String(error instanceof Error ? error.message : 'Unknown error')}`
         );
         process.exit(1);
       }
@@ -332,7 +295,7 @@ export function registerDatabaseCommands(program: Command): void {
     .description('Rollback migrations')
     .option('--to <version>', 'rollback to specific version')
     .option('-f, --force', 'skip confirmation')
-    .action(async options => {
+    .action(async (options: { to?: string; force?: boolean }) => {
       const { apiClient, formatter } = getComponents();
 
       try {
@@ -354,17 +317,18 @@ export function registerDatabaseCommands(program: Command): void {
           }
         }
 
-        const rollbackData: any = {};
+        const rollbackData: { targetVersion?: string } = {};
         if (options.to) {
           rollbackData.targetVersion = options.to;
         }
 
         formatter.info('Rolling back migrations...');
 
-        const result = await apiClient.request('/api/database/migrations/down', {
-          method: 'POST',
-          body: rollbackData,
-        });
+        const result = await apiClient.request(
+          'POST',
+          '/api/database/migrations/down',
+          rollbackData
+        );
 
         formatter.success('Migration rollback completed');
         formatter.output(result, {
@@ -373,7 +337,7 @@ export function registerDatabaseCommands(program: Command): void {
         });
       } catch (error) {
         formatter.error(
-          `Failed to rollback migrations: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to rollback migrations: ${String(error instanceof Error ? error.message : 'Unknown error')}`
         );
         process.exit(1);
       }
@@ -386,19 +350,18 @@ export function registerDatabaseCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const migration = await apiClient.request('/api/database/migrations/create', {
-          method: 'POST',
-          body: { name },
-        }) as any;
+        const migration = (await apiClient.request('POST', '/api/database/migrations/create', {
+          name,
+        })) as any;
 
-        formatter.success(`Migration created: ${migration.filename}`);
+        formatter.success(`Migration created: ${String(migration.filename || 'Unknown')}`);
         formatter.output(migration, {
           fields: ['name', 'version', 'filename', 'createdAt'],
           headers: ['Name', 'Version', 'Filename', 'Created At'],
         });
       } catch (error) {
         formatter.error(
-          `Failed to create migration: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to create migration: ${String(error instanceof Error ? error.message : 'Unknown error')}`
         );
         process.exit(1);
       }

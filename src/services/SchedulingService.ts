@@ -90,7 +90,7 @@ export interface UpdateScheduleOptions {
  * including cron-based scheduling, retention policies, and failure handling.
  */
 export class SchedulingService {
-  private readonly activeJobs = new Map<string, cron.ScheduledTask>();
+  private static readonly activeJobs = new Map<string, cron.ScheduledTask>();
 
   private isRunning = false;
 
@@ -104,7 +104,9 @@ export class SchedulingService {
     private readonly db: DatabaseConnection,
     private readonly backupService: BackupService
   ) {
-    this.ensureScheduleTable();
+    this.ensureScheduleTable().catch(error => 
+      logger.error('Failed to ensure schedule table on initialization', { error })
+    );
   }
 
   /**
@@ -128,10 +130,10 @@ export class SchedulingService {
       cronExpression: options.cronExpression,
       backupType: options.backupType,
       enabled: options.enabled ?? true,
-      nextRunAt: this.calculateNextRun(options.cronExpression),
+      nextRunAt: SchedulingService.calculateNextRun(options.cronExpression),
       runCount: 0,
       failureCount: 0,
-      retentionDays: options.retentionDays || 30,
+      retentionDays: options.retentionDays ?? 30,
       compressionEnabled: options.compressionEnabled ?? true,
       verificationEnabled: options.verificationEnabled ?? true,
       createdAt: now,
@@ -191,7 +193,7 @@ export class SchedulingService {
     }
 
     const rows = await this.db.query(query, params);
-    return rows.map(row => this.deserializeSchedule(row));
+    return rows.map(row => SchedulingService.deserializeSchedule(row));
   }
 
   /**
@@ -202,7 +204,7 @@ export class SchedulingService {
    */
   async getScheduleById(id: string): Promise<BackupSchedule | null> {
     const row = await this.db.queryOne('SELECT * FROM backup_schedules WHERE id = ?', [id]);
-    return row ? this.deserializeSchedule(row) : null;
+    return row ? SchedulingService.deserializeSchedule(row) : null;
   }
 
   /**
@@ -223,94 +225,60 @@ export class SchedulingService {
       throw new Error(`Invalid cron expression: ${options.cronExpression}`);
     }
 
-    const updates: string[] = [];
-    const params: any[] = [];
+    // Update fields
+    const updatedSchedule: BackupSchedule = {
+      ...existingSchedule,
+      ...options,
+      updatedAt: new Date().toISOString(),
+    };
 
-    if (options.name !== undefined) {
-      updates.push('name = ?');
-      params.push(options.name);
-    }
-    if (options.description !== undefined) {
-      updates.push('description = ?');
-      params.push(options.description);
-    }
-    if (options.cronExpression !== undefined) {
-      updates.push('cron_expression = ?', 'next_run_at = ?');
-      params.push(options.cronExpression, this.calculateNextRun(options.cronExpression));
-    }
-    if (options.backupType !== undefined) {
-      updates.push('backup_type = ?');
-      params.push(options.backupType);
-    }
-    if (options.enabled !== undefined) {
-      updates.push('enabled = ?');
-      params.push(options.enabled ? 1 : 0);
-    }
-    if (options.retentionDays !== undefined) {
-      updates.push('retention_days = ?');
-      params.push(options.retentionDays);
-    }
-    if (options.compressionEnabled !== undefined) {
-      updates.push('compression_enabled = ?');
-      params.push(options.compressionEnabled ? 1 : 0);
-    }
-    if (options.verificationEnabled !== undefined) {
-      updates.push('verification_enabled = ?');
-      params.push(options.verificationEnabled ? 1 : 0);
+    // Recalculate next run if cron expression changed
+    if (options.cronExpression) {
+      updatedSchedule.nextRunAt = SchedulingService.calculateNextRun(options.cronExpression);
     }
 
-    if (updates.length === 0) {
-      return existingSchedule;
-    }
+    try {
+      await this.storeSchedule(updatedSchedule);
 
-    updates.push('updated_at = ?');
-    params.push(new Date().toISOString());
-    params.push(id);
-
-    await this.db.execute(
-      `
-      UPDATE backup_schedules 
-      SET ${updates.join(', ')}
-      WHERE id = ?
-    `,
-      params
-    );
-
-    const updatedSchedule = await this.getScheduleById(id);
-    if (!updatedSchedule) {
-      throw new Error('Schedule disappeared after update');
-    }
-
-    // Restart job if scheduler is running
-    if (this.isRunning) {
-      this.stopJob(id);
-      if (updatedSchedule.enabled) {
-        this.startJob(updatedSchedule);
+      // Restart job if scheduler is running
+      if (this.isRunning) {
+        SchedulingService.stopJob(id);
+        if (updatedSchedule.enabled) {
+          this.startJob(updatedSchedule);
+        }
       }
-    }
 
-    logger.info(`Backup schedule updated: ${updatedSchedule.name}`, { scheduleId: id });
-    return updatedSchedule;
+      logger.info(`Backup schedule updated: ${updatedSchedule.name}`, { scheduleId: id });
+      return updatedSchedule;
+    } catch (error) {
+      logger.error('Failed to update backup schedule', error);
+      throw error;
+    }
   }
 
   /**
    * Delete a backup schedule
    *
    * @param {string} id - Schedule ID
-   * @returns {Promise<void>}
    */
   async deleteSchedule(id: string): Promise<void> {
-    const schedule = await this.getScheduleById(id);
-    if (!schedule) {
+    const existingSchedule = await this.getScheduleById(id);
+    if (!existingSchedule) {
       throw new Error(`Schedule not found: ${id}`);
     }
 
-    // Stop the job if running
-    this.stopJob(id);
+    try {
+      // Stop the job if running
+      SchedulingService.stopJob(id);
 
-    await this.db.execute('DELETE FROM backup_schedules WHERE id = ?', [id]);
+      // Delete from database
+      await this.db.execute('DELETE FROM backup_schedules WHERE id = ?', [id]);
 
-    logger.info(`Backup schedule deleted: ${schedule.name}`, { scheduleId: id });
+      logger.info(`Backup schedule deleted: ${existingSchedule.name}`, { scheduleId: id });
+    } catch (error) {
+      logger.error('Failed to delete backup schedule', error);
+      throw error;
+    }
   }
 
   /**
@@ -323,10 +291,9 @@ export class SchedulingService {
     }
 
     this.isRunning = true;
-
-    // Load and start all enabled schedules
-    this.loadAndStartSchedules();
-
+    this.loadAndStartSchedules().catch(error => 
+      logger.error('Failed to load and start schedules', { error })
+    );
     logger.info('Backup scheduler started');
   }
 
@@ -339,22 +306,21 @@ export class SchedulingService {
       return;
     }
 
-    // Stop all active jobs
-    for (const [scheduleId, task] of this.activeJobs) {
-      task.stop();
-      this.activeJobs.delete(scheduleId);
-    }
-
     this.isRunning = false;
+
+    // Stop all active jobs
+    for (const [scheduleId, task] of SchedulingService.activeJobs) {
+      task.stop();
+      SchedulingService.activeJobs.delete(scheduleId);
+    }
 
     logger.info('Backup scheduler stopped');
   }
 
   /**
-   * Execute a schedule manually
+   * Manually execute a schedule
    *
    * @param {string} id - Schedule ID
-   * @returns {Promise<void>}
    */
   async executeSchedule(id: string): Promise<void> {
     const schedule = await this.getScheduleById(id);
@@ -362,46 +328,31 @@ export class SchedulingService {
       throw new Error(`Schedule not found: ${id}`);
     }
 
+    if (!schedule.enabled) {
+      throw new Error(`Schedule is disabled: ${id}`);
+    }
+
     await this.executeBackup(schedule);
   }
 
   /**
    * Clean up old backups based on retention policies
-   *
-   * @returns {Promise<void>}
    */
   async cleanupOldBackups(): Promise<void> {
     const schedules = await this.getSchedules({ enabled: true });
 
-    for (const schedule of schedules) {
-      if (schedule.retentionDays && schedule.retentionDays > 0) {
-        const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - schedule.retentionDays);
-
-        try {
-          // Get old backups for this schedule's pattern
-          const oldBackups = await this.backupService.listBackups({
-            limit: 1000,
-          });
-
-          const backupsToDelete = oldBackups.filter(
-            backup =>
-              new Date(backup.createdAt) < cutoffDate &&
-              backup.name.includes(schedule.name.toLowerCase())
-          );
-
-          for (const backup of backupsToDelete) {
-            await this.backupService.deleteBackup(backup.id);
-            logger.info(`Cleaned up old backup: ${backup.name}`, {
-              scheduleId: schedule.id,
-              backupId: backup.id,
-            });
+    await Promise.all(
+      schedules
+        .filter(schedule => schedule.retentionDays)
+        .map(async schedule => {
+          try {
+            await this.backupService.cleanupOldBackups(schedule.retentionDays!);
+            logger.info(`Cleaned up old backups for schedule: ${schedule.name}`);
+          } catch (error) {
+            logger.error(`Failed to cleanup backups for schedule: ${schedule.name}`, error);
           }
-        } catch (error) {
-          logger.error(`Failed to cleanup old backups for schedule ${schedule.name}:`, error);
-        }
-      }
-    }
+        })
+    );
   }
 
   /**
@@ -411,44 +362,9 @@ export class SchedulingService {
     try {
       const schedules = await this.getSchedules({ enabled: true });
 
-      for (const schedule of schedules) {
-        this.startJob(schedule);
-      }
-
-      logger.info(`Started ${schedules.length} backup schedules`);
+      await Promise.all(schedules.map(schedule => this.executeBackup(schedule)));
     } catch (error) {
-      logger.error('Failed to load backup schedules:', error);
-    }
-  }
-
-  /**
-   * Start a scheduled job
-   *
-   * @param {BackupSchedule} schedule - Schedule configuration
-   */
-  private startJob(schedule: BackupSchedule): void {
-    try {
-      const task = cron.schedule(
-        schedule.cronExpression,
-        async () => {
-          await this.executeBackup(schedule);
-        },
-        {
-          scheduled: false,
-          timezone: 'UTC',
-        }
-      );
-
-      task.start();
-      this.activeJobs.set(schedule.id, task);
-
-      logger.info(`Started backup job: ${schedule.name}`, {
-        scheduleId: schedule.id,
-        cronExpression: schedule.cronExpression,
-        nextRun: schedule.nextRunAt,
-      });
-    } catch (error) {
-      logger.error(`Failed to start backup job: ${schedule.name}`, error);
+      logger.error('Failed to load and start schedules:', error);
     }
   }
 
@@ -457,11 +373,11 @@ export class SchedulingService {
    *
    * @param {string} scheduleId - Schedule ID
    */
-  private stopJob(scheduleId: string): void {
-    const task = this.activeJobs.get(scheduleId);
+  private static stopJob(scheduleId: string): void {
+    const task = SchedulingService.activeJobs.get(scheduleId);
     if (task) {
       task.stop();
-      this.activeJobs.delete(scheduleId);
+      SchedulingService.activeJobs.delete(scheduleId);
       logger.info(`Stopped backup job for schedule: ${scheduleId}`);
     }
   }
@@ -475,7 +391,9 @@ export class SchedulingService {
     const startTime = Date.now();
 
     try {
-      logger.info(`Executing scheduled backup: ${schedule.name}`, { scheduleId: schedule.id });
+      logger.info(`Executing scheduled backup: ${schedule.name}`, {
+        scheduleId: schedule.id,
+      });
 
       // Create backup name with timestamp
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -558,7 +476,7 @@ export class SchedulingService {
 
     if (!schedule) return;
 
-    const nextRun = this.calculateNextRun(schedule.cronExpression);
+    const nextRun = SchedulingService.calculateNextRun(schedule.cronExpression);
 
     await this.db.execute(
       `
@@ -581,7 +499,7 @@ export class SchedulingService {
    * @param {string} cronExpression - Cron expression
    * @returns {string} Next run time in ISO format
    */
-  private calculateNextRun(_cronExpression: string): string {
+  private static calculateNextRun(_cronExpression: string): string {
     try {
       // Use a simple approximation - in production you'd want a proper cron parser
       return new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours from now
@@ -658,7 +576,7 @@ export class SchedulingService {
    * @param {any} row - Database row
    * @returns {BackupSchedule} Deserialized schedule
    */
-  private deserializeSchedule(row: {
+  private static deserializeSchedule(row: {
     id: string;
     name: string;
     description?: string;
@@ -681,8 +599,8 @@ export class SchedulingService {
       cronExpression: row.cron_expression,
       backupType: row.backup_type as 'full' | 'incremental',
       enabled: Boolean(row.enabled),
-      runCount: row.run_count || 0,
-      failureCount: row.failure_count || 0,
+      runCount: row.run_count ?? 0,
+      failureCount: row.failure_count ?? 0,
       retentionDays: row.retention_days,
       compressionEnabled: Boolean(row.compression_enabled),
       verificationEnabled: Boolean(row.verification_enabled),
@@ -696,5 +614,23 @@ export class SchedulingService {
     if (row.next_run_at) schedule.nextRunAt = row.next_run_at;
 
     return schedule;
+  }
+
+  /**
+   * Start a job for a schedule
+   */
+  private startJob(schedule: BackupSchedule): void {
+    // Stop existing job if any
+    SchedulingService.stopJob(schedule.id);
+
+    // Create new cron job
+    const task = cron.schedule(schedule.cronExpression, () => {
+      this.executeBackup(schedule).catch(error => 
+        logger.error('Failed to execute backup', { error, scheduleId: schedule.id })
+      );
+    });
+
+    SchedulingService.activeJobs.set(schedule.id, task);
+    logger.info(`Started backup job for schedule: ${schedule.name}`, { scheduleId: schedule.id });
   }
 }

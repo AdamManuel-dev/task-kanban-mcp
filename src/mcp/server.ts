@@ -83,8 +83,8 @@ export class MCPKanbanServer {
   constructor() {
     this.server = new Server(
       {
-        name: config.mcp.serverName,
-        version: config.mcp.serverVersion,
+        name: 'mcp-kanban-server',
+        version: '1.0.0',
       },
       {
         capabilities: {
@@ -157,7 +157,7 @@ export class MCPKanbanServer {
       const { name, arguments: args } = request.params;
 
       try {
-        const result = await this.toolRegistry.callTool(name, args || {});
+        const result = await this.toolRegistry.callTool(name, args ?? {});
         return {
           content: [
             {
@@ -172,7 +172,7 @@ export class MCPKanbanServer {
           content: [
             {
               type: 'text',
-              text: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+              text: `Error: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`,
             },
           ],
           isError: true,
@@ -195,7 +195,7 @@ export class MCPKanbanServer {
           contents: [
             {
               uri,
-              mimeType: resource.mimeType || 'application/json',
+              mimeType: resource.mimeType ?? 'application/json',
               text: resource.text,
             },
           ],
@@ -216,7 +216,7 @@ export class MCPKanbanServer {
       const { name, arguments: args } = request.params;
 
       try {
-        const prompt = await this.promptRegistry.getPrompt(name, args || {});
+        const prompt = await this.promptRegistry.getPrompt(name, args ?? {});
         return {
           description: prompt.description,
           messages: prompt.messages,
@@ -276,11 +276,15 @@ export class MCPKanbanServer {
 
       // Keep the process running
       process.on('SIGINT', () => {
-        this.stop();
+        this.stop().catch(error => 
+          logger.error('Failed to stop server on SIGINT', { error })
+        );
       });
 
       process.on('SIGTERM', () => {
-        this.stop();
+        this.stop().catch(error => 
+          logger.error('Failed to stop server on SIGTERM', { error })
+        );
       });
     } catch (error) {
       logger.error('Failed to start MCP server', { error });
@@ -304,7 +308,7 @@ export class MCPKanbanServer {
    * await server.stop();
    * ```
    */
-  async stop(): Promise<void> {
+  async stop(exitProcess: boolean = true): Promise<void> {
     try {
       logger.info('Stopping MCP Kanban server...');
 
@@ -315,10 +319,15 @@ export class MCPKanbanServer {
       }
 
       logger.info('MCP Kanban server stopped');
-      process.exit(0);
+
+      if (exitProcess) {
+        process.exit(0);
+      }
     } catch (error) {
       logger.error('Error stopping MCP server', { error });
-      process.exit(1);
+      if (exitProcess) {
+        process.exit(1);
+      }
     }
   }
 
@@ -336,8 +345,8 @@ export class MCPKanbanServer {
    * @example
    * ```typescript
    * const health = await server.healthCheck();
-   * console.log(`Server status: ${health.status}`);
-   * console.log(`Tools available: ${health.tools}`);
+   * logger.log(`Server status: ${String(String(health.status))}`);
+   * logger.log(`Tools available: ${String(String(health.tools))}`);
    * ```
    */
   async healthCheck(): Promise<{
@@ -383,8 +392,8 @@ export class MCPKanbanServer {
    * @example
    * ```typescript
    * const info = server.getServerInfo();
-   * console.log(`${info.name} v${info.version}`);
-   * console.log(`Capabilities: ${info.capabilities.join(', ')}`);
+   * logger.log(`${String(String(info.name))} v${String(String(info.version))}`);
+   * logger.log(`Capabilities: ${String(String(info.capabilities.join(', ')))}`);
    * ```
    */
   getServerInfo(): {
@@ -441,7 +450,7 @@ export const mcpServer = new MCPKanbanServer();
 // Start server if this file is run directly
 if (require.main === module) {
   mcpServer.start().catch(error => {
-    console.error('Failed to start MCP server:', error);
+    logger.error('Failed to start MCP server:', error);
     process.exit(1);
   });
 }

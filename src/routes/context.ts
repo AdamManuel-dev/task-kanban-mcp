@@ -9,7 +9,7 @@ import { requirePermission } from '@/middleware/auth';
 // import { validateInput } from '@/utils/validation'; // Unused
 import { NotFoundError } from '@/utils/errors';
 
-export async function contextRoutes(): Promise<Router> {
+export function contextRoutes(): Router {
   const router = Router();
 
   const boardService = new BoardService(dbConnection);
@@ -25,7 +25,7 @@ export async function contextRoutes(): Promise<Router> {
   );
 
   // GET /api/v1/context/projects/:id - Generate project context
-  router.get('/projects/:id', requirePermission('read'), async (req, res, next) => {
+  router.get('/projects/:id', requirePermission('read'), async (req, res, next): Promise<void> => {
     try {
       const { id } = req.params;
       const { includeCompletedTasks = false, maxTasks = 100 } = req.query;
@@ -41,7 +41,7 @@ export async function contextRoutes(): Promise<Router> {
       const context = await contextService.getProjectContext(options);
 
       if (!context) {
-        throw new NotFoundError('Project', id);
+        throw new NotFoundError('Project', id ?? 'unknown');
       }
 
       return res.apiSuccess(context);
@@ -51,7 +51,7 @@ export async function contextRoutes(): Promise<Router> {
   });
 
   // GET /api/v1/context/tasks/:id - Generate task context
-  router.get('/tasks/:id', requirePermission('read'), async (req, res, next) => {
+  router.get('/tasks/:id', requirePermission('read'), async (req, res, next): Promise<void> => {
     try {
       const { id } = req.params;
       const { maxRelatedTasks = 10 } = req.query;
@@ -81,7 +81,7 @@ export async function contextRoutes(): Promise<Router> {
   });
 
   // GET /api/v1/context/boards/:id - Generate board context
-  router.get('/boards/:id', requirePermission('read'), async (req, res, next) => {
+  router.get('/boards/:id', requirePermission('read'), async (req, res, next): Promise<void> => {
     try {
       const { id } = req.params;
       const { includeCompletedTasks = false, maxTasks = 200 } = req.query;
@@ -97,7 +97,7 @@ export async function contextRoutes(): Promise<Router> {
       const context = await contextService.getProjectContext(options);
 
       if (!context) {
-        throw new NotFoundError('Board', id);
+        throw new NotFoundError('Board', id ?? 'unknown');
       }
 
       return res.apiSuccess(context);
@@ -107,7 +107,7 @@ export async function contextRoutes(): Promise<Router> {
   });
 
   // POST /api/v1/context/analyze - Analyze context for insights
-  router.post('/analyze', requirePermission('read'), async (req, res, next) => {
+  router.post('/analyze', requirePermission('read'), (req, res, next) => {
     try {
       const analysisData = req.body;
       const analysis = { message: 'Context analysis not implemented', data: analysisData };
@@ -118,7 +118,7 @@ export async function contextRoutes(): Promise<Router> {
   });
 
   // GET /api/v1/context/insights/boards/:id - Get board insights
-  router.get('/insights/boards/:id', requirePermission('read'), async (req, res, next) => {
+  router.get('/insights/boards/:id', requirePermission('read'), (req, res, next) => {
     try {
       const { id } = req.params;
       const {
@@ -143,7 +143,7 @@ export async function contextRoutes(): Promise<Router> {
   });
 
   // GET /api/v1/context/insights/tasks/:id - Get task insights
-  router.get('/insights/tasks/:id', requirePermission('read'), async (req, res, next) => {
+  router.get('/insights/tasks/:id', requirePermission('read'), (req, res, next) => {
     try {
       const { id } = req.params;
       const {
@@ -166,7 +166,7 @@ export async function contextRoutes(): Promise<Router> {
   });
 
   // GET /api/v1/context/summary - Get overall system summary
-  router.get('/summary', requirePermission('read'), async (req, res, next) => {
+  router.get('/summary', requirePermission('read'), (req, res, next) => {
     try {
       const {
         includeMetrics = true,
@@ -190,14 +190,14 @@ export async function contextRoutes(): Promise<Router> {
   });
 
   // POST /api/v1/context/export - Export context data
-  router.post('/export', requirePermission('read'), async (req, res, next) => {
+  router.post('/export', requirePermission('read'), (req, res, next) => {
     try {
       const exportData = req.body;
       const exportResult = { message: 'Context export not implemented', data: exportData };
 
       res.set({
         'Content-Type': 'application/json',
-        'Content-Disposition': `attachment; filename="context-export-${Date.now()}.json"`,
+        'Content-Disposition': `attachment; filename="context-export-${String(String(Date.now()))}.json"`,
       });
 
       return res.apiSuccess(exportResult);
@@ -207,7 +207,7 @@ export async function contextRoutes(): Promise<Router> {
   });
 
   // GET /api/v1/context/templates - Get context templates
-  router.get('/templates', requirePermission('read'), async (req, res, next) => {
+  router.get('/templates', requirePermission('read'), (req, res, next) => {
     try {
       const { type } = req.query;
       const templates = { message: 'Context templates not implemented', type, templates: [] };

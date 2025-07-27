@@ -1,0 +1,823 @@
+# CLI Enhancement Integration TODO List
+
+## Project Overview
+Enhance the task-kanban-mcp CLI with interactive features using enquirer, prompts, ink, and ora libraries to improve user experience.
+
+## Phase 1: Project Setup and Infrastructure (P1)
+
+### Development Environment Setup
+- [x] **TASK-001**: Verify Node.js version compatibility (14+) for ESM support [S, P1, Value: M]
+  - Owner: Completed
+  - Dependencies: None
+  - ✅ Node v24.2.0 confirmed, package.json requires >=18.0.0
+  
+- [x] **TASK-002**: Create backup of current CLI implementation [S, P1, Value: L]
+  - Owner: Completed
+  - Dependencies: None
+  - ✅ Using git for version control
+
+- [x] **TASK-003**: Set up feature branch for CLI enhancement work [S, P1, Value: M]
+  - Owner: Completed
+  - Dependencies: TASK-002
+  - ✅ Created branch: feature/cli-enhancements
+
+### Package Installation
+- [x] **TASK-004**: Install enquirer package and verify compatibility [S, P1, Value: L]
+  - Owner: Completed
+  - Dependencies: TASK-001
+  - ✅ Installed enquirer@2.4.1
+
+- [x] **TASK-005**: Install prompts package and verify compatibility [S, P1, Value: L]
+  - Owner: Completed
+  - Dependencies: TASK-001
+  - ✅ Installed prompts@2.4.2
+
+- [x] **TASK-006**: Install ink and react packages with version verification [S, P1, Value: L]
+  - Owner: Completed
+  - Dependencies: TASK-001
+  - ✅ Installed ink@6.0.1 and react@19.1.0
+
+- [x] **TASK-007**: Install ora package for spinner functionality [S, P1, Value: L]
+  - Owner: Completed
+  - Dependencies: TASK-001
+  - ✅ Installed ora@8.2.0
+
+- [x] **TASK-008**: Install chalk for terminal styling [S, P1, Value: M]
+  - Owner: Completed
+  - Dependencies: TASK-001
+  - ✅ Already present chalk@5.3.0
+
+- [x] **TASK-009**: Update package.json with new dependencies and lock file [S, P1, Value: M]
+  - Owner: Completed
+  - Dependencies: TASK-004, TASK-005, TASK-006, TASK-007, TASK-008
+  - ✅ All dependencies added to package.json
+
+### Directory Structure Creation
+- [x] **TASK-010**: Create cli/ directory structure as specified [S, P1, Value: L]
+  - Owner: Completed
+  - Dependencies: TASK-003
+  - ✅ Created src/cli/ directory structure
+
+- [x] **TASK-011**: Create ui/components/ subdirectory [S, P1, Value: M]
+  - Owner: Completed
+  - Dependencies: TASK-010
+  - ✅ Created src/cli/ui/components/
+
+- [x] **TASK-012**: Create ui/themes/ subdirectory [S, P1, Value: M]
+  - Owner: Completed
+  - Dependencies: TASK-010
+  - ✅ Created src/cli/ui/themes/
+
+- [x] **TASK-013**: Create prompts/ subdirectory [S, P1, Value: M]
+  - Owner: Completed
+  - Dependencies: TASK-010
+  - ✅ Created src/cli/prompts/
+
+- [x] **TASK-014**: Create utils/ subdirectory [S, P1, Value: M]
+  - Owner: Completed
+  - Dependencies: TASK-010
+  - ✅ Created src/cli/utils/
+
+- [x] **TASK-015**: Create estimation/ subdirectory [S, P1, Value: M]
+  - Owner: Completed
+  - Dependencies: TASK-010
+  - ✅ Created src/cli/estimation/
+
+## Phase 2: Core Utility Implementation (P1)
+
+### Spinner Manager Implementation
+- [x] **TASK-016**: Implement SpinnerManager class in cli/utils/spinner.js [M, P1, Value: L]
+  - Owner: Completed
+  - Dependencies: TASK-007, TASK-014
+  - ✅ Created SpinnerManager class with TypeScript in src/cli/utils/spinner.ts
+
+- [ ] **TASK-017**: Add error handling to SpinnerManager methods [S, P2, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-016
+
+- [ ] **TASK-018**: Create unit tests for SpinnerManager [M, P2, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-016
+
+- [ ] **TASK-019**: Add TypeScript type definitions for SpinnerManager [S, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-016
+
+### Formatter Utilities
+- [x] **TASK-020**: Create cli/utils/formatter.js with basic formatting functions [M, P2, Value: M]
+  - Owner: Completed
+  - Dependencies: TASK-014
+  - ✅ Created comprehensive formatter.ts with date-fns integration
+
+- [x] **TASK-021**: Implement board output formatter function [M, P2, Value: M]
+  - Owner: Completed
+  - Dependencies: TASK-020
+  - ✅ Created BoardFormatter class with multiple view formats
+
+- [x] **TASK-022**: Implement task list formatter function [M, P2, Value: M]
+  - Owner: Completed
+  - Dependencies: TASK-020
+  - ✅ Created TaskListFormatter with table, list, and detail views
+
+- [ ] **TASK-023**: Add date/time formatting utilities [S, P3, Value: S]
+  - Owner: TBD
+  - Dependencies: TASK-020
+
+## Phase 3: Validation System (P2)
+
+### Input Validators
+- [x] **TASK-024**: Implement validateTaskTitle function in validators.js [S, P2, Value: L]
+  - Owner: Completed
+  - Dependencies: TASK-013
+  - ✅ Implemented in validators.ts with comprehensive validation
+
+- [x] **TASK-025**: Implement validatePriority function [S, P2, Value: L]
+  - Owner: Completed
+  - Dependencies: TASK-013
+  - ✅ Implemented with enum validation
+
+- [x] **TASK-026**: Implement validateTaskSize function [S, P2, Value: L]
+  - Owner: Completed
+  - Dependencies: TASK-013
+  - ✅ Implemented with size constraints
+
+- [ ] **TASK-027**: Add custom validation error messages [S, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-024, TASK-025, TASK-026
+
+- [ ] **TASK-028**: Create unit tests for all validators [M, P2, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-024, TASK-025, TASK-026
+
+- [ ] **TASK-029**: Add email validation function for future use [S, P4, Value: S]
+  - Owner: TBD
+  - Dependencies: TASK-013
+
+- [ ] **TASK-030**: Add URL validation function for git repository detection [S, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-013
+
+## Phase 4: Interactive Prompts Implementation (P1)
+
+### Task Prompts (Enquirer)
+- [x] **TASK-031**: Implement createTaskPrompt function [L, P1, Value: L]
+  - Owner: Completed
+  - Dependencies: TASK-004, TASK-013, TASK-024, TASK-025, TASK-026
+  - ✅ Created comprehensive task-prompts.ts with multiple prompt types
+
+- [x] **TASK-032**: Implement moveTaskPrompt function [M, P1, Value: L]
+  - Owner: Completed
+  - Dependencies: TASK-004, TASK-013
+  - ✅ Implemented in task-prompts.ts with column selection
+
+- [ ] **TASK-033**: Implement bulkTaskActionPrompt function [L, P2, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-004, TASK-013
+
+- [ ] **TASK-034**: Add error handling for prompt cancellation [M, P2, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-031, TASK-032, TASK-033
+
+- [ ] **TASK-035**: Implement prompt state persistence for retry scenarios [M, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-031
+
+### Board Prompts (Prompts Library)
+- [x] **TASK-036**: Implement quickBoardSetup function [M, P1, Value: L]
+  - Owner: Completed
+  - Dependencies: TASK-005, TASK-013
+  - ✅ Created board-prompts.ts with templates and custom setup
+
+- [x] **TASK-037**: Implement confirmAction utility function [S, P1, Value: L]
+  - Owner: Completed
+  - Dependencies: TASK-005, TASK-013
+  - ✅ Added to board-prompts.ts with delete confirmation variant
+
+- [ ] **TASK-038**: Add board template selection prompt [M, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-036
+
+- [ ] **TASK-039**: Implement column customization prompt [M, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-036
+
+## Phase 5: Task Size Estimation System (P2)
+
+### Estimation Core
+- [x] **TASK-040**: Create TaskSizeEstimator class structure [M, P2, Value: L]
+  - Owner: Completed
+  - Dependencies: TASK-015
+  - ✅ Created comprehensive TaskSizeEstimator with ML prep
+
+- [x] **TASK-041**: Implement estimateTime method with calculations [M, P2, Value: L]
+  - Owner: Completed
+  - Dependencies: TASK-040
+  - ✅ Implemented with complexity factors and confidence
+
+- [x] **TASK-042**: Implement groupTasksBySize method [S, P2, Value: M]
+  - Owner: Completed
+  - Dependencies: TASK-040
+  - ✅ Added grouping functionality
+
+- [x] **TASK-043**: Implement displayEstimates method with formatting [M, P2, Value: M]
+  - Owner: Completed
+  - Dependencies: TASK-040, TASK-008
+  - ✅ Rich display with size distribution
+
+- [x] **TASK-044**: Implement suggestTaskSize heuristics [M, P2, Value: L]
+  - Owner: Completed
+  - Dependencies: TASK-040
+  - ✅ Smart heuristics based on multiple factors
+
+- [ ] **TASK-045**: Add machine learning preparation for future size prediction [L, P4, Value: S]
+  - Owner: TBD
+  - Dependencies: TASK-040
+
+- [ ] **TASK-046**: Create unit tests for estimation logic [M, P2, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-041, TASK-042, TASK-044
+
+### Estimation Integration
+- [ ] **TASK-047**: Integrate size estimation into createTaskPrompt [M, P2, Value: L]
+  - Owner: TBD
+  - Dependencies: TASK-031, TASK-044
+
+- [ ] **TASK-048**: Add historical data storage for estimation improvement [L, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-040
+
+## Phase 6: React Terminal UI Components (P1)
+
+### Base Components
+- [x] **TASK-049**: Create TaskList.js React component [L, P1, Value: L]
+  - Owner: Completed
+  - Dependencies: TASK-006, TASK-011
+  - ✅ Created TaskList.tsx with keyboard navigation and filtering
+
+- [x] **TASK-050**: Create BoardView.js React component [L, P1, Value: L]
+  - Owner: Completed
+  - Dependencies: TASK-006, TASK-011
+  - ✅ Created BoardView.tsx with column navigation and WIP limits
+
+- [x] **TASK-051**: Create StatusIndicator.js component [M, P2, Value: M]
+  - Owner: Completed
+  - Dependencies: TASK-006, TASK-011
+  - ✅ Created StatusIndicator.tsx with progress and connection status
+
+- [ ] **TASK-052**: Implement keyboard navigation in TaskList [M, P1, Value: L]
+  - Owner: TBD
+  - Dependencies: TASK-049
+
+- [ ] **TASK-053**: Implement responsive column layout in BoardView [M, P2, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-050
+
+### Advanced UI Features
+- [ ] **TASK-054**: Add task filtering UI component [L, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-049
+
+- [ ] **TASK-055**: Add task sorting UI component [M, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-049
+
+- [ ] **TASK-056**: Implement task detail view component [L, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-049
+
+- [ ] **TASK-057**: Add progress bar component for bulk operations [M, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-011
+
+### Theme System
+- [x] **TASK-058**: Create default theme configuration [S, P2, Value: M]
+  - Owner: Completed
+  - Dependencies: TASK-012
+  - ✅ Created comprehensive theme system with multiple variants
+
+- [ ] **TASK-059**: Implement dark theme variant [M, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-058
+
+- [ ] **TASK-060**: Add theme switching functionality [M, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-058, TASK-059
+
+- [ ] **TASK-061**: Create high contrast accessibility theme [M, P4, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-058
+
+## Phase 7: Main CLI Integration (P1)
+
+### Command Updates
+- [ ] **TASK-062**: Update task:create command with interactive prompts [M, P1, Value: L]
+  - Owner: TBD
+  - Dependencies: TASK-031, TASK-016
+
+- [ ] **TASK-063**: Update board:view command with interactive mode [M, P1, Value: L]
+  - Owner: TBD
+  - Dependencies: TASK-050, TASK-016
+
+- [ ] **TASK-064**: Implement task:select interactive command [L, P1, Value: L]
+  - Owner: TBD
+  - Dependencies: TASK-049, TASK-016
+
+- [ ] **TASK-065**: Implement board:quick-setup command [M, P1, Value: L]
+  - Owner: TBD
+  - Dependencies: TASK-036, TASK-037, TASK-016
+
+### API Integration
+- [ ] **TASK-066**: Create API client wrapper for spinner integration [M, P2, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-016
+
+- [ ] **TASK-067**: Add retry logic with spinner feedback [M, P2, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-066
+
+- [ ] **TASK-068**: Implement request timeout handling [M, P2, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-066
+
+- [ ] **TASK-069**: Add offline mode detection and handling [L, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-066
+
+### Error Handling
+- [ ] **TASK-070**: Implement global error handler for CLI [M, P1, Value: L]
+  - Owner: TBD
+  - Dependencies: None
+
+- [ ] **TASK-071**: Add graceful shutdown handling (Ctrl+C) [M, P2, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-070
+
+- [ ] **TASK-072**: Create error logging system [M, P2, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-070
+
+- [ ] **TASK-073**: Add debug mode for troubleshooting [M, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-070
+
+## Phase 8: Advanced Features (P3)
+
+### Keyboard Shortcuts
+- [ ] **TASK-074**: Implement global keyboard shortcut handler [L, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-049, TASK-050
+
+- [ ] **TASK-075**: Add Ctrl+R for refresh functionality [S, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-074
+
+- [ ] **TASK-076**: Add Ctrl+N for new task shortcut [S, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-074
+
+- [ ] **TASK-077**: Add Ctrl+F for search functionality [M, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-074
+
+- [ ] **TASK-078**: Create keyboard shortcut help overlay [M, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-074
+
+### Progress Tracking
+- [ ] **TASK-079**: Implement progress tracking for bulk operations [M, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-016, TASK-033
+
+- [ ] **TASK-080**: Add ETA calculation for long operations [M, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-079
+
+- [ ] **TASK-081**: Create progress persistence for resume capability [L, P4, Value: S]
+  - Owner: TBD
+  - Dependencies: TASK-079
+
+### Performance Optimization
+- [ ] **TASK-082**: Implement lazy loading for large task lists [L, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-049
+
+- [ ] **TASK-083**: Add virtual scrolling for board view [L, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-050
+
+- [ ] **TASK-084**: Implement data caching layer [L, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-066
+
+- [ ] **TASK-085**: Add pagination support for API calls [M, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-066
+
+## Phase 9: Testing Implementation (P2)
+
+### Unit Tests
+- [ ] **TASK-086**: Create test setup and configuration [M, P2, Value: L]
+  - Owner: TBD
+  - Dependencies: None
+
+- [ ] **TASK-087**: Write unit tests for all validator functions [M, P2, Value: L]
+  - Owner: TBD
+  - Dependencies: TASK-086, TASK-028
+
+- [ ] **TASK-088**: Write unit tests for SpinnerManager [M, P2, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-086, TASK-018
+
+- [ ] **TASK-089**: Write unit tests for TaskSizeEstimator [M, P2, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-086, TASK-046
+
+- [ ] **TASK-090**: Write unit tests for formatter utilities [M, P2, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-086, TASK-020
+
+### Integration Tests
+- [ ] **TASK-091**: Create integration tests for prompt flows [L, P2, Value: L]
+  - Owner: TBD
+  - Dependencies: TASK-031, TASK-032, TASK-036
+
+- [ ] **TASK-092**: Create integration tests for CLI commands [L, P2, Value: L]
+  - Owner: TBD
+  - Dependencies: TASK-062, TASK-063, TASK-064, TASK-065
+
+- [ ] **TASK-093**: Test API integration with mock server [L, P2, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-066
+
+### UI Component Tests
+- [ ] **TASK-094**: Set up ink-testing-library [S, P2, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-086
+
+- [ ] **TASK-095**: Write tests for TaskList component [M, P2, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-094, TASK-049
+
+- [ ] **TASK-096**: Write tests for BoardView component [M, P2, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-094, TASK-050
+
+- [ ] **TASK-097**: Write tests for keyboard navigation [M, P2, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-094, TASK-052
+
+### E2E Tests
+- [ ] **TASK-098**: Create E2E test framework setup [L, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-086
+
+- [ ] **TASK-099**: Write E2E tests for complete task lifecycle [L, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-098
+
+- [ ] **TASK-100**: Write E2E tests for board management [L, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-098
+
+## Phase 10: Documentation (P2)
+
+### User Documentation
+- [ ] **TASK-101**: Create user guide for interactive features [L, P2, Value: L]
+  - Owner: TBD
+  - Dependencies: All Phase 7 tasks
+
+- [ ] **TASK-102**: Document keyboard shortcuts [M, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-074-078
+
+- [ ] **TASK-103**: Create CLI command reference [L, P2, Value: L]
+  - Owner: TBD
+  - Dependencies: All Phase 7 tasks
+
+- [ ] **TASK-104**: Write troubleshooting guide [M, P2, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-070-073
+
+### Developer Documentation
+- [ ] **TASK-105**: Document component architecture [L, P2, Value: M]
+  - Owner: TBD
+  - Dependencies: All Phase 6 tasks
+
+- [ ] **TASK-106**: Create API integration guide [M, P2, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-066-069
+
+- [ ] **TASK-107**: Document theme customization [M, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-058-061
+
+- [ ] **TASK-108**: Write plugin development guide [L, P4, Value: S]
+  - Owner: TBD
+  - Dependencies: All implementation phases
+
+### API Documentation
+- [ ] **TASK-109**: Generate JSDoc documentation [M, P2, Value: M]
+  - Owner: TBD
+  - Dependencies: All implementation phases
+
+- [ ] **TASK-110**: Create TypeScript type documentation [M, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-019
+
+- [ ] **TASK-111**: Document internal APIs [L, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: All implementation phases
+
+## Phase 11: Platform Compatibility (P2)
+
+### Cross-Platform Testing
+- [ ] **TASK-112**: Test and fix Windows terminal compatibility [L, P2, Value: L]
+  - Owner: TBD
+  - Dependencies: All UI components
+
+- [ ] **TASK-113**: Test and fix macOS terminal compatibility [M, P2, Value: L]
+  - Owner: TBD
+  - Dependencies: All UI components
+
+- [ ] **TASK-114**: Test and fix Linux terminal compatibility [M, P2, Value: L]
+  - Owner: TBD
+  - Dependencies: All UI components
+
+- [ ] **TASK-115**: Test Unicode and emoji support across platforms [M, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-112-114
+
+### Terminal Compatibility
+- [ ] **TASK-116**: Add ANSI color detection and fallback [M, P2, Value: M]
+  - Owner: TBD
+  - Dependencies: None
+
+- [ ] **TASK-117**: Implement terminal size detection and handling [M, P2, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-050
+
+- [ ] **TASK-118**: Add support for various terminal emulators [L, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-116
+
+## Phase 12: Security and Performance (P2)
+
+### Security Implementation
+- [ ] **TASK-119**: Implement input sanitization for all prompts [M, P1, Value: L]
+  - Owner: TBD
+  - Dependencies: All prompt implementations
+
+- [ ] **TASK-120**: Add command injection prevention [M, P1, Value: L]
+  - Owner: TBD
+  - Dependencies: TASK-119
+
+- [ ] **TASK-121**: Implement secure credential storage for API keys [L, P2, Value: L]
+  - Owner: TBD
+  - Dependencies: None
+
+- [ ] **TASK-122**: Add audit logging for sensitive operations [M, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-072
+
+### Performance Monitoring
+- [ ] **TASK-123**: Add performance metrics collection [M, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: None
+
+- [ ] **TASK-124**: Implement memory usage monitoring [M, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-123
+
+- [ ] **TASK-125**: Create performance benchmarking suite [L, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-123
+
+## Phase 13: Deployment and Release (P1)
+
+### Build and Package
+- [ ] **TASK-126**: Update build configuration for new dependencies [M, P1, Value: L]
+  - Owner: TBD
+  - Dependencies: All implementation complete
+
+- [ ] **TASK-127**: Create production build optimization [M, P1, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-126
+
+- [ ] **TASK-128**: Set up bundle size monitoring [M, P2, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-127
+
+### Release Preparation
+- [ ] **TASK-129**: Create migration guide from old CLI [L, P1, Value: L]
+  - Owner: TBD
+  - Dependencies: TASK-101-104
+
+- [ ] **TASK-130**: Update README with new features [M, P1, Value: L]
+  - Owner: TBD
+  - Dependencies: TASK-101-104
+
+- [ ] **TASK-131**: Create changelog for release [S, P1, Value: M]
+  - Owner: TBD
+  - Dependencies: All tasks
+
+- [ ] **TASK-132**: Update version numbers and tags [S, P1, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-131
+
+### CI/CD Updates
+- [ ] **TASK-133**: Update CI pipeline for new test suites [M, P1, Value: L]
+  - Owner: TBD
+  - Dependencies: All test tasks
+
+- [ ] **TASK-134**: Add automated compatibility testing [L, P2, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-112-115
+
+- [ ] **TASK-135**: Set up automated release process [L, P2, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-133
+
+## Phase 14: Post-Release and Maintenance (P3)
+
+### Monitoring and Analytics
+- [ ] **TASK-136**: Implement usage analytics collection [L, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: Release complete
+
+- [ ] **TASK-137**: Set up error reporting system [M, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-072
+
+- [ ] **TASK-138**: Create performance monitoring dashboard [L, P4, Value: S]
+  - Owner: TBD
+  - Dependencies: TASK-123-125
+
+### Future Enhancements
+- [ ] **TASK-139**: Plan plugin system architecture [XL, P4, Value: M]
+  - Owner: TBD
+  - Dependencies: All core features
+
+- [ ] **TASK-140**: Design extensible theme system [L, P4, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-058-061
+
+- [ ] **TASK-141**: Research AI-powered task suggestions [XL, P5, Value: S]
+  - Owner: TBD
+  - Dependencies: TASK-044
+
+## Phase 15: Blessed-Contrib Dashboard Integration (P2)
+
+### Package Installation
+- [ ] **TASK-158**: Install blessed and blessed-contrib packages [S, P2, Value: L]
+  - Owner: TBD
+  - Dependencies: TASK-001
+
+### Core Dashboard Implementation
+- [ ] **TASK-159**: Create DashboardManager class for terminal dashboards [L, P2, Value: L]
+  - Owner: TBD
+  - Dependencies: TASK-158, TASK-014
+
+- [ ] **TASK-160**: Implement kanban board dashboard with grid layout [L, P2, Value: L]
+  - Owner: TBD
+  - Dependencies: TASK-159
+
+- [ ] **TASK-161**: Create task statistics dashboard with charts [L, P2, Value: L]
+  - Owner: TBD
+  - Dependencies: TASK-159
+
+- [ ] **TASK-162**: Implement real-time metrics dashboard [L, P2, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-159
+
+### Dashboard Components
+- [ ] **TASK-163**: Create line chart for task completion over time [M, P2, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-159
+
+- [ ] **TASK-164**: Create bar chart for tasks by priority/status [M, P2, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-159
+
+- [ ] **TASK-165**: Create donut chart for task distribution [M, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-159
+
+- [ ] **TASK-166**: Create sparklines for quick metrics [S, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-159
+
+- [ ] **TASK-167**: Create table widget for task lists [M, P2, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-159
+
+- [ ] **TASK-168**: Create log widget for activity monitoring [M, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-159
+
+### Interactive Features
+- [ ] **TASK-169**: Implement keyboard navigation for dashboard [M, P2, Value: L]
+  - Owner: TBD
+  - Dependencies: TASK-160
+
+- [ ] **TASK-170**: Add mouse support for dashboard interaction [M, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-160
+
+- [ ] **TASK-171**: Create dashboard view switching (F1-F5 keys) [M, P2, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-160
+
+- [ ] **TASK-172**: Implement auto-refresh with configurable intervals [M, P2, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-160
+
+### Dashboard Layouts
+- [ ] **TASK-173**: Create team velocity dashboard layout [L, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-160, TASK-163, TASK-164
+
+- [ ] **TASK-174**: Create personal productivity dashboard [L, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-160, TASK-165, TASK-167
+
+- [ ] **TASK-175**: Create project overview dashboard [L, P2, Value: L]
+  - Owner: TBD
+  - Dependencies: TASK-160, TASK-163, TASK-164, TASK-165
+
+### CLI Integration
+- [ ] **TASK-176**: Add 'kanban dashboard' command to CLI [M, P2, Value: L]
+  - Owner: TBD
+  - Dependencies: TASK-160
+
+- [ ] **TASK-177**: Add dashboard configuration options [M, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-176
+
+- [ ] **TASK-178**: Create dashboard themes (dark/light/custom) [M, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-160
+
+### Performance & Polish
+- [ ] **TASK-179**: Optimize dashboard rendering performance [L, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-160, TASK-161, TASK-162
+
+- [ ] **TASK-180**: Add dashboard export functionality (PNG/SVG) [L, P4, Value: S]
+  - Owner: TBD
+  - Dependencies: TASK-160
+
+### Maintenance Tasks
+- [ ] **TASK-142**: Create dependency update schedule [S, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: None
+
+- [ ] **TASK-143**: Set up security vulnerability scanning [M, P2, Value: L]
+  - Owner: TBD
+  - Dependencies: TASK-133
+
+- [ ] **TASK-144**: Establish bug triage process [M, P3, Value: M]
+  - Owner: TBD
+  - Dependencies: TASK-137
+
+## Summary Statistics
+
+### By Priority:
+- P1 (Critical): 35 tasks
+- P2 (High): 66 tasks (+13 blessed-contrib)
+- P3 (Medium): 45 tasks (+7 blessed-contrib)
+- P4 (Low): 12 tasks (+1 blessed-contrib)
+- P5 (Nice to have): 1 task
+
+### By Size:
+- S (Small): 33 tasks (+2 blessed-contrib)
+- M (Medium): 77 tasks (+8 blessed-contrib)
+- L (Large): 47 tasks (+11 blessed-contrib)
+- XL (Extra Large): 2 tasks
+
+### By Value:
+- L (Large): 49 tasks (+7 blessed-contrib)
+- M (Medium): 100 tasks (+13 blessed-contrib)
+- S (Small): 10 tasks (+1 blessed-contrib)
+
+### Total Tasks: 159 (138 original + 21 blessed-contrib)
+
+### Total Estimated Time:
+- Small tasks: 33 × 1.0 min = 33 minutes
+- Medium tasks: 77 × 1.4 min = 107.8 minutes
+- Large tasks: 47 × 4.0 min = 188 minutes
+- XL tasks: 2 × 8.0 min = 16 minutes
+- **Total: 344.8 minutes (5.7 hours)**
+
+### Critical Path Dependencies:
+1. Environment setup (TASK-001 to TASK-015)
+2. Core utilities (TASK-016 to TASK-030)
+3. Main integration (TASK-062 to TASK-073)
+4. Testing (TASK-086 to TASK-100)
+5. Deployment (TASK-126 to TASK-135)
+
+### Risk Factors:
+- Terminal compatibility across platforms
+- Performance with large datasets
+- React/Ink learning curve for team
+- Integration with existing codebase
+- Backward compatibility maintenance

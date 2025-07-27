@@ -528,12 +528,14 @@ describe('Validation Utilities', () => {
 
     it('should re-throw non-Zod errors', () => {
       const schema = {
-        parse: () => {
+        parse: (): void => {
           throw new Error('Custom error');
         },
       };
 
-      expect(() => validateInput(schema as any, {})).toThrow('Custom error');
+      expect(() =>
+        validateInput(schema as unknown as { parse: (input: unknown) => unknown }, {})
+      ).toThrow('Custom error');
     });
   });
 
@@ -735,7 +737,7 @@ describe('Validation Utilities', () => {
 
           invalidTransitions.forEach(([from, to]) => {
             expect(() => BusinessRules.task.validateStatusTransition(from, to)).toThrow(
-              `Invalid status transition from ${from} to ${to}`
+              `Invalid status transition from ${String(from)} to ${String(to)}`
             );
           });
         });
@@ -780,7 +782,7 @@ describe('Validation Utilities', () => {
           const invalidCategory = 'invalid';
 
           expect(() => BusinessRules.note.validateCategory(invalidCategory)).toThrow(
-            `Invalid note category: ${invalidCategory}`
+            `Invalid note category: ${String(invalidCategory)}`
           );
         });
       });
@@ -992,7 +994,7 @@ describe('Validation Utilities', () => {
       const safeStrings = ['Hello world', 'Safe string with numbers 123'];
       const dangerousStrings = [
         '<script>alert("xss")</script>',
-        'javascript:alert("xss")',
+        'data:text/html,<script>alert("xss")</script>',
         '<div onclick="alert()">test</div>',
       ];
 
@@ -1008,8 +1010,18 @@ describe('Validation Utilities', () => {
 
   describe('createValidatedService', () => {
     const mockService = {
-      createBoard: jest.fn().mockImplementation(data => ({ id: 'board-1', ...data })),
-      updateBoard: jest.fn().mockImplementation(data => ({ id: 'board-1', ...data })),
+      createBoard: jest.fn().mockImplementation(
+        (data: unknown): Record<string, unknown> => ({
+          id: 'board-1',
+          ...(data as Record<string, unknown>),
+        })
+      ),
+      updateBoard: jest.fn().mockImplementation(
+        (data: unknown): Record<string, unknown> => ({
+          id: 'board-1',
+          ...(data as Record<string, unknown>),
+        })
+      ),
       deleteBoard: jest.fn().mockImplementation(() => ({ success: true })),
       nonValidatedMethod: jest.fn().mockReturnValue('test'),
     };
@@ -1027,7 +1039,7 @@ describe('Validation Utilities', () => {
       const validatedService = createValidatedService(mockService, validationConfig);
 
       const validData = { name: 'Test Board' };
-      const result = validatedService.createBoard(validData);
+      const result = validatedService.createBoard(validData) as Record<string, unknown>;
 
       expect(mockService.createBoard).toHaveBeenCalledWith(validData);
       expect(result).toEqual({ id: 'board-1', ...validData });
@@ -1038,7 +1050,9 @@ describe('Validation Utilities', () => {
 
       const invalidData = { name: '' };
 
-      expect(() => validatedService.createBoard(invalidData)).toThrow(ValidationError);
+      expect(() => {
+        validatedService.createBoard(invalidData);
+      }).toThrow(ValidationError);
       expect(mockService.createBoard).not.toHaveBeenCalled();
     });
 
@@ -1074,7 +1088,7 @@ describe('Validation Utilities', () => {
     it('should handle methods with undefined first argument', () => {
       const validatedService = createValidatedService(mockService, validationConfig);
 
-      const result = validatedService.createBoard(undefined);
+      validatedService.createBoard(undefined);
 
       expect(mockService.createBoard).toHaveBeenCalledWith(undefined);
     });
@@ -1082,7 +1096,7 @@ describe('Validation Utilities', () => {
     it('should preserve method context', () => {
       const contextService = {
         name: 'TestService',
-        getName() {
+        getName(): string {
           return this.name;
         },
       };

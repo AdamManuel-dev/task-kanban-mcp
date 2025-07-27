@@ -1,0 +1,85 @@
+{
+  "name": "MCP Kanban Server",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:18",
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "postCreateCommand": "bash install.sh",
+  "postStartCommand": "npm run build",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.vscode-typescript-next",
+        "esbenp.prettier-vscode",
+        "ms-vscode.vscode-eslint",
+        "ms-vscode.vscode-json",
+        "ms-vscode.vscode-yaml",
+        "ms-vscode.vscode-markdown",
+        "ms-vscode.vscode-docker",
+        "ms-vscode.vscode-github-actions",
+        "ms-vscode.vscode-jest",
+        "ms-vscode.vscode-jest-runner",
+        "ms-vscode.vscode-test-explorer",
+        "ms-vscode.vscode-test-adapter-converter"
+      ],
+      "settings": {
+        "typescript.preferences.includePackageJsonAutoImports": "on",
+        "typescript.suggest.autoImports": true,
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.fixAll.eslint": "explicit"
+        },
+        "eslint.validate": [
+          "javascript",
+          "typescript"
+        ],
+        "jest.autoRun": {
+          "watch": false,
+          "onSave": "test-file"
+        },
+        "jest.showCoverageOnLoad": true
+      },
+      "mcp": {
+        "servers": {
+          "taskKanban": {
+            "type": "stdio",
+            "command": "node",
+            "args": [
+              "/workspaces/mcp-kanban/dist/mcp/server.js"
+            ],
+            "env": {
+              "MCP_KANBAN_DB_FOLDER_PATH": "/workspaces/mcp-kanban/data/db"
+            }
+          }
+        }
+      }
+    }
+  },
+  "forwardPorts": [3000, 3001],
+  "portsAttributes": {
+    "3000": {
+      "label": "MCP Kanban Server",
+      "onAutoForward": "notify"
+    },
+    "3001": {
+      "label": "MCP Kanban WebSocket",
+      "onAutoForward": "notify"
+    }
+  },
+  "mounts": [
+    "source=${localWorkspaceFolder}/data,target=/workspaces/mcp-kanban/data,type=bind,consistency=cached"
+  ],
+  "remoteUser": "node",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/mcp-kanban,type=bind,consistency=cached",
+  "workspaceFolder": "/workspaces/mcp-kanban",
+  "shutdownAction": "stopContainer",
+  "updateRemoteUserUID": true,
+  "containerEnv": {
+    "NODE_ENV": "development",
+    "MCP_KANBAN_DB_FOLDER_PATH": "/workspaces/mcp-kanban/data/db",
+    "LOG_LEVEL": "info"
+  },
+  "initializeCommand": "git config --global init.defaultBranch main",
+  "waitFor": "postCreateCommand"
+} 

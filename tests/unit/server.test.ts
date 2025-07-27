@@ -5,8 +5,8 @@
  */
 
 import request from 'supertest';
+import type { Application } from 'express';
 import { createServer } from '@/server';
-import { DatabaseConnection } from '@/database/connection';
 import { logger } from '@/utils/logger';
 
 // Mock the logger
@@ -101,13 +101,13 @@ jest.mock('@/middleware', () => ({
 
 // Mock error handler
 jest.mock('@/utils/errors', () => ({
-  globalErrorHandler: jest.fn().mockReturnValue((err: any, req: any, res: any, next: any) => {
+  globalErrorHandler: jest.fn().mockReturnValue((err: any, req: any, res: any, _next: any) => {
     res.status(500).json({ error: 'Internal server error' });
   }),
 }));
 
 describe('Application Server', () => {
-  let app: any;
+  let app: Application;
 
   beforeAll(async () => {
     app = await createServer();
@@ -126,7 +126,7 @@ describe('Application Server', () => {
 
   describe('Security Middleware', () => {
     it('should include security headers', async () => {
-      const response = await request(app)
+      await request(app)
         .get('/api/health')
         .expect(res => {
           // Check for helmet security headers
@@ -137,10 +137,7 @@ describe('Application Server', () => {
     });
 
     it('should handle CORS properly', async () => {
-      const response = await request(app)
-        .options('/api/health')
-        .set('Origin', 'http://localhost:3000')
-        .expect(204);
+      await request(app).options('/api/health').set('Origin', 'http://localhost:3000').expect(204);
 
       expect(response.headers['access-control-allow-origin']).toBeDefined();
       expect(response.headers['access-control-allow-methods']).toContain('GET');
@@ -148,7 +145,7 @@ describe('Application Server', () => {
     });
 
     it('should compress responses', async () => {
-      const response = await request(app).get('/api/health').set('Accept-Encoding', 'gzip');
+      await request(app).get('/api/health').set('Accept-Encoding', 'gzip');
 
       // The response should either be compressed or compression should be available
       expect(response.headers['content-encoding'] || 'gzip').toBeDefined();
@@ -157,25 +154,25 @@ describe('Application Server', () => {
 
   describe('API Routes', () => {
     it('should respond to health check', async () => {
-      const response = await request(app).get('/api/health').expect(200);
+      await request(app).get('/api/health').expect(200);
 
       expect(response.body).toBeDefined();
     });
 
     it('should respond to ready check', async () => {
-      const response = await request(app).get('/api/ready').expect(200);
+      await request(app).get('/api/ready').expect(200);
 
       expect(response.body).toBeDefined();
     });
 
     it('should respond to live check', async () => {
-      const response = await request(app).get('/api/live').expect(200);
+      await request(app).get('/api/live').expect(200);
 
       expect(response.body).toBeDefined();
     });
 
     it('should handle 404 for unknown routes', async () => {
-      const response = await request(app).get('/api/nonexistent').expect(404);
+      await request(app).get('/api/nonexistent').expect(404);
 
       expect(response.body.error).toContain('not found');
     });
@@ -196,7 +193,7 @@ describe('Application Server', () => {
     });
 
     it('should handle URL encoded data', async () => {
-      const response = await request(app)
+      await request(app)
         .post('/api/test')
         .send('key=value')
         .set('Content-Type', 'application/x-www-form-urlencoded')
@@ -208,7 +205,7 @@ describe('Application Server', () => {
     it('should enforce request size limits', async () => {
       const largeData = 'x'.repeat(1024 * 1024 * 20); // 20MB
 
-      const response = await request(app)
+      await request(app)
         .post('/api/test')
         .send({ data: largeData })
         .expect(res => {
@@ -221,7 +218,7 @@ describe('Application Server', () => {
   describe('Error Handling', () => {
     it('should have global error handler', async () => {
       // Test with malformed JSON
-      const response = await request(app)
+      await request(app)
         .post('/api/test')
         .set('Content-Type', 'application/json')
         .send('{ invalid json }')
@@ -232,7 +229,7 @@ describe('Application Server', () => {
 
     it('should handle server errors gracefully', async () => {
       // This test checks that the server doesn't crash on errors
-      const response = await request(app)
+      await request(app)
         .get('/api/health')
         .expect(res => {
           expect(res.status).toBeLessThan(600); // Valid HTTP status
@@ -243,17 +240,21 @@ describe('Application Server', () => {
   describe('Rate Limiting', () => {
     it('should accept requests within rate limit', async () => {
       // Make several requests in succession
-      for (let i = 0; i < 5; i++) {
-        await request(app)
-          .get('/api/health')
-          .expect(res => {
-            expect(res.status).toBeLessThan(500);
-          });
+      const requests = [];
+      for (let i = 0; i < 5; i += 1) {
+        requests.push(
+          request(app)
+            .get('/api/health')
+            .expect(res => {
+              expect(res.status).toBeLessThan(500);
+            })
+        );
       }
+      await Promise.all(requests);
     });
 
     it('should include rate limit headers', async () => {
-      const response = await request(app)
+      await request(app)
         .get('/api/health')
         .expect(res => {
           // Rate limit headers might be present
@@ -266,7 +267,7 @@ describe('Application Server', () => {
 
   describe('Content Type Handling', () => {
     it('should handle different content types', async () => {
-      const response = await request(app)
+      await request(app)
         .get('/api/health')
         .set('Accept', 'application/json')
         .expect(res => {
@@ -275,7 +276,7 @@ describe('Application Server', () => {
     });
 
     it('should reject unsupported content types for POST', async () => {
-      const response = await request(app)
+      await request(app)
         .post('/api/test')
         .set('Content-Type', 'application/xml')
         .send('<xml>test</xml>')
@@ -297,7 +298,7 @@ describe('Application Server', () => {
     });
 
     it('should assign request IDs', async () => {
-      const response = await request(app)
+      await request(app)
         .get('/api/health')
         .expect(res => {
           // Request ID should be in headers or response
@@ -310,7 +311,7 @@ describe('Application Server', () => {
 
   describe('API Documentation', () => {
     it('should serve API documentation', async () => {
-      const response = await request(app)
+      await request(app)
         .get('/api-docs')
         .expect(res => {
           // Should either serve docs or redirect
@@ -319,7 +320,7 @@ describe('Application Server', () => {
     });
 
     it('should serve OpenAPI spec', async () => {
-      const response = await request(app)
+      await request(app)
         .get('/api-docs/swagger.json')
         .expect(res => {
           // Should either serve spec or return 404
@@ -331,7 +332,7 @@ describe('Application Server', () => {
   describe('WebSocket Integration', () => {
     it('should not interfere with WebSocket setup', async () => {
       // This test ensures HTTP server doesn't conflict with WebSocket
-      const response = await request(app).get('/api/health').expect(200);
+      await request(app).get('/api/health').expect(200);
 
       expect(response.body).toBeDefined();
     });

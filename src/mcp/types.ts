@@ -56,6 +56,17 @@ export interface ListTasksArgs {
   order?: 'asc' | 'desc';
 }
 
+export interface SearchTasksArgs {
+  query: string;
+  board_id?: string;
+  column_id?: string;
+  status?: string;
+  assignee?: string;
+  tags?: string[];
+  limit?: number;
+  offset?: number;
+}
+
 export interface DeleteTaskArgs {
   task_id: string;
 }
@@ -235,6 +246,88 @@ export interface OverdueTasksResponse extends MCPResponse {
   }>;
 }
 
+// New MCP tool interfaces
+export interface CreateSubtaskArgs {
+  parent_task_id: string;
+  title: string;
+  description?: string;
+  priority?: number;
+  assignee?: string;
+  due_date?: string;
+}
+
+export interface SetTaskDependencyArgs {
+  task_id: string;
+  depends_on_task_id: string;
+  dependency_type?: 'blocks' | 'requires' | 'follows';
+}
+
+export interface GetTaskDependenciesArgs {
+  task_id: string;
+  include_dependents?: boolean;
+  include_blocking?: boolean;
+}
+
+export interface PrioritizeTasksArgs {
+  board_id: string;
+  context_factors?: string[];
+  max_tasks?: number;
+}
+
+export interface GetNextTaskArgs {
+  board_id?: string;
+  assignee?: string;
+  skill_context?: string;
+  exclude_blocked?: boolean;
+}
+
+export interface UpdatePriorityArgs {
+  task_id: string;
+  priority: number;
+  reasoning?: string;
+}
+
+// Response interfaces
+export interface SubtaskResponse extends MCPResponse {
+  subtask: Task;
+}
+
+export interface TaskDependencyResponse extends MCPResponse {
+  dependency: {
+    id: string;
+    task_id: string;
+    depends_on_task_id: string;
+    dependency_type: string;
+    created_at: string;
+  };
+}
+
+export interface TaskDependenciesResponse extends MCPResponse {
+  dependencies: Task[];
+  dependents: Task[];
+  blocking_tasks?: Task[];
+}
+
+export interface PrioritizedTasksResponse extends MCPResponse {
+  prioritized_tasks: Array<{
+    task: Task;
+    priority_score: number;
+    reasoning: string;
+  }>;
+}
+
+export interface NextTaskResponse extends MCPResponse {
+  next_task: Task | null;
+  reasoning: string;
+}
+
+export interface PriorityUpdateResponse extends MCPResponse {
+  task: Task;
+  old_priority: number;
+  new_priority: number;
+  reasoning?: string;
+}
+
 // Tool argument union type for type-safe tool calling
 export type ToolArgs =
   | CreateTaskArgs
@@ -253,7 +346,13 @@ export type ToolArgs =
   | GetTaskContextArgs
   | AnalyzeBoardArgs
   | GetBlockedTasksArgs
-  | GetOverdueTasksArgs;
+  | GetOverdueTasksArgs
+  | CreateSubtaskArgs
+  | SetTaskDependencyArgs
+  | GetTaskDependenciesArgs
+  | PrioritizeTasksArgs
+  | GetNextTaskArgs
+  | UpdatePriorityArgs;
 
 // Tool response union type
 export type ToolResponse =
@@ -271,4 +370,10 @@ export type ToolResponse =
   | BoardAnalysisResponse
   | BlockedTasksResponse
   | OverdueTasksResponse
+  | SubtaskResponse
+  | TaskDependencyResponse
+  | TaskDependenciesResponse
+  | PrioritizedTasksResponse
+  | NextTaskResponse
+  | PriorityUpdateResponse
   | MCPResponse;

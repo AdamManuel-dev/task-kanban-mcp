@@ -20,7 +20,7 @@
  * ```
  */
 
-import { logger } from '@/utils/logger';
+import { logger } from '../utils/logger';
 import type { DatabaseConnection } from './connection';
 
 /**
@@ -286,16 +286,7 @@ export class DatabaseIntegrityChecker {
             AND task_id NOT IN (SELECT id FROM tasks)
           `,
         },
-        {
-          table: 'notes',
-          column: 'board_id',
-          reference: 'boards(id)',
-          query: `
-            SELECT 'notes' as table_name, id, board_id as foreign_key
-            FROM notes 
-            WHERE board_id NOT IN (SELECT id FROM boards)
-          `,
-        },
+
         {
           table: 'task_tags',
           column: 'task_id',
@@ -320,12 +311,20 @@ export class DatabaseIntegrityChecker {
 
       let totalViolations = 0;
 
-      for (const check of foreignKeyChecks) {
-        const violations = await this.db.query(check.query);
+      // Process all checks in parallel
+      const checkResults = await Promise.all(
+        foreignKeyChecks.map(async check => {
+          const violations = await this.db.query(check.query);
+          return { check, violations };
+        })
+      );
+
+      // Process results
+      for (const { check, violations } of checkResults) {
         if (violations.length > 0) {
           totalViolations += violations.length;
           errors.push(
-            `Foreign key constraint violation in ${check.table}.${check.column} -> ${check.reference}: ` +
+            `${check.table}.${check.column} -> ${check.reference}: ` +
               `${violations.length} invalid references found`
           );
 
@@ -335,8 +334,8 @@ export class DatabaseIntegrityChecker {
         }
       }
 
-      metadata["totalViolations"] = totalViolations;
-      metadata["tablesChecked"] = foreignKeyChecks.length;
+      metadata.totalViolations = totalViolations;
+      metadata.tablesChecked = foreignKeyChecks.length;
 
       logger.debug('Foreign key constraint check completed', {
         violations: totalViolations,
@@ -378,18 +377,6 @@ export class DatabaseIntegrityChecker {
     try {
       logger.debug('Checking for orphaned records');
 
-      // Check for orphaned task progress records
-      const orphanedProgress = await this.db.query(`
-        SELECT COUNT(*) as count
-        FROM task_progress tp
-        WHERE tp.task_id NOT IN (SELECT id FROM tasks)
-      `);
-
-      if (orphanedProgress[0]?.count > 0) {
-        warnings.push(`Found ${orphanedProgress[0].count} orphaned task progress records`);
-        metadata["orphanedTaskProgress"] = orphanedProgress[0].count;
-      }
-
       // Check for tasks with invalid parent relationships
       const invalidParentTasks = await this.db.query(`
         SELECT COUNT(*) as count
@@ -400,43 +387,47 @@ export class DatabaseIntegrityChecker {
 
       if (invalidParentTasks[0]?.count > 0) {
         warnings.push(`Found ${invalidParentTasks[0].count} tasks with invalid parent references`);
-        metadata["invalidParentTasks"] = invalidParentTasks[0].count;
+        metadata.invalidParentTasks = invalidParentTasks[0].count;
       }
 
       // Check for tags with zero usage but existing in task_tags
       const unusedTagsWithReferences = await this.db.query(`
         SELECT COUNT(*) as count
         FROM tags t
-        WHERE t.usage_count = 0
-        AND t.id IN (SELECT DISTINCT tag_id FROM task_tags)
+        WHERE t.id IN (SELECT DISTINCT tag_id FROM task_tags)
+        AND t.id NOT IN (
+          SELECT DISTINCT tag_id 
+          FROM task_tags tt 
+          JOIN tasks task ON tt['task_id'] = task['id'] 
+          WHERE task.archived = FALSE
+        )
       `);
 
       if (unusedTagsWithReferences[0]?.count > 0) {
         warnings.push(
           `Found ${unusedTagsWithReferences[0].count} tags with zero usage count but active references`
         );
-        metadata["unusedTagsWithReferences"] = unusedTagsWithReferences[0].count;
+        metadata.unusedTagsWithReferences = unusedTagsWithReferences[0].count;
       }
 
       // Check for columns without any tasks
       const emptyColumns = await this.db.query(`
         SELECT c.id, c.name, c.board_id, COUNT(t.id) as task_count
         FROM columns c
-        LEFT JOIN tasks t ON c.id = t.column_id AND t.archived = FALSE
-        GROUP BY c.id, c.name, c.board_id
+        LEFT JOIN tasks t ON c['id'] = t['column_id'] AND t['archived'] = FALSE
+        GROUP BY c['id'], c['name'], c['board_id']
         HAVING task_count = 0
       `);
 
       if (emptyColumns.length > 0) {
         warnings.push(`Found ${emptyColumns.length} columns with no active tasks`);
-        metadata["emptyColumns"] = emptyColumns.length;
-        metadata["emptyColumnDetails"] = emptyColumns.slice(0, 5); // Sample for review
+        metadata.emptyColumns = emptyColumns.length;
+        metadata.emptyColumnDetails = emptyColumns.slice(0, 5); // Sample for review
       }
 
       logger.debug('Orphaned records check completed', {
-        orphanedProgress: orphanedProgress[0]?.count || 0,
-        invalidParentTasks: invalidParentTasks[0]?.count || 0,
-        unusedTags: unusedTagsWithReferences[0]?.count || 0,
+        invalidParentTasks: invalidParentTasks[0]?.count ?? 0,
+        unusedTags: unusedTagsWithReferences[0]?.count ?? 0,
         emptyColumns: emptyColumns.length,
       });
     } catch (error) {
@@ -490,9 +481,9 @@ export class DatabaseIntegrityChecker {
             dc.task_id,
             td.depends_on_task_id,
             dc.depth + 1,
-            dc.path || ' -> ' || td.depends_on_task_id
+            dc.path ?? ' -> ' || td.depends_on_task_id
           FROM dependency_cycle_check dc
-          JOIN task_dependencies td ON dc.depends_on_task_id = td.task_id
+          JOIN task_dependencies td ON dc['depends_on_task_id'] = td['task_id']
           WHERE dc.depth < ? -- Prevent infinite recursion
         )
         -- Find cycles where a task depends on itself through the chain
@@ -504,9 +495,9 @@ export class DatabaseIntegrityChecker {
           t1.title as task_title,
           t2.title as dependency_title
         FROM dependency_cycle_check dc
-        JOIN tasks t1 ON dc.task_id = t1.id
-        JOIN tasks t2 ON dc.depends_on_task_id = t2.id
-        WHERE dc.task_id = dc.depends_on_task_id -- Circular dependency detected
+        JOIN tasks t1 ON dc['task_id'] = t1['id']
+        JOIN tasks t2 ON dc['depends_on_task_id'] = t2['id']
+        WHERE dc['task_id'] = dc['depends_on_task_id'] -- Circular dependency detected
         ORDER BY task_id, depth
       `,
         [this.config.maxDependencyDepth]
@@ -514,7 +505,7 @@ export class DatabaseIntegrityChecker {
 
       if (circularDependencies.length > 0) {
         errors.push(`Found ${circularDependencies.length} circular dependency chains`);
-        metadata["circularDependencies"] = circularDependencies;
+        metadata.circularDependencies = circularDependencies;
 
         // Group by task for better reporting
         const taskGroups = circularDependencies.reduce(
@@ -528,8 +519,8 @@ export class DatabaseIntegrityChecker {
           {} as Record<string, any[]>
         );
 
-        metadata["affectedTasks"] = Object.keys(taskGroups).length;
-        metadata["sampleCircularPaths"] = Object.values(taskGroups)
+        metadata.affectedTasks = Object.keys(taskGroups).length;
+        metadata.sampleCircularPaths = Object.values(taskGroups)
           .slice(0, 3)
           .map(group => (group as any[])[0].path);
       }
@@ -545,7 +536,7 @@ export class DatabaseIntegrityChecker {
         errors.push(
           `Found ${selfReferencingTasks.length} tasks that reference themselves as parent`
         );
-        metadata["selfReferencingTasks"] = selfReferencingTasks;
+        metadata.selfReferencingTasks = selfReferencingTasks;
       }
 
       // Check for potential cycles in parent-child relationships
@@ -553,7 +544,7 @@ export class DatabaseIntegrityChecker {
         `
         WITH RECURSIVE parent_cycle_check(child_id, parent_id, depth, path) AS (
           -- Start with direct parent relationships
-          SELECT id as child_id, parent_task_id as parent_id, 0 as depth, id || ' -> ' || parent_task_id as path
+          SELECT id as child_id, parent_task_id as parent_id, 0 as depth, id ?? ' -> ' || parent_task_id as path
           FROM tasks
           WHERE parent_task_id IS NOT NULL
           
@@ -564,10 +555,10 @@ export class DatabaseIntegrityChecker {
             pc.child_id,
             t.parent_task_id as parent_id,
             pc.depth + 1,
-            pc.path || ' -> ' || t.parent_task_id
+            pc.path ?? ' -> ' || t.parent_task_id
           FROM parent_cycle_check pc
-          JOIN tasks t ON pc.parent_id = t.id
-          WHERE t.parent_task_id IS NOT NULL
+          JOIN tasks t ON pc['parent_id'] = t['id']
+          WHERE t['parent_task_id'] IS NOT NULL
           AND pc.depth < ? -- Prevent infinite recursion
         )
         -- Find cycles where a child is its own ancestor
@@ -579,9 +570,9 @@ export class DatabaseIntegrityChecker {
           t1.title as child_title,
           t2.title as parent_title
         FROM parent_cycle_check pc
-        JOIN tasks t1 ON pc.child_id = t1.id
-        JOIN tasks t2 ON pc.parent_id = t2.id
-        WHERE pc.child_id = pc.parent_id -- Parent-child cycle detected
+        JOIN tasks t1 ON pc['child_id'] = t1['id']
+        JOIN tasks t2 ON pc['parent_id'] = t2['id']
+        WHERE pc['child_id'] = pc['parent_id'] -- Parent-child cycle detected
         ORDER BY child_id, depth
       `,
         [this.config.maxDependencyDepth]
@@ -589,7 +580,7 @@ export class DatabaseIntegrityChecker {
 
       if (parentChildCycles.length > 0) {
         errors.push(`Found ${parentChildCycles.length} parent-child relationship cycles`);
-        metadata["parentChildCycles"] = parentChildCycles;
+        metadata.parentChildCycles = parentChildCycles;
       }
 
       logger.debug('Circular dependency check completed', {
@@ -633,83 +624,81 @@ export class DatabaseIntegrityChecker {
     try {
       logger.debug('Checking data type constraints');
 
-      // Check task priority values
+      // Check task priority values (should be integers)
       const invalidPriorities = await this.db.query(`
         SELECT COUNT(*) as count
         FROM tasks
-        WHERE priority NOT IN ('low', 'medium', 'high')
+        WHERE priority IS NOT NULL AND priority NOT BETWEEN 0 AND 10
       `);
 
       if (invalidPriorities[0]?.count > 0) {
         errors.push(`Found ${invalidPriorities[0].count} tasks with invalid priority values`);
-        metadata["invalidPriorities"] = invalidPriorities[0].count;
+        metadata.invalidPriorities = invalidPriorities[0].count;
       }
 
       // Check note category values
       const invalidNoteCategories = await this.db.query(`
         SELECT COUNT(*) as count
         FROM notes
-        WHERE category NOT IN ('implementation', 'research', 'blocker', 'idea', 'general')
+        WHERE category NOT IN ('general', 'progress', 'blocker', 'decision', 'question')
       `);
 
       if (invalidNoteCategories[0]?.count > 0) {
         errors.push(`Found ${invalidNoteCategories[0].count} notes with invalid category values`);
-        metadata["invalidNoteCategories"] = invalidNoteCategories[0].count;
+        metadata.invalidNoteCategories = invalidNoteCategories[0].count;
       }
 
       // Check dependency types
       const invalidDependencyTypes = await this.db.query(`
         SELECT COUNT(*) as count
         FROM task_dependencies
-        WHERE dependency_type NOT IN ('blocks', 'related', 'parent-child')
+        WHERE dependency_type NOT IN ('blocks', 'relates_to', 'duplicates')
       `);
 
       if (invalidDependencyTypes[0]?.count > 0) {
         errors.push(`Found ${invalidDependencyTypes[0].count} dependencies with invalid types`);
-        metadata["invalidDependencyTypes"] = invalidDependencyTypes[0].count;
+        metadata.invalidDependencyTypes = invalidDependencyTypes[0].count;
       }
 
-      // Check for negative priority scores
-      const negativePriorityScores = await this.db.query(`
+      // Check for negative priority values
+      const negativePriorities = await this.db.query(`
         SELECT COUNT(*) as count
         FROM tasks
-        WHERE priority_score < 0
+        WHERE priority < 0
       `);
 
-      if (negativePriorityScores[0]?.count > 0) {
-        warnings.push(
-          `Found ${negativePriorityScores[0].count} tasks with negative priority scores`
-        );
-        metadata["negativePriorityScores"] = negativePriorityScores[0].count;
+      if (negativePriorities[0]?.count > 0) {
+        warnings.push(`Found ${negativePriorities[0].count} tasks with negative priority values`);
+        metadata.negativePriorities = negativePriorities[0].count;
       }
 
-      // Check for invalid JSON in settings columns
-      const jsonColumns = [
-        { table: 'boards', column: 'settings' },
-        { table: 'columns', column: 'settings' },
-        { table: 'tasks', column: 'git_context' },
-        { table: 'tasks', column: 'priority_factors' },
-        { table: 'tasks', column: 'dependency_metrics' },
-        { table: 'notes', column: 'code_snippets' },
-      ];
+      // Check for invalid JSON in metadata columns
+      const jsonColumns = [{ table: 'tasks', column: 'metadata' }];
 
-      for (const { table, column } of jsonColumns) {
-        try {
-          const invalidJson = await this.db.query(`
-            SELECT COUNT(*) as count
-            FROM ${table}
-            WHERE json_valid(${column}) = 0
-          `);
-
-          if (invalidJson[0]?.count > 0) {
-            errors.push(`Found ${invalidJson[0].count} invalid JSON values in ${table}.${column}`);
-            metadata[`invalid_json_${table}_${column}`] = invalidJson[0].count;
+      const jsonCheckResults = await Promise.all(
+        jsonColumns.map(async ({ table, column }) => {
+          try {
+            const invalidJson = await this.db.query(`
+              SELECT COUNT(*) as count
+              FROM ${table}
+              WHERE json_valid(${column}) = 0
+            `);
+            return { table, column, invalidJson, error: null };
+          } catch (error) {
+            return { table, column, invalidJson: null, error };
           }
-        } catch (error) {
+        })
+      );
+
+      for (const { table, column, invalidJson, error } of jsonCheckResults) {
+        if (error) {
           // SQLite version might not support json_valid
           warnings.push(
             `Could not validate JSON in ${table}.${column}: ${(error as Error).message}`
           );
+        } else if (invalidJson && invalidJson[0]?.count > 0) {
+          errors.push(`Found ${invalidJson[0].count} invalid JSON values in ${table}.${column}`);
+          metadata[`invalid_json_${table}_${column}`] = invalidJson[0].count;
         }
       }
 
@@ -722,29 +711,29 @@ export class DatabaseIntegrityChecker {
 
       if (invalidProgress[0]?.count > 0) {
         errors.push(`Found ${invalidProgress[0].count} tasks with invalid progress percentages`);
-        metadata["invalidProgress"] = invalidProgress[0].count;
+        metadata.invalidProgress = invalidProgress[0].count;
       }
 
       // Check for inconsistent subtask counts
       const inconsistentSubtaskCounts = await this.db.query(`
         SELECT COUNT(*) as count
         FROM task_progress tp
-        WHERE tp.subtasks_completed > tp.subtasks_total
+        WHERE tp['subtasks_completed'] > tp['subtasks_total']
       `);
 
       if (inconsistentSubtaskCounts[0]?.count > 0) {
         errors.push(
           `Found ${inconsistentSubtaskCounts[0].count} tasks with more completed than total subtasks`
         );
-        metadata["inconsistentSubtaskCounts"] = inconsistentSubtaskCounts[0].count;
+        metadata.inconsistentSubtaskCounts = inconsistentSubtaskCounts[0].count;
       }
 
       logger.debug('Data type constraint check completed', {
-        invalidPriorities: invalidPriorities[0]?.count || 0,
-        invalidNoteCategories: invalidNoteCategories[0]?.count || 0,
-        invalidDependencyTypes: invalidDependencyTypes[0]?.count || 0,
-        negativePriorityScores: negativePriorityScores[0]?.count || 0,
-        invalidProgress: invalidProgress[0]?.count || 0,
+        invalidPriorities: invalidPriorities[0]?.count ?? 0,
+        invalidNoteCategories: invalidNoteCategories[0]?.count ?? 0,
+        invalidDependencyTypes: invalidDependencyTypes[0]?.count ?? 0,
+        negativePriorities: negativePriorities[0]?.count ?? 0,
+        invalidProgress: invalidProgress[0]?.count ?? 0,
       });
     } catch (error) {
       errors.push(`Data type constraint check failed: ${(error as Error).message}`);
@@ -792,11 +781,11 @@ export class DatabaseIntegrityChecker {
 
       if (tasksCount?.count !== tasksFtsCount?.count) {
         errors.push(
-          `Tasks FTS table inconsistency: ${tasksCount?.count || 0} tasks vs ${tasksFtsCount?.count || 0} FTS entries`
+          `Tasks FTS table inconsistency: ${tasksCount?.count ?? 0} tasks vs ${tasksFtsCount?.count ?? 0} FTS entries`
         );
-        metadata["tasksCountMismatch"] = {
-          tasks: tasksCount?.count || 0,
-          fts: tasksFtsCount?.count || 0,
+        metadata.tasksCountMismatch = {
+          tasks: tasksCount?.count ?? 0,
+          fts: tasksFtsCount?.count ?? 0,
         };
       }
 
@@ -810,11 +799,11 @@ export class DatabaseIntegrityChecker {
 
       if (notesCount?.count !== notesFtsCount?.count) {
         errors.push(
-          `Notes FTS table inconsistency: ${notesCount?.count || 0} notes vs ${notesFtsCount?.count || 0} FTS entries`
+          `Notes FTS table inconsistency: ${notesCount?.count ?? 0} notes vs ${notesFtsCount?.count ?? 0} FTS entries`
         );
-        metadata["notesCountMismatch"] = {
-          notes: notesCount?.count || 0,
-          fts: notesFtsCount?.count || 0,
+        metadata.notesCountMismatch = {
+          notes: notesCount?.count ?? 0,
+          fts: notesFtsCount?.count ?? 0,
         };
       }
 
@@ -827,7 +816,7 @@ export class DatabaseIntegrityChecker {
 
       if (orphanedTasksFts[0]?.count > 0) {
         warnings.push(`Found ${orphanedTasksFts[0].count} orphaned entries in tasks FTS table`);
-        metadata["orphanedTasksFts"] = orphanedTasksFts[0].count;
+        metadata.orphanedTasksFts = orphanedTasksFts[0].count;
       }
 
       const orphanedNotesFts = await this.db.query(`
@@ -838,7 +827,7 @@ export class DatabaseIntegrityChecker {
 
       if (orphanedNotesFts[0]?.count > 0) {
         warnings.push(`Found ${orphanedNotesFts[0].count} orphaned entries in notes FTS table`);
-        metadata["orphanedNotesFts"] = orphanedNotesFts[0].count;
+        metadata.orphanedNotesFts = orphanedNotesFts[0].count;
       }
 
       // Check for missing FTS entries
@@ -850,7 +839,7 @@ export class DatabaseIntegrityChecker {
 
       if (missingTasksFts[0]?.count > 0) {
         warnings.push(`Found ${missingTasksFts[0].count} tasks missing from FTS table`);
-        metadata["missingTasksFts"] = missingTasksFts[0].count;
+        metadata.missingTasksFts = missingTasksFts[0].count;
       }
 
       const missingNotesFts = await this.db.query(`
@@ -861,16 +850,16 @@ export class DatabaseIntegrityChecker {
 
       if (missingNotesFts[0]?.count > 0) {
         warnings.push(`Found ${missingNotesFts[0].count} notes missing from FTS table`);
-        metadata["missingNotesFts"] = missingNotesFts[0].count;
+        metadata.missingNotesFts = missingNotesFts[0].count;
       }
 
       logger.debug('Full-text search consistency check completed', {
         tasksCountMatch: tasksCount?.count === tasksFtsCount?.count,
         notesCountMatch: notesCount?.count === notesFtsCount?.count,
-        orphanedTasksFts: orphanedTasksFts[0]?.count || 0,
-        orphanedNotesFts: orphanedNotesFts[0]?.count || 0,
-        missingTasksFts: missingTasksFts[0]?.count || 0,
-        missingNotesFts: missingNotesFts[0]?.count || 0,
+        orphanedTasksFts: orphanedTasksFts[0]?.count ?? 0,
+        orphanedNotesFts: orphanedNotesFts[0]?.count ?? 0,
+        missingTasksFts: missingTasksFts[0]?.count ?? 0,
+        missingNotesFts: missingNotesFts[0]?.count ?? 0,
       });
     } catch (error) {
       errors.push(`Full-text search consistency check failed: ${(error as Error).message}`);
@@ -930,7 +919,7 @@ export class DatabaseIntegrityChecker {
 
       if (missingIndexes.length > 0) {
         warnings.push(`Missing critical indexes: ${missingIndexes.join(', ')}`);
-        metadata["missingIndexes"] = missingIndexes;
+        metadata.missingIndexes = missingIndexes;
       }
 
       // Check for duplicate or redundant indexes
@@ -944,8 +933,8 @@ export class DatabaseIntegrityChecker {
         ORDER BY tbl_name, name
       `);
 
-      metadata["totalIndexes"] = allIndexes.length;
-      metadata["indexesByTable"] = allIndexes.reduce(
+      metadata.totalIndexes = allIndexes.length;
+      metadata.indexesByTable = allIndexes.reduce(
         (acc, idx) => {
           if (!acc[idx.table_name]) acc[idx.table_name] = [];
           acc[idx.table_name].push(idx.name);
@@ -962,7 +951,7 @@ export class DatabaseIntegrityChecker {
             sm.tbl_name as tbl,
             CASE WHEN s1.stat IS NOT NULL THEN 'has_stats' ELSE 'no_stats' END as stats_status
           FROM sqlite_master sm
-          LEFT JOIN sqlite_stat1 s1 ON sm.name = s1.idx
+          LEFT JOIN sqlite_stat1 s1 ON sm['name'] = s1['idx']
           WHERE sm.type = 'index' AND sm.name NOT LIKE 'sqlite_%'
         `);
 
@@ -971,23 +960,23 @@ export class DatabaseIntegrityChecker {
           warnings.push(
             `${indexesWithoutStats.length} indexes lack statistics (consider running ANALYZE)`
           );
-          metadata["indexesWithoutStats"] = indexesWithoutStats.length;
+          metadata.indexesWithoutStats = indexesWithoutStats.length;
         }
 
-        metadata["indexesWithStats"] = indexStats.filter(
+        metadata.indexesWithStats = indexStats.filter(
           idx => idx.stats_status === 'has_stats'
         ).length;
       } catch (error) {
         // sqlite_stat1 might not be available
         warnings.push('Could not check index statistics');
-        metadata["indexesWithoutStats"] = 0;
-        metadata["indexesWithStats"] = 0;
+        metadata.indexesWithoutStats = 0;
+        metadata.indexesWithStats = 0;
       }
 
       logger.debug('Index integrity check completed', {
         totalIndexes: allIndexes.length,
         missingCriticalIndexes: missingIndexes.length,
-        indexesWithoutStats: metadata["indexesWithoutStats"] || 0,
+        indexesWithoutStats: metadata.indexesWithoutStats ?? 0,
       });
     } catch (error) {
       errors.push(`Index integrity check failed: ${(error as Error).message}`);
@@ -1037,7 +1026,7 @@ export class DatabaseIntegrityChecker {
 
       const [tableCount, integrityResult, journalMode] = quickChecks;
 
-      if ((tableCount?.count || 0) < 5) {
+      if ((tableCount?.count ?? 0) < 5) {
         issues.push('Database appears to be missing core tables');
       }
 

@@ -3,7 +3,6 @@
  */
 
 import { DatabaseConnection } from '@/database/connection';
-import { config } from '@/config';
 
 describe('DatabaseConnection', () => {
   let dbConnection: DatabaseConnection;

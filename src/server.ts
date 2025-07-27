@@ -3,6 +3,9 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
+import swaggerUi from 'swagger-ui-express';
+import YAML from 'yamljs';
+import path from 'path';
 import { config } from '@/config';
 import { logger } from '@/utils/logger';
 import { dbConnection } from '@/database/connection';
@@ -10,7 +13,7 @@ import { globalErrorHandler } from '@/utils/errors';
 import { createApiMiddleware } from '@/middleware';
 import { webSocketManager } from '@/websocket';
 
-export async function createServer() {
+export async function createServer(): Promise<express.Application> {
   const app = express();
 
   // Trust proxy for rate limiting and IP detection
@@ -68,7 +71,7 @@ export async function createServer() {
       req.path === '/health' || req.path === '/api/health',
     keyGenerator: req =>
       // Use API key if available, otherwise use IP
-      req.get('X-API-Key') || req.ip || 'unknown',
+      (req.get('X-API-Key') || req.ip) ?? 'unknown',
   });
 
   app.use('/api', limiter);
@@ -100,6 +103,42 @@ export async function createServer() {
       limit: config.performance.maxRequestSize,
     })
   );
+
+  // Interactive API Explorer (Swagger UI) - Must be before API middleware to avoid auth
+  try {
+    const openApiSpecPath = path.join(__dirname, '../docs/api/openapi.yaml');
+    const openApiSpec = YAML.load(openApiSpecPath);
+
+    app.use(
+      '/api/docs',
+      swaggerUi.serve,
+      swaggerUi.setup(openApiSpec, {
+        customCss: '.swagger-ui .topbar { display: none }',
+        customSiteTitle: 'MCP Kanban API Explorer',
+        customfavIcon: '/favicon.ico',
+        swaggerOptions: {
+          docExpansion: 'list',
+          filter: true,
+          showRequestHeaders: true,
+          tryItOutEnabled: true,
+          requestInterceptor: (req: any) => {
+            // Add authentication header if available
+            if (req.headers && !req.headers.Authorization) {
+              const apiKey = req.headers['x-api-key'] || req.headers.authorization;
+              if (apiKey) {
+                req.headers.Authorization = `Bearer ${apiKey}`;
+              }
+            }
+            return req;
+          },
+        },
+      })
+    );
+
+    logger.info('Interactive API Explorer available at /api/docs');
+  } catch (error) {
+    logger.warn('Failed to load OpenAPI specification for interactive explorer', { error });
+  }
 
   // API middleware
   const apiMiddleware = await createApiMiddleware();
@@ -136,7 +175,8 @@ export async function createServer() {
       health: '/health',
       endpoints: {
         api: '/api/v1',
-        websocket: `ws://localhost:${config.websocket.port}${config.websocket.path}`,
+        websocket: `ws://localhost:${String(String(config.websocket.port))}${String(String(config.websocket.path))}`,
+        interactiveExplorer: '/api/docs',
       },
     });
   });
@@ -146,7 +186,7 @@ export async function createServer() {
     res.status(404).json({
       error: 'Not Found',
       code: 'NOT_FOUND',
-      message: `The requested resource ${req.originalUrl} was not found`,
+      message: `The requested resource ${String(String(req.originalUrl))} was not found`,
       timestamp: new Date().toISOString(),
     });
   });
@@ -189,7 +229,11 @@ export async function createServer() {
   return app;
 }
 
-export async function startServer() {
+export async function startServer(): Promise<{
+  app: express.Application;
+  server: any;
+  webSocketManager: any;
+}> {
   try {
     // Initialize database
     logger.info('Initializing database connection...');
@@ -219,8 +263,8 @@ export async function startServer() {
     });
 
     // Graceful shutdown
-    const gracefulShutdown = async (signal: string) => {
-      logger.info(`Received ${signal}, starting graceful shutdown...`);
+    const gracefulShutdown = (signal: string): void => {
+      logger.info(`Received ${String(signal)}, starting graceful shutdown...`);
 
       server.close(async () => {
         logger.info('HTTP server closed');
@@ -279,7 +323,7 @@ export async function startServer() {
 // Start server if this file is run directly
 if (require.main === module) {
   startServer().catch(error => {
-    console.error('Failed to start server:', error);
+    logger.error('Failed to start server:', error);
     process.exit(1);
   });
 }

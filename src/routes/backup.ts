@@ -12,6 +12,7 @@ import { dbConnection } from '@/database/connection';
 import { authenticateApiKey } from '@/middleware/auth';
 import { validateRequest } from '@/middleware/validation';
 import { formatSuccessResponse, formatErrorResponse } from '@/middleware/response';
+import { asyncHandler } from '@/middleware/asyncHandler';
 import { logger } from '@/utils/logger';
 import { z } from 'zod';
 
@@ -41,6 +42,27 @@ const ListBackupsSchema = z.object({
   status: z.enum(['pending', 'in_progress', 'completed', 'failed', 'corrupted']).optional(),
 });
 
+const ValidateRestoreSchema = z.object({
+  verify: z.boolean().optional().default(true),
+  pointInTime: z.string().datetime().optional(),
+  preserveExisting: z.boolean().optional().default(false),
+});
+
+const PartialRestoreSchema = z.object({
+  tables: z.array(z.string()).min(1),
+  includeSchema: z.boolean().optional().default(false),
+  preserveExisting: z.boolean().optional().default(false),
+  validateAfter: z.boolean().optional().default(true),
+  verify: z.boolean().optional().default(true),
+  pointInTime: z.string().datetime().optional(),
+});
+
+const RestoreWithProgressSchema = z.object({
+  verify: z.boolean().optional().default(true),
+  pointInTime: z.string().datetime().optional(),
+  preserveExisting: z.boolean().optional().default(false),
+});
+
 // Apply authentication to all backup routes
 router.use(authenticateApiKey);
 
@@ -54,32 +76,11 @@ router.use(authenticateApiKey);
  *     security:
  *       - ApiKeyAuth: []
  *     requestBody:
- *       required: false
+ *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *                 description: Custom backup name
- *               description:
- *                 type: string
- *                 description: Backup description
- *               type:
- *                 type: string
- *                 enum: [full, incremental]
- *                 default: full
- *               compress:
- *                 type: boolean
- *                 default: true
- *               verify:
- *                 type: boolean
- *                 default: true
- *               parentBackupId:
- *                 type: string
- *                 format: uuid
- *                 description: Required for incremental backups
+ *             $ref: '#/components/schemas/CreateBackupRequest'
  *     responses:
  *       201:
  *         description: Backup created successfully
@@ -97,35 +98,37 @@ router.use(authenticateApiKey);
  *       500:
  *         description: Backup creation failed
  */
-router.post('/create', validateRequest(CreateBackupSchema), async (req, res) => {
-  try {
-    const options = req.body;
+router.post('/create', validateRequest(CreateBackupSchema), (req, res) => {
+  void (async () => {
+    try {
+      const options = req.body as CreateBackupOptions;
 
-    let backup;
-    if (options.type === 'incremental') {
-      if (!options.parentBackupId) {
-        return res
-          .status(400)
-          .json(formatErrorResponse('Parent backup ID is required for incremental backups'));
+      let backup;
+      if (options.type === 'incremental') {
+        if (!options.parentBackupId) {
+          return res
+            .status(400)
+            .json(formatErrorResponse('Parent backup ID is required for incremental backups'));
+        }
+        backup = await backupService.createIncrementalBackup(options);
+      } else {
+        backup = await backupService.createFullBackup(options);
       }
-      backup = await backupService.createIncrementalBackup(options);
-    } else {
-      backup = await backupService.createFullBackup(options);
-    }
 
-    logger.info(`Backup created via API: ${backup.id}`);
-    return res.status(201).json(formatSuccessResponse(backup));
-  } catch (error) {
-    logger.error('Backup creation failed:', error);
-    return res
-      .status(500)
-      .json(
-        formatErrorResponse(
-          'Backup creation failed',
-          error instanceof Error ? error.message : 'Unknown error'
-        )
-      );
-  }
+      logger.info(`Backup created via API: ${String(backup.id)}`);
+      return res.status(201).json(formatSuccessResponse(backup));
+    } catch (error) {
+      logger.error('Backup creation failed:', error);
+      return res
+        .status(500)
+        .json(
+          formatErrorResponse(
+            'Backup creation failed',
+            error instanceof Error ? error.message : 'Unknown error'
+          )
+        );
+    }
+  })();
 });
 
 /**
@@ -176,23 +179,35 @@ router.post('/create', validateRequest(CreateBackupSchema), async (req, res) => 
  *                   items:
  *                     $ref: '#/components/schemas/BackupMetadata'
  */
-router.get('/list', validateRequest(ListBackupsSchema, 'query'), async (req, res) => {
-  try {
-    const options = req.query as any;
-    const backups = await backupService.listBackups(options);
+router.get('/list', validateRequest(ListBackupsSchema), (req, res) => {
+  void (async () => {
+    try {
+      const options = req.query as {
+        limit?: string;
+        offset?: string;
+        type?: string;
+        status?: string;
+      };
+      const backups = await backupService.listBackups({
+        limit: options.limit ? parseInt(options.limit, 10) : undefined,
+        offset: options.offset ? parseInt(options.offset, 10) : undefined,
+        type: options.type as 'full' | 'incremental' | undefined,
+        status: options.status,
+      });
 
-    return res.json(formatSuccessResponse(backups));
-  } catch (error) {
-    logger.error('Failed to list backups:', error);
-    return res
-      .status(500)
-      .json(
-        formatErrorResponse(
-          'Failed to list backups',
-          error instanceof Error ? error.message : 'Unknown error'
-        )
-      );
-  }
+      return res.json(formatSuccessResponse(backups));
+    } catch (error) {
+      logger.error('Failed to list backups:', error);
+      return res
+        .status(500)
+        .json(
+          formatErrorResponse(
+            'Failed to list backups',
+            error instanceof Error ? error.message : 'Unknown error'
+          )
+        );
+    }
+  })();
 });
 
 /**
@@ -226,31 +241,34 @@ router.get('/list', validateRequest(ListBackupsSchema, 'query'), async (req, res
  *       404:
  *         description: Backup not found
  */
-router.get('/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    if (!id) {
-      return res.status(400).json(formatErrorResponse('Backup ID is required'));
-    }
-    const backup = await backupService.getBackupMetadata(id);
+router.get(
+  '/:id',
+  asyncHandler(async (req, res): Promise<void> => {
+    try {
+      const { id } = req.params;
+      if (!id) {
+        return res.status(400).json(formatErrorResponse('Backup ID is required'));
+      }
+      const backup = await backupService.getBackupMetadata(id);
 
-    if (!backup) {
-      return res.status(404).json(formatErrorResponse('Backup not found'));
-    }
+      if (!backup) {
+        return res.status(404).json(formatErrorResponse('Backup not found'));
+      }
 
-    return res.json(formatSuccessResponse(backup));
-  } catch (error) {
-    logger.error(`Failed to get backup ${req.params.id}:`, error);
-    return res
-      .status(500)
-      .json(
-        formatErrorResponse(
-          'Failed to get backup',
-          error instanceof Error ? error.message : 'Unknown error'
-        )
-      );
-  }
-});
+      return res.json(formatSuccessResponse(backup));
+    } catch (error) {
+      logger.error(`Failed to get backup ${String(String(req.params.id))}:`, error);
+      return res
+        .status(500)
+        .json(
+          formatErrorResponse(
+            'Failed to get backup',
+            error instanceof Error ? error.message : 'Unknown error'
+          )
+        );
+    }
+  })
+);
 
 /**
  * @openapi
@@ -303,30 +321,34 @@ router.get('/:id', async (req, res) => {
  *       500:
  *         description: Restore failed
  */
-router.post('/:id/restore', validateRequest(RestoreBackupSchema), async (req, res) => {
-  try {
-    const { id } = req.params;
-    if (!id) {
-      return res.status(400).json(formatErrorResponse('Backup ID is required'));
+router.post(
+  '/:id/restore',
+  validateRequest(RestoreBackupSchema),
+  asyncHandler(async (req, res): Promise<void> => {
+    try {
+      const { id } = req.params;
+      if (!id) {
+        return res.status(400).json(formatErrorResponse('Backup ID is required'));
+      }
+      const options = req.body;
+
+      await backupService.restoreFromBackup(id, options);
+
+      logger.info(`Database restored from backup: ${String(id)}`);
+      return res.json(formatSuccessResponse(null, 'Database restored successfully'));
+    } catch (error) {
+      logger.error(`Restore failed for backup ${String(String(req.params.id))}:`, error);
+      return res
+        .status(500)
+        .json(
+          formatErrorResponse(
+            'Restore failed',
+            error instanceof Error ? error.message : 'Unknown error'
+          )
+        );
     }
-    const options = req.body;
-
-    await backupService.restoreFromBackup(id, options);
-
-    logger.info(`Database restored from backup: ${id}`);
-    return res.json(formatSuccessResponse(null, 'Database restored successfully'));
-  } catch (error) {
-    logger.error(`Restore failed for backup ${req.params.id}:`, error);
-    return res
-      .status(500)
-      .json(
-        formatErrorResponse(
-          'Restore failed',
-          error instanceof Error ? error.message : 'Unknown error'
-        )
-      );
-  }
-});
+  })
+);
 
 /**
  * @openapi
@@ -382,52 +404,55 @@ router.post('/:id/restore', validateRequest(RestoreBackupSchema), async (req, re
  *       500:
  *         description: Point-in-time restoration failed
  */
-router.post('/restore-to-time', async (req, res) => {
-  try {
-    const { targetTime, verify = true, preserveExisting = false } = req.body;
+router.post(
+  '/restore-to-time',
+  asyncHandler(async (req, res): Promise<void> => {
+    try {
+      const { targetTime, verify = true, preserveExisting = false } = req.body;
 
-    if (!targetTime) {
-      return res.status(400).json(formatErrorResponse('Target time is required'));
-    }
+      if (!targetTime) {
+        return res.status(400).json(formatErrorResponse('Target time is required'));
+      }
 
-    // Validate target time format
-    const targetDate = new Date(targetTime);
-    if (isNaN(targetDate.getTime())) {
+      // Validate target time format
+      const targetDate = new Date(targetTime);
+      if (isNaN(targetDate.getTime())) {
+        return res
+          .status(400)
+          .json(
+            formatErrorResponse(
+              'Invalid target time format. Use ISO format (e.g., 2025-07-26T10:30:00Z)'
+            )
+          );
+      }
+
+      logger.info(`Point-in-time restoration requested to: ${String(targetTime)}`);
+
+      await backupService.restoreToPointInTime(targetTime, {
+        verify,
+        preserveExisting,
+      });
+
+      logger.info(`Point-in-time restoration completed to: ${String(targetTime)}`);
+      return res.json(
+        formatSuccessResponse({
+          restoredTo: targetTime,
+          message: 'Point-in-time restoration completed successfully',
+        })
+      );
+    } catch (error) {
+      logger.error('Point-in-time restoration failed:', error);
       return res
-        .status(400)
+        .status(500)
         .json(
           formatErrorResponse(
-            'Invalid target time format. Use ISO format (e.g., 2025-07-26T10:30:00Z)'
+            'Point-in-time restoration failed',
+            error instanceof Error ? error.message : 'Unknown error'
           )
         );
     }
-
-    logger.info(`Point-in-time restoration requested to: ${targetTime}`);
-
-    await backupService.restoreToPointInTime(targetTime, {
-      verify,
-      preserveExisting,
-    });
-
-    logger.info(`Point-in-time restoration completed to: ${targetTime}`);
-    return res.json(
-      formatSuccessResponse({
-        restoredTo: targetTime,
-        message: 'Point-in-time restoration completed successfully',
-      })
-    );
-  } catch (error) {
-    logger.error('Point-in-time restoration failed:', error);
-    return res
-      .status(500)
-      .json(
-        formatErrorResponse(
-          'Point-in-time restoration failed',
-          error instanceof Error ? error.message : 'Unknown error'
-        )
-      );
-  }
-});
+  })
+);
 
 /**
  * @openapi
@@ -465,32 +490,35 @@ router.post('/restore-to-time', async (req, res) => {
  *       404:
  *         description: Backup not found
  */
-router.post('/:id/verify', async (req, res) => {
-  try {
-    const { id } = req.params;
-    if (!id) {
-      return res.status(400).json(formatErrorResponse('Backup ID is required'));
-    }
-    const isValid = await backupService.verifyBackup(id);
+router.post(
+  '/:id/verify',
+  asyncHandler(async (req, res): Promise<void> => {
+    try {
+      const { id } = req.params;
+      if (!id) {
+        return res.status(400).json(formatErrorResponse('Backup ID is required'));
+      }
+      const isValid = await backupService.verifyBackup(id);
 
-    return res.json(
-      formatSuccessResponse({
-        valid: isValid,
-        message: isValid ? 'Backup verification passed' : 'Backup verification failed',
-      })
-    );
-  } catch (error) {
-    logger.error(`Backup verification failed for ${req.params.id}:`, error);
-    return res
-      .status(500)
-      .json(
-        formatErrorResponse(
-          'Backup verification failed',
-          error instanceof Error ? error.message : 'Unknown error'
-        )
+      return res.json(
+        formatSuccessResponse({
+          valid: isValid,
+          message: isValid ? 'Backup verification passed' : 'Backup verification failed',
+        })
       );
-  }
-});
+    } catch (error) {
+      logger.error(`Backup verification failed for ${String(String(req.params.id))}:`, error);
+      return res
+        .status(500)
+        .json(
+          formatErrorResponse(
+            'Backup verification failed',
+            error instanceof Error ? error.message : 'Unknown error'
+          )
+        );
+    }
+  })
+);
 
 /**
  * @openapi
@@ -530,56 +558,68 @@ router.post('/:id/verify', async (req, res) => {
  *       404:
  *         description: Backup not found
  */
-router.get('/:id/export', async (req, res) => {
-  try {
-    const { id } = req.params;
-    if (!id) {
-      return res.status(400).json(formatErrorResponse('Backup ID is required'));
-    }
-    const format = (req.query['format'] as string) || 'json';
+router.get(
+  '/:id/export',
+  asyncHandler(async (req, res): Promise<void> => {
+    try {
+      const { id } = req.params;
+      if (!id) {
+        return res.status(400).json(formatErrorResponse('Backup ID is required'));
+      }
+      const format = (req.query.format as string) || 'json';
 
-    const backup = await backupService.getBackupMetadata(id);
-    if (!backup) {
-      return res.status(404).json(formatErrorResponse('Backup not found'));
-    }
+      const backup = await backupService.getBackupMetadata(id);
+      if (!backup) {
+        return res.status(404).json(formatErrorResponse('Backup not found'));
+      }
 
-    // For now, return backup metadata in requested format
-    // In a full implementation, you'd export the actual backup content
-    switch (format) {
-      case 'json':
-        res.setHeader('Content-Type', 'application/json');
-        res.setHeader('Content-Disposition', `attachment; filename="${backup.name}.json"`);
-        return res.json(backup);
-        break;
-      case 'sql':
-        res.setHeader('Content-Type', 'application/sql');
-        res.setHeader('Content-Disposition', `attachment; filename="${backup.name}.sql"`);
-        return res.send(
-          `-- Backup metadata for ${backup.name}\n-- ID: ${backup.id}\n-- Created: ${backup.createdAt}`
+      // For now, return backup metadata in requested format
+      // In a full implementation, you'd export the actual backup content
+      switch (format) {
+        case 'json':
+          res.setHeader('Content-Type', 'application/json');
+          res.setHeader(
+            'Content-Disposition',
+            `attachment; filename="${String(String(backup.name))}.json"`
+          );
+          return res.json(backup);
+          break;
+        case 'sql':
+          res.setHeader('Content-Type', 'application/sql');
+          res.setHeader(
+            'Content-Disposition',
+            `attachment; filename="${String(String(backup.name))}.sql"`
+          );
+          return res.send(
+            `-- Backup metadata for ${String(String(backup.name))}\n-- ID: ${String(String(backup.id))}\n-- Created: ${String(String(backup.createdAt))}`
+          );
+          break;
+        case 'csv':
+          res.setHeader('Content-Type', 'text/csv');
+          res.setHeader(
+            'Content-Disposition',
+            `attachment; filename="${String(String(backup.name))}.csv"`
+          );
+          return res.send(
+            `id,name,type,status,size,created_at\n${String(String(backup.id))},${String(String(backup.name))},${String(String(backup.type))},${String(String(backup.status))},${String(String(backup.size))},${String(String(backup.createdAt))}`
+          );
+          break;
+        default:
+          return res.status(400).json(formatErrorResponse('Unsupported export format'));
+      }
+    } catch (error) {
+      logger.error(`Backup export failed for ${String(String(req.params.id))}:`, error);
+      return res
+        .status(500)
+        .json(
+          formatErrorResponse(
+            'Backup export failed',
+            error instanceof Error ? error.message : 'Unknown error'
+          )
         );
-        break;
-      case 'csv':
-        res.setHeader('Content-Type', 'text/csv');
-        res.setHeader('Content-Disposition', `attachment; filename="${backup.name}.csv"`);
-        return res.send(
-          `id,name,type,status,size,created_at\n${backup.id},${backup.name},${backup.type},${backup.status},${backup.size},${backup.createdAt}`
-        );
-        break;
-      default:
-        return res.status(400).json(formatErrorResponse('Unsupported export format'));
     }
-  } catch (error) {
-    logger.error(`Backup export failed for ${req.params.id}:`, error);
-    return res
-      .status(500)
-      .json(
-        formatErrorResponse(
-          'Backup export failed',
-          error instanceof Error ? error.message : 'Unknown error'
-        )
-      );
-  }
-});
+  })
+);
 
 /**
  * @openapi
@@ -614,27 +654,506 @@ router.get('/:id/export', async (req, res) => {
  *       500:
  *         description: Delete failed
  */
-router.delete('/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    if (!id) {
-      return res.status(400).json(formatErrorResponse('Backup ID is required'));
-    }
-    await backupService.deleteBackup(id);
+router.delete(
+  '/:id',
+  asyncHandler(async (req, res): Promise<void> => {
+    try {
+      const { id } = req.params;
+      if (!id) {
+        return res.status(400).json(formatErrorResponse('Backup ID is required'));
+      }
+      await backupService.deleteBackup(id);
 
-    logger.info(`Backup deleted via API: ${id}`);
-    return res.json(formatSuccessResponse(null, 'Backup deleted successfully'));
-  } catch (error) {
-    logger.error(`Failed to delete backup ${req.params.id}:`, error);
-    return res
-      .status(500)
-      .json(
-        formatErrorResponse(
-          'Failed to delete backup',
-          error instanceof Error ? error.message : 'Unknown error'
-        )
+      logger.info(`Backup deleted via API: ${String(id)}`);
+      return res.json(formatSuccessResponse(null, 'Backup deleted successfully'));
+    } catch (error) {
+      logger.error(`Failed to delete backup ${String(String(req.params.id))}:`, error);
+      return res
+        .status(500)
+        .json(
+          formatErrorResponse(
+            'Failed to delete backup',
+            error instanceof Error ? error.message : 'Unknown error'
+          )
+        );
+    }
+  })
+);
+
+/**
+ * @openapi
+ * /api/backup/{id}/validate:
+ *   post:
+ *     summary: Validate restore options
+ *     description: Validates restore options and backup compatibility before restoration
+ *     tags: [Backup]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               verify:
+ *                 type: boolean
+ *                 default: true
+ *               pointInTime:
+ *                 type: string
+ *                 format: date-time
+ *               preserveExisting:
+ *                 type: boolean
+ *                 default: false
+ *     responses:
+ *       200:
+ *         description: Validation completed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     isValid:
+ *                       type: boolean
+ *                     tableChecks:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           tableName:
+ *                             type: string
+ *                           rowCount:
+ *                             type: integer
+ *                           isValid:
+ *                             type: boolean
+ *                           message:
+ *                             type: string
+ *                     errors:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *       404:
+ *         description: Backup not found
+ *       500:
+ *         description: Validation failed
+ */
+router.post(
+  '/:id/validate',
+  validateRequest(ValidateRestoreSchema),
+  asyncHandler(async (req, res): Promise<void> => {
+    try {
+      const { id } = req.params;
+      if (!id) {
+        return res.status(400).json(formatErrorResponse('Backup ID is required'));
+      }
+      const options = req.body;
+
+      const validation = await backupService.validateRestoreOptions(id, options);
+
+      logger.info(`Restore validation completed for backup: ${id}`, {
+        isValid: validation.isValid,
+      });
+      return res.json(formatSuccessResponse(validation, 'Validation completed'));
+    } catch (error) {
+      logger.error(`Restore validation failed for backup ${req.params.id}:`, error);
+      return res
+        .status(500)
+        .json(
+          formatErrorResponse(
+            'Validation failed',
+            error instanceof Error ? error.message : 'Unknown error'
+          )
+        );
+    }
+  })
+);
+
+/**
+ * @openapi
+ * /api/backup/integrity-check:
+ *   post:
+ *     summary: Perform data integrity check
+ *     description: Performs comprehensive data integrity checks on the database
+ *     tags: [Backup]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     responses:
+ *       200:
+ *         description: Integrity check completed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     isPassed:
+ *                       type: boolean
+ *                     checks:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           name:
+ *                             type: string
+ *                           passed:
+ *                             type: boolean
+ *                           message:
+ *                             type: string
+ *       500:
+ *         description: Integrity check failed
+ */
+router.post(
+  '/integrity-check',
+  asyncHandler(async (req, res): Promise<void> => {
+    try {
+      const integrityCheck = await backupService.performDataIntegrityCheck();
+
+      logger.info('Data integrity check completed', { passed: integrityCheck.isPassed });
+      return res.json(formatSuccessResponse(integrityCheck, 'Integrity check completed'));
+    } catch (error) {
+      logger.error('Data integrity check failed:', error);
+      return res
+        .status(500)
+        .json(
+          formatErrorResponse(
+            'Integrity check failed',
+            error instanceof Error ? error.message : 'Unknown error'
+          )
+        );
+    }
+  })
+);
+
+/**
+ * @openapi
+ * /api/backup/{id}/restore-partial:
+ *   post:
+ *     summary: Restore specific tables from backup
+ *     description: Restores specific tables from a backup while preserving other data
+ *     tags: [Backup]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - tables
+ *             properties:
+ *               tables:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: List of table names to restore
+ *               includeSchema:
+ *                 type: boolean
+ *                 default: false
+ *               preserveExisting:
+ *                 type: boolean
+ *                 default: false
+ *               validateAfter:
+ *                 type: boolean
+ *                 default: true
+ *               verify:
+ *                 type: boolean
+ *                 default: true
+ *               pointInTime:
+ *                 type: string
+ *                 format: date-time
+ *     responses:
+ *       200:
+ *         description: Partial restore completed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: Invalid restore options
+ *       404:
+ *         description: Backup not found
+ *       500:
+ *         description: Partial restore failed
+ */
+router.post(
+  '/:id/restore-partial',
+  validateRequest(PartialRestoreSchema),
+  asyncHandler(async (req, res): Promise<void> => {
+    try {
+      const { id } = req.params;
+      if (!id) {
+        return res.status(400).json(formatErrorResponse('Backup ID is required'));
+      }
+      const options = req.body;
+
+      await backupService.restorePartialData(id, options);
+
+      logger.info(`Partial restore completed for backup: ${id}`, { tables: options.tables });
+      return res.json(formatSuccessResponse(null, 'Partial restore completed successfully'));
+    } catch (error) {
+      logger.error(`Partial restore failed for backup ${req.params.id}:`, error);
+      return res
+        .status(500)
+        .json(
+          formatErrorResponse(
+            'Partial restore failed',
+            error instanceof Error ? error.message : 'Unknown error'
+          )
+        );
+    }
+  })
+);
+
+/**
+ * @openapi
+ * /api/backup/{id}/restore-with-progress:
+ *   post:
+ *     summary: Restore with progress tracking
+ *     description: Restores from backup with progress tracking and returns a progress ID
+ *     tags: [Backup]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               verify:
+ *                 type: boolean
+ *                 default: true
+ *               pointInTime:
+ *                 type: string
+ *                 format: date-time
+ *               preserveExisting:
+ *                 type: boolean
+ *                 default: false
+ *     responses:
+ *       200:
+ *         description: Restore started with progress tracking
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     progressId:
+ *                       type: string
+ *                       format: uuid
+ *       400:
+ *         description: Invalid restore options
+ *       404:
+ *         description: Backup not found
+ *       500:
+ *         description: Restore failed
+ */
+router.post(
+  '/:id/restore-with-progress',
+  validateRequest(RestoreWithProgressSchema),
+  asyncHandler(async (req, res): Promise<void> => {
+    try {
+      const { id } = req.params;
+      if (!id) {
+        return res.status(400).json(formatErrorResponse('Backup ID is required'));
+      }
+      const options = req.body;
+
+      const progressId = await backupService.restoreFromBackupWithProgress(id, options);
+
+      logger.info(`Restore with progress started for backup: ${id}`, { progressId });
+      return res.json(
+        formatSuccessResponse({ progressId }, 'Restore started with progress tracking')
       );
-  }
-});
+    } catch (error) {
+      logger.error(`Restore with progress failed for backup ${req.params.id}:`, error);
+      return res
+        .status(500)
+        .json(
+          formatErrorResponse(
+            'Restore failed',
+            error instanceof Error ? error.message : 'Unknown error'
+          )
+        );
+    }
+  })
+);
+
+/**
+ * @openapi
+ * /api/backup/progress/{progressId}:
+ *   get:
+ *     summary: Get restore progress
+ *     description: Gets the current progress of a restore operation
+ *     tags: [Backup]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: progressId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Progress information retrieved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       format: uuid
+ *                     totalSteps:
+ *                       type: integer
+ *                     currentStep:
+ *                       type: integer
+ *                     progress:
+ *                       type: integer
+ *                       minimum: 0
+ *                       maximum: 100
+ *                     message:
+ *                       type: string
+ *                     updatedAt:
+ *                       type: string
+ *                       format: date-time
+ *       404:
+ *         description: Progress not found
+ *       500:
+ *         description: Failed to get progress
+ */
+router.get(
+  '/progress/:progressId',
+  asyncHandler(async (req, res): Promise<void> => {
+    try {
+      const { progressId } = req.params;
+      if (!progressId) {
+        return res.status(400).json(formatErrorResponse('Progress ID is required'));
+      }
+
+      const progress = await backupService.getRestoreProgress(progressId);
+      if (!progress) {
+        return res.status(404).json(formatErrorResponse('Progress not found'));
+      }
+
+      return res.json(formatSuccessResponse(progress, 'Progress retrieved'));
+    } catch (error) {
+      logger.error(`Failed to get progress ${req.params.progressId}:`, error);
+      return res
+        .status(500)
+        .json(
+          formatErrorResponse(
+            'Failed to get progress',
+            error instanceof Error ? error.message : 'Unknown error'
+          )
+        );
+    }
+  })
+);
+
+/**
+ * @openapi
+ * /api/backup/progress/{progressId}:
+ *   delete:
+ *     summary: Clear restore progress
+ *     description: Clears the progress tracking for a restore operation
+ *     tags: [Backup]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: progressId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Progress cleared successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *       500:
+ *         description: Failed to clear progress
+ */
+router.delete(
+  '/progress/:progressId',
+  asyncHandler(async (req, res): Promise<void> => {
+    try {
+      const { progressId } = req.params;
+      if (!progressId) {
+        return res.status(400).json(formatErrorResponse('Progress ID is required'));
+      }
+
+      await backupService.clearRestoreProgress(progressId);
+
+      logger.info(`Progress cleared: ${progressId}`);
+      return res.json(formatSuccessResponse(null, 'Progress cleared successfully'));
+    } catch (error) {
+      logger.error(`Failed to clear progress ${req.params.progressId}:`, error);
+      return res
+        .status(500)
+        .json(
+          formatErrorResponse(
+            'Failed to clear progress',
+            error instanceof Error ? error.message : 'Unknown error'
+          )
+        );
+    }
+  })
+);
 
 export default router;

@@ -14,7 +14,7 @@
  *
  * // Get comprehensive stats
  * const summary = await stats.getStatsSummary();
- * console.log('Database health:', summary.health.score);
+ * logger.log('Database health:', summary.health.score);
  *
  * // Monitor query performance
  * stats.startQueryMonitoring();
@@ -155,9 +155,9 @@ export class StatisticsCollector {
 
   private readonly config: StatsConfig;
 
-  private queryHistory: QueryRecord[] = [];
+  private readonly queryHistory: QueryRecord[] = [];
 
-  private monitoringActive = false;
+  private readonly monitoringActive = false;
 
   constructor(db: DatabaseConnection, config: Partial<StatsConfig> = {}) {
     this.db = db;
@@ -180,9 +180,9 @@ export class StatisticsCollector {
    * @example
    * ```typescript
    * const stats = await collector.getStatsSummary();
-   * console.log(`Database size: ${stats.database.sizeFormatted}`);
-   * console.log(`Health score: ${stats.health.score}/100`);
-   * console.log(`Total tables: ${stats.tables.length}`);
+   * logger.log(`Database size: ${String(String(stats.database.sizeFormatted))}`);
+   * logger.log(`Health score: ${String(String(stats.health.score))}/100`);
+   * logger.log(`Total tables: ${String(String(stats.tables.length))}`);
    * ```
    */
   public async getStatsSummary(): Promise<DatabaseStats> {
@@ -213,7 +213,7 @@ export class StatisticsCollector {
       const duration = Date.now() - startTime;
       if (this.config.enableLogging) {
         logger.debug('Database statistics collected', {
-          duration: `${duration}ms`,
+          duration: `${String(duration)}ms`,
           tablesAnalyzed: tableStats.length,
           indexesAnalyzed: indexStats.length,
           healthScore: healthMetrics.score,
@@ -241,7 +241,7 @@ export class StatisticsCollector {
 
     return {
       size: stats.size,
-      sizeFormatted: this.formatBytes(stats.size),
+      sizeFormatted: StatisticsCollector.formatBytes(stats.size),
       pageCount: stats.pageCount,
       pageSize: stats.pageSize,
       utilization: Math.round(utilization * 100) / 100,
@@ -262,55 +262,57 @@ export class StatisticsCollector {
       ORDER BY name
     `);
 
-    const tableStats: TableStats[] = [];
-
-    for (const table of tables) {
+    const tableStatsPromises = tables.map(async table => {
       try {
         const [rowCountResult, sizeResult, indexCountResult] = await Promise.all([
-          this.db.queryOne<{ count: number }>(`SELECT COUNT(*) as count FROM "${table.name}"`),
+          this.db.queryOne<{ count: number }>(
+            `SELECT COUNT(*) as count FROM "${String(table.name)}"`
+          ),
           this.db.queryOne<{ size: number }>(
             `
-            SELECT SUM(pgsize) as size 
-            FROM dbstat 
-            WHERE name = ?
-          `,
+              SELECT SUM(pgsize) as size 
+              FROM dbstat 
+              WHERE name = ?
+            `,
             [table.name]
           ),
           this.db.queryOne<{ count: number }>(
             `
-            SELECT COUNT(*) as count 
-            FROM sqlite_master 
-            WHERE type = 'index' 
-            AND tbl_name = ?
-            AND name NOT LIKE 'sqlite_%'
-          `,
+              SELECT COUNT(*) as count 
+              FROM sqlite_master 
+              WHERE type = 'index' 
+              AND tbl_name = ?
+              AND name NOT LIKE 'sqlite_%'
+            `,
             [table.name]
           ),
         ]);
 
-        const rowCount = rowCountResult?.count || 0;
-        const size = sizeResult?.size || 0;
-        const indexCount = indexCountResult?.count || 0;
+        const rowCount = rowCountResult?.count ?? 0;
+        const size = sizeResult?.size ?? 0;
+        const indexCount = indexCountResult?.count ?? 0;
         const averageRowSize = rowCount > 0 ? Math.round(size / rowCount) : 0;
 
-        // Try to get last modification time from a common timestamp column
         let lastModified: Date | undefined;
         try {
-          const timestampColumns = ['updated_at', 'modified_at', 'created_at'];
-          for (const col of timestampColumns) {
-            const result = await this.db
-              .queryOne<{ max_time: string }>(
+          // Check both possible timestamp columns
+          const timestampResults = await Promise.all(
+            ['last_modified', 'last_update'].map(col =>
+              this.db
+                .queryOne<{ max_time: string }>(
+                  `
+                  SELECT MAX("${String(col)}") as max_time 
+                  FROM "${String(table.name)}"
                 `
-              SELECT MAX("${col}") as max_time 
-              FROM "${table.name}"
-            `
-              )
-              .catch(() => null);
+                )
+                .catch(() => null)
+            )
+          );
 
-            if (result?.max_time) {
-              lastModified = new Date(result.max_time);
-              break;
-            }
+          // Find the first valid timestamp
+          const validResult = timestampResults.find(result => result?.max_time);
+          if (validResult?.max_time) {
+            lastModified = new Date(validResult.max_time);
           }
         } catch {
           // Column doesn't exist or other error, skip timestamp
@@ -320,7 +322,7 @@ export class StatisticsCollector {
           name: table.name,
           rowCount,
           size,
-          sizeFormatted: this.formatBytes(size),
+          sizeFormatted: StatisticsCollector.formatBytes(size),
           averageRowSize,
           indexCount,
         };
@@ -329,14 +331,18 @@ export class StatisticsCollector {
           tableStatRecord.lastModified = lastModified;
         }
 
-        tableStats.push(tableStatRecord);
+        return tableStatRecord;
       } catch (error) {
         logger.warn('Failed to get statistics for table', {
           table: table.name,
           error: (error as Error).message,
         });
+        return null;
       }
-    }
+    });
+
+    const tableStatsResults = await Promise.all(tableStatsPromises);
+    const tableStats = tableStatsResults.filter((stat): stat is TableStats => stat !== null);
 
     return tableStats.sort((a, b) => b.size - a.size);
   }
@@ -362,38 +368,29 @@ export class StatisticsCollector {
 
     const indexStats: IndexStats[] = [];
 
-    for (const index of indexes) {
-      try {
-        // Parse columns from CREATE INDEX statement
-        const columns = this.parseIndexColumns(index.sql);
+    await Promise.all(
+      indexes.map(async index => {
+        const statResult = await this.db.queryOne<{ stat: string }>(
+          `SELECT stat FROM sqlite_stat1 WHERE tbl = ? AND idx = ?`,
+          [index.tbl_name, index.name]
+        );
 
-        // Get index usage statistics (if available)
-        const usageCount = 0;
+        let usageCount = 0;
         let efficiency = 0;
 
         try {
-          // Try to get usage statistics from sqlite_stat1 if available
-          const usageResult = await this.db.queryOne<{ stat: string }>(
-            `
-            SELECT stat FROM sqlite_stat1 WHERE tbl = ? AND idx = ?
-          `,
-            [index.tbl_name, index.name]
-          );
-
-          if (usageResult?.stat) {
-            // Parse stat string to estimate efficiency
-            const statParts = usageResult.stat.split(' ');
-            if (statParts.length > 1 && statParts[0] && statParts[1]) {
-              const first = parseInt(statParts[0], 10);
-              const second = parseInt(statParts[1], 10);
-              if (!isNaN(first) && !isNaN(second) && second > 0) {
-                efficiency = Math.min(100, Math.round((first / second) * 100));
-              }
+          if (statResult?.stat) {
+            const stats = statResult.stat.split(' ');
+            if (stats.length >= 2) {
+              usageCount = parseInt(stats[0], 10) || 0;
+              efficiency = parseFloat(stats[1]) || 0;
             }
           }
         } catch {
           // Statistics not available
         }
+
+        const columns = StatisticsCollector.parseIndexColumns(index.sql ?? '');
 
         indexStats.push({
           name: index.name,
@@ -403,13 +400,8 @@ export class StatisticsCollector {
           usageCount,
           efficiency,
         });
-      } catch (error) {
-        logger.warn('Failed to get statistics for index', {
-          index: index.name,
-          error: (error as Error).message,
-        });
-      }
-    }
+      })
+    );
 
     return indexStats;
   }
@@ -419,7 +411,7 @@ export class StatisticsCollector {
    *
    * @returns {Promise<QueryStats>} Query performance metrics
    */
-  public async getQueryStatistics(): Promise<QueryStats> {
+  public getQueryStatistics(): QueryStats {
     if (!this.config.enableQueryMonitoring || this.queryHistory.length === 0) {
       return {
         totalQueries: 0,
@@ -556,7 +548,7 @@ export class StatisticsCollector {
         const queryStats = await this.getQueryStatistics();
 
         if (queryStats.errorRate > 5) {
-          issues.push(`High query error rate: ${queryStats.errorRate}%`);
+          issues.push(`High query error rate: ${String(String(queryStats.errorRate))}%`);
           recommendations.push('Review and fix failing queries');
           score -= 25;
         }
@@ -668,7 +660,7 @@ export class StatisticsCollector {
     if (duration > this.config.slowQueryThreshold && this.config.enableLogging) {
       logger.warn('Slow query detected', {
         sql: sql.substring(0, 200) + (sql.length > 200 ? '...' : ''),
-        duration: `${duration}ms`,
+        duration: `${String(duration)}ms`,
         success,
         error,
       });
@@ -702,7 +694,7 @@ export class StatisticsCollector {
    * @param {string} sql - CREATE INDEX SQL statement
    * @returns {string[]} Array of column names
    */
-  private parseIndexColumns(sql: string): string[] {
+  private static parseIndexColumns(sql: string): string[] {
     if (!sql) return [];
 
     try {
@@ -728,14 +720,14 @@ export class StatisticsCollector {
    * @param {number} bytes - Number of bytes
    * @returns {string} Formatted string
    */
-  private formatBytes(bytes: number): string {
+  private static formatBytes(bytes: number): string {
     if (bytes === 0) return '0 B';
 
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
 
-    return `${parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
+    return `${String(String(parseFloat((bytes / k ** i).toFixed(2))))} ${String(sizes[i])}`;
   }
 }
 

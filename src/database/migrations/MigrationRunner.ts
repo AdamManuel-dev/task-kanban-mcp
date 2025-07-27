@@ -17,8 +17,8 @@ export class MigrationRunner {
 
   constructor(db: Database, options: MigrationOptions = {}) {
     this.db = db;
-    this.migrationsPath = options.migrationsPath || path.join(__dirname, '.');
-    this.tableName = options.tableName || 'schema_migrations';
+    this.migrationsPath = options.migrationsPath ?? path.join(__dirname, '.');
+    this.tableName = options.tableName ?? 'schema_migrations';
     this.validateChecksums = options.validateChecksums !== false;
   }
 
@@ -49,7 +49,7 @@ export class MigrationRunner {
       `SELECT id, applied_at, checksum FROM ${this.tableName} ORDER BY id`
     )) as AppliedMigration[];
 
-    return result || [];
+    return result ?? [];
   }
 
   /**
@@ -58,10 +58,12 @@ export class MigrationRunner {
   async getMigrationFiles(): Promise<MigrationFile[]> {
     try {
       const files = await fs.readdir(this.migrationsPath);
-      const migrationFiles: MigrationFile[] = [];
 
-      for (const file of files) {
-        if (file.endsWith('.ts') && file !== 'types.ts' && file !== 'MigrationRunner.ts') {
+      const migrationFilePromises = files
+        .filter(
+          file => file.endsWith('.ts') && file !== 'types.ts' && file !== 'MigrationRunner.ts'
+        )
+        .map(async file => {
           const filePath = path.join(this.migrationsPath, file);
           const content = await fs.readFile(filePath, 'utf-8');
 
@@ -69,28 +71,32 @@ export class MigrationRunner {
           const match = file.match(/^(\d{3})_(.+)\.ts$/);
           if (!match) {
             logger.warn(`Skipping invalid migration filename: ${file}`);
-            continue;
+            return null;
           }
 
           const [, number, description] = match;
           if (!number || !description) {
             logger.warn(`Invalid migration filename format: ${file}`);
-            continue;
+            return null;
           }
 
           const id = `${number}_${description}`;
           const checksum = this.calculateChecksum(content);
 
-          migrationFiles.push({
+          return {
             id,
             timestamp: parseInt(number, 10),
             description: description.replace(/_/g, ' '),
             checksum,
             up: '', // Will be loaded dynamically
             down: '', // Will be loaded dynamically
-          });
-        }
-      }
+          };
+        });
+
+      const migrationResults = await Promise.all(migrationFilePromises);
+      const migrationFiles = migrationResults.filter(
+        (file): file is MigrationFile => file !== null
+      );
 
       return migrationFiles.sort((a, b) => a.timestamp - b.timestamp);
     } catch (error) {
@@ -111,7 +117,7 @@ export class MigrationRunner {
 
     // Dynamic import of the migration file
     const migrationModule = await import(filePath);
-    const migration = migrationModule.default || migrationModule;
+    const migration = migrationModule.default ?? migrationModule;
 
     if (!migration.up || !migration.down) {
       throw new Error(`Migration ${file.id} must export 'up' and 'down' functions`);
@@ -160,9 +166,11 @@ export class MigrationRunner {
 
       logger.info(`Running migration: ${file.id} - ${file.description}`);
 
+      // eslint-disable-next-line no-await-in-loop
       const migration = await this.loadMigration(file);
 
       try {
+        // eslint-disable-next-line no-await-in-loop
         await this.runMigration(migration, file.checksum, 'up');
         migrationsRun++;
         logger.info(`Migration ${file.id} completed successfully`);
@@ -213,9 +221,11 @@ export class MigrationRunner {
 
       logger.info(`Rolling back migration: ${file.id} - ${file.description}`);
 
+      // eslint-disable-next-line no-await-in-loop
       const migration = await this.loadMigration(file);
 
       try {
+        // eslint-disable-next-line no-await-in-loop
         await this.rollbackMigration(migration);
         migrationsRolledBack++;
         logger.info(`Migration ${file.id} rolled back successfully`);

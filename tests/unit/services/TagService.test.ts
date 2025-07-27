@@ -7,8 +7,7 @@
 
 import { TagService } from '@/services/TagService';
 import { DatabaseConnection } from '@/database/connection';
-import { logger } from '@/utils/logger';
-import type { Tag, TaskTag, ServiceError } from '@/types';
+import type { Tag, ServiceError } from '@/types';
 
 // Mock the logger to avoid console output during tests
 jest.mock('@/utils/logger', () => ({
@@ -368,7 +367,7 @@ describe('TagService', () => {
 
     beforeEach(async () => {
       tag = await tagService.createTag({ name: 'stats-tag' });
-      const childTag = await tagService.createTag({
+      await tagService.createTag({
         name: 'child-tag',
         parent_tag_id: tag.id,
       });
@@ -782,7 +781,7 @@ describe('TagService', () => {
         name: 'level2',
         parent_tag_id: level1.id,
       });
-      const level3 = await tagService.createTag({
+      await tagService.createTag({
         name: 'level3',
         parent_tag_id: level2.id,
       });

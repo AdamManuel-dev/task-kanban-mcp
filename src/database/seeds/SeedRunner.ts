@@ -15,8 +15,8 @@ export class SeedRunner {
 
   constructor(db: Database<SQLiteDB>, options: SeedOptions = {}) {
     this.db = db;
-    this.seedsPath = options.seedsPath || path.join(__dirname, '.');
-    this.seedsTable = options.seedsTable || 'seed_status';
+    this.seedsPath = options.seedsPath ?? path.join(__dirname, '.');
+    this.seedsTable = options.seedsTable ?? 'seed_status';
   }
 
   /**
@@ -24,7 +24,7 @@ export class SeedRunner {
    */
   async initialize(): Promise<void> {
     await this.db.run(`
-      CREATE TABLE IF NOT EXISTS ${this.seedsTable} (
+      CREATE TABLE IF NOT EXISTS ${String(String(this.seedsTable))} (
         name TEXT PRIMARY KEY,
         applied_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         checksum TEXT NOT NULL
@@ -39,7 +39,7 @@ export class SeedRunner {
    */
   async getAppliedSeeds(): Promise<AppliedSeed[]> {
     return this.db.all<AppliedSeed[]>(
-      `SELECT name, applied_at, checksum FROM ${this.seedsTable} ORDER BY name`
+      `SELECT name, applied_at, checksum FROM ${String(String(this.seedsTable))} ORDER BY name`
     );
   }
 
@@ -56,7 +56,7 @@ export class SeedRunner {
         .sort();
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        logger.warn(`Seeds directory not found: ${this.seedsPath}`);
+        logger.warn(`Seeds directory not found: ${String(String(this.seedsPath))}`);
         return [];
       }
       throw error;
@@ -71,15 +71,15 @@ export class SeedRunner {
 
     // Dynamic import of the seed file
     const seedModule = await import(filePath);
-    const seed = seedModule.default || seedModule;
+    const seed = seedModule.default ?? seedModule;
 
     if (!seed.name || !seed.run) {
-      throw new Error(`Seed ${filename} must export 'name' and 'run' properties`);
+      throw new Error(`Seed ${String(filename)} must export 'name' and 'run' properties`);
     }
 
     return {
       name: seed.name,
-      description: seed.description || '',
+      description: seed.description ?? '',
       run: seed.run,
     };
   }
@@ -90,36 +90,38 @@ export class SeedRunner {
   async run(options: { force?: boolean } = {}): Promise<number> {
     await this.initialize();
 
-    const applied = await this.getAppliedSeeds();
-    const appliedSet = new Set(applied.map(s => s.name));
     const seedFiles = await this.getSeedFiles();
 
     let seedsRun = 0;
 
     for (const filename of seedFiles) {
+      // eslint-disable-next-line no-await-in-loop
       const seed = await this.loadSeed(filename);
 
-      if (appliedSet.has(seed.name) && !options.force) {
-        logger.debug(`Seed already applied: ${seed.name}`);
+      if (!seed) {
+        logger.warn(`Skipping invalid seed file: ${filename}`);
         continue;
       }
 
-      logger.info(`Running seed: ${seed.name} - ${seed.description}`);
+      logger.info(
+        `Running seed: ${String(String(seed.name))} - ${String(String(seed.description))}`
+      );
 
       try {
+        // eslint-disable-next-line no-await-in-loop
         await this.runSeed(seed, filename, options.force);
         seedsRun++;
-        logger.info(`Seed ${seed.name} completed successfully`);
+        logger.info(`Seed ${String(String(seed.name))} completed successfully`);
       } catch (error) {
-        logger.error(`Seed ${seed.name} failed:`, error);
-        throw new Error(`Seed ${seed.name} failed: ${error}`);
+        logger.error(`Seed ${String(String(seed.name))} failed:`, error);
+        throw new Error(`Seed ${String(String(seed.name))} failed: ${String(error)}`);
       }
     }
 
     if (seedsRun === 0) {
       logger.info('No seeds to run');
     } else {
-      logger.info(`Successfully ran ${seedsRun} seed(s)`);
+      logger.info(`Successfully ran ${String(seedsRun)} seed(s)`);
     }
 
     return seedsRun;
@@ -139,11 +141,13 @@ export class SeedRunner {
     const appliedSet = new Set(applied.map(s => s.name));
     const seedFiles = await this.getSeedFiles();
 
-    const allSeeds: string[] = [];
-    for (const filename of seedFiles) {
+    const seedPromises = seedFiles.map(async filename => {
       const seed = await this.loadSeed(filename);
-      allSeeds.push(seed.name);
-    }
+      return seed ? seed.name : null;
+    });
+
+    const seedResults = await Promise.all(seedPromises);
+    const allSeeds = seedResults.filter((name): name is string => name !== null);
 
     const pending = allSeeds.filter(name => !appliedSet.has(name));
 
@@ -159,7 +163,7 @@ export class SeedRunner {
    */
   async reset(): Promise<void> {
     await this.initialize();
-    await this.db.run(`DELETE FROM ${this.seedsTable}`);
+    await this.db.run(`DELETE FROM ${String(String(this.seedsTable))}`);
     logger.info('All seed records cleared');
   }
 
@@ -168,7 +172,7 @@ export class SeedRunner {
    */
   private async runSeed(seed: Seed, filename: string, force = false): Promise<void> {
     const content = await fs.readFile(path.join(this.seedsPath, filename), 'utf-8');
-    const checksum = this.calculateChecksum(content);
+    const checksum = SeedRunner.calculateChecksum(content);
 
     // Start transaction
     await this.db.run('BEGIN TRANSACTION');
@@ -180,15 +184,15 @@ export class SeedRunner {
       if (force) {
         // Update existing record
         await this.db.run(
-          `INSERT OR REPLACE INTO ${this.seedsTable} (name, checksum) VALUES (?, ?)`,
+          `INSERT OR REPLACE INTO ${String(String(this.seedsTable))} (name, checksum) VALUES (?, ?)`,
           [seed.name, checksum]
         );
       } else {
         // Insert new record
-        await this.db.run(`INSERT INTO ${this.seedsTable} (name, checksum) VALUES (?, ?)`, [
-          seed.name,
-          checksum,
-        ]);
+        await this.db.run(
+          `INSERT INTO ${String(String(this.seedsTable))} (name, checksum) VALUES (?, ?)`,
+          [seed.name, checksum]
+        );
       }
 
       // Commit transaction
@@ -203,7 +207,7 @@ export class SeedRunner {
   /**
    * Calculate checksum for file content
    */
-  private calculateChecksum(content: string): string {
+  private static calculateChecksum(content: string): string {
     return crypto.createHash('sha256').update(content).digest('hex');
   }
 
@@ -211,16 +215,16 @@ export class SeedRunner {
    * Create a new seed file
    */
   static async createSeed(name: string, description: string, seedsPath: string): Promise<string> {
-    const filename = `${name.replace(/\s+/g, '_').toLowerCase()}.ts`;
+    const filename = `${String(String(name.replace(/\s+/g, '_').toLowerCase()))}.ts`;
     const filePath = path.join(seedsPath, filename);
 
     const template = `import { Database } from 'sqlite';
 import { Database as SQLiteDB } from 'sqlite3';
 
-export const name = '${name}';
-export const description = '${description}';
+export const name = '${String(name)}';
+export const description = '${String(description)}';
 
-export async function run(db: Database<SQLiteDB>): Promise<void> {
+export async function run(): Promise<void>(db: Database<SQLiteDB>): Promise<void> {
   // Add your seed data here
   // Example:
   // await db.run(\`
@@ -228,12 +232,12 @@ export async function run(db: Database<SQLiteDB>): Promise<void> {
   //   ('board-1', 'Sample Board', 'A sample board for development');
   // \`);
   
-  console.log('${name} seed completed');
+  logger.log('${String(name)} seed completed');
 }
 `;
 
     await fs.writeFile(filePath, template);
-    logger.info(`Created seed: ${filename}`);
+    logger.info(`Created seed: ${String(filename)}`);
 
     return filename;
   }

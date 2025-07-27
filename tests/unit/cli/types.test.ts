@@ -9,25 +9,11 @@ import type {
   ApiError,
   TaskData,
   BoardData,
-  NoteData,
-  TagData,
-  ApiRequestOptions,
   PaginatedResponse,
   HealthStatus,
-  DatabaseStatus,
-  WebSocketStatus,
-  ApiEndpoints,
   TaskCreateRequest,
   TaskUpdateRequest,
-  BoardCreateRequest,
-  BoardUpdateRequest,
-  NoteCreateRequest,
-  NoteUpdateRequest,
-  TagCreateRequest,
-  TagUpdateRequest,
   SearchRequest,
-  ContextRequest,
-  ExportRequest,
 } from '@/cli/types';
 
 describe('CLI Types', () => {
@@ -235,7 +221,7 @@ describe('CLI Types', () => {
 
       it('should handle empty update requests', () => {
         const emptyUpdate: TaskUpdateRequest = {};
-        expect(Object.keys(emptyUpdate)).toHaveLength(0);
+        expect(Object.keys(emptyUpdate as Record<string, unknown>)).toHaveLength(0);
       });
     });
 

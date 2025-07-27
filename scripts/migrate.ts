@@ -14,7 +14,8 @@ import { Command } from 'commander';
 import path from 'path';
 import { dbConnection } from '../src/database/connection';
 import { MigrationRunner } from '../src/database/migrations';
-import { logger } from '../src/utils/logger';
+
+/* eslint-disable no-console */
 
 const program = new Command();
 
@@ -24,10 +25,10 @@ program
   .command('up')
   .description('Run pending migrations')
   .option('-t, --target <migration>', 'Target migration to migrate up to')
-  .action(async options => {
+  .action(async (options: { target?: string }) => {
     try {
       await dbConnection.initialize({ skipSchema: true });
-      const count = await dbConnection.runMigrations(options.target);
+      const count: number = await dbConnection.runMigrations(options.target);
 
       if (count === 0) {
         console.log('✅ No pending migrations');
@@ -46,10 +47,10 @@ program
   .command('down')
   .description('Rollback migrations')
   .option('-t, --target <migration>', 'Target migration to rollback to')
-  .action(async options => {
+  .action(async (options: { target?: string }) => {
     try {
       await dbConnection.initialize({ skipSchema: true });
-      const count = await dbConnection.rollbackMigrations(options.target);
+      const count: number = await dbConnection.rollbackMigrations(options.target);
 
       if (count === 0) {
         console.log('✅ No migrations to rollback');
@@ -70,12 +71,13 @@ program
   .action(async () => {
     try {
       await dbConnection.initialize({ skipSchema: true });
-      const status = await dbConnection.getMigrationStatus();
+      const status: { applied: string[]; pending: string[]; total: number } =
+        await dbConnection.getMigrationStatus();
 
       console.log('\n📊 Migration Status:');
-      console.log(`   Total migrations: ${status.total}`);
-      console.log(`   Applied: ${status.applied.length}`);
-      console.log(`   Pending: ${status.pending.length}`);
+      console.log(`   Total migrations: ${String(status.total)}`);
+      console.log(`   Applied: ${String(status.applied.length)}`);
+      console.log(`   Pending: ${String(status.pending.length)}`);
 
       if (status.applied.length > 0) {
         console.log('\n✅ Applied Migrations:');
@@ -104,7 +106,7 @@ program
       const migrationsPath = path.join(__dirname, '..', 'src', 'database', 'migrations');
       const filename = await MigrationRunner.createMigration(name, migrationsPath);
       console.log(`✅ Created migration: ${filename}`);
-      console.log(`📝 Edit the file at: ${path.join(migrationsPath, filename)}`);
+      console.log(`📝 Edit the file at: ${String(path.join(migrationsPath, filename))}`);
     } catch (error) {
       console.error('❌ Failed to create migration:', error);
       process.exit(1);

@@ -9,6 +9,7 @@ process.env.NODE_ENV = 'test';
 process.env.DATABASE_PATH = ':memory:';
 process.env.LOG_LEVEL = 'error';
 process.env.API_KEY_SECRET = 'test-secret-key-minimum-16-chars';
+process.env.API_KEYS = 'dev-key-1,test-key-1';
 
 // Global test configuration
 const originalConsole = console;
@@ -36,6 +37,12 @@ afterAll(async () => {
   // TODO: Cleanup test resources
 });
 
+// Reset database connection between tests (only for tests that don't manage their own connection)
+beforeEach(async () => {
+  // Only reset if no test-specific setup is done
+  // Tests that need database should initialize it themselves
+});
+
 // Reset mocks between tests
 beforeEach(() => {
   jest.clearAllMocks();
@@ -43,20 +50,18 @@ beforeEach(() => {
 
 // Global test utilities
 declare global {
-  namespace NodeJS {
-    interface Global {
-      testUtils: {
-        createTestTask: () => any;
-        createTestBoard: () => any;
-        cleanupTestData: () => Promise<void>;
-      };
-    }
+  interface Global {
+    testUtils: {
+      createTestTask: () => any;
+      createTestBoard: () => any;
+      cleanupTestData: () => Promise<void>;
+    };
   }
 }
 
 // TODO: Add more test utilities as needed
 global.testUtils = {
-  createTestTask: () => ({
+  createTestTask: (): any => ({
     id: 'test-task-1',
     title: 'Test Task',
     description: 'Test Description',
@@ -65,14 +70,14 @@ global.testUtils = {
     createdAt: new Date().toISOString(),
   }),
 
-  createTestBoard: () => ({
+  createTestBoard: (): any => ({
     id: 'test-board-1',
     name: 'Test Board',
     columns: ['todo', 'in-progress', 'done'],
     createdAt: new Date().toISOString(),
   }),
 
-  cleanupTestData: async () => {
+  cleanupTestData: async (): Promise<void> => {
     // TODO: Implement test data cleanup
   },
 };

@@ -151,6 +151,27 @@ CREATE TABLE IF NOT EXISTS api_keys (
   revoked BOOLEAN DEFAULT FALSE
 );
 
+-- Task templates table
+CREATE TABLE IF NOT EXISTS task_templates (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  category TEXT DEFAULT 'custom' CHECK (category IN ('bug', 'feature', 'meeting', 'maintenance', 'research', 'review', 'custom')),
+  title_template TEXT NOT NULL,
+  description_template TEXT,
+  priority INTEGER DEFAULT 0,
+  estimated_hours REAL,
+  tags TEXT, -- JSON array of tag names
+  checklist_items TEXT, -- JSON array of checklist items
+  custom_fields TEXT, -- JSON object for additional fields
+  created_by TEXT,
+  is_system BOOLEAN DEFAULT FALSE,
+  is_active BOOLEAN DEFAULT TRUE,
+  usage_count INTEGER DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Schema information table
 CREATE TABLE IF NOT EXISTS schema_info (
   key TEXT PRIMARY KEY,
@@ -199,6 +220,11 @@ CREATE INDEX IF NOT EXISTS idx_task_history_changed_at ON task_history(changed_a
 -- Time entry indexes
 CREATE INDEX IF NOT EXISTS idx_time_entries_task_id ON task_time_entries(task_id);
 CREATE INDEX IF NOT EXISTS idx_time_entries_start_time ON task_time_entries(start_time);
+
+-- Template indexes
+CREATE INDEX IF NOT EXISTS idx_task_templates_category ON task_templates(category);
+CREATE INDEX IF NOT EXISTS idx_task_templates_is_active ON task_templates(is_active);
+CREATE INDEX IF NOT EXISTS idx_task_templates_is_system ON task_templates(is_system);
 
 -- ============================================================================
 -- Full-Text Search Tables
@@ -339,6 +365,11 @@ END;
 CREATE TRIGGER IF NOT EXISTS repository_mappings_updated_at AFTER UPDATE ON repository_mappings
 BEGIN
   UPDATE repository_mappings SET updated_at = CURRENT_TIMESTAMP WHERE id = new.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS task_templates_updated_at AFTER UPDATE ON task_templates
+BEGIN
+  UPDATE task_templates SET updated_at = CURRENT_TIMESTAMP WHERE id = new.id;
 END;
 
 -- ============================================================================

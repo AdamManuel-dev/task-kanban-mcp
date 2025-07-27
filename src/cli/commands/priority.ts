@@ -1,29 +1,23 @@
 import type { Command } from 'commander';
-import type { ConfigManager } from '../config';
-import type { ApiClient } from '../client';
-import type { OutputFormatter } from '../formatter';
+import type { CliComponents } from '../types';
 
 export function registerPriorityCommands(program: Command): void {
   const priorityCmd = program.command('priority').alias('p').description('Manage task priorities');
 
-  // Get global components
-  const getComponents = () =>
-    (global as any).cliComponents as {
-      config: ConfigManager;
-      apiClient: ApiClient;
-      formatter: OutputFormatter;
-    };
+  // Get global components with proper typing
+  const getComponents = (): CliComponents => global.cliComponents;
 
   priorityCmd
     .command('next')
+    .alias('n')
     .description('Get next prioritized task')
     .option('-c, --count <number>', 'number of tasks to show', '1')
     .option('--explain', 'show priority reasoning')
-    .action(async options => {
+    .action(async (options: { count?: string; explain?: boolean }) => {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const count = parseInt(options.count, 10);
+        const count = parseInt(String(options.count || '1'), 10);
 
         if (count === 1) {
           const nextTask = await apiClient.getNextTask();
@@ -37,19 +31,19 @@ export function registerPriorityCommands(program: Command): void {
           formatter.output(nextTask);
 
           if (options.explain && (nextTask as any).priorityReasoning) {
-            console.log('\n--- Priority Reasoning ---');
-            console.log((nextTask as any).priorityReasoning);
+            formatter.info('\n--- Priority Reasoning ---');
+            formatter.info(String((nextTask as any).priorityReasoning));
           }
         } else {
           const priorities = await apiClient.getPriorities();
 
-          if (!priorities || (priorities as any).length === 0) {
+          if (!priorities || !Array.isArray(priorities) || priorities.length === 0) {
             formatter.info('No prioritized tasks available');
             return;
           }
 
-          const topTasks = (priorities as any[]).slice(0, count);
-          formatter.success(`Top ${count} prioritized tasks:`);
+          const topTasks = priorities.slice(0, count);
+          formatter.success(`Top ${String(count)} prioritized tasks:`);
           formatter.output(topTasks, {
             fields: ['id', 'title', 'priority', 'status', 'dueDate'],
             headers: ['ID', 'Title', 'Priority', 'Status', 'Due Date'],
@@ -69,23 +63,23 @@ export function registerPriorityCommands(program: Command): void {
     .description('List all tasks by priority')
     .option('-l, --limit <number>', 'limit number of results', '20')
     .option('--status <status>', 'filter by status')
-    .action(async options => {
+    .action(async (options: { limit?: string; status?: string }) => {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const priorities = await apiClient.getPriorities() as any;
+        const priorities = await apiClient.getPriorities();
 
-        if (!priorities || priorities.length === 0) {
+        if (!priorities || !Array.isArray(priorities) || priorities.length === 0) {
           formatter.info('No prioritized tasks available');
           return;
         }
 
-        let filteredTasks = priorities as any[];
+        let filteredTasks = priorities;
         if (options.status) {
-          filteredTasks = (priorities as any[]).filter((task: any) => task.status === options.status);
+          filteredTasks = priorities.filter((task: any) => task.status === options.status);
         }
 
-        const limitedTasks = filteredTasks.slice(0, parseInt(options.limit, 10));
+        const limitedTasks = filteredTasks.slice(0, parseInt(String(options.limit || '20'), 10));
 
         formatter.output(limitedTasks, {
           fields: ['id', 'title', 'priority', 'status', 'dueDate', 'dependencies'],
@@ -93,7 +87,7 @@ export function registerPriorityCommands(program: Command): void {
         });
       } catch (error) {
         formatter.error(
-          `Failed to list priorities: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to list priorities: ${String(error instanceof Error ? error.message : 'Unknown error')}`
         );
         process.exit(1);
       }
@@ -112,15 +106,15 @@ export function registerPriorityCommands(program: Command): void {
 
         formatter.success('Priority recalculation completed');
         if ((result as any).message) {
-          formatter.info((result as any).message);
+          formatter.info(String((result as any).message));
         }
 
         if ((result as any).updated) {
-          formatter.info(`Updated ${(result as any).updated} task priorities`);
+          formatter.info(`Updated ${String((result as any).updated)} task priorities`);
         }
       } catch (error) {
         formatter.error(
-          `Failed to recalculate priorities: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to recalculate priorities: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -147,14 +141,14 @@ export function registerPriorityCommands(program: Command): void {
         }
 
         await apiClient.updateTaskPriority(taskId, priorityNum);
-        formatter.success(`Task ${taskId} priority set to ${priorityNum}`);
+        formatter.success(`Task ${String(taskId)} priority set to ${String(priorityNum)}`);
 
         if (options.reason) {
-          formatter.info(`Reason: ${options.reason}`);
+          formatter.info(`Reason: ${String(String(options.reason))}`);
         }
       } catch (error) {
         formatter.error(
-          `Failed to set task priority: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to set task priority: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -167,22 +161,22 @@ export function registerPriorityCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const task = await apiClient.getTask(taskId) as any;
+        const task = (await apiClient.getTask(taskId)) as any;
         if (!task) {
-          formatter.error(`Task ${taskId} not found`);
+          formatter.error(`Task ${String(taskId)} not found`);
           process.exit(1);
         }
 
-        const currentPriority = task.priority || 5;
+        const currentPriority = task.priority ?? 5;
         const newPriority = Math.min(currentPriority + 1, 10);
 
         await apiClient.updateTaskPriority(taskId, newPriority);
         formatter.success(
-          `Task ${taskId} priority boosted from ${currentPriority} to ${newPriority}`
+          `Task ${String(taskId)} priority boosted from ${String(currentPriority)} to ${String(newPriority)}`
         );
       } catch (error) {
         formatter.error(
-          `Failed to boost task priority: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to boost task priority: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }
@@ -195,22 +189,22 @@ export function registerPriorityCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const task = await apiClient.getTask(taskId) as any;
+        const task = (await apiClient.getTask(taskId)) as any;
         if (!task) {
-          formatter.error(`Task ${taskId} not found`);
+          formatter.error(`Task ${String(taskId)} not found`);
           process.exit(1);
         }
 
-        const currentPriority = task.priority || 5;
+        const currentPriority = task.priority ?? 5;
         const newPriority = Math.max(currentPriority - 1, 1);
 
         await apiClient.updateTaskPriority(taskId, newPriority);
         formatter.success(
-          `Task ${taskId} priority lowered from ${currentPriority} to ${newPriority}`
+          `Task ${String(taskId)} priority lowered from ${String(currentPriority)} to ${String(newPriority)}`
         );
       } catch (error) {
         formatter.error(
-          `Failed to lower task priority: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Failed to lower task priority: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
         );
         process.exit(1);
       }

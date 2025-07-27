@@ -1,6 +1,6 @@
 /**
  * Kysely type-safe database schema definition
- * 
+ *
  * This file defines the TypeScript types for our database tables
  * to enable compile-time type safety with Kysely query builder.
  */
@@ -254,7 +254,7 @@ export interface TaskDependencyGraphView {
 
 // Type guards for SQLite boolean conversion
 export const sqliteBoolean = {
-  toNumber: (value: boolean): number => value ? 1 : 0,
+  toNumber: (value: boolean): number => (value ? 1 : 0),
   toBoolean: (value: number): boolean => value === 1,
 };
 

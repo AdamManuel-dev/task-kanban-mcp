@@ -1,6 +1,6 @@
 /**
  * TypeScript type definitions for the MCP Kanban system
- * 
+ *
  * @module types
  * @description Core type definitions for all entities in the MCP Kanban system.
  * These types are used throughout the application for type safety and consistency.
@@ -8,11 +8,11 @@
 
 /**
  * Represents a Kanban board
- * 
+ *
  * @interface Board
  * @description A board is the top-level container for organizing tasks into columns.
  * Each board can have multiple columns and tasks.
- * 
+ *
  * @example
  * ```typescript
  * const board: Board = {
@@ -38,11 +38,11 @@ export interface Board {
 
 /**
  * Represents a column within a Kanban board
- * 
+ *
  * @interface Column
  * @description Columns organize tasks into different stages of work (e.g., To Do, In Progress, Done).
  * Each column belongs to a specific board and has a position for ordering.
- * 
+ *
  * @property {number} [wip_limit] - Optional Work In Progress limit to prevent overloading
  */
 export interface Column {
@@ -57,11 +57,11 @@ export interface Column {
 
 /**
  * Represents a task within the Kanban system
- * 
+ *
  * @interface Task
  * @description A task is the fundamental unit of work in the system. Tasks belong to a board
  * and column, and can have various properties like priority, status, and dependencies.
- * 
+ *
  * @property {string} status - Current status of the task
  * @property {number} priority - Priority level from 0 (lowest) to 10 (highest)
  * @property {string} [metadata] - JSON string for storing custom task data
@@ -89,11 +89,11 @@ export interface Task {
 
 /**
  * Represents a dependency relationship between tasks
- * 
+ *
  * @interface TaskDependency
  * @description Defines how tasks relate to each other. A task can block another task,
  * relate to it, or be a duplicate of it.
- * 
+ *
  * @property {'blocks' | 'relates_to' | 'duplicates'} dependency_type - The type of relationship
  */
 export interface TaskDependency {
@@ -106,11 +106,11 @@ export interface TaskDependency {
 
 /**
  * Represents a note attached to a task
- * 
+ *
  * @interface Note
  * @description Notes provide additional context, updates, or information about a task.
  * They can be categorized and pinned for importance.
- * 
+ *
  * @property {boolean} pinned - Whether the note is pinned to the top
  */
 export interface Note {
@@ -125,11 +125,11 @@ export interface Note {
 
 /**
  * Represents a tag for categorizing tasks
- * 
+ *
  * @interface Tag
  * @description Tags help organize and filter tasks. They support hierarchical structure
  * through parent-child relationships.
- * 
+ *
  * @property {string} color - Hex color code for visual identification
  * @property {string} [parent_tag_id] - ID of parent tag for hierarchical organization
  */
@@ -168,7 +168,7 @@ export interface BoardWithColumns extends Board {
 
 /**
  * Board with aggregated statistics
- * 
+ *
  * @interface BoardWithStats
  * @extends {Board}
  * @description Extends the base Board interface with computed statistics about
@@ -184,19 +184,19 @@ export interface BoardWithStats extends Board {
 
 /**
  * Standard error interface for service layer errors
- * 
+ *
  * @interface ServiceError
  * @extends {Error}
  * @description Provides a consistent error structure across the application with
  * HTTP status codes and additional details for debugging.
- * 
+ *
  * @example
  * ```typescript
  * class NotFoundError extends Error implements ServiceError {
  *   code = 'NOT_FOUND';
  *   statusCode = 404;
  *   constructor(resource: string, id: string) {
- *     super(`${resource} with ID ${id} not found`);
+ *     super(`${String(resource)} with ID ${String(id)} not found`);
  *   }
  * }
  * ```
@@ -204,7 +204,7 @@ export interface BoardWithStats extends Board {
 export interface ServiceError extends Error {
   code: string;
   statusCode: number;
-  details?: any;
+  details?: string | number | boolean | null | undefined | { [key: string]: unknown } | unknown[];
 }
 
 export interface PaginationOptions {
@@ -221,12 +221,12 @@ export interface FilterOptions {
 
 /**
  * Tag with usage statistics
- * 
+ *
  * @interface TagWithStats
  * @extends {Tag}
  * @description Extends the base Tag interface with usage statistics and metrics
  * for understanding tag popularity and relationships.
- * 
+ *
  * @property {number} task_count - Number of tasks using this tag
  * @property {number} usage_count - Total number of times tag has been applied
  * @property {Date} [last_used] - When the tag was last applied to a task
@@ -237,4 +237,37 @@ export interface TagWithStats extends Tag {
   usage_count: number;
   last_used?: Date | undefined;
   child_count: number;
+}
+
+/**
+ * Critical path analysis result
+ *
+ * @interface CriticalPathResult
+ * @description Results from critical path analysis showing the longest chain
+ * of dependent tasks that determines the minimum project completion time.
+ */
+export interface CriticalPathResult {
+  critical_path: Task[];
+  total_duration: number;
+  starting_tasks: Task[];
+  ending_tasks: Task[];
+  bottlenecks: Task[];
+  dependency_count: number;
+}
+
+/**
+ * Task impact analysis result
+ *
+ * @interface TaskImpactAnalysis
+ * @description Analysis of how changes to a task would impact other tasks
+ * in the project, including direct and indirect dependencies.
+ */
+export interface TaskImpactAnalysis {
+  task: Task;
+  directly_impacted: Task[];
+  indirectly_impacted: Task[];
+  total_impacted_count: number;
+  upstream_dependencies: Task[];
+  impact_score: number;
+  risk_level: 'low' | 'medium' | 'high';
 }

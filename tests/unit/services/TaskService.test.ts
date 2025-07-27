@@ -6,9 +6,8 @@
  */
 
 import { TaskService } from '@/services/TaskService';
+import * as fs from 'fs';
 import { DatabaseConnection } from '@/database/connection';
-import { logger } from '@/utils/logger';
-import type { Task, TaskDependency } from '@/types';
 
 // Mock the logger to avoid console output during tests
 jest.mock('@/utils/logger', () => ({
@@ -73,7 +72,6 @@ describe('TaskService', () => {
     }
 
     // Clean up test database
-    const fs = require('fs');
     const testDbPath = './data/kanban-test.db';
     if (fs.existsSync(testDbPath)) {
       try {
@@ -265,13 +263,17 @@ describe('TaskService', () => {
 
     it('should handle pagination', async () => {
       // Create more tasks for pagination test
-      for (let i = 3; i <= 5; i++) {
-        await taskService.createTask({
-          title: `Task ${i}`,
-          board_id: boardId,
-          column_id: columnId,
-        });
+      const taskPromises = [];
+      for (let i = 3; i <= 5; i += 1) {
+        taskPromises.push(
+          taskService.createTask({
+            title: `Task ${String(i)}`,
+            board_id: boardId,
+            column_id: columnId,
+          })
+        );
       }
+      await Promise.all(taskPromises);
 
       const firstPage = await taskService.getTasks({
         board_id: boardId,
@@ -373,7 +375,9 @@ describe('TaskService', () => {
       expect(originalTime).not.toBeNaN();
 
       // Wait a bit to ensure timestamp difference
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise<void>(resolve => {
+        setTimeout(resolve, 10);
+      });
 
       const updatedTask = await taskService.updateTask(taskId, {
         title: 'New timestamp test',

@@ -9,14 +9,10 @@ import type {
   McpError,
   McpTool,
   McpToolResult,
-  McpResource,
-  McpPrompt,
   ToolDefinition,
-  ToolParameter,
   ToolCall,
   ResourceDefinition,
   PromptDefinition,
-  PromptArgument,
 } from '@/mcp/types';
 
 describe('MCP Types', () => {
@@ -317,17 +313,15 @@ describe('MCP Types', () => {
       function createMcpTool(definition: ToolDefinition): McpTool {
         return {
           definition,
-          execute: async (call: ToolCall): Promise<McpToolResult> => {
-            return {
-              content: [
-                {
-                  type: 'text',
-                  text: `Executed ${call.name} with ${Object.keys(call.arguments).length} arguments`,
-                },
-              ],
-              isError: false,
-            };
-          },
+          execute: async (call: ToolCall): Promise<McpToolResult> => ({
+            content: [
+              {
+                type: 'text',
+                text: `Executed ${String(String(call.name))} with ${String(String(Object.keys(call.arguments).length))} arguments`,
+              },
+            ],
+            isError: false,
+          }),
         };
       }
 
@@ -349,10 +343,7 @@ describe('MCP Types', () => {
     });
 
     it('should properly handle response transformations', () => {
-      function transformToMcpResponse<T>(
-        data: T | null,
-        error?: string
-      ): McpResponse<T> {
+      function transformToMcpResponse<T>(data: T | null, error?: string): McpResponse<T> {
         if (error) {
           return {
             success: false,
@@ -386,11 +377,11 @@ describe('MCP Types', () => {
       expect(successResult.success).toBe(true);
       expect(errorResult.success).toBe(false);
       expect(explicitErrorResult.success).toBe(false);
-      
+
       if (successResult.success) {
         expect(successResult.data.id).toBe('1');
       }
-      
+
       if (!errorResult.success) {
         expect(errorResult.error.code).toBe('NOT_FOUND');
       }
