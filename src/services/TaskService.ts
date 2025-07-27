@@ -164,7 +164,27 @@ export class TaskService {
   async createTask(data: CreateTaskRequest): Promise<Task> {
     // Validate required fields
     if (!data.title || data.title.trim().length === 0) {
-      throw this.createError('INVALID_TITLE', 'Task title is required and cannot be empty');
+      throw TaskService.createError('INVALID_TITLE', 'Task title is required and cannot be empty');
+    }
+
+    // Validate board_id exists
+    const boardExists = await this.db.queryOne('SELECT id FROM boards WHERE id = ?', [
+      data.board_id,
+    ]);
+    if (!boardExists) {
+      throw TaskService.createError('INVALID_BOARD_ID', 'Board not found', {
+        board_id: data.board_id,
+      });
+    }
+
+    // Validate column_id exists
+    const columnExists = await this.db.queryOne('SELECT id FROM columns WHERE id = ?', [
+      data.column_id,
+    ]);
+    if (!columnExists) {
+      throw TaskService.createError('INVALID_COLUMN_ID', 'Column not found', {
+        column_id: data.column_id,
+      });
     }
 
     const id = uuidv4();
@@ -180,8 +200,8 @@ export class TaskService {
       board_id: data.board_id,
       column_id: data.column_id,
       position,
-      priority: data.priority || 1,
-      status: data.status || 'todo',
+      priority: data.priority ?? 1,
+      status: data.status ?? 'todo',
       assignee: data.assignee,
       due_date: data.due_date,
       estimated_hours: data.estimated_hours,
@@ -242,7 +262,7 @@ export class TaskService {
       return task;
     } catch (error) {
       logger.error('Failed to create task', { error, data });
-      throw this.createError('TASK_CREATE_FAILED', 'Failed to create task', error);
+      throw TaskService.createError('TASK_CREATE_FAILED', 'Failed to create task', error);
     }
   }
 
@@ -272,13 +292,13 @@ export class TaskService {
       );
 
       if (task) {
-        this.convertTaskDates(task);
+        TaskService.convertTaskDates(task);
       }
 
-      return task || null;
+      return task ?? null;
     } catch (error) {
       logger.error('Failed to get task by ID', { error, id });
-      throw this.createError('TASK_FETCH_FAILED', 'Failed to fetch task', error);
+      throw TaskService.createError('TASK_FETCH_FAILED', 'Failed to fetch task', error);
     }
   }
 
@@ -312,7 +332,7 @@ export class TaskService {
         [id]
       );
 
-      subtasks.forEach(subtask => this.convertTaskDates(subtask));
+      subtasks.forEach(subtask => TaskService.convertTaskDates(subtask));
 
       return {
         ...task,
@@ -320,7 +340,11 @@ export class TaskService {
       };
     } catch (error) {
       logger.error('Failed to get task with subtasks', { error, id });
-      throw this.createError('TASK_FETCH_FAILED', 'Failed to fetch task with subtasks', error);
+      throw TaskService.createError(
+        'TASK_FETCH_FAILED',
+        'Failed to fetch task with subtasks',
+        error
+      );
     }
   }
 
@@ -371,7 +395,11 @@ export class TaskService {
       };
     } catch (error) {
       logger.error('Failed to get task with dependencies', { error, id });
-      throw this.createError('TASK_FETCH_FAILED', 'Failed to fetch task with dependencies', error);
+      throw TaskService.createError(
+        'TASK_FETCH_FAILED',
+        'Failed to fetch task with dependencies',
+        error
+      );
     }
   }
 
@@ -490,12 +518,12 @@ export class TaskService {
       params.push(limit, offset);
 
       const tasks = await this.db.query<Task>(query, params);
-      tasks.forEach(task => this.convertTaskDates(task));
+      tasks.forEach(task => TaskService.convertTaskDates(task));
 
       return tasks;
     } catch (error) {
       logger.error('Failed to get tasks', { error, options });
-      throw this.createError('TASKS_FETCH_FAILED', 'Failed to fetch tasks', error);
+      throw TaskService.createError('TASKS_FETCH_FAILED', 'Failed to fetch tasks', error);
     }
   }
 
@@ -528,7 +556,7 @@ export class TaskService {
     try {
       const existingTask = await this.getTaskById(id);
       if (!existingTask) {
-        throw this.createError('TASK_NOT_FOUND', 'Task not found', { id });
+        throw TaskService.createError('TASK_NOT_FOUND', 'Task not found', { id });
       }
 
       const updates: string[] = [];
@@ -627,7 +655,7 @@ export class TaskService {
 
       const updatedTask = await this.getTaskById(id);
       if (!updatedTask) {
-        throw this.createError('TASK_UPDATE_FAILED', 'Task disappeared after update');
+        throw TaskService.createError('TASK_UPDATE_FAILED', 'Task disappeared after update');
       }
 
       logger.info('Task updated successfully', { taskId: id });
@@ -637,7 +665,7 @@ export class TaskService {
         throw error;
       }
       logger.error('Failed to update task', { error, id, data });
-      throw this.createError('TASK_UPDATE_FAILED', 'Failed to update task', error);
+      throw TaskService.createError('TASK_UPDATE_FAILED', 'Failed to update task', error);
     }
   }
 
@@ -665,7 +693,7 @@ export class TaskService {
     try {
       const task = await this.getTaskById(id);
       if (!task) {
-        throw this.createError('TASK_NOT_FOUND', 'Task not found', { id });
+        throw TaskService.createError('TASK_NOT_FOUND', 'Task not found', { id });
       }
 
       await this.db.transaction(async db => {
@@ -690,7 +718,7 @@ export class TaskService {
         throw error;
       }
       logger.error('Failed to delete task', { error, id });
-      throw this.createError('TASK_DELETE_FAILED', 'Failed to delete task', error);
+      throw TaskService.createError('TASK_DELETE_FAILED', 'Failed to delete task', error);
     }
   }
 
@@ -767,7 +795,11 @@ export class TaskService {
       return dependency;
     } catch (error) {
       logger.error('Failed to add task dependency', { error, taskId, dependsOnTaskId });
-      throw this.createError('DEPENDENCY_ADD_FAILED', 'Failed to add task dependency', error);
+      throw TaskService.createError(
+        'DEPENDENCY_ADD_FAILED',
+        'Failed to add task dependency',
+        error
+      );
     }
   }
 
@@ -797,7 +829,7 @@ export class TaskService {
       );
 
       if (result.changes === 0) {
-        throw this.createError('DEPENDENCY_NOT_FOUND', 'Dependency not found');
+        throw TaskService.createError('DEPENDENCY_NOT_FOUND', 'Dependency not found');
       }
 
       logger.info('Task dependency removed successfully', { taskId, dependsOnTaskId });
@@ -806,7 +838,11 @@ export class TaskService {
         throw error;
       }
       logger.error('Failed to remove task dependency', { error, taskId, dependsOnTaskId });
-      throw this.createError('DEPENDENCY_REMOVE_FAILED', 'Failed to remove task dependency', error);
+      throw TaskService.createError(
+        'DEPENDENCY_REMOVE_FAILED',
+        'Failed to remove task dependency',
+        error
+      );
     }
   }
 
@@ -850,7 +886,7 @@ export class TaskService {
       return tasks;
     } catch (error) {
       logger.error('Failed to get blocked tasks', { error, boardId });
-      throw this.createError('TASKS_FETCH_FAILED', 'Failed to fetch blocked tasks', error);
+      throw TaskService.createError('TASKS_FETCH_FAILED', 'Failed to fetch blocked tasks', error);
     }
   }
 
@@ -892,7 +928,7 @@ export class TaskService {
       return tasks;
     } catch (error) {
       logger.error('Failed to get overdue tasks', { error, boardId });
-      throw this.createError('TASKS_FETCH_FAILED', 'Failed to fetch overdue tasks', error);
+      throw TaskService.createError('TASKS_FETCH_FAILED', 'Failed to fetch overdue tasks', error);
     }
   }
 
@@ -913,7 +949,7 @@ export class TaskService {
       [columnId]
     );
 
-    return result?.max_position || 1;
+    return result?.max_position ?? 1;
   }
 
   /**
@@ -1021,6 +1057,7 @@ export class TaskService {
 
       visited.add(currentTaskId);
 
+      // eslint-disable-next-line no-await-in-loop
       const dependencies = await this.db.query<{ depends_on_task_id: string }>(
         `
         SELECT depends_on_task_id FROM task_dependencies WHERE task_id = ?
@@ -1028,11 +1065,10 @@ export class TaskService {
         [currentTaskId]
       );
 
-      await Promise.all(
-        dependencies.map(async dep => {
-          await this.getSubtasks(dep.depends_on_task_id);
-        })
-      );
+      // Add all dependencies to the stack for processing
+      for (const dep of dependencies) {
+        stack.push(dep.depends_on_task_id);
+      }
     }
     return false;
   }
@@ -1059,12 +1095,12 @@ export class TaskService {
       `;
 
       const tasks = await this.db.query<Task>(query, [parentTaskId]);
-      tasks.forEach(task => this.convertTaskDates(task));
+      tasks.forEach(task => TaskService.convertTaskDates(task));
 
       return tasks;
     } catch (error) {
       logger.error('Failed to get subtasks', { error, parentTaskId });
-      throw this.createError('TASKS_FETCH_FAILED', 'Failed to fetch subtasks', error);
+      throw TaskService.createError('TASKS_FETCH_FAILED', 'Failed to fetch subtasks', error);
     }
   }
 
@@ -1089,7 +1125,7 @@ export class TaskService {
     try {
       // Prevent self-dependency
       if (taskId === dependsOnTaskId) {
-        throw this.createError('SELF_DEPENDENCY', 'A task cannot depend on itself');
+        throw TaskService.createError('SELF_DEPENDENCY', 'A task cannot depend on itself');
       }
 
       // Verify both tasks exist
@@ -1099,16 +1135,18 @@ export class TaskService {
       ]);
 
       if (!task) {
-        throw this.createError('TASK_NOT_FOUND', 'Task not found', { taskId });
+        throw TaskService.createError('TASK_NOT_FOUND', 'Task not found', { taskId });
       }
 
       if (!dependsOnTask) {
-        throw this.createError('TASK_NOT_FOUND', 'Dependency task not found', { dependsOnTaskId });
+        throw TaskService.createError('TASK_NOT_FOUND', 'Dependency task not found', {
+          dependsOnTaskId,
+        });
       }
 
       // Check for circular dependencies
       if (await this.wouldCreateCircularDependency(taskId, dependsOnTaskId)) {
-        throw this.createError(
+        throw TaskService.createError(
           'CIRCULAR_DEPENDENCY',
           'Adding this dependency would create a circular dependency'
         );
@@ -1146,7 +1184,11 @@ export class TaskService {
         throw error;
       }
       logger.error('Failed to add task dependency', { error, taskId, dependsOnTaskId });
-      throw this.createError('DEPENDENCY_ADD_FAILED', 'Failed to add task dependency', error);
+      throw TaskService.createError(
+        'DEPENDENCY_ADD_FAILED',
+        'Failed to add task dependency',
+        error
+      );
     }
   }
 
@@ -1181,7 +1223,11 @@ export class TaskService {
       });
     } catch (error) {
       logger.error('Failed to remove task dependency', { error, taskId, dependsOnTaskId });
-      throw this.createError('DEPENDENCY_REMOVE_FAILED', 'Failed to remove task dependency', error);
+      throw TaskService.createError(
+        'DEPENDENCY_REMOVE_FAILED',
+        'Failed to remove task dependency',
+        error
+      );
     }
   }
 
@@ -1221,7 +1267,11 @@ export class TaskService {
       return dependencies;
     } catch (error) {
       logger.error('Failed to get task dependencies', { error, taskId });
-      throw this.createError('TASKS_FETCH_FAILED', 'Failed to fetch task dependencies', error);
+      throw TaskService.createError(
+        'TASKS_FETCH_FAILED',
+        'Failed to fetch task dependencies',
+        error
+      );
     }
   }
 
@@ -1283,13 +1333,44 @@ export class TaskService {
       params.push(limit, offset);
 
       const tasks = await this.db.query<Task>(sql, params);
-      tasks.forEach(task => this.convertTaskDates(task));
+      tasks.forEach(task => TaskService.convertTaskDates(task));
 
       return tasks;
     } catch (error) {
       logger.error('Failed to search tasks', { error, query, options });
-      throw this.createError('TASKS_FETCH_FAILED', 'Failed to search tasks', error);
+      throw TaskService.createError('TASKS_FETCH_FAILED', 'Failed to search tasks', error);
     }
+  }
+
+  /**
+   * Converts string date fields to Date objects
+   *
+   * @private
+   * @param task Task object with potentially string-based dates
+   */
+  private static convertTaskDates(task: Task): void {
+    task.created_at = new Date(task.created_at);
+    task.updated_at = new Date(task.updated_at);
+    if (task.due_date) {
+      task.due_date = new Date(task.due_date);
+    }
+  }
+
+  /**
+   * Creates a standardized service error
+   *
+   * @private
+   * @param code Error code identifier
+   * @param message Human-readable error message
+   * @param originalError Optional original error for debugging
+   * @returns ServiceError instance
+   */
+  private static createError(code: string, message: string, originalError?: any): ServiceError {
+    const error = new Error(message) as ServiceError;
+    error.code = code;
+    error.statusCode = TaskService.getStatusCodeForError(code);
+    error.details = originalError ? { originalError: String(originalError) } : undefined;
+    return error;
   }
 
   /**

@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { render, useApp, useInput } from 'ink';
 import { Command } from 'commander';
 import chalk from 'chalk';
-import TaskList, { type Task } from '../ui/components/TaskList';
-import BoardView, { type Board, type Column } from '../ui/components/BoardView';
+import { type Task, type Board, type Column } from '@/types';
+import TaskList from '../ui/components/TaskList';
+import BoardView from '../ui/components/BoardView';
 import StatusIndicator from '../ui/components/StatusIndicator';
 
 interface InteractiveViewProps {
@@ -17,31 +18,43 @@ const InteractiveView: React.FC<InteractiveViewProps> = ({ mode, data }) => {
   const [statusType, setStatusType] = useState<'info' | 'success' | 'error' | 'loading'>('info');
   const { exit } = useApp();
 
-  useInput((input, key) => {
-    if (input === 'q' && !key.ctrl) {
-      exit();
-    } else if (input === '1') {
-      setCurrentView('tasks');
-      setStatusMessage('Switched to Task List view');
-      setStatusType('info');
-    } else if (input === '2') {
-      setCurrentView('board');
-      setStatusMessage('Switched to Board view');
-      setStatusType('info');
-    } else if (input === '?' || input === 'h') {
-      setCurrentView('help');
-      setStatusMessage('Showing help');
-      setStatusType('info');
-    } else if (input === 'r') {
-      setStatusMessage('Refreshing data...');
-      setStatusType('loading');
-      // In a real app, this would fetch fresh data
-      setTimeout(() => {
-        setStatusMessage('Data refreshed');
-        setStatusType('success');
-      }, 1000);
+  useInput(
+    (
+      input: string,
+      key: {
+        upArrow?: boolean;
+        downArrow?: boolean;
+        leftArrow?: boolean;
+        rightArrow?: boolean;
+        escape?: boolean;
+        return?: boolean;
+      }
+    ) => {
+      if (input === 'q' && !key.ctrl) {
+        exit();
+      } else if (input === '1') {
+        setCurrentView('tasks');
+        setStatusMessage('Switched to Task List view');
+        setStatusType('info');
+      } else if (input === '2') {
+        setCurrentView('board');
+        setStatusMessage('Switched to Board view');
+        setStatusType('info');
+      } else if (input === '?' || input === 'h') {
+        setCurrentView('help');
+        setStatusMessage('Showing help');
+        setStatusType('info');
+      } else if (input === 'r') {
+        setStatusMessage('Refreshing data...');
+        setStatusType('loading');
+        // In a real app, this would fetch fresh data
+        setTimeout(() => {
+          setStatusMessage('Data refreshed');
+          setStatusType('success');
+        }, 1000);
+      }
     }
-  });
+  );
 
   const handleTaskSelect = (task: Task) => {
     setStatusMessage(`Selected task: ${String(String(task.title))}`);
@@ -268,16 +281,16 @@ export const interactiveViewCommand = new Command('interactive')
       const data = options.sampleData ? generateSampleData() : await fetchRealData();
 
       if (options.mode !== 'tasks' && options.mode !== 'board') {
-        logger.error(chalk.red('Error: Mode must be either "tasks" or "board"'));
+        console.error(chalk.red('Error: Mode must be either "tasks" or "board"'));
         process.exit(1);
       }
 
-      logger.log(chalk.cyan('\n🚀 Starting interactive mode...\n'));
-      logger.log(chalk.gray('Press h for help, q to quit\n'));
+      console.log(chalk.cyan('\n🚀 Starting interactive mode...\n'));
+      console.log(chalk.gray('Press h for help, q to quit\n'));
 
       render(<InteractiveView mode={options.mode as 'tasks' | 'board'} data={data} />);
     } catch (error) {
-      logger.error(chalk.red('Error starting interactive mode:'), error);
+      console.error(chalk.red('Error starting interactive mode:'), error);
       process.exit(1);
     }
   });

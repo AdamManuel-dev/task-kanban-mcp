@@ -3,6 +3,7 @@ import inquirer from 'inquirer';
 import * as fs from 'fs';
 import * as path from 'path';
 import type { CliComponents, BackupInfo, BackupSchedule, AnyApiResponse } from '../types';
+import { isSuccessResponse } from '../api-client-wrapper';
 
 // Type guard to check if response has data property
 function hasDataProperty<T>(response: AnyApiResponse): response is { data: T } {
@@ -72,7 +73,7 @@ export function registerBackupCommands(program: Command): void {
         const backupData: Partial<BackupInfo> = {};
 
         const backupName =
-          name ||
+          name ??
           ((): string => {
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
             return `backup-${String(timestamp)}`;
@@ -122,9 +123,9 @@ export function registerBackupCommands(program: Command): void {
 
       try {
         const params: Record<string, string> = {
-          limit: options.limit || '20',
-          sort: options.sort || 'createdAt',
-          order: options.order || 'desc',
+          limit: options.limit ?? '20',
+          sort: options.sort ?? 'createdAt',
+          order: options.order ?? 'desc',
         };
 
         const backups = await apiClient.request('/api/backup/list', {
@@ -294,13 +295,13 @@ export function registerBackupCommands(program: Command): void {
         }
 
         const finalExportPath =
-          exportPath ||
-          `${String(String(backup.data.name))}.${String(String(options.format || 'json'))}`;
+          exportPath ??
+          `${String(String(backup.data.name))}.${String(String(options.format ?? 'json'))}`;
 
         formatter.info(`Exporting backup to: ${String(finalExportPath)}...`);
 
         const data = (await apiClient.request(`/api/backup/${String(id)}/export`, {
-          params: { format: options.format || 'json' },
+          params: { format: options.format ?? 'json' },
         })) as unknown;
 
         // Ensure directory exists
@@ -370,7 +371,7 @@ export function registerBackupCommands(program: Command): void {
               type: 'confirm',
               name: 'preserveExisting',
               message: 'Create backup of current state before restoration?',
-              default: options.preserveExisting || false,
+              default: options.preserveExisting ?? false,
             },
             {
               type: 'confirm',
@@ -485,7 +486,7 @@ export function registerBackupCommands(program: Command): void {
               type: 'input',
               name: 'name',
               message: 'Schedule name:',
-              default: name || `schedule-${String(String(Date.now()))}`,
+              default: name ?? `schedule-${String(String(Date.now()))}`,
               validate: (input: string): string | boolean =>
                 input.trim().length > 0 || 'Name is required',
             },
@@ -493,7 +494,7 @@ export function registerBackupCommands(program: Command): void {
               type: 'input',
               name: 'cronExpression',
               message: 'Cron expression (e.g., "0 2 * * *" for daily at 2 AM):',
-              default: options.cron || '0 2 * * *',
+              default: options.cron ?? '0 2 * * *',
               validate: (input: string): string | boolean => {
                 // Basic validation - in production you'd want more thorough validation
                 const parts = input.trim().split(' ');
@@ -505,19 +506,19 @@ export function registerBackupCommands(program: Command): void {
               name: 'backupType',
               message: 'Backup type:',
               choices: ['full', 'incremental'],
-              default: options.type || 'full',
+              default: options.type ?? 'full',
             },
             {
               type: 'input',
               name: 'description',
               message: 'Description (optional):',
-              default: options.description || '',
+              default: options.description ?? '',
             },
             {
               type: 'number',
               name: 'retentionDays',
               message: 'Retention period (days):',
-              default: parseInt(options.retention || '30'),
+              default: parseInt(options.retention ?? '30', 10),
               validate: (input: number): string | boolean =>
                 input > 0 || 'Retention days must be positive',
             },
@@ -544,11 +545,11 @@ export function registerBackupCommands(program: Command): void {
           scheduleData = answers;
         } else {
           scheduleData = {
-            name,
-            cronExpression: options.cron,
+            ...(name && { name }),
+            ...(options.cron && { cronExpression: options.cron }),
             backupType: (options.type as 'full' | 'incremental') || 'full',
-            description: options.description,
-            retentionDays: parseInt(options.retention || '30'),
+            ...(options.description && { description: options.description }),
+            retentionDays: parseInt(options.retention || '30', 10),
             compressionEnabled: !options['no-compression'],
             verificationEnabled: !options['no-verification'],
             enabled: !options.disabled,
@@ -563,7 +564,11 @@ export function registerBackupCommands(program: Command): void {
         });
 
         formatter.success('Backup schedule created successfully');
-        formatter.output(schedule.data);
+        if (isSuccessResponse(schedule)) {
+          formatter.output(schedule.data);
+        } else {
+          formatter.error('Invalid response format');
+        }
       } catch (error) {
         formatter.error('Failed to create backup schedule');
         process.exit(1);
@@ -582,23 +587,31 @@ export function registerBackupCommands(program: Command): void {
       try {
         const params: Record<string, string> = {};
 
-        if (options.enabled) params.enabled = 'true';
-        if (options.disabled) params.enabled = 'false';
-        if (options.limit) params.limit = options.limit;
+        // eslint-disable-next-line dot-notation
+        if (options.enabled) params['enabled'] = 'true';
+        // eslint-disable-next-line dot-notation
+        if (options.disabled) params['enabled'] = 'false';
+        // eslint-disable-next-line dot-notation
+        if (options.limit) params['limit'] = options.limit;
 
         const queryString = new URLSearchParams(params).toString();
         const url = `/api/schedule/list${queryString ? `?${queryString}` : ''}`;
 
         const response = await apiClient.request(url);
-        const schedules = response.data;
+        if (isSuccessResponse(response)) {
+          const schedules = response.data as BackupSchedule[];
 
-        if (schedules.length === 0) {
-          formatter.info('No backup schedules found');
-          return;
+          if (schedules.length === 0) {
+            formatter.info('No backup schedules found');
+            return;
+          }
+
+          formatter.success(`Found ${String(String(schedules.length))} backup schedule(s)`);
+          formatter.output(schedules);
+        } else {
+          formatter.error('Failed to list backup schedules');
+          process.exit(1);
         }
-
-        formatter.success(`Found ${String(String(schedules.length))} backup schedule(s)`);
-        formatter.output(schedules);
       } catch (error) {
         formatter.error('Failed to list backup schedules');
         process.exit(1);
@@ -613,9 +626,13 @@ export function registerBackupCommands(program: Command): void {
 
       try {
         const response = await apiClient.request(`/api/schedule/${String(id)}`);
-        const schedule = response.data;
-
-        formatter.output(schedule);
+        if (isSuccessResponse(response)) {
+          const schedule = response.data;
+          formatter.output(schedule);
+        } else {
+          formatter.error('Failed to get backup schedule');
+          process.exit(1);
+        }
       } catch (error) {
         formatter.error('Failed to get backup schedule');
         process.exit(1);

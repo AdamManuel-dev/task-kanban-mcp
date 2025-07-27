@@ -132,7 +132,7 @@ export class MCPResourceRegistry {
     logger.info('MCP resource read', { uri });
 
     try {
-      const parsedUri = this.parseUri(uri);
+      const parsedUri = MCPResourceRegistry.parseUri(uri);
 
       switch (parsedUri.type) {
         case 'boards':
@@ -177,8 +177,8 @@ export class MCPResourceRegistry {
     });
 
     const result: { type: string; action?: string; id: string; params?: Record<string, string> } = {
-      type: type || '',
-      id: id || '',
+      type: type ?? '',
+      id: id ?? '',
       params,
     };
 
@@ -496,7 +496,7 @@ export class MCPResourceRegistry {
         const workloadMap: Record<string, any> = {};
 
         allTasks.forEach(task => {
-          const assignee = task.assignee || 'unassigned';
+          const assignee = task.assignee ?? 'unassigned';
           if (!workloadMap[assignee]) {
             workloadMap[assignee] = {
               assignee,

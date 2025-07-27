@@ -241,7 +241,7 @@ export class StatisticsCollector {
 
     return {
       size: stats.size,
-      sizeFormatted: this.formatBytes(stats.size),
+      sizeFormatted: StatisticsCollector.formatBytes(stats.size),
       pageCount: stats.pageCount,
       pageSize: stats.pageSize,
       utilization: Math.round(utilization * 100) / 100,
@@ -262,44 +262,57 @@ export class StatisticsCollector {
       ORDER BY name
     `);
 
-    const tableStats: TableStats[] = [];
-
-    await Promise.all(
-  tables.map(async (table) => {
-    await Promise.all([
-          this.db.queryOne<{ count: number }>(`SELECT COUNT(*) as count FROM "${String(String(table.name))}"`),
+    const tableStatsPromises = tables.map(async table => {
+      try {
+        const [rowCountResult, sizeResult, indexCountResult] = await Promise.all([
+          this.db.queryOne<{ count: number }>(
+            `SELECT COUNT(*) as count FROM "${String(table.name)}"`
+          ),
           this.db.queryOne<{ size: number }>(
             `
-            SELECT SUM(pgsize) as size 
-            FROM dbstat 
-            WHERE name = ?
-          `,
+              SELECT SUM(pgsize) as size 
+              FROM dbstat 
+              WHERE name = ?
+            `,
             [table.name]
           ),
           this.db.queryOne<{ count: number }>(
             `
-            SELECT COUNT(*) as count 
-            FROM sqlite_master 
-            WHERE type = 'index' 
-            AND tbl_name = ?
-            AND name NOT LIKE 'sqlite_%'
-          `,
+              SELECT COUNT(*) as count 
+              FROM sqlite_master 
+              WHERE type = 'index' 
+              AND tbl_name = ?
+              AND name NOT LIKE 'sqlite_%'
+            `,
             [table.name]
           ),
         ]);
-  })
-);>(
-                `
-              SELECT MAX("${String(col)}") as max_time 
-              FROM "${String(String(table.name))}"
-            `
-              )
-              .catch(() => null);
 
-            if (result?.max_time) {
-              lastModified = new Date(result.max_time);
-              break;
-            }
+        const rowCount = rowCountResult?.count ?? 0;
+        const size = sizeResult?.size ?? 0;
+        const indexCount = indexCountResult?.count ?? 0;
+        const averageRowSize = rowCount > 0 ? Math.round(size / rowCount) : 0;
+
+        let lastModified: Date | undefined;
+        try {
+          // Check both possible timestamp columns
+          const timestampResults = await Promise.all(
+            ['last_modified', 'last_update'].map(col =>
+              this.db
+                .queryOne<{ max_time: string }>(
+                  `
+                  SELECT MAX("${String(col)}") as max_time 
+                  FROM "${String(table.name)}"
+                `
+                )
+                .catch(() => null)
+            )
+          );
+
+          // Find the first valid timestamp
+          const validResult = timestampResults.find(result => result?.max_time);
+          if (validResult?.max_time) {
+            lastModified = new Date(validResult.max_time);
           }
         } catch {
           // Column doesn't exist or other error, skip timestamp
@@ -309,7 +322,7 @@ export class StatisticsCollector {
           name: table.name,
           rowCount,
           size,
-          sizeFormatted: this.formatBytes(size),
+          sizeFormatted: StatisticsCollector.formatBytes(size),
           averageRowSize,
           indexCount,
         };
@@ -318,14 +331,18 @@ export class StatisticsCollector {
           tableStatRecord.lastModified = lastModified;
         }
 
-        tableStats.push(tableStatRecord);
+        return tableStatRecord;
       } catch (error) {
         logger.warn('Failed to get statistics for table', {
           table: table.name,
           error: (error as Error).message,
         });
+        return null;
       }
-    }
+    });
+
+    const tableStatsResults = await Promise.all(tableStatsPromises);
+    const tableStats = tableStatsResults.filter((stat): stat is TableStats => stat !== null);
 
     return tableStats.sort((a, b) => b.size - a.size);
   }
@@ -352,20 +369,28 @@ export class StatisticsCollector {
     const indexStats: IndexStats[] = [];
 
     await Promise.all(
-  indexes.map(async (index) => {
-    await this.db.queryOne<{ stat: string }>(
-            `
-            SELECT stat FROM sqlite_stat1 WHERE tbl = ? AND idx = ?
-          `,
-            [index.tbl_name, index.name]
-          );
-  })
-);
+      indexes.map(async index => {
+        const statResult = await this.db.queryOne<{ stat: string }>(
+          `SELECT stat FROM sqlite_stat1 WHERE tbl = ? AND idx = ?`,
+          [index.tbl_name, index.name]
+        );
+
+        let usageCount = 0;
+        let efficiency = 0;
+
+        try {
+          if (statResult?.stat) {
+            const stats = statResult.stat.split(' ');
+            if (stats.length >= 2) {
+              usageCount = parseInt(stats[0], 10) || 0;
+              efficiency = parseFloat(stats[1]) || 0;
             }
           }
         } catch {
           // Statistics not available
         }
+
+        const columns = StatisticsCollector.parseIndexColumns(index.sql ?? '');
 
         indexStats.push({
           name: index.name,
@@ -375,13 +400,8 @@ export class StatisticsCollector {
           usageCount,
           efficiency,
         });
-      } catch (error) {
-        logger.warn('Failed to get statistics for index', {
-          index: index.name,
-          error: (error as Error).message,
-        });
-      }
-    }
+      })
+    );
 
     return indexStats;
   }
@@ -392,7 +412,7 @@ export class StatisticsCollector {
    * @returns {Promise<QueryStats>} Query performance metrics
    */
   public async getQueryStatistics(): Promise<QueryStats> {
-    if (!this.config.enableQueryMonitoring || this.queryHistory.length === 0) {
+    if (!this.config.enableQueryMonitoring ?? this.queryHistory.length === 0) {
       return {
         totalQueries: 0,
         averageExecutionTime: 0,

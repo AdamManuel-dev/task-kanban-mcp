@@ -293,7 +293,7 @@ export const themes: Record<string, DashboardTheme> = {
  * Get theme by name with fallback to dark theme
  */
 export function getTheme(name: string): DashboardTheme {
-  return themes[name] || darkTheme;
+  return themes[name] ?? darkTheme;
 }
 
 /**

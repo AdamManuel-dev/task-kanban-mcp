@@ -1,5 +1,6 @@
 import Table from 'cli-table3';
 import chalk from 'chalk';
+import { logger } from '../utils/logger';
 
 type OutputFormat = 'table' | 'json' | 'csv';
 
@@ -61,7 +62,7 @@ export class OutputFormatter {
    */
   success(message: string): void {
     if (!this.options.quiet) {
-      logger.log(this.colorize(message, 'green'));
+      logger.info(OutputFormatter.colorize(message, 'green'));
     }
   }
 
@@ -69,7 +70,7 @@ export class OutputFormatter {
    * Output error message
    */
   error(message: string): void {
-    logger.error(this.colorize(`Error: ${String(message)}`, 'red'));
+    logger.error(OutputFormatter.colorize(`Error: ${String(message)}`, 'red'));
   }
 
   /**
@@ -77,7 +78,7 @@ export class OutputFormatter {
    */
   warn(message: string): void {
     if (!this.options.quiet) {
-      logger.warn(this.colorize(`Warning: ${String(message)}`, 'yellow'));
+      logger.warn(OutputFormatter.colorize(`Warning: ${String(message)}`, 'yellow'));
     }
   }
 
@@ -86,7 +87,7 @@ export class OutputFormatter {
    */
   info(message: string): void {
     if (this.options.verbose && !this.options.quiet) {
-      logger.log(this.colorize(message, 'cyan'));
+      logger.info(OutputFormatter.colorize(message, 'cyan'));
     }
   }
 
@@ -95,7 +96,7 @@ export class OutputFormatter {
    */
   debug(message: string): void {
     if (this.options.verbose && !this.options.quiet) {
-      logger.log(this.colorize(`Debug: ${String(message)}`, 'gray'));
+      logger.info(OutputFormatter.colorize(`Debug: ${String(message)}`, 'gray'));
     }
   }
 
@@ -119,8 +120,8 @@ export class OutputFormatter {
       return;
     }
 
-    const fields = options?.fields || Object.keys(items[0]);
-    const headers = options?.headers || fields;
+    const fields = options?.fields ?? Object.keys(items[0]);
+    const headers = options?.headers ?? fields;
 
     // Output headers
     logger.log(headers.join(','));
@@ -153,8 +154,8 @@ export class OutputFormatter {
       return;
     }
 
-    const fields = options?.fields || this.getTableFields(items[0]);
-    const headers = options?.headers || fields.map((field): string => this.formatHeader(field));
+    const fields = options?.fields ?? this.getTableFields(items[0]);
+    const headers = options?.headers ?? fields.map((field): string => this.formatHeader(field));
 
     const table = new Table({
       head: headers.map((h): string => this.colorize(h, 'cyan')),
@@ -213,7 +214,7 @@ export class OutputFormatter {
    * Format value for display
    */
   private static formatValue(value: unknown): string {
-    if (value === null || value === undefined) {
+    if (value === null ?? value === undefined) {
       return '';
     }
 
@@ -299,8 +300,8 @@ export class OutputFormatter {
 
     // Sort fields by priority, then alphabetically
     return allFields.sort((a, b): number => {
-      const priorityA = priorities[a as keyof typeof priorities] || 6;
-      const priorityB = priorities[b as keyof typeof priorities] || 6;
+      const priorityA = priorities[a as keyof typeof priorities] ?? 6;
+      const priorityB = priorities[b as keyof typeof priorities] ?? 6;
 
       if (priorityA !== priorityB) {
         return priorityA - priorityB;
@@ -393,11 +394,11 @@ export class OutputFormatter {
 
     // Basic info
     lines.push(`ID: ${String(String(schedule.id))}`);
-    lines.push(`Type: ${String(String(schedule.backupType?.toUpperCase() || 'N/A'))}`);
+    lines.push(`Type: ${String(String(schedule.backupType?.toUpperCase() ?? 'N/A'))}`);
     lines.push(
       `Status: ${String(String(schedule.enabled ? chalk.green('ENABLED') : chalk.red('DISABLED')))}`
     );
-    lines.push(`Cron: ${String(String(schedule.cronExpression || schedule.cron || 'N/A'))}`);
+    lines.push(`Cron: ${String(String(schedule.cronExpression ?? schedule.cron ?? 'N/A'))}`);
 
     if (schedule.description) {
       lines.push(`Description: ${String(String(schedule.description))}`);
@@ -413,21 +414,21 @@ export class OutputFormatter {
       lines.push(`Last Run: ${String(String(new Date(schedule.lastRunAt).toLocaleString()))}`);
     }
 
-    if (schedule.nextRunAt || schedule.next_run) {
+    if (schedule.nextRunAt ?? schedule.next_run) {
       lines.push(
-        `Next Run: ${String(String(new Date(schedule.nextRunAt || schedule.next_run).toLocaleString()))}`
+        `Next Run: ${String(String(new Date(schedule.nextRunAt ?? schedule.next_run).toLocaleString()))}`
       );
     }
 
     // Statistics
     lines.push('');
     lines.push(this.formatHeader('Statistics:'));
-    lines.push(`Total Runs: ${String(String(schedule.runCount || 0))}`);
-    lines.push(`Failures: ${String(String(schedule.failureCount || 0))}`);
+    lines.push(`Total Runs: ${String(String(schedule.runCount ?? 0))}`);
+    lines.push(`Failures: ${String(String(schedule.failureCount ?? 0))}`);
 
     if (schedule.runCount > 0) {
       const successRate = (
-        ((schedule.runCount - (schedule.failureCount || 0)) / schedule.runCount) *
+        ((schedule.runCount - (schedule.failureCount ?? 0)) / schedule.runCount) *
         100
       ).toFixed(1);
       lines.push(`Success Rate: ${String(successRate)}%`);
@@ -436,7 +437,7 @@ export class OutputFormatter {
     // Configuration
     lines.push('');
     lines.push(this.formatHeader('Configuration:'));
-    lines.push(`Retention: ${String(String(schedule.retentionDays || 30))} days`);
+    lines.push(`Retention: ${String(String(schedule.retentionDays ?? 30))} days`);
     lines.push(
       `Compression: ${String(String(schedule.compressionEnabled ? 'Enabled' : 'Disabled'))}`
     );

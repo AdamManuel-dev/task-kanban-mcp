@@ -4,7 +4,6 @@
 
 import type { SchemaManager } from '@/database/schema';
 import { DatabaseConnection } from '@/database/connection';
-import { logger } from '@/utils/logger';
 
 // Mock the logger to avoid console output during tests
 jest.mock('@/utils/logger', () => ({
@@ -60,7 +59,7 @@ describe('SchemaManager', () => {
         ORDER BY name
       `);
 
-      const tableNames = tables.map(t => t.name);
+      const tableNames = tables.map((t: { name: string }) => t.name);
       expect(tableNames).toContain('boards');
       expect(tableNames).toContain('tasks');
       expect(tableNames).toContain('columns');
@@ -80,7 +79,7 @@ describe('SchemaManager', () => {
         ORDER BY name
       `);
 
-      const ftsTableNames = ftsTables.map(t => t.name);
+      const ftsTableNames = ftsTables.map((t: { name: string }) => t.name);
       expect(ftsTableNames).toContain('tasks_fts');
       expect(ftsTableNames).toContain('notes_fts');
     });
@@ -94,7 +93,7 @@ describe('SchemaManager', () => {
         ORDER BY name
       `);
 
-      const indexNames = indexes.map(i => i.name);
+      const indexNames = indexes.map((i: { name: string }) => i.name);
       expect(indexNames.length).toBeGreaterThan(10); // Should have many indexes
       expect(indexNames).toContain('idx_tasks_board_id');
       expect(indexNames).toContain('idx_tasks_column_id');
@@ -110,7 +109,7 @@ describe('SchemaManager', () => {
         ORDER BY name
       `);
 
-      const viewNames = views.map(v => v.name);
+      const viewNames = views.map((v: { name: string }) => v.name);
       expect(viewNames).toContain('active_tasks');
       expect(viewNames).toContain('task_dependency_graph');
       expect(viewNames).toContain('board_stats');
@@ -125,7 +124,7 @@ describe('SchemaManager', () => {
         ORDER BY name
       `);
 
-      const triggerNames = triggers.map(t => t.name);
+      const triggerNames = triggers.map((t: { name: string }) => t.name);
       expect(triggerNames.length).toBeGreaterThan(5);
       expect(triggerNames).toContain('tasks_fts_insert');
       expect(triggerNames).toContain('update_tasks_timestamp');

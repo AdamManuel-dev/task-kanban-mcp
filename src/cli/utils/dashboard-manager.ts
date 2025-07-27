@@ -46,11 +46,11 @@ export class DashboardManager {
 
   private currentLayout: 'overview' | 'velocity' | 'personal' = 'overview';
 
-  private readonly focusedWidget: string | null = null;
+  // private readonly focusedWidget: string | null = null;
 
-  private readonly isFullscreen = false;
+  // private readonly isFullscreen = false;
 
-  private readonly debugMode = false;
+  // private readonly debugMode = false;
 
   constructor(config: Partial<DashboardConfig> = {}, apiClient?: ApiClient) {
     this.config = {
@@ -89,7 +89,7 @@ export class DashboardManager {
   /**
    * Setup keyboard navigation
    */
-  private static setupKeyBindings(): void {
+  private setupKeyBindings(): void {
     // Exit commands
     this.screen.key(['q', 'C-c'], () => {
       this.destroy();
@@ -116,48 +116,48 @@ export class DashboardManager {
 
     // Help and settings
     this.screen.key(['h', '?', 'F12'], () => {
-      this.showHelp();
+      DashboardManager.showHelp();
     });
 
     this.screen.key(['t', 'F9'], () => {
-      this.toggleTheme();
+      DashboardManager.toggleTheme();
     });
 
     this.screen.key(['a', 'F10'], () => {
-      this.toggleAutoRefresh();
+      DashboardManager.toggleAutoRefresh();
     });
 
     // Navigation within widgets
     this.screen.key(['tab'], () => {
-      this.focusNextWidget();
+      DashboardManager.focusNextWidget();
     });
 
     this.screen.key(['S-tab'], () => {
-      this.focusPreviousWidget();
+      DashboardManager.focusPreviousWidget();
     });
 
     // Zoom/fullscreen toggle
     this.screen.key(['f', 'F11'], () => {
-      this.toggleFullscreen();
+      DashboardManager.toggleFullscreen();
     });
 
     // Quick actions
     this.screen.key(['s'], () => {
-      this.showQuickStats();
+      DashboardManager.showQuickStats();
     });
 
     this.screen.key(['e'], () => {
-      this.exportDashboard();
+      DashboardManager.exportDashboard();
     });
 
     // Debug mode toggle
     this.screen.key(['d'], () => {
-      this.toggleDebugMode();
+      DashboardManager.toggleDebugMode();
     });
 
     // Reset view
     this.screen.key(['escape'], () => {
-      this.resetView();
+      DashboardManager.resetView();
     });
   }
 
@@ -165,7 +165,7 @@ export class DashboardManager {
    * Create overview dashboard layout
    */
   createOverviewDashboard(data: DashboardData): void {
-    this.clearWidgets();
+    DashboardManager.clearWidgets();
 
     // Task status donut chart
     const donutStyles = this.themeHelper.getDonutStyles();
@@ -230,8 +230,8 @@ export class DashboardManager {
     this.widgets.set('velocityLine', velocityLine);
     this.widgets.set('activityLog', activityLog);
 
-    this.addHeader('📊 Kanban Dashboard - Overview');
-    this.addFooter();
+    DashboardManager.addHeader('📊 Kanban Dashboard - Overview');
+    DashboardManager.addFooter();
   }
 
   /**
@@ -680,7 +680,7 @@ Press any key to close this help...
   //     done: 'green',
   //     blocked: 'red',
   //   };
-  //   return colors[status as keyof typeof colors] || 'white';
+  //   return colors[status as keyof typeof colors] ?? 'white';
   // }
 
   /**
@@ -899,7 +899,7 @@ Press any key to close...
       label: '🐛 Debug Info',
       content: `
 Widgets: ${String(String(this.widgets.size))}
-Focused: ${String(String(this.focusedWidget || 'none'))}
+Focused: ${String(String(this.focusedWidget ?? 'none'))}
 Layout: ${String(String(this.currentLayout))}
 Fullscreen: ${String(String(this.isFullscreen))}
 Theme: ${String(String(this.themeHelper.getTheme().name))}

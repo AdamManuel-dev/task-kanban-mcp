@@ -27,8 +27,8 @@ describe('TaskService - Simple Tests', () => {
       await dbConnection.close();
     }
 
-    // Initialize with schema creation enabled (default)
-    await dbConnection.initialize();
+    // Initialize with schema creation disabled for testing
+    await dbConnection.initialize({ skipSchema: false });
     taskService = new TaskService(dbConnection);
 
     // Check if schema exists, if not create it

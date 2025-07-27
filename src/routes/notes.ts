@@ -5,7 +5,7 @@ import { requirePermission } from '@/middleware/auth';
 import { NoteValidation, validateInput } from '@/utils/validation';
 import { NotFoundError } from '@/utils/errors';
 
-export async function noteRoutes(): Promise<void>(): Promise<Router> {
+export async function noteRoutes(): Promise<Router> {
   const router = Router();
 
   const noteService = new NoteService(dbConnection);
@@ -133,7 +133,7 @@ export async function noteRoutes(): Promise<void>(): Promise<Router> {
       const notes = await noteService.getNotes(options);
 
       // Get total count for pagination
-      const { limit: _, offset: __, ...countOptions } = options;
+      const { limit, offset, ...countOptions } = options;
       const totalNotes = await noteService.getNotes(countOptions);
       const total = totalNotes.length;
 

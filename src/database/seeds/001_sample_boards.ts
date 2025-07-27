@@ -1,10 +1,11 @@
 import type { Database } from 'sqlite';
 import type { Database as SQLiteDB } from 'sqlite3';
+import { logger } from '../../utils/logger';
 
 export const name = 'Sample Boards';
 export const description = 'Create sample boards with columns for development';
 
-export async function run(): Promise<void>(db: Database<SQLiteDB>): Promise<void> {
+export async function run(db: Database<SQLiteDB>): Promise<void> {
   // Create sample boards
   await db.run(`
     INSERT INTO boards (id, name, description, color) VALUES 
@@ -41,5 +42,5 @@ export async function run(): Promise<void>(db: Database<SQLiteDB>): Promise<void
     ('col-13', 'board-3', 'Completed', 4, NULL)
   `);
 
-  logger.log('Sample boards and columns created');
+  logger.info('Sample boards and columns created');
 }

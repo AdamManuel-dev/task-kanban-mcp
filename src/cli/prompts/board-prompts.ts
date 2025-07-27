@@ -1,8 +1,6 @@
 import prompts from 'prompts';
 import chalk from 'chalk';
 import { validateBoardName, validateColumnName } from './validators';
-import { spinner } from '../utils/spinner';
-import { PromptCancelledError } from './task-prompts';
 
 export interface BoardSetupInput {
   name: string;
@@ -135,7 +133,9 @@ export async function quickBoardSetup(
     let addingColumns = true;
     let order = 0;
 
+    // eslint-disable-next-line no-await-in-loop
     while (addingColumns) {
+      // eslint-disable-next-line no-await-in-loop
       const { columnName } = await prompts({
         type: 'text',
         name: 'columnName',
@@ -165,7 +165,7 @@ export async function quickBoardSetup(
     type: 'toggle',
     name: 'isPublic',
     message: 'Make board public?',
-    initial: defaults?.isPublic || false,
+    initial: defaults?.isPublic ?? false,
     active: 'yes',
     inactive: 'no',
   });
@@ -183,7 +183,7 @@ export async function quickBoardSetup(
 
   return {
     name: boardInfo.name,
-    description: boardInfo.description || undefined,
+    description: boardInfo.description ?? undefined,
     columns,
     isPublic,
   };
@@ -200,7 +200,7 @@ export async function confirmAction(message: string, defaultAnswer = false): Pro
     initial: defaultAnswer,
   });
 
-  return response.confirmed || false;
+  return response.confirmed ?? false;
 }
 
 /**
@@ -234,7 +234,7 @@ export async function selectFromList<T extends { id: string; name: string }>(
       hint: '- Space to select. Return to submit',
     });
 
-    if (!response.selected || response.selected.length === 0) {
+    if (!response.selected ?? response.selected.length === 0) {
       return null;
     }
 
@@ -353,7 +353,7 @@ export async function boardSettingsPrompt(currentSettings: {
       type: 'number',
       name: 'autoArchiveDays',
       message: 'Auto-archive completed tasks after (days, 0 to disable):',
-      initial: currentSettings.autoArchiveDays || 0,
+      initial: currentSettings.autoArchiveDays ?? 0,
       min: 0,
       max: 365,
     },
@@ -366,16 +366,16 @@ export async function boardSettingsPrompt(currentSettings: {
     changes.name = response.name;
   }
   if (response.description !== currentSettings.description) {
-    changes.description = response.description || undefined;
+    changes.description = response.description ?? undefined;
   }
   if (response.isPublic !== currentSettings.isPublic) {
     changes.isPublic = response.isPublic;
   }
   if (response.defaultAssignee !== currentSettings.defaultAssignee) {
-    changes.defaultAssignee = response.defaultAssignee || undefined;
+    changes.defaultAssignee = response.defaultAssignee ?? undefined;
   }
   if (response.autoArchiveDays !== currentSettings.autoArchiveDays) {
-    changes.autoArchiveDays = response.autoArchiveDays || undefined;
+    changes.autoArchiveDays = response.autoArchiveDays ?? undefined;
   }
 
   return changes;

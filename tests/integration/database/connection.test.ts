@@ -2,10 +2,10 @@
  * Database Connection Integration Tests
  */
 
-import { dbConnection } from '@/database/connection';
 import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs';
 import * as path from 'path';
+import { dbConnection } from '../../src/database/connection';
 
 describe('Database Connection Integration Tests', () => {
   const testDbPath = path.join(__dirname, `test-${String(uuidv4())}.db`);
@@ -228,7 +228,9 @@ describe('Database Connection Integration Tests', () => {
         );
 
         // Create tasks
+        // eslint-disable-next-line no-await-in-loop
         for (let i = 0; i < taskIds.length; i++) {
+          // eslint-disable-next-line no-await-in-loop
           await dbConnection.execute(
             `INSERT INTO tasks (id, title, board_id, column_id, status, position, created_at) 
              VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -332,7 +334,9 @@ describe('Database Connection Integration Tests', () => {
       const recordCount = 1000;
 
       await dbConnection.transaction(async () => {
-        Array.from({ length: recordCount - 0 }, (_, i) => i + 0) {
+        // eslint-disable-next-line no-await-in-loop
+        for (let i = 0; i < recordCount; i++) {
+          // eslint-disable-next-line no-await-in-loop
           await dbConnection.execute('INSERT INTO tags (id, name, created_at) VALUES (?, ?, ?)', [
             uuidv4(),
             `Tag ${i}`,
@@ -368,7 +372,9 @@ describe('Database Connection Integration Tests', () => {
         [columnId, boardId, 'To Do', 0, new Date().toISOString()]
       );
 
-      Array.from({ length: 100 - 0 }, (_, i) => i + 0) {
+      // eslint-disable-next-line no-await-in-loop
+      for (let i = 0; i < 100; i++) {
+        // eslint-disable-next-line no-await-in-loop
         await dbConnection.execute(
           `INSERT INTO tasks (id, title, board_id, column_id, status, position, created_at) 
            VALUES (?, ?, ?, ?, ?, ?, ?)`,

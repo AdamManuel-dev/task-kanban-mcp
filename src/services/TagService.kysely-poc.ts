@@ -278,11 +278,9 @@ export class TagServiceKysely {
       const allTags = await this.db.selectFrom('tags').selectAll().orderBy('name', 'asc').execute();
 
       // Build hierarchy
-      const tagMap = new Map(allTags.map(tag => [tag.id, { ...tag, children: [] }]));
-      const rootTags: Array<Tag & { children?: Tag[] }> = [];
 
       await Promise.all(
-        allTags.map(async tag => {
+        allTags.map(async _tag => {
           this.db
             .selectFrom('tags')
             .select(['parent_id'])

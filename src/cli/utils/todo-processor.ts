@@ -43,19 +43,18 @@ export class TodoProcessor {
     const content = await readFile(filePath, 'utf-8');
     const lines = content.split('\n');
     const todos = new Map<string, TodoItem>();
-    let currentPhase = '';
+    const currentPhase = '';
 
-    await Promise.all(
-  lines.map(async (line) => {
-    this.parseTodoFile(todoFile);
-  })
-); else {
-      await this.processWithDependencies(todos, options);
+    for (const line of lines) {
+      const todo = this.parseTodoLine(line, currentPhase);
+      if (todo) {
+        todos.set(todo.id, todo);
+      }
     }
 
-    if (options.generateReport) {
-      await this.generateReport(todos, todoFile);
-    }
+    // Note: options and todoFile are not defined in this scope
+    // This appears to be incomplete code that needs proper parameters
+    return todos;
   }
 
   /**
@@ -97,7 +96,7 @@ export class TodoProcessor {
               return false;
             },
           })),
-        concurrent: options.concurrent || false,
+        concurrent: options.concurrent ?? false,
       });
     }
 
@@ -130,7 +129,7 @@ export class TodoProcessor {
           }));
 
           return task.newListr(subtasks, {
-            concurrent: options.concurrent || true,
+            concurrent: options.concurrent ?? true,
             rendererOptions: {
               showSubtasks: true,
             } as any,

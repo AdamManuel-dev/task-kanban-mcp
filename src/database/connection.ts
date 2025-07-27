@@ -84,9 +84,8 @@ export class DatabaseConnection {
 
   private seedRunner: SeedRunner | null = null;
 
-  private static constructor() {
-  // Static method implementation
-} = {
+  private constructor() {
+    this.config = {
       path: config.database.path,
       walMode: config.database.walMode,
       memoryLimit: config.database.memoryLimit,
@@ -110,6 +109,18 @@ export class DatabaseConnection {
       DatabaseConnection.instance = new DatabaseConnection();
     }
     return DatabaseConnection.instance;
+  }
+
+  /**
+   * Reset the singleton instance (for testing purposes)
+   */
+  public static resetInstance(): void {
+    if (DatabaseConnection.instance) {
+      DatabaseConnection.instance.close().catch(() => {
+        // Ignore errors during cleanup
+      });
+    }
+    DatabaseConnection.instance = null as any;
   }
 
   /**
@@ -377,7 +388,7 @@ export class DatabaseConnection {
       });
       return {
         lastID: result.lastID,
-        changes: result.changes || 0,
+        changes: result.changes ?? 0,
       };
     } catch (error) {
       logger.error('Statement execution failed', { sql, params, error });
@@ -429,18 +440,35 @@ export class DatabaseConnection {
     callback: (db: Database<sqlite3.Database, sqlite3.Statement>) => Promise<T>
   ): Promise<T> {
     const db = this.getDatabase();
+    let transactionStarted = false;
+
     try {
-      logger.debug('Starting transaction');
-      await db.exec('BEGIN TRANSACTION');
+      // Check if we're already in a transaction
+      const transactionState = await db.get('PRAGMA transaction_state');
+      if (transactionState?.transaction_state === 'none') {
+        logger.debug('Starting transaction');
+        await db.exec('BEGIN TRANSACTION');
+        transactionStarted = true;
+      } else {
+        logger.debug('Transaction already active, using existing transaction');
+      }
 
       const result = await callback(db);
 
-      await db.exec('COMMIT');
-      logger.debug('Transaction committed successfully');
+      if (transactionStarted) {
+        await db.exec('COMMIT');
+        logger.debug('Transaction committed successfully');
+      }
       return result;
     } catch (error) {
       logger.error('Transaction failed, rolling back', { error });
-      await db.exec('ROLLBACK');
+      if (transactionStarted) {
+        try {
+          await db.exec('ROLLBACK');
+        } catch (rollbackError) {
+          logger.error('Failed to rollback transaction', { rollbackError });
+        }
+      }
       throw error;
     }
   }
@@ -472,7 +500,7 @@ export class DatabaseConnection {
   }> {
     const db = this.getDatabase();
 
-    const [_pragmaInfo, tableCount] = await Promise.all([
+    const [, tableCount] = await Promise.all([
       db.all('PRAGMA database_list'),
       db.get<{ count: number }>("SELECT COUNT(*) as count FROM sqlite_master WHERE type='table'"),
     ]);
@@ -488,11 +516,11 @@ export class DatabaseConnection {
     const walMode = await db.get<{ journal_mode: string }>('PRAGMA journal_mode');
 
     return {
-      size: stats?.size || 0,
-      pageCount: stats?.page_count || 0,
-      pageSize: stats?.page_size || 0,
+      size: stats?.size ?? 0,
+      pageCount: stats?.page_count ?? 0,
+      pageSize: stats?.page_size ?? 0,
       walMode: walMode?.journal_mode === 'wal',
-      tables: tableCount?.count || 0,
+      tables: tableCount?.count ?? 0,
     };
   }
 

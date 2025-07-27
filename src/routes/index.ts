@@ -9,7 +9,7 @@ import backupRoutes from './backup';
 import scheduleRoutes from './schedule';
 import exportRoutes from './export';
 
-export async function apiRoutes(): Promise<void>() {
+export async function apiRoutes(): Promise<Router> {
   const router = Router();
 
   // Health and status routes

@@ -28,7 +28,7 @@ program
   .action(async (options: { target?: string }) => {
     try {
       await dbConnection.initialize({ skipSchema: true });
-      const count = await dbConnection.runMigrations(options.target);
+      const count: number = await dbConnection.runMigrations(options.target);
 
       if (count === 0) {
         console.log('✅ No pending migrations');
@@ -50,7 +50,7 @@ program
   .action(async (options: { target?: string }) => {
     try {
       await dbConnection.initialize({ skipSchema: true });
-      const count = await dbConnection.rollbackMigrations(options.target);
+      const count: number = await dbConnection.rollbackMigrations(options.target);
 
       if (count === 0) {
         console.log('✅ No migrations to rollback');
@@ -71,7 +71,8 @@ program
   .action(async () => {
     try {
       await dbConnection.initialize({ skipSchema: true });
-      const status = await dbConnection.getMigrationStatus();
+      const status: { applied: string[]; pending: string[]; total: number } =
+        await dbConnection.getMigrationStatus();
 
       console.log('\n📊 Migration Status:');
       console.log(`   Total migrations: ${String(status.total)}`);

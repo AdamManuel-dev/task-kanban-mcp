@@ -1,6 +1,6 @@
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { logger } from '@/utils/logger';
-import type { TaskService } from '@/services/TaskService';
+import type { TaskService, CreateTaskRequest } from '@/services/TaskService';
 import type { BoardService } from '@/services/BoardService';
 import type { NoteService } from '@/services/NoteService';
 import type { TagService } from '@/services/TagService';
@@ -487,13 +487,11 @@ export class MCPToolRegistry {
   }
 
   // Tool implementations
-  private async createTask(args: any): Promise<TaskResponse> {
-    // Handle both naming conventions: board_id/boardId, column_id/columnId
-    const board_id = args.board_id || args.boardId;
-    const column_id = args.column_id || args.columnId || 'todo';
+  private async createTask(args: CreateTaskArgs): Promise<TaskResponse> {
+    const { board_id, column_id = 'todo' } = args;
 
     if (!board_id) {
-      throw new Error('board_id (or boardId) is required');
+      throw new Error('board_id is required');
     }
 
     // Validate board exists
@@ -503,30 +501,23 @@ export class MCPToolRegistry {
       throw new Error('Board not found');
     }
 
-    interface CreateTaskData {
-      title: string;
-      description?: string;
-      board_id: string;
-      column_id: string;
-      priority?: number;
-      status?: 'todo' | 'in_progress' | 'done' | 'blocked' | 'archived';
-      assignee?: string;
-      due_date?: Date;
-      tags?: string[];
-    }
-
-    const createData: CreateTaskData = {
+    const createData: CreateTaskRequest = {
       title: args.title,
-      description: args.description,
       board_id,
       column_id,
-      priority: args.priority,
-      status: args.status || 'todo',
-      assignee: args.assignee,
-      tags: args.tags,
+      status: args.status ?? 'todo',
     };
 
-    // Convert due_date string to Date if provided
+    // Only add optional properties if they are defined
+    if (args.description !== undefined) {
+      createData.description = args.description;
+    }
+    if (args.priority !== undefined) {
+      createData.priority = args.priority;
+    }
+    if (args.assignee !== undefined) {
+      createData.assignee = args.assignee;
+    }
     if (args.due_date) {
       createData.due_date = new Date(args.due_date);
     }
@@ -535,13 +526,13 @@ export class MCPToolRegistry {
     return { success: true, task };
   }
 
-  private async updateTask(args: any): Promise<TaskResponse> {
-    const task_id = args.task_id || args.id;
-    const { due_date, ...updates } = args;
+  private async updateTask(args: UpdateTaskArgs): Promise<TaskResponse> {
+    const { task_id, due_date, ...updates } = args;
 
     if (!task_id) {
-      throw new Error('task_id (or id) is required');
+      throw new Error('task_id is required');
     }
+
     interface UpdateTaskData {
       title?: string;
       description?: string;
@@ -551,17 +542,18 @@ export class MCPToolRegistry {
       due_date?: Date;
       progress?: number;
     }
+
     const updateData: UpdateTaskData = updates;
     if (due_date) {
       updateData.due_date = new Date(due_date);
     }
+
     const task = await this.services.taskService.updateTask(task_id, updateData);
     return { success: true, task };
   }
 
-  private async getTask(args: any): Promise<GetTaskDetailedResponse> {
-    const task_id = args.task_id || args.id;
-    const { include_subtasks, include_dependencies, include_notes, include_tags } = args;
+  private async getTask(args: GetTaskArgs): Promise<GetTaskDetailedResponse> {
+    const { task_id, include_subtasks, include_dependencies, include_notes, include_tags } = args;
 
     if (!task_id) {
       throw new Error('task_id (or id) is required');
@@ -737,7 +729,7 @@ export class MCPToolRegistry {
         todo: 'progress',
         reminder: 'general',
       };
-      noteData.category = categoryMap[category] || 'general';
+      noteData.category = categoryMap[category] ?? 'general';
     }
 
     const note = await this.services.noteService.createNote(noteData);
@@ -809,7 +801,7 @@ export class MCPToolRegistry {
     }
     const options: ProjectContextOptions = {
       days_back: 30, // Default to 30 days
-      include_metrics: args.include_metrics || false,
+      include_metrics: args.include_metrics ?? false,
       detail_level: 'comprehensive',
     };
 

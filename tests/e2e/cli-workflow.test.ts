@@ -72,8 +72,7 @@ describe('CLI Complete Workflow E2E Tests', () => {
         child.on('close', code => {
           if (code === 0) {
             resolve(output);
-  })
-); else {
+          } else {
             reject(new Error(`Interactive setup failed with code ${String(code)}`));
           }
         });
@@ -122,7 +121,7 @@ describe('CLI Complete Workflow E2E Tests', () => {
       const operations = [];
 
       // Create multiple tasks rapidly
-      Array.from({ length: 10 - 0 }, (_, i) => i + 0) {
+      for (let i = 0; i < 10; i++) {
         const operation = execSync(
           `node dist/cli/index.js task create --title "Rapid Task ${String(i)}" --priority P3`,
           { encoding: 'utf8', cwd: process.cwd() }
@@ -148,7 +147,7 @@ describe('CLI Complete Workflow E2E Tests', () => {
         cwd: process.cwd(),
       });
 
-      Array.from({ length: 10 - 0 }, (_, i) => i + 0) {
+      for (let i = 0; i < 10; i++) {
         expect(listResult).toContain(`Rapid Task ${String(i)}`);
       }
     }, 45000);

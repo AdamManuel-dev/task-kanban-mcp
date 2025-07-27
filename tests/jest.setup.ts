@@ -37,6 +37,12 @@ afterAll(async () => {
   // TODO: Cleanup test resources
 });
 
+// Reset database connection between tests (only for tests that don't manage their own connection)
+beforeEach(async () => {
+  // Only reset if no test-specific setup is done
+  // Tests that need database should initialize it themselves
+});
+
 // Reset mocks between tests
 beforeEach(() => {
   jest.clearAllMocks();

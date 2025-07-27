@@ -10,8 +10,6 @@ import {
   withTransaction,
   batchInTransaction,
 } from '../../../src/utils/transactions';
-import { BaseServiceError, DatabaseError } from '../../../src/utils/errors';
-import { logger } from '../../../src/utils/logger';
 
 // Mock the logger
 jest.mock('../../../src/utils/logger', () => ({
@@ -32,7 +30,7 @@ describe('Transaction Utilities', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    transactionManager = new TransactionManager(mockDbConnection as any);
+    transactionManager = new TransactionManager(mockDbConnection as unknown as TransactionContext);
   });
 
   describe('TransactionManager', () => {
@@ -41,9 +39,10 @@ describe('Transaction Utilities', () => {
         const mockResult = { success: true };
         const mockOperations = jest.fn().mockResolvedValue(mockResult);
 
-        mockDbConnection.transaction.mockImplementation(async callback =>
-          callback(mockDbConnection)
-        );
+        mockDbConnection.transaction.mockImplementation(async callback => {
+          await Promise.resolve();
+          return callback(mockDbConnection) as unknown;
+        });
 
         const result = await transactionManager.executeTransaction(mockOperations);
 
@@ -64,9 +63,10 @@ describe('Transaction Utilities', () => {
         const error = new Error('Transaction failed');
         const mockOperations = jest.fn().mockRejectedValue(error);
 
-        mockDbConnection.transaction.mockImplementation(async callback =>
-          callback(mockDbConnection)
-        );
+        mockDbConnection.transaction.mockImplementation(async callback => {
+          await Promise.resolve();
+          return callback(mockDbConnection) as unknown;
+        });
 
         await expect(transactionManager.executeTransaction(mockOperations)).rejects.toThrow(
           'Transaction failed'
@@ -76,15 +76,17 @@ describe('Transaction Utilities', () => {
       });
 
       it('should handle transaction timeout', async () => {
-        const mockOperations = jest
-          .fn()
-          .mockImplementation(() => new Promise<void>(resolve => {
-    setTimeout(resolve, 1000
-  })));
-
-        mockDbConnection.transaction.mockImplementation(async callback =>
-          callback(mockDbConnection)
+        const mockOperations = jest.fn().mockImplementation(
+          () =>
+            new Promise<void>(resolve => {
+              setTimeout(resolve, 1000);
+            })
         );
+
+        mockDbConnection.transaction.mockImplementation(async callback => {
+          await Promise.resolve();
+          return callback(mockDbConnection) as unknown;
+        });
 
         const options: TransactionOptions = { timeout: 100 };
 
@@ -104,9 +106,10 @@ describe('Transaction Utilities', () => {
           .mockRejectedValueOnce(retryableError)
           .mockResolvedValue(mockResult);
 
-        mockDbConnection.transaction.mockImplementation(async callback =>
-          callback(mockDbConnection)
-        );
+        mockDbConnection.transaction.mockImplementation(async callback => {
+          await Promise.resolve();
+          return callback(mockDbConnection) as unknown;
+        });
 
         const options: TransactionOptions = { retryAttempts: 3 };
         const result = await transactionManager.executeTransactionWithRetry(
@@ -122,9 +125,10 @@ describe('Transaction Utilities', () => {
         const nonRetryableError = new Error('Invalid input');
         const mockOperations = jest.fn().mockRejectedValue(nonRetryableError);
 
-        mockDbConnection.transaction.mockImplementation(async callback =>
-          callback(mockDbConnection)
-        );
+        mockDbConnection.transaction.mockImplementation(async callback => {
+          await Promise.resolve();
+          return callback(mockDbConnection) as unknown;
+        });
 
         const options: TransactionOptions = { retryAttempts: 3 };
 
@@ -193,7 +197,10 @@ describe('Transaction Utilities', () => {
       const mockResult = { success: true };
       const mockOperation = jest.fn().mockResolvedValue(mockResult);
 
-      mockDbConnection.transaction.mockImplementation(async callback => callback(mockDbConnection));
+      mockDbConnection.transaction.mockImplementation(async callback => {
+        await Promise.resolve();
+        return callback(mockDbConnection) as unknown;
+      });
 
       const result = await withTransaction(mockService, mockOperation);
 
@@ -215,7 +222,10 @@ describe('Transaction Utilities', () => {
       const items = [1, 2, 3, 4, 5];
       const mockOperation = jest.fn().mockImplementation(item => Promise.resolve(item * 2));
 
-      mockDbConnection.transaction.mockImplementation(async callback => callback(mockDbConnection));
+      mockDbConnection.transaction.mockImplementation(async callback => {
+        await Promise.resolve();
+        return callback(mockDbConnection) as unknown;
+      });
 
       const result = await batchInTransaction(mockDbConnection, items, mockOperation, {
         batchSize: 2,

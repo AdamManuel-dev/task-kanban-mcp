@@ -113,16 +113,11 @@ export class SchemaManager {
     logger.info('Creating database schema...');
 
     try {
-      const schemaSQL = this.readSchemaFile();
-      const statements = this.parseSchemaStatements(schemaSQL);
+      const schemaSQL = SchemaManager.readSchemaFile();
 
       await this.db.transaction(async database => {
-        await Promise.all(
-  statements.map(async (statement) => {
-    await database.run(statement);
-  })
-);
-        }
+        // Execute the entire schema file at once
+        await database.exec(schemaSQL);
 
         // Create schema info record
         await this.createSchemaInfoTable();
@@ -263,7 +258,7 @@ export class SchemaManager {
         WHERE type='table' AND name NOT LIKE 'sqlite_%'
       `);
 
-      if (!tables || tables[0]?.count === 0) {
+      if (!tables ?? tables[0]?.count === 0) {
         logger.info('No schema to drop');
         return;
       }
@@ -277,10 +272,10 @@ export class SchemaManager {
           SELECT name FROM sqlite_master WHERE type='trigger'
         `);
         await Promise.all(
-  triggers.map(async (trigger) => {
-    await database.run(`DROP TRIGGER IF EXISTS "${String(String(trigger.name))}"`);
-  })
-);
+          triggers.map(async trigger => {
+            await database.run(`DROP TRIGGER IF EXISTS "${String(String(trigger.name))}"`);
+          })
+        );
 
         // Drop all indexes
         const indexes = await database.all(`
@@ -288,20 +283,20 @@ export class SchemaManager {
           WHERE type='index' AND name NOT LIKE 'sqlite_%'
         `);
         await Promise.all(
-  indexes.map(async (index) => {
-    await database.run(`DROP INDEX IF EXISTS "${String(String(index.name))}"`);
-  })
-);
+          indexes.map(async index => {
+            await database.run(`DROP INDEX IF EXISTS "${String(String(index.name))}"`);
+          })
+        );
 
         // Drop all views
         const views = await database.all(`
           SELECT name FROM sqlite_master WHERE type='view'
         `);
         await Promise.all(
-  views.map(async (view) => {
-    await database.run(`DROP VIEW IF EXISTS "${String(String(view.name))}"`);
-  })
-);
+          views.map(async view => {
+            await database.run(`DROP VIEW IF EXISTS "${String(String(view.name))}"`);
+          })
+        );
 
         // Drop FTS virtual tables first
         const ftsTables = await database.all(`
@@ -309,10 +304,10 @@ export class SchemaManager {
           WHERE type='table' AND name LIKE '%_fts' AND name NOT LIKE '%_fts_%'
         `);
         await Promise.all(
-  ftsTables.map(async (ftsTable) => {
-    await database.run(`DROP TABLE IF EXISTS "${String(String(ftsTable.name))}"`);
-  })
-);
+          ftsTables.map(async ftsTable => {
+            await database.run(`DROP TABLE IF EXISTS "${String(String(ftsTable.name))}"`);
+          })
+        );
 
         // Get tables in dependency order (reverse of creation order)
         const tableOrder = [
@@ -331,13 +326,14 @@ export class SchemaManager {
         ];
 
         // Drop tables in specific order
-        await Promise.all(
-  tableOrder.map(async (tableName) => {
-    await database.run(`DROP TABLE IF EXISTS "${String(tableName)}"`);
-  })
-); catch (e) {
-            logger.debug(`Failed to drop table ${String(tableName)}:`, e);
-          }
+        try {
+          await Promise.all(
+            tableOrder.map(async tableName => {
+              await database.run(`DROP TABLE IF EXISTS "${String(tableName)}"`);
+            })
+          );
+        } catch (e) {
+          logger.debug('Failed to drop tables:', e);
         }
 
         // Drop any remaining tables
@@ -348,13 +344,14 @@ export class SchemaManager {
           AND name NOT LIKE '%_fts%'
         `);
 
-        await Promise.all(
-  remainingTables.map(async (table) => {
-    await database.run(`DROP TABLE IF EXISTS "${String(String(table.name))}"`);
-  })
-); catch (e) {
-            logger.debug(`Failed to drop remaining table ${String(String(table.name))}:`, e);
-          }
+        try {
+          await Promise.all(
+            remainingTables.map(async table => {
+              await database.run(`DROP TABLE IF EXISTS "${String(String(table.name))}"`);
+            })
+          );
+        } catch (e) {
+          logger.debug('Failed to drop remaining tables:', e);
         }
 
         // Re-enable foreign key constraints
@@ -386,10 +383,10 @@ export class SchemaManager {
 
       const tableCounts: Record<string, number> = {};
       await Promise.all(
-  tables.map(async (table) => {
-    await this.db.queryOne(`SELECT COUNT(*) as count FROM ${String(String(table.name))}`);
-  })
-);
+        tables.map(async table => {
+          await this.db.queryOne(`SELECT COUNT(*) as count FROM ${String(String(table.name))}`);
+        })
+      );
 
       return {
         ...stats,
@@ -425,12 +422,46 @@ export class SchemaManager {
     let currentStatement = '';
     let inQuotes = false;
     let quoteChar = '';
-    let inTrigger = false;
 
     const lines = cleanSQL.split('\n');
 
-    await Promise.all(
-  lines.map(async (line) => {
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+
+      // Skip empty lines
+      if (!trimmedLine) continue;
+
+      // Check for quote boundaries
+      for (let i = 0; i < trimmedLine.length; i++) {
+        const char = trimmedLine[i];
+
+        if (!inQuotes && (char === "'" || char === '"')) {
+          inQuotes = true;
+          quoteChar = char;
+        } else if (inQuotes && char === quoteChar) {
+          inQuotes = false;
+          quoteChar = '';
+        }
+      }
+
+      currentStatement += `${line}\n`;
+
+      // If we're not in quotes and the line ends with semicolon, it's a complete statement
+      if (!inQuotes && trimmedLine.endsWith(';')) {
+        statements.push(currentStatement.trim());
+        currentStatement = '';
+      }
+    }
+
+    // Add any remaining statement
+    if (currentStatement.trim()) {
+      statements.push(currentStatement.trim());
+    }
+
+    return statements;
+  }
+
+  private async createSchemaInfoTable(): Promise<void> {
     await this.db.execute(`
       CREATE TABLE IF NOT EXISTS schema_info (
         key TEXT PRIMARY KEY,
@@ -439,8 +470,7 @@ export class SchemaManager {
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
-  })
-);
+  }
 
   private async recordSchemaVersion(): Promise<void> {
     await this.db.execute(
@@ -457,7 +487,7 @@ export class SchemaManager {
       const result = await this.db.queryOne(`
         SELECT value FROM schema_info WHERE key = 'version'
       `);
-      return result?.value || 'unknown';
+      return result?.value ?? 'unknown';
     } catch (error) {
       return 'unknown';
     }
@@ -465,12 +495,12 @@ export class SchemaManager {
 
   private async getExpectedSchema(): Promise<SchemaInfo> {
     // Parse the schema file to extract expected objects
-    const schemaSQL = this.readSchemaFile();
+    const schemaSQL = SchemaManager.readSchemaFile();
 
-    const tables = this.extractObjectNames(schemaSQL, 'CREATE TABLE');
-    const indexes = this.extractObjectNames(schemaSQL, 'CREATE INDEX');
-    const views = this.extractObjectNames(schemaSQL, 'CREATE VIEW');
-    const triggers = this.extractObjectNames(schemaSQL, 'CREATE TRIGGER');
+    const tables = SchemaManager.extractObjectNames(schemaSQL, 'CREATE TABLE');
+    const indexes = SchemaManager.extractObjectNames(schemaSQL, 'CREATE INDEX');
+    const views = SchemaManager.extractObjectNames(schemaSQL, 'CREATE VIEW');
+    const triggers = SchemaManager.extractObjectNames(schemaSQL, 'CREATE TRIGGER');
 
     return {
       version: SchemaManager.SCHEMA_VERSION,

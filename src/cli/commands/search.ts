@@ -1,5 +1,6 @@
 import type { Command } from 'commander';
 import type { CliComponents } from '../types';
+import { logger } from '../../utils/logger';
 
 export function registerSearchCommands(program: Command): void {
   const searchCmd = program.command('search').alias('s').description('Search tasks and content');
@@ -27,18 +28,22 @@ export function registerSearchCommands(program: Command): void {
           order: options.order,
         };
 
-        if (options.board) params.board = options.board;
-        if (options.status) params.status = options.status;
-        if (options.tags) params.tags = options.tags;
+        // eslint-disable-next-line dot-notation
+        if (options.board) params['board'] = options.board;
+        // eslint-disable-next-line dot-notation
+        if (options.status) params['status'] = options.status;
+        // eslint-disable-next-line dot-notation
+        if (options.tags) params['tags'] = options.tags;
 
         // Use default board if no board specified
         if (!options.board && config.getDefaultBoard()) {
-          params.board = config.getDefaultBoard()!;
+          // eslint-disable-next-line dot-notation
+          params['board'] = config.getDefaultBoard()!;
         }
 
         const results = await apiClient.searchTasks(query, params);
 
-        if (!results || (results as any).length === 0) {
+        if (!results ?? (results as any).length === 0) {
           formatter.info(`No tasks found for "${String(query)}"`);
           return;
         }
@@ -76,11 +81,12 @@ export function registerSearchCommands(program: Command): void {
           order: options.order,
         };
 
-        if (options.category) params.category = options.category;
+        // eslint-disable-next-line dot-notation
+        if (options.category) params['category'] = options.category;
 
         const results = await apiClient.searchNotes(query);
 
-        if (!results || (results as any).length === 0) {
+        if (!results ?? (results as any).length === 0) {
           formatter.info(`No notes found for "${String(query)}"`);
           return;
         }
@@ -110,7 +116,7 @@ export function registerSearchCommands(program: Command): void {
       try {
         const results = await apiClient.searchTags(query);
 
-        if (!results || (results as any).length === 0) {
+        if (!results ?? (results as any).length === 0) {
           formatter.info(`No tags found for "${String(query)}"`);
           return;
         }
@@ -227,20 +233,30 @@ export function registerSearchCommands(program: Command): void {
           limit: options.limit,
         };
 
-        if (options.title) params.title = options.title;
-        if (options.description) params.description = options.description;
-        if (options.tags) params.tags = options.tags;
-        if (options.status) params.status = options.status;
-        if (options.priorityMin) params.priorityMin = options.priorityMin;
-        if (options.priorityMax) params.priorityMax = options.priorityMax;
-        if (options.createdAfter) params.createdAfter = options.createdAfter;
-        if (options.createdBefore) params.createdBefore = options.createdBefore;
-        if (options.dueAfter) params.dueAfter = options.dueAfter;
-        if (options.dueBefore) params.dueBefore = options.dueBefore;
+        // eslint-disable-next-line dot-notation
+        if (options.title) params['title'] = options.title;
+        // eslint-disable-next-line dot-notation
+        if (options.description) params['description'] = options.description;
+        // eslint-disable-next-line dot-notation
+        if (options.tags) params['tags'] = options.tags;
+        // eslint-disable-next-line dot-notation
+        if (options.status) params['status'] = options.status;
+        // eslint-disable-next-line dot-notation
+        if (options.priorityMin) params['priorityMin'] = options.priorityMin;
+        // eslint-disable-next-line dot-notation
+        if (options.priorityMax) params['priorityMax'] = options.priorityMax;
+        // eslint-disable-next-line dot-notation
+        if (options.createdAfter) params['createdAfter'] = options.createdAfter;
+        // eslint-disable-next-line dot-notation
+        if (options.createdBefore) params['createdBefore'] = options.createdBefore;
+        // eslint-disable-next-line dot-notation
+        if (options.dueAfter) params['dueAfter'] = options.dueAfter;
+        // eslint-disable-next-line dot-notation
+        if (options.dueBefore) params['dueBefore'] = options.dueBefore;
 
         const results = (await apiClient.request('/api/search/advanced', { params })) as any;
 
-        if (!results || results.length === 0) {
+        if (!results ?? results.length === 0) {
           formatter.info('No results found with the specified filters');
           return;
         }

@@ -15,8 +15,8 @@ export class SeedRunner {
 
   constructor(db: Database<SQLiteDB>, options: SeedOptions = {}) {
     this.db = db;
-    this.seedsPath = options.seedsPath || path.join(__dirname, '.');
-    this.seedsTable = options.seedsTable || 'seed_status';
+    this.seedsPath = options.seedsPath ?? path.join(__dirname, '.');
+    this.seedsTable = options.seedsTable ?? 'seed_status';
   }
 
   /**
@@ -71,15 +71,15 @@ export class SeedRunner {
 
     // Dynamic import of the seed file
     const seedModule = await import(filePath);
-    const seed = seedModule.default || seedModule;
+    const seed = seedModule.default ?? seedModule;
 
-    if (!seed.name || !seed.run) {
+    if (!seed.name ?? !seed.run) {
       throw new Error(`Seed ${String(filename)} must export 'name' and 'run' properties`);
     }
 
     return {
       name: seed.name,
-      description: seed.description || '',
+      description: seed.description ?? '',
       run: seed.run,
     };
   }
@@ -90,23 +90,25 @@ export class SeedRunner {
   async run(options: { force?: boolean } = {}): Promise<number> {
     await this.initialize();
 
-    const applied = await this.getAppliedSeeds();
-    const appliedSet = new Set(applied.map(s => s.name));
     const seedFiles = await this.getSeedFiles();
 
     let seedsRun = 0;
 
-    await Promise.all(
-  seedFiles.map(async (filename) => {
-    await this.loadSeed(filename);
-  })
-);`);
+    for (const filename of seedFiles) {
+      // eslint-disable-next-line no-await-in-loop
+      const seed = await this.loadSeed(filename);
+
+      if (!seed) {
+        logger.warn(`Skipping invalid seed file: ${filename}`);
         continue;
       }
 
-      logger.info(`Running seed: ${String(String(seed.name))} - ${String(String(seed.description))}`);
+      logger.info(
+        `Running seed: ${String(String(seed.name))} - ${String(String(seed.description))}`
+      );
 
       try {
+        // eslint-disable-next-line no-await-in-loop
         await this.runSeed(seed, filename, options.force);
         seedsRun++;
         logger.info(`Seed ${String(String(seed.name))} completed successfully`);
@@ -139,12 +141,13 @@ export class SeedRunner {
     const appliedSet = new Set(applied.map(s => s.name));
     const seedFiles = await this.getSeedFiles();
 
-    const allSeeds: string[] = [];
-    await Promise.all(
-  seedFiles.map(async (filename) => {
-    await this.loadSeed(filename);
-  })
-);
+    const seedPromises = seedFiles.map(async filename => {
+      const seed = await this.loadSeed(filename);
+      return seed ? seed.name : null;
+    });
+
+    const seedResults = await Promise.all(seedPromises);
+    const allSeeds = seedResults.filter((name): name is string => name !== null);
 
     const pending = allSeeds.filter(name => !appliedSet.has(name));
 
@@ -169,7 +172,7 @@ export class SeedRunner {
    */
   private async runSeed(seed: Seed, filename: string, force = false): Promise<void> {
     const content = await fs.readFile(path.join(this.seedsPath, filename), 'utf-8');
-    const checksum = this.calculateChecksum(content);
+    const checksum = SeedRunner.calculateChecksum(content);
 
     // Start transaction
     await this.db.run('BEGIN TRANSACTION');
@@ -186,10 +189,10 @@ export class SeedRunner {
         );
       } else {
         // Insert new record
-        await this.db.run(`INSERT INTO ${String(String(this.seedsTable))} (name, checksum) VALUES (?, ?)`, [
-          seed.name,
-          checksum,
-        ]);
+        await this.db.run(
+          `INSERT INTO ${String(String(this.seedsTable))} (name, checksum) VALUES (?, ?)`,
+          [seed.name, checksum]
+        );
       }
 
       // Commit transaction

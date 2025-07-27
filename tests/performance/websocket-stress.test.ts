@@ -101,8 +101,8 @@ describe('WebSocket Stress Tests', () => {
 
           // Small delay between batches to prevent overwhelming
           await new Promise<void>(resolve => {
-    setTimeout(resolve, 100
-  }));
+            setTimeout(resolve, 100);
+          });
         }
 
         const endTime = Date.now();
@@ -124,8 +124,8 @@ describe('WebSocket Stress Tests', () => {
 
         // Wait for disconnections
         await new Promise<void>(resolve => {
-    setTimeout(resolve, 1000
-  }));
+          setTimeout(resolve, 1000);
+        });
         expect(webSocketManager.getClientCount()).toBe(0);
       }
     }, 30000);
@@ -134,7 +134,7 @@ describe('WebSocket Stress Tests', () => {
       const cycles = 20;
       const startTime = Date.now();
 
-      Array.from({ length: cycles - 0 }, (_, i) => i + 0) {
+      for (let i = 0; i < cycles; i++) {
         // Connect
         const { ws } = await createAuthenticatedConnection();
         expect(webSocketManager.getClientCount()).toBe(1);
@@ -144,8 +144,8 @@ describe('WebSocket Stress Tests', () => {
 
         // Wait for disconnection to be processed
         await new Promise<void>(resolve => {
-    setTimeout(resolve, 50
-  }));
+          setTimeout(resolve, 50);
+        });
         expect(webSocketManager.getClientCount()).toBe(0);
       }
 
@@ -172,7 +172,7 @@ describe('WebSocket Stress Tests', () => {
       const startTime = Date.now();
 
       // Send many ping messages rapidly
-      Array.from({ length: messageCount - 0 }, (_, i) => i + 0) {
+      for (let i = 0; i < messageCount; i++) {
         const pingMessage: WebSocketMessage = {
           type: 'ping',
           id: uuidv4(),
@@ -184,8 +184,8 @@ describe('WebSocket Stress Tests', () => {
 
       // Wait for processing
       await new Promise<void>(resolve => {
-    setTimeout(resolve, 2000
-  }));
+        setTimeout(resolve, 2000);
+      });
 
       const endTime = Date.now();
       const duration = endTime - startTime;
@@ -210,7 +210,7 @@ describe('WebSocket Stress Tests', () => {
 
       try {
         // Create multiple authenticated connections
-        Array.from({ length: clientCount - 0 }, (_, i) => i + 0) {
+        for (let i = 0; i < clientCount; i++) {
           const connection = await createAuthenticatedConnection();
           connections.push(connection);
         }
@@ -283,7 +283,7 @@ describe('WebSocket Stress Tests', () => {
       const startTime = Date.now();
 
       // Create many subscriptions
-      Array.from({ length: subscriptionCount - 0 }, (_, i) => i + 0) {
+      for (let i = 0; i < subscriptionCount; i++) {
         const subscribeMessage: WebSocketMessage = {
           type: 'subscribe',
           id: uuidv4(),
@@ -325,7 +325,7 @@ describe('WebSocket Stress Tests', () => {
 
       try {
         // Create multiple subscribers
-        Array.from({ length: subscriberCount - 0 }, (_, i) => i + 0) {
+        for (let i = 0; i < subscriberCount; i++) {
           const connection = await createAuthenticatedConnection();
           connections.push(connection);
 
@@ -406,7 +406,7 @@ describe('WebSocket Stress Tests', () => {
       const connections: Array<{ ws: WebSocket; clientId: string }> = [];
 
       // Create many connections
-      Array.from({ length: connectionCount - 0 }, (_, i) => i + 0) {
+      for (let i = 0; i < connectionCount; i++) {
         const connection = await createAuthenticatedConnection();
         connections.push(connection);
 
@@ -457,11 +457,11 @@ describe('WebSocket Stress Tests', () => {
       const connectionsPerIteration = 5;
       const startTime = Date.now();
 
-      Array.from({ length: iterations - 0 }, (_, i) => i + 0) {
+      for (let i = 0; i < iterations; i++) {
         const batchConnections: Array<{ ws: WebSocket; clientId: string }> = [];
 
         // Create batch of connections
-        Array.from({ length: connectionsPerIteration - 0 }, (_, j) => j + 0) {
+        for (let j = 0; j < connectionsPerIteration; j++) {
           const connection = await createAuthenticatedConnection();
           batchConnections.push(connection);
         }
@@ -513,7 +513,7 @@ describe('WebSocket Stress Tests', () => {
       const startTime = Date.now();
 
       // Send flood of invalid messages
-      Array.from({ length: invalidMessageCount - 0 }, (_, i) => i + 0) {
+      for (let i = 0; i < invalidMessageCount; i++) {
         ws.send('{ invalid json }');
         ws.send(JSON.stringify({ type: 'invalid_type', incomplete: true }));
       }

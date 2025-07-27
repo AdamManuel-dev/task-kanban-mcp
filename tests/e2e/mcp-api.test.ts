@@ -113,8 +113,8 @@ describe('MCP API E2E Tests', () => {
 
       // Should not crash the server
       await new Promise<void>(resolve => {
-    setTimeout(resolve, 1000
-  }));
+        setTimeout(resolve, 1000);
+      });
       expect(mcpProcess.killed).toBe(false);
     });
 
@@ -502,8 +502,8 @@ describe('MCP API E2E Tests', () => {
 
       // Server should not crash
       await new Promise<void>(resolve => {
-    setTimeout(resolve, 1000
-  }));
+        setTimeout(resolve, 1000);
+      });
       expect(mcpProcess.killed).toBe(false);
     });
 
@@ -527,8 +527,8 @@ describe('MCP API E2E Tests', () => {
 
       // Should either handle gracefully or reject
       await new Promise<void>(resolve => {
-    setTimeout(resolve, 2000
-  }));
+        setTimeout(resolve, 2000);
+      });
       expect(mcpProcess.killed).toBe(false);
     });
 

@@ -43,7 +43,7 @@ export const BoardSchema = z.object({
   description: z
     .string()
     .nullable()
-    .transform(val => val || undefined),
+    .transform(val => val ?? undefined),
   color: z.string(),
   created_at: sqliteDate,
   updated_at: sqliteDate,
@@ -61,7 +61,7 @@ export const ColumnSchema = z.object({
   wip_limit: z
     .number()
     .nullable()
-    .transform(val => val || undefined),
+    .transform(val => val ?? undefined),
   created_at: sqliteDate,
   updated_at: sqliteDate,
 });
@@ -80,7 +80,7 @@ export const TaskSchema = z.object({
   description: z
     .string()
     .nullable()
-    .transform(val => val || undefined),
+    .transform(val => val ?? undefined),
   board_id: z.string(),
   column_id: z.string(),
   position: z.number(),
@@ -89,20 +89,20 @@ export const TaskSchema = z.object({
   assignee: z
     .string()
     .nullable()
-    .transform(val => val || undefined),
+    .transform(val => val ?? undefined),
   due_date: sqliteDateOptional,
   estimated_hours: z
     .number()
     .nullable()
-    .transform(val => val || undefined),
+    .transform(val => val ?? undefined),
   actual_hours: z
     .number()
     .nullable()
-    .transform(val => val || undefined),
+    .transform(val => val ?? undefined),
   parent_task_id: z
     .string()
     .nullable()
-    .transform(val => val || undefined),
+    .transform(val => val ?? undefined),
   created_at: sqliteDate,
   updated_at: sqliteDate,
   completed_at: sqliteDateOptional,
@@ -110,7 +110,7 @@ export const TaskSchema = z.object({
   metadata: z
     .string()
     .nullable()
-    .transform(val => val || undefined),
+    .transform(val => val ?? undefined),
 });
 
 /**
@@ -157,11 +157,11 @@ export const TagSchema = z.object({
   description: z
     .string()
     .nullable()
-    .transform(val => val || undefined),
+    .transform(val => val ?? undefined),
   parent_tag_id: z
     .string()
     .nullable()
-    .transform(val => val || undefined),
+    .transform(val => val ?? undefined),
   created_at: sqliteDate,
 });
 
@@ -208,10 +208,8 @@ export function validateRow<TOutput, TInput = TOutput>(
     return schema.parse(row);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const details = error.errors
-        .map(e => `${String(String(e.path.join('.')))}: ${String(String(e.message))}`)
-        .join(', ');
-      throw new Error(`Database validation error${String(context ? ` in ${context)}` : ''}: ${String(details)}`);
+      const details = error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+      throw new Error(`Database validation error${context ? ` in ${context}` : ''}: ${details}`);
     }
     throw error;
   }
@@ -226,7 +224,7 @@ export function validateRows<TOutput, TInput = TOutput>(
   context?: string
 ): TOutput[] {
   return rows.map((row, index) =>
-    validateRow(row, schema, `${String(context || 'row')} at index ${String(index)}`)
+    validateRow(row, schema, `${context ?? 'row'} at index ${index}`)
   );
 }
 
@@ -252,7 +250,7 @@ export function createValidatedQuery<TOutput, TInput = TOutput>(
      * Validate an optional single row result
      */
     validateOptional: (result: unknown): TOutput | null => {
-      if (result === null || result === undefined) {
+      if (result === null ?? result === undefined) {
         return null;
       }
       return validateRow(result, schema, queryName);

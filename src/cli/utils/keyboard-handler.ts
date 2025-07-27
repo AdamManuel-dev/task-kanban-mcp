@@ -1,4 +1,5 @@
 import chalk from 'chalk';
+import { logger } from '../../utils/logger';
 
 export interface KeyboardShortcut {
   key: string;
@@ -77,7 +78,7 @@ export class KeyboardHandler {
 
     // Handle Ctrl+C (exit)
     if (keyCode === 3) {
-      logger.log(chalk.yellow('\n⚠️  Interrupted by user'));
+      logger.info(chalk.yellow('\n⚠️  Interrupted by user'));
       process.exit(130);
     }
 

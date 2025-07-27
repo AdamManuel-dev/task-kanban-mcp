@@ -125,7 +125,7 @@ export class MaintenanceManager {
 
       // Perform vacuum operation
       if (options.incremental) {
-        const pages = options.pages || 1000;
+        const pages = options.pages ?? 1000;
         await this.db.getDatabase().exec(`PRAGMA incremental_vacuum(${String(pages)})`);
       } else {
         await this.db.getDatabase().exec('VACUUM');
@@ -210,7 +210,7 @@ export class MaintenanceManager {
         logger.info('Starting analyze operation', { options });
       }
 
-      const tables = options.tables || (await this.getAllTableNames());
+      const tables = options.tables ?? (await this.getAllTableNames());
       const analyzedTables: string[] = [];
 
       await Promise.all(
@@ -369,9 +369,9 @@ export class MaintenanceManager {
         success: true,
         duration,
         details: {
-          pagesCheckpointed: checkpointResult?.checkpointed || 0,
-          logPages: checkpointResult?.log || 0,
-          busyPages: checkpointResult?.busy || 0,
+          pagesCheckpointed: checkpointResult?.checkpointed ?? 0,
+          logPages: checkpointResult?.log ?? 0,
+          busyPages: checkpointResult?.busy ?? 0,
         },
       };
 

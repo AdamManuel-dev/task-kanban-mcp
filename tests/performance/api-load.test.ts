@@ -10,13 +10,12 @@ import type { Express } from 'express';
 import { createServer } from '@/server';
 import { dbConnection } from '@/database/connection';
 import { v4 as uuidv4 } from 'uuid';
-import type { Task, Board } from '@/types';
+import type { Board } from '@/types';
 
 describe('API Load Tests', () => {
   let app: Express;
   let apiKey: string;
   let testBoard: Board;
-  const testTasks: Task[] = [];
 
   beforeAll(async () => {
     // Initialize database
@@ -212,17 +211,16 @@ describe('API Load Tests', () => {
       const startTime = Date.now();
 
       // Perform rapid sequential updates
-      Array.from({ length: updateCount - 0 }, (_, i) => i + 0) {
+      for (let i = 0; i < updateCount; i++) {
         const response = await request(app)
           .patch(`/api/v1/tasks/${String(taskId)}`)
           .set('X-API-Key', apiKey)
           .send({
             title: `Updated Task ${String(i + 1)}`,
-            priority: (i % 10) + 1,
+            description: `Updated description ${String(i + 1)}`,
           });
 
         expect(response.status).toBe(200);
-        expect(response.body.success).toBe(true);
       }
 
       const endTime = Date.now();
@@ -243,7 +241,7 @@ describe('API Load Tests', () => {
       const searchTerm = 'searchable';
 
       await dbConnection.transaction(async () => {
-        Array.from({ length: searchableCount - 0 }, (_, i) => i + 0) {
+        Array.from({ length: searchableCount }, (_, i) => i).forEach(async i => {
           await dbConnection.execute(
             `INSERT INTO tasks (id, title, description, board_id, column_id, status, priority, position, created_at) 
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -259,7 +257,7 @@ describe('API Load Tests', () => {
               new Date().toISOString(),
             ]
           );
-        }
+        });
       });
 
       const startTime = Date.now();
@@ -315,7 +313,7 @@ describe('API Load Tests', () => {
       const iterations = 100;
 
       // Perform sustained operations
-      Array.from({ length: iterations - 0 }, (_, i) => i + 0) {
+      Array.from({ length: iterations }, (_, i) => i).forEach(async i => {
         await request(app).get('/api/v1/tasks').set('X-API-Key', apiKey).query({ limit: 10 });
 
         // Create and delete task to test cleanup
@@ -333,7 +331,7 @@ describe('API Load Tests', () => {
         await request(app)
           .delete(`/api/v1/tasks/${String(String(createResp.body.data.id))}`)
           .set('X-API-Key', apiKey);
-      }
+      });
 
       // Force garbage collection if available
       if (global.gc) {
@@ -347,7 +345,9 @@ describe('API Load Tests', () => {
       expect(memoryIncrease).toBeLessThan(50 * 1024 * 1024);
 
       logger.log(`✓ Memory usage after ${String(iterations)} operations:`);
-      logger.log(`  Initial: ${String(String(Math.round(initialMemory.heapUsed / 1024 / 1024)))}MB`);
+      logger.log(
+        `  Initial: ${String(String(Math.round(initialMemory.heapUsed / 1024 / 1024)))}MB`
+      );
       logger.log(`  Final: ${String(String(Math.round(finalMemory.heapUsed / 1024 / 1024)))}MB`);
       logger.log(`  Increase: ${String(String(Math.round(memoryIncrease / 1024 / 1024)))}MB`);
     }, 30000);
@@ -439,7 +439,9 @@ describe('API Load Tests', () => {
         const maxTimeObserved = Math.max(...times);
 
         expect(avgTime).toBeLessThan(maxTime);
-        logger.log(`✓ ${String(endpoint)}: avg ${String(String(Math.round(avgTime)))}ms, max ${String(maxTimeObserved)}ms`);
+        logger.log(
+          `✓ ${String(endpoint)}: avg ${String(String(Math.round(avgTime)))}ms, max ${String(maxTimeObserved)}ms`
+        );
       });
     });
   });

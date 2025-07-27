@@ -221,7 +221,7 @@ describe('CLI Types', () => {
 
       it('should handle empty update requests', () => {
         const emptyUpdate: TaskUpdateRequest = {};
-        expect(Object.keys(emptyUpdate)).toHaveLength(0);
+        expect(Object.keys(emptyUpdate as Record<string, unknown>)).toHaveLength(0);
       });
     });
 

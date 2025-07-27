@@ -1,12 +1,8 @@
 import type { Command } from 'commander';
 import fs from 'fs/promises';
 import path from 'path';
-import type {
-  CliComponents,
-  ExportParams,
-  ImportValidationResponse,
-  ImportResponse,
-} from '../types';
+import type { CliComponents, ImportValidationResponse, ImportResponse } from '../types';
+import { isSuccessResponse } from '../api-client-wrapper';
 
 export function registerExportCommands(program: Command): void {
   const exportCmd = program.command('export').description('Export kanban data');
@@ -31,12 +27,12 @@ export function registerExportCommands(program: Command): void {
 
         formatter.info('Exporting data to JSON...');
 
-        const params: ExportParams = {
+        const params: Record<string, string> = {
           format: 'json',
-          includeBoards: options.boards,
-          includeTasks: options.tasks,
-          includeTags: options.tags,
-          includeNotes: options.notes,
+          includeBoards: String(options.boards),
+          includeTasks: String(options.tasks),
+          includeTags: String(options.tags),
+          includeNotes: String(options.notes),
         };
 
         if (options.boardIds) {
@@ -79,12 +75,12 @@ export function registerExportCommands(program: Command): void {
 
         formatter.info('Exporting data to CSV...');
 
-        const params: ExportParams = {
+        const params: Record<string, string> = {
           format: 'csv',
-          includeBoards: options.boards,
-          includeTasks: options.tasks,
-          includeTags: options.tags,
-          includeNotes: options.notes,
+          includeBoards: String(options.boards),
+          includeTasks: String(options.tasks),
+          includeTags: String(options.tags),
+          includeNotes: String(options.notes),
         };
 
         const response = await apiClient.get('/export', { params });
@@ -134,19 +130,21 @@ export function registerExportCommands(program: Command): void {
         const response = await apiClient.post(endpoint, formData);
 
         if (options.validateOnly) {
-          const validationData = response.data as ImportValidationResponse;
-          formatter.success('Validation completed');
-          formatter.info(`Valid: ${String(String(validationData.valid))}`);
-          formatter.info(`Would import: ${String(String(validationData.wouldImport))} items`);
-          formatter.info(`Would skip: ${String(String(validationData.wouldSkip))} items`);
+          if (isSuccessResponse(response)) {
+            const validationData = response.data as ImportValidationResponse;
+            formatter.success('Validation completed');
+            formatter.info(`Valid: ${String(String(validationData.valid))}`);
+            formatter.info(`Would import: ${String(String(validationData.wouldImport))} items`);
+            formatter.info(`Would skip: ${String(String(validationData.wouldSkip))} items`);
 
-          if (validationData.errors.length > 0) {
-            formatter.error('Validation errors:');
-            validationData.errors.forEach((err: string) => {
-              formatter.error(`  • ${String(err)}`);
-            });
+            if (validationData.errors.length > 0) {
+              formatter.error('Validation errors:');
+              validationData.errors.forEach((err: string) => {
+                formatter.error(`  • ${String(err)}`);
+              });
+            }
           }
-        } else {
+        } else if (isSuccessResponse(response)) {
           const importData = response.data as ImportResponse;
           formatter.success('Import completed');
           formatter.info(`Imported: ${String(String(importData.imported))} items`);

@@ -53,7 +53,7 @@ export function registerTagCommands(program: Command): void {
       try {
         const tags = (await apiClient.getTags()) as TagData[];
 
-        if (!tags || tags.length === 0) {
+        if (!tags ?? tags.length === 0) {
           formatter.info('No tags found');
           return;
         }
@@ -73,7 +73,7 @@ export function registerTagCommands(program: Command): void {
             ? ['ID', 'Name', 'Color', 'Description', 'Task Count', 'Parent']
             : ['ID', 'Name', 'Color', 'Description', 'Parent'];
 
-          formatter.output(tags.slice(0, parseInt(options.limit)), {
+          formatter.output(tags.slice(0, parseInt(options.limit, 10)), {
             fields,
             headers,
           });
@@ -141,13 +141,13 @@ export function registerTagCommands(program: Command): void {
             type: 'input',
             name: 'description',
             message: 'Tag description (optional):',
-            default: options.description || '',
+            default: options.description ?? '',
           },
           {
             type: 'input',
             name: 'color',
             message: 'Tag color (hex code, optional):',
-            default: options.color || '#007acc',
+            default: options.color ?? '#007acc',
             validate: (input: string) => {
               if (!input) return true;
               return /^#[0-9A-Fa-f]{6}$/.test(input) || 'Invalid hex color format (use #RRGGBB)';
@@ -157,7 +157,7 @@ export function registerTagCommands(program: Command): void {
             type: 'input',
             name: 'parentId',
             message: 'Parent tag ID (optional, for hierarchy):',
-            default: options.parent || '',
+            default: options.parent ?? '',
           },
         ];
 
@@ -214,13 +214,13 @@ export function registerTagCommands(program: Command): void {
               type: 'input',
               name: 'description',
               message: 'Tag description:',
-              default: currentTag.description || '',
+              default: currentTag.description ?? '',
             },
             {
               type: 'input',
               name: 'color',
               message: 'Tag color (hex code):',
-              default: currentTag.color || '#007acc',
+              default: currentTag.color ?? '#007acc',
               validate: (input: string) => {
                 if (!input) return true;
                 return /^#[0-9A-Fa-f]{6}$/.test(input) || 'Invalid hex color format (use #RRGGBB)';
@@ -341,12 +341,12 @@ export function registerTagCommands(program: Command): void {
       try {
         const tags = (await apiClient.searchTags(query)) as any;
 
-        if (!tags || tags.length === 0) {
+        if (!tags ?? tags.length === 0) {
           formatter.info(`No tags found matching "${String(query)}"`);
           return;
         }
 
-        formatter.output(tags.slice(0, parseInt(options.limit)), {
+        formatter.output(tags.slice(0, parseInt(options.limit, 10)), {
           fields: ['id', 'name', 'color', 'description'],
           headers: ['ID', 'Name', 'Color', 'Description'],
         });
@@ -370,7 +370,7 @@ export function registerTagCommands(program: Command): void {
           const fromTag = (await apiClient.getTag(fromId)) as any;
           const toTag = (await apiClient.getTag(toId)) as any;
 
-          if (!fromTag || !toTag) {
+          if (!fromTag ?? !toTag) {
             formatter.error('One or both tags not found');
             process.exit(1);
           }

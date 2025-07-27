@@ -166,7 +166,7 @@ export class TagService {
     const tag: Tag = {
       id,
       name: data.name,
-      color: data.color || '#9E9E9E',
+      color: data.color ?? '#9E9E9E',
       description: data.description,
       parent_tag_id: data.parent_tag_id,
       created_at: now,
@@ -205,7 +205,7 @@ export class TagService {
       return tag;
     } catch (error) {
       logger.error('Failed to create tag', { error, data });
-      throw this.createError('TAG_CREATE_FAILED', 'Failed to create tag', error);
+      throw TagService.createError('TAG_CREATE_FAILED', 'Failed to create tag', error);
     }
   }
 
@@ -238,10 +238,10 @@ export class TagService {
         tag.created_at = new Date(tag.created_at);
       }
 
-      return tag || null;
+      return tag ?? null;
     } catch (error) {
       logger.error('Failed to get tag by ID', { error, id });
-      throw this.createError('TAG_FETCH_FAILED', 'Failed to fetch tag', error);
+      throw TagService.createError('TAG_FETCH_FAILED', 'Failed to fetch tag', error);
     }
   }
 
@@ -274,10 +274,10 @@ export class TagService {
         tag.created_at = new Date(tag.created_at);
       }
 
-      return tag || null;
+      return tag ?? null;
     } catch (error) {
       logger.error('Failed to get tag by name', { error, name });
-      throw this.createError('TAG_FETCH_FAILED', 'Failed to fetch tag by name', error);
+      throw TagService.createError('TAG_FETCH_FAILED', 'Failed to fetch tag by name', error);
     }
   }
 
@@ -324,7 +324,7 @@ export class TagService {
       const conditions: string[] = [];
 
       if (parent_tag_id !== undefined) {
-        if (parent_tag_id === null || parent_tag_id === undefined) {
+        if (parent_tag_id === null ?? parent_tag_id === undefined) {
           conditions.push('parent_tag_id IS NULL');
         } else {
           conditions.push('parent_tag_id = ?');
@@ -368,7 +368,7 @@ export class TagService {
       return tags;
     } catch (error) {
       logger.error('Failed to get tags', { error, options });
-      throw this.createError('TAGS_FETCH_FAILED', 'Failed to fetch tags', error);
+      throw TagService.createError('TAGS_FETCH_FAILED', 'Failed to fetch tags', error);
     }
   }
 
@@ -436,14 +436,15 @@ export class TagService {
 
       await Promise.all(
         rootTags.map(async rootTag => {
-          this.buildTagHierarchy(rootTag, 0);
+          const hierarchy = await this.buildTagHierarchy(rootTag, 0);
+          hierarchies.push(hierarchy);
         })
       );
 
       return hierarchies;
     } catch (error) {
       logger.error('Failed to get tag hierarchy', { error, rootTagId });
-      throw this.createError('TAG_HIERARCHY_FAILED', 'Failed to build tag hierarchy', error);
+      throw TagService.createError('TAG_HIERARCHY_FAILED', 'Failed to build tag hierarchy', error);
     }
   }
 
@@ -500,16 +501,16 @@ export class TagService {
 
       const tagWithStats: TagWithStats = {
         ...tag,
-        task_count: taskCount?.count || 0,
-        usage_count: usageStats?.count || 0,
-        child_count: childCount?.count || 0,
+        task_count: taskCount?.count ?? 0,
+        usage_count: usageStats?.count ?? 0,
+        child_count: childCount?.count ?? 0,
         ...(usageStats?.last_used ? { last_used: new Date(usageStats.last_used) } : {}),
       };
 
       return tagWithStats;
     } catch (error) {
       logger.error('Failed to get tag with stats', { error, id });
-      throw this.createError('TAG_FETCH_FAILED', 'Failed to fetch tag with stats', error);
+      throw TagService.createError('TAG_FETCH_FAILED', 'Failed to fetch tag with stats', error);
     }
   }
 
@@ -538,7 +539,7 @@ export class TagService {
     try {
       const existingTag = await this.getTagById(id);
       if (!existingTag) {
-        throw this.createError('TAG_NOT_FOUND', 'Tag not found', { id });
+        throw TagService.createError('TAG_NOT_FOUND', 'Tag not found', { id });
       }
 
       const updates: string[] = [];
@@ -548,7 +549,7 @@ export class TagService {
         if (data.name !== existingTag.name) {
           const existingWithName = await this.getTagByName(data.name);
           if (existingWithName && existingWithName.id !== id) {
-            throw this.createError('TAG_NAME_EXISTS', 'Tag with this name already exists');
+            throw TagService.createError('TAG_NAME_EXISTS', 'Tag with this name already exists');
           }
         }
         updates.push('name = ?');
@@ -569,11 +570,11 @@ export class TagService {
         if (data.parent_tag_id && data.parent_tag_id !== existingTag.parent_tag_id) {
           const parentExists = await this.getTagById(data.parent_tag_id);
           if (!parentExists) {
-            throw this.createError('PARENT_TAG_NOT_FOUND', 'Parent tag not found');
+            throw TagService.createError('PARENT_TAG_NOT_FOUND', 'Parent tag not found');
           }
 
           if (await this.wouldCreateCircularHierarchy(data.parent_tag_id, id)) {
-            throw this.createError('CIRCULAR_HIERARCHY', 'Would create circular hierarchy');
+            throw TagService.createError('CIRCULAR_HIERARCHY', 'Would create circular hierarchy');
           }
         }
         updates.push('parent_tag_id = ?');
@@ -597,7 +598,7 @@ export class TagService {
 
       const updatedTag = await this.getTagById(id);
       if (!updatedTag) {
-        throw this.createError('TAG_UPDATE_FAILED', 'Tag disappeared after update');
+        throw TagService.createError('TAG_UPDATE_FAILED', 'Tag disappeared after update');
       }
 
       logger.info('Tag updated successfully', { tagId: id });
@@ -607,7 +608,7 @@ export class TagService {
         throw error;
       }
       logger.error('Failed to update tag', { error, id, data });
-      throw this.createError('TAG_UPDATE_FAILED', 'Failed to update tag', error);
+      throw TagService.createError('TAG_UPDATE_FAILED', 'Failed to update tag', error);
     }
   }
 
@@ -639,7 +640,7 @@ export class TagService {
     try {
       const tag = await this.getTagById(id);
       if (!tag) {
-        throw this.createError('TAG_NOT_FOUND', 'Tag not found', { id });
+        throw TagService.createError('TAG_NOT_FOUND', 'Tag not found', { id });
       }
 
       if (!reassignToParent) {
@@ -674,7 +675,7 @@ export class TagService {
         throw error;
       }
       logger.error('Failed to delete tag', { error, id });
-      throw this.createError('TAG_DELETE_FAILED', 'Failed to delete tag', error);
+      throw TagService.createError('TAG_DELETE_FAILED', 'Failed to delete tag', error);
     }
   }
 
@@ -738,7 +739,7 @@ export class TagService {
       return taskTag;
     } catch (error) {
       logger.error('Failed to add tag to task', { error, taskId, tagId });
-      throw this.createError('TAG_ASSIGN_FAILED', 'Failed to assign tag to task', error);
+      throw TagService.createError('TAG_ASSIGN_FAILED', 'Failed to assign tag to task', error);
     }
   }
 
@@ -768,7 +769,7 @@ export class TagService {
       );
 
       if (result.changes === 0) {
-        throw this.createError('TAG_ASSIGNMENT_NOT_FOUND', 'Tag assignment not found');
+        throw TagService.createError('TAG_ASSIGNMENT_NOT_FOUND', 'Tag assignment not found');
       }
 
       logger.info('Tag removed from task successfully', { taskId, tagId });
@@ -777,7 +778,7 @@ export class TagService {
         throw error;
       }
       logger.error('Failed to remove tag from task', { error, taskId, tagId });
-      throw this.createError('TAG_REMOVE_FAILED', 'Failed to remove tag from task', error);
+      throw TagService.createError('TAG_REMOVE_FAILED', 'Failed to remove tag from task', error);
     }
   }
 
@@ -813,7 +814,7 @@ export class TagService {
       return tags;
     } catch (error) {
       logger.error('Failed to get task tags', { error, taskId });
-      throw this.createError('TAGS_FETCH_FAILED', 'Failed to fetch task tags', error);
+      throw TagService.createError('TAGS_FETCH_FAILED', 'Failed to fetch task tags', error);
     }
   }
 
@@ -856,7 +857,11 @@ export class TagService {
       return taskIds.map(row => row.task_id);
     } catch (error) {
       logger.error('Failed to get tagged tasks', { error, tagId, includeChildren });
-      throw this.createError('TAGGED_TASKS_FETCH_FAILED', 'Failed to fetch tagged tasks', error);
+      throw TagService.createError(
+        'TAGGED_TASKS_FETCH_FAILED',
+        'Failed to fetch tagged tasks',
+        error
+      );
     }
   }
 
@@ -923,11 +928,11 @@ export class TagService {
         unique_tasks: stat.unique_tasks,
         first_used: stat.first_used ? new Date(stat.first_used) : new Date(),
         last_used: stat.last_used ? new Date(stat.last_used) : new Date(),
-        trend: this.calculateTrend(stat.usage_count, days), // Simplified trend calculation
+        trend: TagService.calculateTrend(stat.usage_count, days), // Simplified trend calculation
       }));
     } catch (error) {
       logger.error('Failed to get tag usage stats', { error, options });
-      throw this.createError('TAG_STATS_FAILED', 'Failed to get tag usage statistics', error);
+      throw TagService.createError('TAG_STATS_FAILED', 'Failed to get tag usage statistics', error);
     }
   }
 
@@ -955,7 +960,7 @@ export class TagService {
       return await this.buildTagHierarchy(tag, 0);
     } catch (error) {
       logger.error('Failed to get tag with children', { error, id });
-      throw this.createError('TAG_FETCH_FAILED', 'Failed to fetch tag with children', error);
+      throw TagService.createError('TAG_FETCH_FAILED', 'Failed to fetch tag with children', error);
     }
   }
 
@@ -979,7 +984,9 @@ export class TagService {
       const path: Tag[] = [];
       let currentId: string | null | undefined = id;
 
+      // eslint-disable-next-line no-await-in-loop
       while (currentId) {
+        // eslint-disable-next-line no-await-in-loop
         const tag = await this.getTagById(currentId);
         if (!tag) break;
 
@@ -990,7 +997,7 @@ export class TagService {
       return path;
     } catch (error) {
       logger.error('Failed to get tag path', { error, id });
-      throw this.createError('TAG_PATH_FAILED', 'Failed to get tag path', error);
+      throw TagService.createError('TAG_PATH_FAILED', 'Failed to get tag path', error);
     }
   }
 
@@ -1014,31 +1021,31 @@ export class TagService {
   async getTagTree(includeUsageCount: boolean = false): Promise<TagHierarchy[]> {
     try {
       const rootTags = await this.getRootTags();
-      const hierarchies: TagHierarchy[] = [];
 
-      for (const rootTag of rootTags) {
+      const hierarchyPromises = rootTags.map(async rootTag => {
         const hierarchy = await this.buildTagHierarchy(rootTag, 0);
 
         if (includeUsageCount) {
           const addUsageCount = async (node: TagHierarchy) => {
             const usageStats = await this.getTagUsageStats({ limit: 1 });
-            node.task_count = usageStats.length > 0 ? usageStats[0].usage_count : 0;
+            node.task_count =
+              usageStats.length > 0 && usageStats[0] ? usageStats[0].usage_count : 0;
 
-            for (const child of node.children) {
-              await addUsageCount(child);
-            }
+            await Promise.all(node.children.map(child => addUsageCount(child)));
           };
 
           await addUsageCount(hierarchy);
         }
 
-        hierarchies.push(hierarchy);
-      }
+        return hierarchy;
+      });
+
+      const hierarchies = await Promise.all(hierarchyPromises);
 
       return hierarchies;
     } catch (error) {
       logger.error('Failed to get tag tree', { error });
-      throw this.createError('TAG_TREE_FAILED', 'Failed to get tag tree', error);
+      throw TagService.createError('TAG_TREE_FAILED', 'Failed to get tag tree', error);
     }
   }
 
@@ -1120,7 +1127,7 @@ export class TagService {
       });
     } catch (error) {
       logger.error('Failed to get popular tags', { error, options });
-      throw this.createError('POPULAR_TAGS_FAILED', 'Failed to get popular tags', error);
+      throw TagService.createError('POPULAR_TAGS_FAILED', 'Failed to get popular tags', error);
     }
   }
 
@@ -1213,16 +1220,16 @@ export class TagService {
       const most_used = await this.getPopularTags(mostUsedOptions);
 
       return {
-        total: totalResult?.count || 0,
-        root_tags: rootResult?.count || 0,
-        leaf_tags: leafResult?.count || 0,
-        max_depth: depthResult?.max_depth || 0,
-        avg_tasks_per_tag: avgTasksResult?.avg_tasks || 0,
+        total: totalResult?.count ?? 0,
+        root_tags: rootResult?.count ?? 0,
+        leaf_tags: leafResult?.count ?? 0,
+        max_depth: depthResult?.max_depth ?? 0,
+        avg_tasks_per_tag: avgTasksResult?.avg_tasks ?? 0,
         most_used,
       };
     } catch (error) {
       logger.error('Failed to get tag stats', { error, boardId });
-      throw this.createError('TAG_STATS_FAILED', 'Failed to get tag statistics', error);
+      throw TagService.createError('TAG_STATS_FAILED', 'Failed to get tag statistics', error);
     }
   }
 
@@ -1257,10 +1264,10 @@ export class TagService {
       ]);
 
       if (!sourceTag) {
-        throw this.createError('SOURCE_TAG_NOT_FOUND', 'Source tag not found');
+        throw TagService.createError('SOURCE_TAG_NOT_FOUND', 'Source tag not found');
       }
       if (!targetTag) {
-        throw this.createError('TARGET_TAG_NOT_FOUND', 'Target tag not found');
+        throw TagService.createError('TARGET_TAG_NOT_FOUND', 'Target tag not found');
       }
 
       await this.db.transaction(async db => {
@@ -1299,7 +1306,7 @@ export class TagService {
         throw error;
       }
       logger.error('Failed to merge tags', { error, sourceTagId, targetTagId });
-      throw this.createError('TAG_MERGE_FAILED', 'Failed to merge tags', error);
+      throw TagService.createError('TAG_MERGE_FAILED', 'Failed to merge tags', error);
     }
   }
 
@@ -1318,7 +1325,8 @@ export class TagService {
     const children: TagHierarchy[] = [];
     await Promise.all(
       childTags.map(async child => {
-        this.buildTagHierarchy(child, depth + 1);
+        const childHierarchy = await this.buildTagHierarchy(child, depth + 1);
+        children.push(childHierarchy);
       })
     );
 
@@ -1347,7 +1355,7 @@ export class TagService {
       [tagId]
     );
 
-    return result?.count || 0;
+    return result?.count ?? 0;
   }
 
   /**
@@ -1361,11 +1369,14 @@ export class TagService {
     const childIds: string[] = [];
     const directChildren = await this.getChildTags(tagId);
 
-    await Promise.all(
-      directChildren.map(async child => {
-        this.getAllChildTagIds(child.id);
-      })
-    );
+    // Add direct children
+    for (const child of directChildren) {
+      childIds.push(child.id);
+
+      // Recursively get all descendants
+      const descendantIds = await this.getAllChildTagIds(child.id);
+      childIds.push(...descendantIds);
+    }
 
     return childIds;
   }
@@ -1398,6 +1409,7 @@ export class TagService {
 
       visited.add(currentId);
 
+      // eslint-disable-next-line no-await-in-loop
       const parent = await this.getTagById(currentId);
       if (parent?.parent_tag_id) {
         stack.push(parent.parent_tag_id);

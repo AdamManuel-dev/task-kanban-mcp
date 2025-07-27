@@ -6,9 +6,10 @@
  * in CLI applications by sanitizing inputs and preventing execution of malicious commands.
  */
 
-import type { SpawnOptions } from 'child_process';
+// import type { SpawnOptions } from 'child_process';
 import { spawn } from 'child_process';
 import path from 'path';
+import { logger } from '@/utils/logger';
 import { inputSanitizer } from './input-sanitizer';
 
 export interface CommandExecutionOptions {
@@ -346,30 +347,76 @@ export class CommandInjectionPrevention {
 
     // Log execution if requested
     if (options.logExecution) {
-      logger.log(
-        `[CommandInjectionPrevention] Executing: ${String(String(validation.sanitizedCommand))} ${String(String(validation.sanitizedArgs.join(' ')))}`
-      );
+      logger.info('Command execution started', {
+        command: validation.sanitizedCommand,
+        args: validation.sanitizedArgs,
+      });
       if (validation.warnings.length > 0) {
-        logger.warn(
-          `[CommandInjectionPrevention] Warnings: ${String(String(validation.warnings.join(', ')))}`
-        );
+        logger.warn('Command execution warnings', {
+          warnings: validation.warnings,
+        });
       }
     }
 
-    return new Promise<void>((resolve) => {
-  arg
-      .replace(/'/g, "'\"'\"'") // Escape single quotes
-      .replace(/\\/g, '\\\\') // Escape backslashes
-      .replace(/\$/g, '\\$') // Escape dollar signs
-      .replace(/`/g, '\\`') // Escape backticks
-      .replace(/!/g, '\\!') // Escape exclamation marks
-      .replace(/"/g, '\\"');
-  resolve();
-});
+    return new Promise<ExecutionResult>((resolve, _reject) => {
+      const child = spawn(validation.sanitizedCommand, validation.sanitizedArgs, {
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: { ...process.env, ...options.env },
+        timeout: options.timeout ?? 30000,
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      child.stdout?.on('data', data => {
+        stdout += data.toString();
+      });
+
+      child.stderr?.on('data', data => {
+        stderr += data.toString();
+      });
+
+      child.on('close', code => {
+        const duration = Date.now() - startTime;
+        resolve({
+          success: code === 0,
+          stdout,
+          stderr,
+          exitCode: code ?? 0,
+          duration,
+          command: validation.sanitizedCommand,
+          args: validation.sanitizedArgs,
+        });
+      });
+
+      child.on('error', error => {
+        const duration = Date.now() - startTime;
+        resolve({
+          success: false,
+          stdout: '',
+          stderr: error.message,
+          exitCode: -1,
+          duration,
+          command: validation.sanitizedCommand,
+          args: validation.sanitizedArgs,
+        });
+      });
+    });
+  }
+
+  /**
+   * Create a safe command wrapper with predefined flags
+   */
+  createSafeCommand(baseCommand: string, allowedFlags: string[] = []) {
+    return {
+      validate: (args: string[], options: CommandExecutionOptions = {}) => {
+        const validation = this.validateCommand(baseCommand, args, {
+          ...options,
+          allowedFlags,
+        });
+
         if (!validation.safe) {
-          throw new Error(
-            `Invalid argument: ${String(String(validation.blockedPatterns.join(', ')))}`
-          );
+          throw new Error(`Invalid argument: ${validation.blockedPatterns.join(', ')}`);
         }
         return validation.sanitizedArgs[0];
       },

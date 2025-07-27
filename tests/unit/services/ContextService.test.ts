@@ -11,7 +11,7 @@ import type { BoardService } from '@/services/BoardService';
 import type { TaskService } from '@/services/TaskService';
 import type { NoteService } from '@/services/NoteService';
 import type { TagService } from '@/services/TagService';
-import type { Task, Board, Note, Tag } from '@/types';
+import type { Task, Board } from '@/types';
 
 // Test setup
 let testDb: DatabaseConnection;
@@ -45,6 +45,12 @@ const createTestBoard = (overrides: Partial<Board> = {}): Board => ({
   updated_at: new Date(),
   archived: false,
   ...overrides,
+});
+
+beforeAll(async () => {
+  // Initialize test database
+  testDb = DatabaseConnection.getInstance();
+  await testDb.initialize({ skipSchema: false });
 });
 
 beforeEach(async () => {
@@ -147,14 +153,12 @@ describe('ContextService - Core Functionality', () => {
       mockTaskService.getTasks.mockResolvedValue([testTask]);
 
       const queryMock = jest.spyOn(testDb, 'query').mockResolvedValue([]);
-      const queryOneMock = jest
-        .spyOn(testDb, 'queryOne')
-        .mockImplementation(async (query: string) => {
-          if (query.includes('board_id = ?')) {
-            return { count: 2 }; // Recent activity
-          }
-          return { total: 5, completed: 2, count: 0, avg_days: 3 };
-        });
+      const queryOneMock = jest.spyOn(testDb, 'queryOne').mockImplementation((query: string) => {
+        if (query.includes('board_id = ?')) {
+          return { count: 2 }; // Recent activity
+        }
+        return { total: 5, completed: 2, count: 0, avg_days: 3 };
+      });
 
       const context = await contextService.getProjectContext();
 
@@ -332,14 +336,12 @@ describe('ContextService - Core Functionality', () => {
       mockTaskService.getBlockedTasks.mockResolvedValue([]);
 
       const queryMock = jest.spyOn(testDb, 'query').mockResolvedValue([]);
-      const queryOneMock = jest
-        .spyOn(testDb, 'queryOne')
-        .mockImplementation(async (query: string) => {
-          if (query.includes('depends_on_task_id = ?')) {
-            return { count: 1 }; // Blocks 1 task
-          }
-          return { total: 1, completed: 0, count: 0, avg_days: 1 };
-        });
+      const queryOneMock = jest.spyOn(testDb, 'queryOne').mockImplementation((query: string) => {
+        if (query.includes('depends_on_task_id = ?')) {
+          return { count: 1 }; // Blocks 1 task
+        }
+        return { total: 1, completed: 0, count: 0, avg_days: 1 };
+      });
 
       const context = await contextService.getProjectContext({ max_items: 5 });
 

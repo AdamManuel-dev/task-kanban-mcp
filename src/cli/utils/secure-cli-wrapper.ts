@@ -8,6 +8,7 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import { commandInjectionPrevention, validateCommand } from './command-injection-prevention';
 import { inputSanitizer } from './input-sanitizer';
+import { logger } from '../../utils/logger';
 
 export interface SecurityConfig {
   enableInputSanitization: boolean;
@@ -86,7 +87,7 @@ export class SecureCliWrapper {
     args.forEach((arg, index) => {
       // Check length
       if (arg.length > this.config.maxArgumentLength) {
-        this.logSecurityEvent({
+        SecureCliWrapper.logSecurityEvent({
           type: 'validation_failed',
           details: `Argument ${String(index)} exceeds maximum length`,
           input: `${String(String(arg.substring(0, 100)))}...`,

@@ -86,9 +86,9 @@ export class TransactionManager {
       });
 
       // Mark operations as completed
-      context.operations.forEach(op => {
-        if (op.status === 'pending') {
-          op.status = 'completed';
+      context.operations.forEach(operation => {
+        if (operation.status === 'pending') {
+          operation.status = 'completed';
         }
       });
 
@@ -109,10 +109,10 @@ export class TransactionManager {
       });
 
       // Mark failed operations
-      context.operations.forEach(op => {
-        if (op.status === 'pending') {
-          op.status = 'failed';
-          op.error = isError(error) ? error : new Error(errorMessage);
+      context.operations.forEach(operation => {
+        if (operation.status === 'pending') {
+          operation.status = 'failed';
+          operation.error = isError(error) ? error : new Error(errorMessage);
         }
       });
 
@@ -134,12 +134,13 @@ export class TransactionManager {
     operations: TransactionCallback<T>,
     options: TransactionOptions = {}
   ): Promise<T> {
-    const maxAttempts = options.retryAttempts || 3;
+    const maxAttempts = options.retryAttempts ?? 3;
     let lastError: unknown;
 
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
-        const { retryAttempts, ...restOptions } = options;
+        const restOptions = { ...options };
+        delete restOptions.retryAttempts;
         return await this.executeTransaction(operations, restOptions);
       } catch (error) {
         lastError = error;
@@ -178,30 +179,25 @@ export class TransactionManager {
   }
 
   /**
-   * Add a rollback action to the current transaction
+   * Add a rollback action to the current transaction context
    */
   addRollbackAction(context: TransactionContext, action: RollbackAction): void {
     context.rollbackActions.push(action);
   }
 
   /**
-   * Create a transaction decorator for service methods
+   * Decorator for making methods transactional
    */
   static transactional(options: TransactionOptions = {}) {
-    return function <T extends { db: DatabaseConnection }>(
-      target: T,
-      propertyKey: string,
-      descriptor: PropertyDescriptor
-    ): PropertyDescriptor {
+    return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
       const originalMethod = descriptor.value;
 
-      descriptor.value = async function (this: T, ...args: unknown[]): Promise<unknown> {
+      descriptor.value = async function (...args: any[]) {
         const transactionManager = new TransactionManager(this.db);
-
-        return transactionManager.executeTransactionWithRetry(async context => {
-          transactionManager.addOperation(context, target.constructor.name, propertyKey);
-          return originalMethod.apply(this, args);
-        }, options);
+        return transactionManager.executeTransaction(
+          async _context => originalMethod.apply(this, args),
+          options
+        );
       };
 
       return descriptor;
@@ -209,92 +205,76 @@ export class TransactionManager {
   }
 
   /**
-   * Execute all rollback actions
+   * Execute rollback actions in reverse order
    */
   private async executeRollback(context: TransactionContext): Promise<void> {
     logger.info('Executing rollback actions', {
       transactionId: context.id,
-      actionsCount: context.rollbackActions.length,
+      rollbackActionsCount: context.rollbackActions.length,
     });
 
-    const errors: Error[] = [];
-
-    // Execute rollback actions in reverse order
-    for (const action of context.rollbackActions.reverse()) {
+    for (let i = context.rollbackActions.length - 1; i >= 0; i -= 1) {
       try {
-        await action();
+        await context.rollbackActions[i]();
       } catch (error) {
-        const rollbackError = isError(error) ? error : new Error(getErrorMessage(error));
-        errors.push(rollbackError);
-
         logger.error('Rollback action failed', {
           transactionId: context.id,
-          error: rollbackError.message,
+          actionIndex: i,
+          error: getErrorMessage(error),
         });
       }
-    }
-
-    if (errors.length > 0) {
-      throw new DatabaseError(`Rollback failed with ${String(String(errors.length))} errors`, {
-        errors: errors.map(e => e.message),
-      });
     }
   }
 
   /**
-   * Set transaction isolation level
+   * Set the isolation level for the transaction
    */
   private async setIsolationLevel(
     db: any,
     level: TransactionOptions['isolationLevel']
   ): Promise<void> {
-    const levelMap = {
+    if (!level) return;
+
+    const isolationLevelMap: Record<string, string> = {
       READ_UNCOMMITTED: 'READ UNCOMMITTED',
       READ_COMMITTED: 'READ COMMITTED',
       REPEATABLE_READ: 'REPEATABLE READ',
       SERIALIZABLE: 'SERIALIZABLE',
     };
 
-    const sqlLevel = levelMap[level!];
-    await db.exec(
-      `PRAGMA read_uncommitted = ${String(sqlLevel === 'READ UNCOMMITTED' ? 'ON' : 'OFF')}`
-    );
+    const sqlLevel = isolationLevelMap[level];
+    if (sqlLevel) {
+      await db.exec(`SET TRANSACTION ISOLATION LEVEL ${sqlLevel}`);
+    }
   }
 
   /**
-   * Generate unique transaction ID
+   * Generate a unique transaction ID
    */
   private static generateTransactionId(): string {
     TransactionManager.transactionCounter += 1;
-    return `txn_${String(String(Date.now()))}_${String(String(TransactionManager.transactionCounter))}`;
+    return `tx_${Date.now()}_${TransactionManager.transactionCounter}`;
   }
 
   /**
    * Check if an error is retryable
    */
   private static isRetryableError(error: unknown): boolean {
-    if (!isError(error)) return false;
-
-    const retryableMessages = [
-      'database is locked',
-      'SQLITE_BUSY',
-      'deadlock',
-      'transaction timeout',
-    ];
-
-    const errorMessage = error.message.toLowerCase();
-    return retryableMessages.some(msg => errorMessage.includes(msg.toLowerCase()));
+    if (error instanceof DatabaseError) {
+      return error.isRetryable();
+    }
+    return false;
   }
 
   /**
-   * Get active transaction count
+   * Get the number of active transactions
    */
   getActiveTransactionCount(): number {
     return this.activeTransactions.size;
   }
 
   /**
-   * Get transaction by ID
+   * Get a specific transaction by ID
    */
   getTransaction(transactionId: string): TransactionContext | undefined {
     return this.activeTransactions.get(transactionId);
@@ -302,19 +282,22 @@ export class TransactionManager {
 }
 
 /**
- * Utility function to create a transactional wrapper
+ * Execute a function within a transaction context
  */
 export function withTransaction<TService extends { db: DatabaseConnection }, TResult>(
   service: TService,
   operation: (service: TService, context: TransactionContext) => Promise<TResult>,
   options: TransactionOptions = {}
 ): Promise<TResult> {
-  const manager = new TransactionManager(service.db);
-  return manager.executeTransaction(context => operation(service, context), options);
+  const transactionManager = new TransactionManager(service.db);
+  return transactionManager.executeTransaction(
+    async context => operation(service, context),
+    options
+  );
 }
 
 /**
- * Batch operations within a transaction
+ * Execute batch operations within a transaction
  */
 export async function batchInTransaction<T, R>(
   db: DatabaseConnection,
@@ -323,99 +306,17 @@ export async function batchInTransaction<T, R>(
   options: TransactionOptions & { batchSize?: number } = {}
 ): Promise<R[]> {
   const { batchSize = 100, ...transactionOptions } = options;
-  const manager = new TransactionManager(db);
+  const transactionManager = new TransactionManager(db);
   const results: R[] = [];
 
-  for (let i = 0; i < items.length; i = i + batchSize) {
+  for (let i = 0; i < items.length; i += batchSize) {
     const batch = items.slice(i, i + batchSize);
-
-    const batchResults = await manager.executeTransaction(async context => {
-      const promises = batch.map((item, index) => {
-        manager.addOperation(context, 'batch', `item_${String(i + index)}`);
-        return operation(item, i + index);
-      });
-
-      return Promise.all(promises);
+    const batchResults = await transactionManager.executeTransaction(async () => {
+      const batchPromises = batch.map((item, index) => operation(item, i + index));
+      return Promise.all(batchPromises);
     }, transactionOptions);
-
     results.push(...batchResults);
   }
 
   return results;
-}
-
-/**
- * Create a savepoint within a transaction
- */
-export class Savepoint {
-  constructor(
-    private readonly name: string,
-    private readonly db: any
-  ) {}
-
-  async create(): Promise<void> {
-    await this.db.exec(`SAVEPOINT ${String(String(this.name))}`);
-  }
-
-  async release(): Promise<void> {
-    await this.db.exec(`RELEASE SAVEPOINT ${String(String(this.name))}`);
-  }
-
-  async rollback(): Promise<void> {
-    await this.db.exec(`ROLLBACK TO SAVEPOINT ${String(String(this.name))}`);
-  }
-}
-
-/**
- * Transaction statistics
- */
-export interface TransactionStats {
-  totalTransactions: number;
-  successfulTransactions: number;
-  failedTransactions: number;
-  averageDuration: number;
-  activeTransactions: number;
-}
-
-export class TransactionMonitor {
-  private stats: TransactionStats = {
-    totalTransactions: 0,
-    successfulTransactions: 0,
-    failedTransactions: 0,
-    averageDuration: 0,
-    activeTransactions: 0,
-  };
-
-  recordTransaction(success: boolean, duration: number): void {
-    this.stats.totalTransactions++;
-
-    if (success) {
-      this.stats.successfulTransactions++;
-    } else {
-      this.stats.failedTransactions++;
-    }
-
-    // Update average duration
-    const totalDuration =
-      this.stats.averageDuration * (this.stats.totalTransactions - 1) + duration;
-    this.stats.averageDuration = totalDuration / this.stats.totalTransactions;
-  }
-
-  updateActiveCount(count: number): void {
-    this.stats.activeTransactions = count;
-  }
-
-  getStats(): TransactionStats {
-    return { ...this.stats };
-  }
-
-  reset(): void {
-    this.stats = {
-      totalTransactions: 0,
-      successfulTransactions: 0,
-      failedTransactions: 0,
-      averageDuration: 0,
-      activeTransactions: 0,
-    };
-  }
 }

@@ -1,9 +1,7 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { DashboardManager } from '../utils/dashboard-manager';
-import type { ApiClient } from '../client';
 import { getThemeNames } from '../ui/themes/dashboard-themes';
-import type { CliComponents } from '../types';
 
 /**
  * Dashboard command for launching terminal dashboards
@@ -23,9 +21,9 @@ export const dashboardCommand = new Command('dashboard')
     try {
       // Handle list themes option
       if (options.listThemes) {
-        logger.log(chalk.cyan('🎨 Available Dashboard Themes:'));
+        console.log(chalk.cyan('🎨 Available Dashboard Themes:'));
         getThemeNames().forEach(theme => {
-          logger.log(`  ${String(String(chalk.yellow('•')))} ${String(theme)}`);
+          console.log(`  ${String(String(chalk.yellow('•')))} ${String(theme)}`);
         });
         return;
       }
@@ -33,15 +31,15 @@ export const dashboardCommand = new Command('dashboard')
       // Validate theme
       const availableThemes = getThemeNames();
       if (!availableThemes.includes(options.theme)) {
-        logger.error(chalk.red(`Invalid theme: ${String(String(options.theme))}`));
-        logger.log(chalk.yellow('Available themes:'), availableThemes.join(', '));
+        console.error(chalk.red(`Invalid theme: ${String(String(options.theme))}`));
+        console.log(chalk.yellow('Available themes:'), availableThemes.join(', '));
         return;
       }
 
-      logger.log(chalk.cyan('🚀 Launching Kanban Dashboard...'));
+      console.log(chalk.cyan('🚀 Launching Kanban Dashboard...'));
 
       const config = {
-        refreshInterval: parseInt(options.refresh) * 1000,
+        refreshInterval: parseInt(options.refresh, 10) * 1000,
         theme: options.theme,
         autoRefresh: options.autoRefresh !== false,
         showHelp: true,
@@ -59,7 +57,7 @@ export const dashboardCommand = new Command('dashboard')
           dashboard.switchLayout(options.layout);
           break;
         default:
-          logger.warn(
+          console.warn(
             chalk.yellow(`Unknown layout: ${String(String(options.layout))}. Using overview.`)
           );
           dashboard.switchLayout('overview');
@@ -68,9 +66,9 @@ export const dashboardCommand = new Command('dashboard')
       // Start the dashboard
       dashboard.start();
 
-      logger.log(chalk.green('Dashboard started! Press "h" for help, "q" to quit.'));
+      console.log(chalk.green('Dashboard started! Press "h" for help, "q" to quit.'));
     } catch (error) {
-      logger.error(
+      console.error(
         chalk.red('Failed to start dashboard:'),
         error instanceof Error ? error.message : 'Unknown error'
       );

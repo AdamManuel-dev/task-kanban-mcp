@@ -68,7 +68,7 @@ export async function createServer(): Promise<express.Application> {
       req.path === '/health' || req.path === '/api/health',
     keyGenerator: req =>
       // Use API key if available, otherwise use IP
-      req.get('X-API-Key') || req.ip || 'unknown',
+      (req.get('X-API-Key') || req.ip) ?? 'unknown',
   });
 
   app.use('/api', limiter);

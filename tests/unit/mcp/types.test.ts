@@ -9,14 +9,10 @@ import type {
   McpError,
   McpTool,
   McpToolResult,
-  McpResource,
-  McpPrompt,
   ToolDefinition,
-  ToolParameter,
   ToolCall,
   ResourceDefinition,
   PromptDefinition,
-  PromptArgument,
 } from '@/mcp/types';
 
 describe('MCP Types', () => {

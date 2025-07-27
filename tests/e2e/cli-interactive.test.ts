@@ -307,8 +307,8 @@ describe('CLI Interactive Features E2E Tests', () => {
         output += data.toString();
       });
 
-      await new Promise((resolve, _reject) => {
-        child.on('close', _code => {
+      await new Promise<void>(resolve => {
+        child.on('close', () => {
           resolve(output);
         });
       });
@@ -341,9 +341,7 @@ describe('CLI Interactive Features E2E Tests', () => {
       });
 
       await new Promise<void>(resolve => {
-    {
-        child.on('close', (
-  }) => {
+        child.on('close', () => {
           resolve(output);
         });
       });
@@ -372,9 +370,7 @@ describe('CLI Interactive Features E2E Tests', () => {
       });
 
       await new Promise<void>(resolve => {
-    {
-        child.on('close', (
-  }) => {
+        child.on('close', () => {
           resolve(output);
         });
       });

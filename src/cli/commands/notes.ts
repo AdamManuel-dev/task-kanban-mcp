@@ -89,7 +89,7 @@ export function registerNoteCommands(program: Command): void {
 
       let noteData: any = {};
 
-      if (options.interactive || !options.title) {
+      if (options.interactive ?? !options.title) {
         const questions: any[] = [];
 
         if (!options.title) {
@@ -141,11 +141,11 @@ export function registerNoteCommands(program: Command): void {
       }
 
       // Use command line options or answers
-      noteData.title = options.title || noteData.title;
-      noteData.content = options.content || noteData.content;
-      noteData.category = options.category || noteData.category || 'general';
-      noteData.taskId = options.task || noteData.taskId;
-      noteData.pinned = options.pin || noteData.pinned || false;
+      noteData.title = options.title ?? noteData.title;
+      noteData.content = options.content ?? noteData.content;
+      noteData.category = options.category ?? noteData.category ?? 'general';
+      noteData.taskId = options.task ?? noteData.taskId;
+      noteData.pinned = options.pin ?? noteData.pinned ?? false;
 
       try {
         const note = (await apiClient.createNote(noteData)) as any;
@@ -194,20 +194,20 @@ export function registerNoteCommands(program: Command): void {
               type: 'editor',
               name: 'content',
               message: 'Note content:',
-              default: currentNote.content || '',
+              default: currentNote.content ?? '',
             },
             {
               type: 'list',
               name: 'category',
               message: 'Note category:',
               choices: ['general', 'meeting', 'idea', 'bug', 'feature', 'docs'],
-              default: currentNote.category || 'general',
+              default: currentNote.category ?? 'general',
             },
             {
               type: 'confirm',
               name: 'pinned',
               message: 'Pin this note?',
-              default: currentNote.pinned || false,
+              default: currentNote.pinned ?? false,
             },
           ]);
           updates = answers;
@@ -294,7 +294,7 @@ export function registerNoteCommands(program: Command): void {
 
         const notes = (await apiClient.searchNotes(query)) as any;
 
-        if (!notes || notes.length === 0) {
+        if (!notes ?? notes.length === 0) {
           formatter.info(`No notes found matching "${String(query)}"`);
           return;
         }

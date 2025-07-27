@@ -36,7 +36,7 @@ export function registerPriorityCommands(program: Command): void {
         } else {
           const priorities = await apiClient.getPriorities();
 
-          if (!priorities || (priorities as any).length === 0) {
+          if (!priorities ?? (priorities as any).length === 0) {
             formatter.info('No prioritized tasks available');
             return;
           }
@@ -68,7 +68,7 @@ export function registerPriorityCommands(program: Command): void {
       try {
         const priorities = (await apiClient.getPriorities()) as any;
 
-        if (!priorities || priorities.length === 0) {
+        if (!priorities ?? priorities.length === 0) {
           formatter.info('No prioritized tasks available');
           return;
         }
@@ -168,7 +168,7 @@ export function registerPriorityCommands(program: Command): void {
           process.exit(1);
         }
 
-        const currentPriority = task.priority || 5;
+        const currentPriority = task.priority ?? 5;
         const newPriority = Math.min(currentPriority + 1, 10);
 
         await apiClient.updateTaskPriority(taskId, newPriority);
@@ -196,7 +196,7 @@ export function registerPriorityCommands(program: Command): void {
           process.exit(1);
         }
 
-        const currentPriority = task.priority || 5;
+        const currentPriority = task.priority ?? 5;
         const newPriority = Math.max(currentPriority - 1, 1);
 
         await apiClient.updateTaskPriority(taskId, newPriority);

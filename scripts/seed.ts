@@ -29,7 +29,7 @@ program
   .action(async (options: { force?: boolean }) => {
     try {
       await dbConnection.initialize({ skipSchema: true });
-      const count = await dbConnection.runSeeds({ force: options.force ?? false });
+      const count: number = await dbConnection.runSeeds({ force: options.force ?? false });
 
       if (count === 0) {
         console.log('✅ No pending seeds');

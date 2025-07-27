@@ -1,4 +1,4 @@
-import { logger } from '@/utils/logger';
+import { logger } from '../utils/logger';
 import type { WebSocketClient, SubscriptionFilter } from './types';
 import { SubscriptionChannel } from './types';
 import type { WebSocketManager } from './server';

@@ -150,7 +150,7 @@ export async function taskRoutes(): Promise<Router> {
       const tasks = await taskService.getTasks(options);
 
       // Get total count for pagination
-      const { limit: _, offset: __, ...countOptions } = options;
+      const { limit, offset, ...countOptions } = options;
       const totalTasks = await taskService.getTasks(countOptions);
       const total = totalTasks.length;
 

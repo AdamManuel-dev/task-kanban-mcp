@@ -241,7 +241,7 @@ export function formatPriority(priority: string): string {
     LOW: chalk.green,
   };
 
-  const colorFn = colors[priority as keyof typeof colors] || chalk.white;
+  const colorFn = colors[priority as keyof typeof colors] ?? chalk.white;
   return colorFn(priority);
 }
 
@@ -259,7 +259,7 @@ export function formatStatus(status: string): string {
     cancelled: { icon: '⊘', color: chalk.gray },
   };
 
-  const config = statusMap[status.toLowerCase() as keyof typeof statusMap] || {
+  const config = statusMap[status.toLowerCase() as keyof typeof statusMap] ?? {
     icon: '?',
     color: chalk.white,
   };

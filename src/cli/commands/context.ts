@@ -34,12 +34,14 @@ interface ShowContextOptions {
 interface TaskContextOptions {
   suggestions?: boolean;
   related?: boolean;
+  history?: boolean;
 }
 
 interface SummaryContextOptions {
   boards?: string;
   timeframe?: string;
   format?: string;
+  includeMetrics?: boolean;
 }
 
 /**
@@ -228,22 +230,28 @@ export function registerContextCommands(program: Command): void {
 
         formatter.info('📊 Project Summary\n');
 
-        if (summary.overview) {
-          formatter.info(summary.overview as string);
+        // eslint-disable-next-line dot-notation
+        if (summary['overview']) {
+          // eslint-disable-next-line dot-notation
+          formatter.info(summary['overview'] as string);
           formatter.info('');
         }
 
-        if (summary.progress) {
+        // eslint-disable-next-line dot-notation
+        if (summary['progress']) {
           formatter.info('📈 Progress Overview:');
-          Object.entries(summary.progress as Record<string, unknown>).forEach(([key, value]) => {
+          // eslint-disable-next-line dot-notation
+          Object.entries(summary['progress'] as Record<string, unknown>).forEach(([key, value]) => {
             formatter.info(`  ${String(key)}: ${String(value)}`);
           });
           formatter.info('');
         }
 
-        if (summary.recentActivity) {
+        // eslint-disable-next-line dot-notation
+        if (summary['recentActivity']) {
           formatter.info('🔄 Recent Activity:');
-          summary.recentActivity.forEach((activity: any) => {
+          // eslint-disable-next-line dot-notation
+          (summary['recentActivity'] as any[]).forEach((activity: any) => {
             formatter.info(
               `• ${String(String(activity.description))} (${String(String(activity.date))})`
             );
@@ -251,14 +259,18 @@ export function registerContextCommands(program: Command): void {
           formatter.info('');
         }
 
-        if (options.includeMetrics && summary.metrics) {
+        // eslint-disable-next-line dot-notation
+        if (options.includeMetrics && summary['metrics']) {
           formatter.info('📊 Performance Metrics:');
-          formatter.output(summary.metrics);
+          // eslint-disable-next-line dot-notation
+          formatter.output(summary['metrics']);
         }
 
-        if (summary.keyInsights) {
+        // eslint-disable-next-line dot-notation
+        if (summary['keyInsights']) {
           formatter.info('🔍 Key Insights:');
-          (summary.keyInsights as string[]).forEach((insight: string) => {
+          // eslint-disable-next-line dot-notation
+          (summary['keyInsights'] as string[]).forEach((insight: string) => {
             formatter.info(`• ${String(insight)}`);
           });
         }
@@ -324,25 +336,30 @@ export function registerContextCommands(program: Command): void {
           process.exit(1);
         }
 
-        formatter.info(`🎯 Task Context: ${String(String((taskContext.title as string) || id))}\n`);
+        // eslint-disable-next-line dot-notation
+        formatter.info(`🎯 Task Context: ${String(String((taskContext['title'] as string) ?? id))}\n`);
 
-        if (taskContext.description) {
-          formatter.info(taskContext.description as string);
+        // eslint-disable-next-line dot-notation
+        if (taskContext['description']) {
+          // eslint-disable-next-line dot-notation
+          formatter.info(taskContext['description'] as string);
           formatter.info('');
         }
 
-        if (taskContext.dependencies && taskContext.dependencies.length > 0) {
+        // eslint-disable-next-line dot-notation
+        if (taskContext['dependencies'] && (taskContext['dependencies'] as any[]).length > 0) {
           formatter.info('🔗 Dependencies:');
-          formatter.output(taskContext.dependencies, {
+          // eslint-disable-next-line dot-notation
+          formatter.output(taskContext['dependencies'], {
             fields: ['id', 'title', 'status'],
             headers: ['ID', 'Title', 'Status'],
           });
           formatter.info('');
         }
 
-        if (taskContext.blockers && taskContext.blockers.length > 0) {
+        if (taskContext.blockers && (taskContext.blockers as any[]).length > 0) {
           formatter.info('🚫 Blockers:');
-          taskContext.blockers.forEach((blocker: any) => {
+          (taskContext.blockers as any[]).forEach((blocker: any) => {
             formatter.warn(`• ${String(String(blocker.description))}`);
           });
           formatter.info('');
@@ -359,7 +376,7 @@ export function registerContextCommands(program: Command): void {
 
         if (options.history && taskContext.history) {
           formatter.info('📜 Task History:');
-          taskContext.history.forEach((event: any) => {
+          (taskContext.history as any[]).forEach((event: any) => {
             formatter.info(`• ${String(String(event.date))}: ${String(String(event.description))}`);
           });
           formatter.info('');
@@ -367,14 +384,14 @@ export function registerContextCommands(program: Command): void {
 
         if (taskContext.aiInsights) {
           formatter.info('🤖 AI Insights:');
-          taskContext.aiInsights.forEach((insight: string) => {
+          (taskContext.aiInsights as string[]).forEach((insight: string) => {
             formatter.info(`• ${String(insight)}`);
           });
         }
 
         if (taskContext.suggestions) {
           formatter.info('\n💡 Suggestions:');
-          taskContext.suggestions.forEach((suggestion: string) => {
+          (taskContext.suggestions as string[]).forEach((suggestion: string) => {
             formatter.success(`• ${String(suggestion)}`);
           });
         }

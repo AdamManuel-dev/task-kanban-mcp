@@ -164,8 +164,8 @@ export class ApiClientWrapper {
         spinnerText,
         this.executeWithRetry(operation, retries, operationName),
         {
-          successText: successText || `${String(operationName)} completed successfully`,
-          failText: errorText || `Failed to ${String(String(operationName.toLowerCase()))}`,
+          successText: successText ?? `${String(operationName)} completed successfully`,
+          failText: errorText ?? `Failed to ${String(String(operationName.toLowerCase()))}`,
           timeout,
         }
       );
@@ -294,7 +294,7 @@ export class ApiClientWrapper {
   /**
    * Set up offline detection
    */
-  private static setupOfflineDetection(): void {
+  private setupOfflineDetection(): void {
     // Check connection periodically
     setInterval(() => {
       (async (): Promise<void> => {

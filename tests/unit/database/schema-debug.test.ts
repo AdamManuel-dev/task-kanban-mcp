@@ -40,20 +40,23 @@ describe('Database Schema Debug', () => {
 
   test('should debug schema issues', async () => {
     // Get current tables
-    const tablesBefore = await new Promise<any[]>((resolve, reject) => {
-      db.all("SELECT name FROM sqlite_master WHERE type='table';", (err: any, rows: any) => {
-        if (err) reject(err);
-        else resolve(rows);
-      });
+    const tablesBefore = await new Promise<unknown[]>((resolve, reject) => {
+      db.all(
+        "SELECT name FROM sqlite_master WHERE type='table';",
+        (err: unknown, rows: unknown) => {
+          if (err) reject(err);
+          else resolve(rows as unknown[]);
+        }
+      );
     });
 
     expect(Array.isArray(tablesBefore)).toBe(true);
 
     // Get tasks table schema
-    const tasksSchema = await new Promise<any[]>((resolve, reject) => {
-      db.all('PRAGMA table_info(tasks);', (err: any, rows: any) => {
+    const tasksSchema = await new Promise<unknown[]>((resolve, reject) => {
+      db.all('PRAGMA table_info(tasks);', (err: unknown, rows: unknown) => {
         if (err) reject(err);
-        else resolve(rows);
+        else resolve(rows as unknown[]);
       });
     });
 
@@ -84,11 +87,14 @@ describe('Database Schema Debug', () => {
     }
 
     // Verify final state
-    const tablesAfter = await new Promise<any[]>((resolve, reject) => {
-      db.all("SELECT name FROM sqlite_master WHERE type='table';", (err: any, rows: any) => {
-        if (err) reject(err);
-        else resolve(rows);
-      });
+    const tablesAfter = await new Promise<unknown[]>((resolve, reject) => {
+      db.all(
+        "SELECT name FROM sqlite_master WHERE type='table';",
+        (err: unknown, rows: unknown) => {
+          if (err) reject(err);
+          else resolve(rows as unknown[]);
+        }
+      );
     });
 
     expect(Array.isArray(tablesAfter)).toBe(true);

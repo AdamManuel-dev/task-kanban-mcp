@@ -950,9 +950,9 @@ Format the insights to encourage constructive discussion and actionable outcomes
   }
 
   private async generateTaskPlanningPrompt(args: any): Promise<PromptContent> {
-    const board_id = args.board_id || args.boardId;
-    const planning_horizon = args.planning_horizon || args.planningHorizon;
-    const focus_area = args.focus_area || args.focusArea;
+    const board_id = args.board_id ?? args.boardId;
+    const planning_horizon = args.planning_horizon ?? args.planningHorizon;
+    const focus_area = args.focus_area ?? args.focusArea;
 
     if (!board_id) {
       throw new Error('board_id (or boardId) is required');
@@ -964,7 +964,7 @@ Format the insights to encourage constructive discussion and actionable outcomes
       max_items: 100,
     });
 
-    const horizon = planning_horizon || 'sprint';
+    const horizon = planning_horizon ?? 'sprint';
     const focus = focus_area ? ` with focus on ${String(focus_area)}` : '';
 
     return {
@@ -998,14 +998,13 @@ Focus on actionable recommendations that will improve team productivity and proj
     const task_description =
       args.task_description ||
       (args.taskId ? `Task ID: ${String(String(args.taskId))}` : args.description);
-    const board_id = args.board_id || args.boardId;
-    const complexity_level = args.complexity_level || args.complexity;
+    const complexity_level = args.complexity_level ?? args.complexity;
 
     if (!task_description) {
       throw new Error('task_description (or taskId) is required');
     }
 
-    const complexity = complexity_level || 'medium';
+    const complexity = complexity_level ?? 'medium';
 
     return {
       description: 'Break down complex tasks into manageable subtasks',
@@ -1038,16 +1037,16 @@ Make sure each subtask is:
   }
 
   private async generateSprintPlanningBasicPrompt(args: any): Promise<PromptContent> {
-    // const board_id = args.board_id || args.boardId; // Unused variable
-    const sprint_duration = args.sprint_duration || args.sprintDuration;
-    const team_capacity = args.team_capacity || args.teamCapacity;
+    const board_id = args.board_id ?? args.boardId;
+    const sprint_duration = args.sprint_duration ?? args.sprintDuration;
+    const team_capacity = args.team_capacity ?? args.teamCapacity;
 
     if (!board_id) {
       throw new Error('board_id (or boardId) is required');
     }
 
-    const duration = sprint_duration || 14;
-    const capacity = team_capacity || 'standard team capacity';
+    const duration = sprint_duration ?? 14;
+    const capacity = team_capacity ?? 'standard team capacity';
 
     const context = await this.services.contextService.getProjectContext({
       include_completed: false,

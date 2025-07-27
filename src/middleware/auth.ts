@@ -69,7 +69,7 @@ export function authenticationMiddleware(
 ) {
   // Skip authentication for public endpoints
   const publicEndpoints = ['/health', '/docs'];
-  const fullPath = req.originalUrl || req.url;
+  const fullPath = req.originalUrl ?? req.url;
 
   // Check for exact match or path that starts with endpoint followed by / or query
   const isPublicEndpoint =

@@ -1,5 +1,5 @@
-import { logger } from '@/utils/logger';
-import { config } from '@/config';
+import { logger } from '../utils/logger';
+import { config } from '../config';
 
 export interface RateLimitEntry {
   count: number;
@@ -26,11 +26,11 @@ export class RateLimiter {
 
   constructor() {
     this.config = {
-      windowMs: config.rateLimit?.windowMs || 60000, // 1 minute
-      maxRequests: config.rateLimit?.maxRequests || 100,
-      maxConnections: config.websocket?.maxConnections || 1000,
-      maxMessagesPerMinute: config.websocket?.maxMessagesPerMinute || 120,
-      maxSubscriptionsPerClient: config.websocket?.maxSubscriptionsPerClient || 50,
+      windowMs: config.rateLimit?.windowMs ?? 60000, // 1 minute
+      maxRequests: config.rateLimit?.maxRequests ?? 100,
+      maxConnections: config.websocket?.maxConnections ?? 1000,
+      maxMessagesPerMinute: config.websocket?.maxMessagesPerMinute ?? 120,
+      maxSubscriptionsPerClient: config.websocket?.maxSubscriptionsPerClient ?? 50,
     };
 
     this.startCleanup();
@@ -353,14 +353,14 @@ export class RateLimiter {
   }
 
   // Start cleanup interval
-  private static startCleanup(): void {
+  private startCleanup(): void {
     this.cleanupInterval = setInterval(() => {
       this.cleanup();
     }, this.config.windowMs);
   }
 
   // Clean up expired entries
-  private static cleanup(): void {
+  private cleanup(): void {
     const now = Date.now();
     const windowStart = now - this.config.windowMs;
     let cleanedConnections = 0;

@@ -336,7 +336,7 @@ describe('Task API Integration Tests', () => {
       expect(response.body.success).toBe(true);
 
       // Verify task is deleted
-      const checkResponse = await request(app)
+      await request(app)
         .get(`/api/v1/tasks/${String(String(testTask.id))}`)
         .set('X-API-Key', apiKey)
         .expect(404);

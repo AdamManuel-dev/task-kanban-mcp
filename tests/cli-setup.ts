@@ -99,7 +99,7 @@ export const cliTestUtils = {
   /**
    * Render a React component for CLI testing (placeholder)
    */
-  renderComponent: (component: ReactElement): any =>
+  renderComponent: (_component: ReactElement): any =>
     // TODO: Implement when ink-testing-library is properly configured
     ({
       lastFrame: (): string => '',

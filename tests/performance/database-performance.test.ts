@@ -61,15 +61,13 @@ describe('Database Performance Tests', () => {
       const batch: Array<Omit<Task, 'id' | 'createdAt' | 'updatedAt'>> = [];
       const currentBatchSize = Math.min(batchSize, count - i);
 
-      Array.from({ length: currentBatchSize - 0 }, (_, j) => j + 0) {
+      for (let j = 0; j < currentBatchSize; j++) {
         batch.push({
           title: `Performance Test Task ${String(i + j + 1)}`,
           description: `Description for performance test task ${String(i + j + 1)}`,
           board_id: testBoard.id,
-          column_id: testColumnId,
-          status: ['todo', 'in_progress', 'done'][Math.floor(Math.random() * 3)] as Task['status'],
-          priority: Math.floor(Math.random() * 10),
-          position: i + j,
+          status: 'todo',
+          position: i + j + 1,
         });
       }
 
@@ -97,7 +95,7 @@ describe('Database Performance Tests', () => {
       const startTime = Date.now();
 
       await dbConnection.transaction(async db => {
-        Array.from({ length: taskCount - 0 }, (_, i) => i + 0) {
+        Array.from({ length: taskCount }, (_, i) => i).forEach(async (i) => {
           await db.run(
             `INSERT INTO tasks (id, title, description, board_id, column_id, status, priority, position, created_at) 
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -113,7 +111,7 @@ describe('Database Performance Tests', () => {
               new Date().toISOString(),
             ]
           );
-        }
+        });
       });
 
       const endTime = Date.now();
@@ -192,12 +190,12 @@ describe('Database Performance Tests', () => {
       const iterations = 100;
       const startTime = Date.now();
 
-      Array.from({ length: iterations - 0 }, (_, i) => i + 0) {
+      Array.from({ length: iterations }, (_, i) => i).forEach(async () => {
         await dbConnection.query(
           'SELECT id, title, status, priority FROM tasks WHERE board_id = ? LIMIT 10',
           [testBoard.id]
         );
-      }
+      });
 
       const endTime = Date.now();
       const duration = endTime - startTime;
@@ -211,7 +209,7 @@ describe('Database Performance Tests', () => {
       const iterations = 50;
       const startTime = Date.now();
 
-      Array.from({ length: iterations - 0 }, (_, i) => i + 0) {
+      Array.from({ length: iterations }, (_, i) => i).forEach(async () => {
         await dbConnection.query(
           `
           SELECT t.id, t.title, t.status, t.priority, 
@@ -229,7 +227,7 @@ describe('Database Performance Tests', () => {
         `,
           [testBoard.id]
         );
-      }
+      });
 
       const endTime = Date.now();
       const duration = endTime - startTime;

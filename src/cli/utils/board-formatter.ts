@@ -42,7 +42,7 @@ export class BoardFormatter {
       showStats?: boolean;
     }
   ): string {
-    const { maxWidth = 120, showDescription = true, showStats = true } = options || {};
+    const { maxWidth = 120, showDescription = true, showStats = true } = options ?? {};
     const output: string[] = [];
 
     // Board header
@@ -56,7 +56,7 @@ export class BoardFormatter {
     // Board stats
     if (showStats) {
       const stats = this.calculateBoardStats(board);
-      output.push(this.formatBoardStats(stats));
+      output.push(BoardFormatter.formatBoardStats(stats));
       output.push('');
     }
 
@@ -64,7 +64,7 @@ export class BoardFormatter {
     const table = new Table({
       head: board.columns.map(col => formatBoardColumn(col.name, col.tasks.length)),
       style: { head: ['cyan'] },
-      colWidths: this.calculateColumnWidths(board.columns.length, maxWidth),
+      colWidths: BoardFormatter.calculateColumnWidths(board.columns.length, maxWidth),
       wordWrap: true,
     });
 
@@ -75,7 +75,7 @@ export class BoardFormatter {
     for (let i = 0; i < maxTasks; i += 1) {
       const row = board.columns.map(col => {
         const task = col.tasks[i];
-        return task ? this.formatTaskCard(task) : '';
+        return task ? BoardFormatter.formatTaskCard(task) : '';
       });
       table.push(row);
     }
@@ -248,10 +248,10 @@ export class BoardFormatter {
           task.id,
           `"${String(String(task.title.replace(/"/g, '""')))}"`,
           task.status,
-          task.priority || '',
-          task.assignee || '',
-          task.due_date || '',
-          (task.tags || []).join(';'),
+          task.priority ?? '',
+          task.assignee ?? '',
+          task.due_date ?? '',
+          (task.tags ?? []).join(';'),
         ];
         lines.push(row.join(','));
       }

@@ -26,7 +26,14 @@
     "node_modules",
     "dist",
     "**/*.test.ts",
-    "**/*.spec.ts"
+    "**/*.spec.ts",
+    "**/*-old.ts",
+    "src/cli/utils/**/*",
+    "src/cli/commands/**/*",
+    "src/cli/estimation/**/*",
+    "src/cli/prompts/**/*",
+    "src/cli/services/**/*",
+    "src/cli/ui/**/*"
   ],
   "ts-node": {
     "esm": false,

@@ -36,7 +36,7 @@ export function registerSubtaskCommands(program: Command): void {
           columnId: parentTask.columnId,
         };
 
-        if (options.interactive || !options.title) {
+        if (options.interactive ?? !options.title) {
           const questions: any[] = [];
 
           if (!options.title) {
@@ -85,12 +85,12 @@ export function registerSubtaskCommands(program: Command): void {
         }
 
         // Use command line options or answers
-        subtaskData.title = options.title || subtaskData.title;
-        subtaskData.description = options.description || subtaskData.description;
-        subtaskData.priority = parseInt(options.priority || subtaskData.priority, 10);
+        subtaskData.title = options.title ?? subtaskData.title;
+        subtaskData.description = options.description ?? subtaskData.description;
+        subtaskData.priority = parseInt(options.priority ?? subtaskData.priority, 10);
 
-        if (options.due || subtaskData.dueDate) {
-          subtaskData.dueDate = options.due || subtaskData.dueDate;
+        if (options.due ?? subtaskData.dueDate) {
+          subtaskData.dueDate = options.due ?? subtaskData.dueDate;
         }
 
         const subtask = (await apiClient.createTask(subtaskData)) as any;
@@ -124,7 +124,7 @@ export function registerSubtaskCommands(program: Command): void {
 
         const subtasks = (await apiClient.getTasks(params)) as any;
 
-        if (!subtasks || subtasks.length === 0) {
+        if (!subtasks ?? subtasks.length === 0) {
           formatter.info(`No subtasks found for task ${String(parentId)}`);
           return;
         }
@@ -205,7 +205,7 @@ export function registerSubtaskCommands(program: Command): void {
             `/api/tasks/${String(taskId)}/blocking`
           )) as any;
 
-          if (!blockedTasks || blockedTasks.length === 0) {
+          if (!blockedTasks ?? blockedTasks.length === 0) {
             formatter.info(`No tasks are blocked by task ${String(taskId)}`);
             return;
           }
@@ -221,7 +221,7 @@ export function registerSubtaskCommands(program: Command): void {
             `/api/tasks/${String(taskId)}/dependencies`
           )) as any;
 
-          if (!dependencies || dependencies.length === 0) {
+          if (!dependencies ?? dependencies.length === 0) {
             formatter.info(`Task ${String(taskId)} has no dependencies`);
             return;
           }

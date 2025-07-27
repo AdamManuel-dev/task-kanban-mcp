@@ -10,7 +10,7 @@ export class WebSocketAuth {
     this.initializeApiKeys();
   }
 
-  private static initializeApiKeys(): void {
+  private initializeApiKeys(): void {
     // Initialize with default API keys from environment or hardcoded defaults
     const defaultApiKeys = process.env.DEFAULT_API_KEYS?.split(',') || [];
     defaultApiKeys.forEach((key, index) => {
@@ -47,14 +47,14 @@ export class WebSocketAuth {
 
       // API Key Authentication
       if (payload.apiKey) {
-        return this.authenticateWithApiKey(payload.apiKey);
+        return WebSocketAuth.authenticateWithApiKey(payload.apiKey);
       }
 
       // Credentials Authentication
       if (payload.credentials) {
         return await this.authenticateWithCredentials({
-          email: payload.credentials.username || '',
-          password: payload.credentials.password || '',
+          email: payload.credentials.username ?? '',
+          password: payload.credentials.password ?? '',
         });
       }
 
@@ -96,7 +96,7 @@ export class WebSocketAuth {
       }
 
       // Get user permissions from token or database
-      const permissions = decoded.permissions || this.getDefaultPermissions(decoded.role);
+      const permissions = decoded.permissions ?? WebSocketAuth.getDefaultPermissions(decoded.role);
 
       const user: WebSocketUser = {
         id: decoded.userId,
@@ -145,7 +145,7 @@ export class WebSocketAuth {
       };
     }
 
-    const permissions = this.getDefaultPermissions(user.role);
+    const permissions = WebSocketAuth.getDefaultPermissions(user.role);
 
     return {
       success: true,
@@ -251,7 +251,7 @@ export class WebSocketAuth {
     }
 
     // Check wildcard permissions
-    const [action, _resource] = requiredPermission.split(':');
+    const [action] = requiredPermission.split(':');
     if (permissions.has(`${String(action)}:all`)) {
       return true;
     }
@@ -286,7 +286,7 @@ export class WebSocketAuth {
 
   // Generate JWT tokens (for testing or client integration)
   generateJWT(user: WebSocketUser, permissions: string[], expiresIn: string = '24h'): string {
-    const jwtSecret = process.env.JWT_SECRET || 'dev-secret-key-change-in-production';
+    const jwtSecret = process.env.JWT_SECRET ?? 'dev-secret-key-change-in-production';
     if (!jwtSecret || jwtSecret === 'dev-secret-key-change-in-production') {
       logger.warn('JWT generation using default secret - configure JWT_SECRET in production');
     }

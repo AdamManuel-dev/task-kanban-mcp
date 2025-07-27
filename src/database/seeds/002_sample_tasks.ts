@@ -1,11 +1,12 @@
 import type { Database } from 'sqlite';
 import type { Database as SQLiteDB } from 'sqlite3';
+import { logger } from '@/utils/logger';
 
 export const name = 'Sample Tasks';
 export const description =
   'Create sample tasks with various statuses, priorities, and relationships';
 
-export async function run(): Promise<void>(db: Database<SQLiteDB>): Promise<void> {
+export async function run(db: Database<SQLiteDB>): Promise<void> {
   // Create sample tasks for Development Board
   await db.run(`
     INSERT INTO tasks (id, title, description, board_id, column_id, position, priority, status, due_date, estimated_hours) VALUES 
@@ -43,5 +44,5 @@ export async function run(): Promise<void>(db: Database<SQLiteDB>): Promise<void
     ('task-17', 'Add password hashing', 'Implement bcrypt password hashing', 'board-1', 'col-6', 2, 100, 'done', 'task-1', 2.0)
   `);
 
-  logger.log('Sample tasks and subtasks created');
+  logger.info('Sample tasks and subtasks created');
 }

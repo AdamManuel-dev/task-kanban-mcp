@@ -286,10 +286,10 @@ export class ContextService {
           this.taskService.getOverdueTasks(),
           include_metrics
             ? this.calculateProjectMetrics()
-            : Promise.resolve(this.getEmptyMetrics()),
+            : Promise.resolve(ContextService.getEmptyMetrics()),
         ]);
 
-      const summary = this.generateProjectSummary(
+      const summary = ContextService.generateProjectSummary(
         boards,
         priorities,
         blockers,
@@ -318,7 +318,7 @@ export class ContextService {
       return context;
     } catch (error) {
       logger.error('Failed to generate project context', { error });
-      throw this.createError(
+      throw ContextService.createError(
         'CONTEXT_GENERATION_FAILED',
         'Failed to generate project context',
         error
@@ -361,7 +361,7 @@ export class ContextService {
 
       const task = await this.taskService.getTaskById(taskId);
       if (!task) {
-        throw this.createError('TASK_NOT_FOUND', 'Task not found', { taskId });
+        throw ContextService.createError('TASK_NOT_FOUND', 'Task not found', { taskId });
       }
 
       const [board, relatedTasks, dependencies, notes, tags, history] = await Promise.all([
@@ -374,17 +374,22 @@ export class ContextService {
       ]);
 
       if (!board) {
-        throw this.createError('BOARD_NOT_FOUND', 'Task board not found');
+        throw ContextService.createError('BOARD_NOT_FOUND', 'Task board not found');
       }
 
-      const contextSummary = this.generateTaskContextSummary(
+      const contextSummary = ContextService.generateTaskContextSummary(
         task,
         relatedTasks,
         dependencies,
         notes,
         detail_level
       );
-      const recommendations = this.generateTaskRecommendations(task, dependencies, notes, tags);
+      const recommendations = ContextService.generateTaskRecommendations(
+        task,
+        dependencies,
+        notes,
+        tags
+      );
 
       const context: TaskContext = {
         task,
@@ -406,7 +411,11 @@ export class ContextService {
         throw error;
       }
       logger.error('Failed to generate task context', { error, taskId });
-      throw this.createError('TASK_CONTEXT_FAILED', 'Failed to generate task context', error);
+      throw ContextService.createError(
+        'TASK_CONTEXT_FAILED',
+        'Failed to generate task context',
+        error
+      );
     }
   }
 
@@ -449,7 +458,7 @@ export class ContextService {
     try {
       const activeTasks = await this.taskService.getTasks({
         status: 'in_progress',
-        limit: options.max_items || 10,
+        limit: options.max_items ?? 10,
         sortBy: 'priority',
         sortOrder: 'desc',
       });
@@ -459,12 +468,12 @@ export class ContextService {
         this.getBlockerAnalysis(),
       ]);
 
-      const focusRecommendations = this.generateFocusRecommendations(
+      const focusRecommendations = ContextService.generateFocusRecommendations(
         activeTasks,
         nextActions,
         blockers
       );
-      const estimatedHours = this.calculateEstimatedWorkHours(activeTasks);
+      const estimatedHours = ContextService.calculateEstimatedWorkHours(activeTasks);
 
       return {
         active_tasks: activeTasks,
@@ -475,7 +484,11 @@ export class ContextService {
       };
     } catch (error) {
       logger.error('Failed to get current work context', { error });
-      throw this.createError('WORK_CONTEXT_FAILED', 'Failed to generate work context', error);
+      throw ContextService.createError(
+        'WORK_CONTEXT_FAILED',
+        'Failed to generate work context',
+        error
+      );
     }
   }
 
@@ -663,18 +676,15 @@ export class ContextService {
       };
     }
 
-    const dependsOn: Task[] = [];
-    const blocks: Task[] = [];
+    const [dependsOnResults, blocksResults] = await Promise.all([
+      Promise.all(
+        taskWithDeps.dependencies.map(dep => this.taskService.getTaskById(dep.depends_on_task_id))
+      ),
+      Promise.all(taskWithDeps.dependents.map(dep => this.taskService.getTaskById(dep.task_id))),
+    ]);
 
-    for (const dep of taskWithDeps.dependencies) {
-      const depTask = await this.taskService.getTaskById(dep.depends_on_task_id);
-      if (depTask) dependsOn.push(depTask);
-    }
-
-    for (const dep of taskWithDeps.dependents) {
-      const depTask = await this.taskService.getTaskById(dep.task_id);
-      if (depTask) blocks.push(depTask);
-    }
+    const dependsOn = dependsOnResults.filter((task): task is Task => task !== null);
+    const blocks = blocksResults.filter((task): task is Task => task !== null);
 
     const circularRisks = await this.detectCircularRisks(taskId);
     const criticalPath = await this.isOnCriticalPath(taskId);
@@ -862,17 +872,17 @@ export class ContextService {
       this.calculateVelocityTrend(),
     ]);
 
-    const total = taskStats?.total || 0;
-    const completed = taskStats?.completed || 0;
+    const total = taskStats?.total ?? 0;
+    const completed = taskStats?.completed ?? 0;
     const completionRate = total > 0 ? (completed / total) * 100 : 0;
 
     return {
       total_tasks: total,
       completed_tasks: completed,
       completion_rate: completionRate,
-      average_task_age_days: Math.round(avgAge?.avg_days || 0),
-      overdue_count: overdueCount?.count || 0,
-      blocked_count: blockedCount?.count || 0,
+      average_task_age_days: Math.round(avgAge?.avg_days ?? 0),
+      overdue_count: overdueCount?.count ?? 0,
+      blocked_count: blockedCount?.count ?? 0,
       velocity_trend: velocityTrend,
     };
   }
@@ -901,8 +911,8 @@ export class ContextService {
       ),
     ]);
 
-    const recent = recentVelocity?.count || 0;
-    const older = olderVelocity?.count || 0;
+    const recent = recentVelocity?.count ?? 0;
+    const older = olderVelocity?.count ?? 0;
 
     if (recent > older * 1.1) return 'increasing';
     if (recent < older * 0.9) return 'decreasing';
@@ -933,7 +943,7 @@ export class ContextService {
       [boardId, cutoffDate, cutoffDate]
     );
 
-    return result?.count || 0;
+    return result?.count ?? 0;
   }
 
   private static calculateBoardPriorityScore(board: any, recentActivity: number): number {
@@ -960,7 +970,7 @@ export class ContextService {
       [taskId]
     );
 
-    return result?.count || 0;
+    return result?.count ?? 0;
   }
 
   private async calculateUrgencyFactors(task: Task): Promise<{
@@ -1014,7 +1024,7 @@ export class ContextService {
     score: number,
     urgencyFactors: any
   ): 'low' | 'medium' | 'high' | 'critical' {
-    if (urgencyFactors.overdue || score >= 100) return 'critical';
+    if (urgencyFactors.overdue ?? score >= 100) return 'critical';
     if (score >= 70) return 'high';
     if (score >= 40) return 'medium';
     return 'low';
@@ -1042,7 +1052,7 @@ export class ContextService {
 
   private static calculateEstimatedWorkHours(tasks: Task[]): number {
     return tasks.reduce((total, task) => {
-      const remaining = (task.estimated_hours || 0) - (task.actual_hours || 0);
+      const remaining = (task.estimated_hours ?? 0) - (task.actual_hours ?? 0);
       return total + Math.max(0, remaining);
     }, 0);
   }
@@ -1059,8 +1069,27 @@ export class ContextService {
   private static createError(code: string, message: string, originalError?: any): ServiceError {
     const error = new Error(message) as ServiceError;
     error.code = code;
-    error.statusCode = 500;
+    error.statusCode = ContextService.getStatusCodeForError(code);
     error.details = originalError;
     return error;
+  }
+
+  /**
+   * Maps error codes to appropriate HTTP status codes
+   *
+   * @private
+   * @param code Error code identifier
+   * @returns HTTP status code
+   */
+  private static getStatusCodeForError(code: string): number {
+    switch (code) {
+      case 'CONTEXT_GENERATION_FAILED':
+      case 'PROJECT_CONTEXT_FAILED':
+      case 'TASK_CONTEXT_FAILED':
+      case 'WORK_CONTEXT_FAILED':
+        return 500;
+      default:
+        return 500;
+    }
   }
 }

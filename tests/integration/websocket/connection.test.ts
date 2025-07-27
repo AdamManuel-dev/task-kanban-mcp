@@ -103,8 +103,8 @@ describe('WebSocket Connection Integration Tests', () => {
 
       // Wait for disconnections
       await new Promise<void>(resolve => {
-    setTimeout(resolve, 100
-  }));
+        setTimeout(resolve, 100);
+      });
       expect(webSocketManager.getClientCount()).toBe(0);
     });
 
@@ -270,8 +270,8 @@ describe('WebSocket Connection Integration Tests', () => {
       authenticatedWs.send('{ invalid json }');
 
       await new Promise<void>(resolve => {
-    setTimeout(resolve, 100
-  }));
+        setTimeout(resolve, 100);
+      });
 
       const errorMessage = messages.find(m => m.type === 'error');
       expect(errorMessage).toBeDefined();
@@ -290,8 +290,8 @@ describe('WebSocket Connection Integration Tests', () => {
       authenticatedWs.send(JSON.stringify({ payload: {} }));
 
       await new Promise<void>(resolve => {
-    setTimeout(resolve, 100
-  }));
+        setTimeout(resolve, 100);
+      });
 
       const errorMessage = messages.find(m => m.type === 'error');
       expect(errorMessage).toBeDefined();
@@ -308,8 +308,8 @@ describe('WebSocket Connection Integration Tests', () => {
       authenticatedWs.ping();
 
       await new Promise<void>(resolve => {
-    setTimeout(resolve, 100
-  }));
+        setTimeout(resolve, 100);
+      });
       expect(pongReceived).toBe(true);
     });
   });
@@ -327,7 +327,7 @@ describe('WebSocket Connection Integration Tests', () => {
 
             if (message.type === 'welcome') {
               // Send many messages quickly
-              Array.from({ length: 100 - 0 }, (_, i) => i + 0) {
+              for (let i = 0; i < 100; i++) {
                 const msg: WebSocketMessage = {
                   type: 'ping',
                   id: uuidv4(),
@@ -359,7 +359,7 @@ describe('WebSocket Connection Integration Tests', () => {
       let connectionRejected = false;
 
       // Create many connections from same IP
-      Array.from({ length: 20 - 0 }, (_, i) => i + 0) {
+      for (let i = 0; i < 20; i++) {
         const ws = new WebSocket(wsUrl);
         connections.push(ws);
 
@@ -372,8 +372,8 @@ describe('WebSocket Connection Integration Tests', () => {
       }
 
       await new Promise<void>(resolve => {
-    setTimeout(resolve, 500
-  }));
+        setTimeout(resolve, 500);
+      });
 
       expect(connectionRejected).toBe(true);
 

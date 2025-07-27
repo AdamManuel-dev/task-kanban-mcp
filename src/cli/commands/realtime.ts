@@ -80,7 +80,7 @@ export function registerRealtimeCommands(program: Command): void {
                 const icon = getEventIcon(event.type);
                 const color = getEventColor(event.type);
                 logger.log(
-                  `${String(timestamp)} ${String(icon)} ${String(String(color(event.type)))}: ${String(String(event.message || formatEventMessage(event)))}`
+                  `${String(timestamp)} ${String(icon)} ${String(String(color(event.type)))}: ${String(String(event.message ?? formatEventMessage(event)))}`
                 );
               }
             } else if (message.type === 'error') {
@@ -178,7 +178,7 @@ export function registerRealtimeCommands(program: Command): void {
           // One-time log fetch
           const logs = (await apiClient.request('/api/logs', { params })) as any;
 
-          if (!logs || logs.length === 0) {
+          if (!logs ?? logs.length === 0) {
             formatter.info('No logs found');
             return;
           }
@@ -211,7 +211,7 @@ export function registerRealtimeCommands(program: Command): void {
       'subtask:completed': '✓',
       default: '📋',
     };
-    return icons[eventType] || icons.default || '📋';
+    return icons[eventType] ?? (icons.default || '📋');
   }
 
   function getEventColor(_eventType: string): (text: string) => string {

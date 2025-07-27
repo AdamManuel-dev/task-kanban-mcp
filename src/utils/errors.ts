@@ -46,7 +46,7 @@ export class BaseServiceError extends Error implements ServiceError {
     this.code = code;
     this.statusCode = statusCode;
     this.details = details;
-    this.context = context || undefined;
+    this.context = context ?? undefined;
     this.timestamp = new Date();
 
     Error.captureStackTrace(this, this.constructor);
@@ -117,7 +117,7 @@ export class DatabaseError extends BaseServiceError {
     const details =
       originalError instanceof Error
         ? { originalError: originalError.message }
-        : originalError || { originalError: undefined };
+        : (originalError ?? { originalError: undefined });
     super('DATABASE_ERROR', message, 500, details, context);
   }
 }
@@ -197,7 +197,8 @@ export class ErrorHandlerManager {
       return handler(error, context);
     }
 
-    return this.handleGenericError(error, context);
+    // Default to generic error handling
+    return ErrorHandlerManager.handleGenericError(error, context);
   }
 
   private static handleGenericError(error: Error, context?: ErrorContext): ServiceError {
@@ -269,10 +270,10 @@ class GlobalErrorHandler {
   >();
 
   constructor() {
-    GlobalErrorHandler.registerDefaultHandlers();
+    this.registerDefaultHandlers();
   }
 
-  private static registerDefaultHandlers(): void {
+  private registerDefaultHandlers(): void {
     this.registerHandler('ValidationError', (error: unknown, context: ErrorContext) => {
       const message = getErrorMessage(error);
       return new ValidationError(message, undefined, context);
@@ -533,22 +534,25 @@ export async function retryWithBackoff<T>(
     initialDelay = 100,
     maxDelay = 5000,
     backoffFactor = 2,
-    shouldRetry = error => !(error instanceof ValidationError || error instanceof NotFoundError),
+    shouldRetry = error => !(error instanceof ValidationError ?? error instanceof NotFoundError),
   } = options;
 
   let lastError: unknown;
   let delay = initialDelay;
 
+  // eslint-disable-next-line no-await-in-loop
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
+      // eslint-disable-next-line no-await-in-loop
       return await operation();
     } catch (error) {
       lastError = error;
 
-      if (attempt === maxRetries || !shouldRetry(error)) {
+      if (attempt === maxRetries ?? !shouldRetry(error)) {
         throw error;
       }
 
+      // eslint-disable-next-line no-await-in-loop
       await new Promise(resolve => setTimeout(resolve, delay));
       delay = Math.min(delay * backoffFactor, maxDelay);
     }
@@ -586,8 +590,10 @@ export async function withRetry<T>(
 
   let lastError: Error;
 
+  // eslint-disable-next-line no-await-in-loop
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
+      // eslint-disable-next-line no-await-in-loop
       return await operation();
     } catch (error) {
       lastError = error as Error;
@@ -612,13 +618,14 @@ export async function withRetry<T>(
         context,
       });
 
+      // eslint-disable-next-line no-await-in-loop
       await new Promise(resolve => setTimeout(resolve, finalDelay));
     }
   }
 
   throw globalErrorHandler.handleError(
     lastError!,
-    context || {
+    context ?? {
       service: 'retry',
       method: 'withRetry',
     }

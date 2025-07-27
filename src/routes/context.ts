@@ -9,7 +9,7 @@ import { requirePermission } from '@/middleware/auth';
 // import { validateInput } from '@/utils/validation'; // Unused
 import { NotFoundError } from '@/utils/errors';
 
-export async function contextRoutes(): Promise<void>(): Promise<Router> {
+export async function contextRoutes(): Promise<Router> {
   const router = Router();
 
   const boardService = new BoardService(dbConnection);
@@ -41,7 +41,7 @@ export async function contextRoutes(): Promise<void>(): Promise<Router> {
       const context = await contextService.getProjectContext(options);
 
       if (!context) {
-        throw new NotFoundError('Project', id || 'unknown');
+        throw new NotFoundError('Project', id ?? 'unknown');
       }
 
       return res.apiSuccess(context);
@@ -97,7 +97,7 @@ export async function contextRoutes(): Promise<void>(): Promise<Router> {
       const context = await contextService.getProjectContext(options);
 
       if (!context) {
-        throw new NotFoundError('Board', id || 'unknown');
+        throw new NotFoundError('Board', id ?? 'unknown');
       }
 
       return res.apiSuccess(context);

@@ -6,7 +6,7 @@ import { requestValidationMiddleware } from './validation';
 import { responseFormattingMiddleware } from './response';
 import { requestIdMiddleware } from './requestId';
 
-export async function createApiMiddleware(): Promise<void>() {
+export async function createApiMiddleware(): Promise<Router> {
   const router = Router();
 
   // Request ID middleware (must be first)

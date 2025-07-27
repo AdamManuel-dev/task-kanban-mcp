@@ -1,8 +1,8 @@
 import { createServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { v4 as uuidv4 } from 'uuid';
-import { config } from '@/config';
-import { logger } from '@/utils/logger';
+import { config } from '../config';
+import { logger } from '../utils/logger';
 import type { WebSocketMessage, WebSocketClient, WebSocketError } from './types';
 import type { RequestInfo } from './messageTypes';
 import { WebSocketAuth } from './auth';
@@ -40,7 +40,7 @@ export class WebSocketManager {
 
   async start(port?: number): Promise<void> {
     try {
-      const wsPort = port || config.websocket.port;
+      const wsPort = port ?? config.websocket.port;
       logger.info('Starting WebSocket server...', { port: wsPort });
 
       // Create HTTP server for WebSocket upgrade
@@ -57,7 +57,7 @@ export class WebSocketManager {
 
       // Set up WebSocket event handlers
       this.wss.on('connection', this.handleConnection.bind(this));
-      this.wss.on('error', this.handleServerError.bind(this));
+      this.wss.on('error', WebSocketManager.handleServerError.bind(this));
 
       // Start HTTP server
       await new Promise<void>((resolve, reject) => {
@@ -126,7 +126,7 @@ export class WebSocketManager {
 
   private async handleConnection(ws: WebSocket, request: RequestInfo): Promise<void> {
     const clientId = uuidv4();
-    const clientIP = request.socket.remoteAddress || 'unknown';
+    const clientIP = request.socket.remoteAddress ?? 'unknown';
 
     logger.info('New WebSocket connection', { clientId, clientIP });
 
@@ -239,7 +239,7 @@ export class WebSocketManager {
     }
   }
 
-  private static handleDisconnection(clientId: string, code: number, reason: Buffer): void {
+  private handleDisconnection(clientId: string, code: number, reason: Buffer): void {
     const client = this.clients.get(clientId);
     if (!client) return;
 
@@ -257,7 +257,7 @@ export class WebSocketManager {
     this.clients.delete(clientId);
   }
 
-  private static handleClientError(clientId: string, error: Error): void {
+  private handleClientError(clientId: string, error: Error): void {
     logger.error('WebSocket client error', { clientId, error });
 
     const client = this.clients.get(clientId);
@@ -270,7 +270,7 @@ export class WebSocketManager {
     logger.error('WebSocket server error', { error });
   }
 
-  private static handlePong(clientId: string): void {
+  private handlePong(clientId: string): void {
     const client = this.clients.get(clientId);
     if (client) {
       client.lastHeartbeat = new Date();
@@ -286,7 +286,7 @@ export class WebSocketManager {
 
       if (authResult.success) {
         client.authenticated = true;
-        client.user = authResult.user || null;
+        client.user = authResult.user ?? null;
         client.permissions = new Set(authResult.permissions);
 
         this.sendToClient(clientId, {
@@ -307,7 +307,7 @@ export class WebSocketManager {
         this.sendError(
           clientId,
           'AUTH_FAILED',
-          authResult.error || 'Authentication failed',
+          authResult.error ?? 'Authentication failed',
           message.id
         );
 
@@ -322,7 +322,7 @@ export class WebSocketManager {
     }
   }
 
-  private static startHeartbeat(): void {
+  private startHeartbeat(): void {
     this.heartbeatInterval = setInterval(() => {
       const now = new Date();
       const timeout = config.websocket.heartbeatInterval * 2;
@@ -367,7 +367,7 @@ export class WebSocketManager {
   sendError(clientId: string, code: string, message: string, requestId?: string): boolean {
     return this.sendToClient(clientId, {
       type: 'error',
-      id: requestId || uuidv4(),
+      id: requestId ?? uuidv4(),
       payload: {
         code,
         message,

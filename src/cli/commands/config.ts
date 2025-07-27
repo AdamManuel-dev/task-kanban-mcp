@@ -1,6 +1,7 @@
 import type { Command } from 'commander';
 import inquirer from 'inquirer';
 import type { CliComponents } from '../types';
+import { logger } from '../../utils/logger';
 
 export function registerConfigCommands(program: Command): void {
   const configCmd = program.command('config').description('Manage CLI configuration');
@@ -16,13 +17,13 @@ export function registerConfigCommands(program: Command): void {
       const { config, formatter } = getComponents();
 
       if (options.path) {
-        logger.log(config.getConfigPath());
+        logger.info(config.getConfigPath());
         return;
       }
 
       if (!config.exists()) {
         formatter.warn('No configuration file found');
-        logger.log('Run "kanban config init" to create initial configuration');
+        logger.info('Run "kanban config init" to create initial configuration');
         return;
       }
 
@@ -32,7 +33,7 @@ export function registerConfigCommands(program: Command): void {
       if (!validation.valid) {
         formatter.warn('Configuration has issues:');
         validation.errors.forEach(error => formatter.error(error));
-        logger.log();
+        logger.info('');
       }
 
       formatter.output(configData);

@@ -5,7 +5,7 @@ import { requirePermission } from '@/middleware/auth';
 import { TagValidation, validateInput } from '@/utils/validation';
 import { NotFoundError } from '@/utils/errors';
 
-export async function tagRoutes(): Promise<void>(): Promise<Router> {
+export async function tagRoutes(): Promise<Router> {
   const router = Router();
 
   const tagService = new TagService(dbConnection);
@@ -38,7 +38,7 @@ export async function tagRoutes(): Promise<void>(): Promise<Router> {
       const tags = await tagService.getTags(options);
 
       // Get total count for pagination
-      const { limit: _, offset: __, ...countOptions } = options;
+      const { limit, offset, ...countOptions } = options;
       const totalTags = await tagService.getTags(countOptions);
       const total = totalTags.length;
 
@@ -203,7 +203,7 @@ export async function tagRoutes(): Promise<void>(): Promise<Router> {
         throw new NotFoundError('Tag', id);
       }
 
-      return res.apiSuccess(tagWithChildren.children || []);
+      return res.apiSuccess(tagWithChildren.children ?? []);
     } catch (error) {
       return next(error);
     }

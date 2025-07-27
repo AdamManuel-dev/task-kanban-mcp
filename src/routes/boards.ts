@@ -34,7 +34,7 @@ import { NotFoundError } from '@/utils/errors';
  *
  * @returns Express router with all board endpoints configured
  */
-export async function boardRoutes(): Promise<void>(): Promise<Router> {
+export async function boardRoutes(): Promise<Router> {
   const router = Router();
 
   const boardService = new BoardService(dbConnection);
@@ -108,7 +108,9 @@ export async function boardRoutes(): Promise<void>(): Promise<Router> {
       const boards = await boardService.getBoards(options);
 
       // Get total count for pagination
-      const { limit: _, offset: __, ...countOptions } = options;
+      const countOptions = { ...options };
+      delete countOptions.limit;
+      delete countOptions.offset;
       const totalBoards = await boardService.getBoards(countOptions);
       const total = totalBoards.length;
 
@@ -448,7 +450,7 @@ export async function boardRoutes(): Promise<void>(): Promise<Router> {
         throw new NotFoundError('Board', id);
       }
 
-      return res.apiSuccess(boardWithColumns.columns || []);
+      return res.apiSuccess(boardWithColumns.columns ?? []);
     } catch (error) {
       return next(error);
     }

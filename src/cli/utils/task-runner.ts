@@ -24,7 +24,7 @@ export class TaskRunner {
   private readonly renderer: 'default' | 'simple' | 'verbose';
 
   constructor(options?: { renderer?: 'default' | 'simple' | 'verbose' }) {
-    this.renderer = options?.renderer || 'default';
+    this.renderer = options?.renderer ?? 'default';
   }
 
   /**
@@ -42,12 +42,12 @@ export class TaskRunner {
       title: task.title,
       task: task.action,
       ...(task.skip && { skip: task.skip }),
-      enabled: task.enabled || true,
+      enabled: task.enabled ?? true,
     }));
 
     const listr = new Listr(listrTasks, {
-      concurrent: options?.concurrent || false,
-      exitOnError: options?.exitOnError || true,
+      concurrent: options?.concurrent ?? false,
+      exitOnError: options?.exitOnError ?? true,
       renderer: this.renderer,
       rendererOptions: {
         showSubtasks: true,
@@ -79,19 +79,19 @@ export class TaskRunner {
           title: item.title,
           task: item.action,
           ...(item.skip && { skip: item.skip }),
-          enabled: item.enabled || true,
+          enabled: item.enabled ?? true,
         }));
 
         return task.newListr(subtasks, {
-          concurrent: group.concurrent || false,
-          exitOnError: options?.exitOnError || true,
+          concurrent: group.concurrent ?? false,
+          exitOnError: options?.exitOnError ?? true,
         });
       },
     }));
 
     const listr = new Listr(mainTasks, {
       concurrent: false,
-      exitOnError: options?.exitOnError || true,
+      exitOnError: options?.exitOnError ?? true,
       renderer: this.renderer,
       rendererOptions: {
         showSubtasks: true,
@@ -119,7 +119,6 @@ export class TaskRunner {
       concurrency?: number;
     }
   ): Promise<void> {
-    let completed = 0;
     const total = items.length;
 
     const listr = new Listr(
@@ -127,13 +126,8 @@ export class TaskRunner {
         {
           title: `${String(title)} (0/${String(total)})`,
           task: async (_ctx, task) => {
-            const updateProgress = (): void => {
-              completed += 1;
-              task.title = `${String(title)} (${String(completed)}/${String(total)})`;
-            };
-
             if (options?.concurrent) {
-              const concurrency = options.concurrency || 5;
+              const concurrency = options.concurrency ?? 5;
               const chunks: T[][] = [];
 
               for (let i = 0; i < items.length; i += concurrency) {
@@ -182,8 +176,8 @@ export class TaskRunner {
       retryDelay?: number;
     }
   ): TaskItem {
-    const maxRetries = options?.retries || 3;
-    const retryDelay = options?.retryDelay || 1000;
+    const maxRetries = options?.retries ?? 3;
+    const retryDelay = options?.retryDelay ?? 1000;
 
     return {
       id: `retry-${String(String(Date.now()))}`,
@@ -191,12 +185,15 @@ export class TaskRunner {
       action: async () => {
         let lastError: any;
 
+        // eslint-disable-next-line no-await-in-loop
         for (let attempt = 1; attempt <= maxRetries; attempt += 1) {
           try {
+            // eslint-disable-next-line no-await-in-loop
             return await action();
           } catch (error) {
             lastError = error;
             if (attempt < maxRetries) {
+              // eslint-disable-next-line no-await-in-loop
               await new Promise<void>(resolve => {
                 setTimeout(resolve, retryDelay);
               });
@@ -205,7 +202,7 @@ export class TaskRunner {
         }
 
         throw new Error(
-          `Failed after ${String(maxRetries)} attempts: ${String(String(lastError?.message || 'Unknown error'))}`
+          `Failed after ${String(maxRetries)} attempts: ${String(String(lastError?.message ?? 'Unknown error'))}`
         );
       },
     };
@@ -219,7 +216,7 @@ export class TaskRunner {
     const running = new Set<string>();
 
     const canRun = (task: (typeof tasks)[0]): boolean => {
-      if (!task.dependencies || task.dependencies.length === 0) {
+      if (!task.dependencies ?? task.dependencies.length === 0) {
         return true;
       }
       return task.dependencies.every(dep => completed.has(dep));

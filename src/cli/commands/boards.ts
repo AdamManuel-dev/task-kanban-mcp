@@ -30,8 +30,9 @@ import inquirer from 'inquirer';
 // import * as React from 'react';
 // import { render } from 'ink';
 import chalk from 'chalk';
-import type { CliComponents } from '../types';
+import type { CliComponents, CreateBoardRequest } from '../types';
 import type { Task, Board, Column } from '../../types';
+import { isSuccessResponse } from '../api-client-wrapper';
 // import { BoardView } from '../ui/components/BoardView';
 // import type { Board, Column } from '../ui/components/BoardView';
 // import type { Task } from '../ui/components/TaskList';
@@ -320,7 +321,7 @@ export function registerBoardCommands(program: Command): void {
 
       try {
         // Determine board ID
-        const boardId = id || config.getDefaultBoard();
+        const boardId = id ?? config.getDefaultBoard();
         if (!boardId) {
           formatter.error(
             'Board ID is required. Specify an ID or set default board with "kanban board use <id>"'
@@ -375,8 +376,8 @@ export function registerBoardCommands(program: Command): void {
 
           // Auto-refresh functionality
           React.useEffect(() => {
-            if (options?.refresh && parseInt(options.refresh) > 0) {
-              const interval = parseInt(options.refresh) * 1000;
+            if (options?.refresh && parseInt(options.refresh, 10) > 0) {
+              const interval = parseInt(options.refresh, 10) * 1000;
               refreshInterval = setInterval(async () => {
                 if (!shouldRefresh) return;
 
@@ -389,12 +390,12 @@ export function registerBoardCommands(program: Command): void {
                       id: apiResponse.id,
                       name: apiResponse.name,
                       description: apiResponse.description,
-                      columns: (apiResponse.columns || []).map(
+                      columns: (apiResponse.columns ?? []).map(
                         (col: ApiColumnData): Column => ({
                           id: col.id,
                           name: col.name,
                           limit: col.wip_limit,
-                          tasks: (col.tasks || []).map(
+                          tasks: (col.tasks ?? []).map(
                             (task: ApiTaskData): Task => ({
                               id: task.id,
                               title: task.title,
@@ -433,14 +434,14 @@ export function registerBoardCommands(program: Command): void {
           return React.createElement(BoardView, {
             board: currentBoard,
             showWIPLimits: options?.wipLimits,
-            maxColumnHeight: parseInt(options?.maxHeight || '8'),
-            columnWidth: parseInt(options?.columnWidth || '25'),
+            maxColumnHeight: parseInt(options?.maxHeight ?? '8', 10),
+            columnWidth: parseInt(options?.columnWidth ?? '25', 10),
             onTaskSelect: async (task, _columnId) => {
               try {
                 // Show task details
                 formatter.info(`\nTask: ${String(String(task.title))}`);
                 formatter.info(`Status: ${String(String(task.status))}`);
-                formatter.info(`Priority: ${String(String(task.priority || 'None'))}`);
+                formatter.info(`Priority: ${String(String(task.priority ?? 'None'))}`);
                 if (task.assignee) formatter.info(`Assignee: ${String(String(task.assignee))}`);
                 if (task.tags?.length) formatter.info(`Tags: ${String(String(task.tags.join(', ')))}`);
                 if (task.due_date) formatter.info(`Due: ${String(String(task.due_date))}`);
@@ -470,12 +471,12 @@ export function registerBoardCommands(program: Command): void {
                         id: apiResponse.id,
                         name: apiResponse.name,
                         description: apiResponse.description,
-                        columns: (apiResponse.columns || []).map(
+                        columns: (apiResponse.columns ?? []).map(
                           (col: ApiColumnData): Column => ({
                             id: col.id,
                             name: col.name,
                             limit: col.wip_limit,
-                            tasks: (col.tasks || []).map(
+                            tasks: (col.tasks ?? []).map(
                               (task: ApiTaskData): Task => ({
                                 id: task.id,
                                 title: task.title,
@@ -587,7 +588,7 @@ export function registerBoardCommands(program: Command): void {
 
       let boardData: CreateBoardData = {};
 
-      if (options.interactive || !options.name) {
+      if (options.interactive ?? !options.name) {
         const questions: Array<{
           type: string;
           name: string;
@@ -625,17 +626,22 @@ export function registerBoardCommands(program: Command): void {
       }
 
       // Use command line options or answers
-      boardData.name = options.name || boardData.name;
-      boardData.description = options.description || boardData.description;
+      boardData.name = options.name ?? boardData.name;
+      boardData.description = options.description ?? boardData.description;
 
       try {
-        const board = await apiClient.createBoard(boardData);
-        formatter.success(`Board created successfully: ${String((board as { id: string }).id)}`);
-        formatter.output(board);
+        const board = await apiClient.createBoard(boardData as CreateBoardRequest);
+        if (isSuccessResponse(board)) {
+          formatter.success(`Board created successfully: ${String(board.data.id)}`);
+          formatter.output(board.data);
+        } else {
+          formatter.error('Failed to create board');
+          process.exit(1);
+        }
 
         // Set as default if requested
-        if (boardData.useAsDefault) {
-          config.setDefaultBoard(board.id);
+        if (boardData.useAsDefault && isSuccessResponse(board)) {
+          config.setDefaultBoard(board.data.id);
           formatter.info(`Set as default board`);
         }
       } catch (error) {
@@ -658,7 +664,7 @@ export function registerBoardCommands(program: Command): void {
       try {
         // Get current board data
         const currentBoard = await apiClient.getBoard(id);
-        if (!currentBoard) {
+        if (!isSuccessResponse(currentBoard)) {
           formatter.error(`Board ${String(id)} not found`);
           process.exit(1);
         }
@@ -671,20 +677,22 @@ export function registerBoardCommands(program: Command): void {
               type: 'input',
               name: 'name',
               message: 'Board name:',
-              default: currentBoard.name,
+              default: (currentBoard.data as Board).name,
             },
             {
               type: 'input',
               name: 'description',
               message: 'Board description:',
-              default: currentBoard.description || '',
+              default: (currentBoard.data as Board).description ?? '',
             },
           ]);
           updates = answers;
         } else {
           // Use command line options
-          if (options.name) updates.name = options.name;
-          if (options.description) updates.description = options.description;
+          // eslint-disable-next-line dot-notation
+          if (options.name) updates['name'] = options.name;
+          // eslint-disable-next-line dot-notation
+          if (options.description) updates['description'] = options.description;
         }
 
         if (Object.keys(updates).length === 0) {
@@ -714,7 +722,7 @@ export function registerBoardCommands(program: Command): void {
       try {
         if (!options.force) {
           const board = await apiClient.getBoard(id);
-          if (!board) {
+          if (!isSuccessResponse(board)) {
             formatter.error(`Board ${String(id)} not found`);
             process.exit(1);
           }
@@ -723,7 +731,7 @@ export function registerBoardCommands(program: Command): void {
             {
               type: 'confirm',
               name: 'confirm',
-              message: `Delete board "${String(String(board.name))}"? This will also delete all tasks in the board.`,
+              message: `Delete board "${String(String((board.data as Board).name))}"? This will also delete all tasks in the board.`,
               default: false,
             },
           ]);
@@ -769,13 +777,15 @@ export function registerBoardCommands(program: Command): void {
       try {
         // Verify board exists
         const board = await apiClient.getBoard(id);
-        if (!board) {
+        if (!isSuccessResponse(board)) {
           formatter.error(`Board ${String(id)} not found`);
           process.exit(1);
         }
 
         config.setDefaultBoard(id);
-        formatter.success(`Default board set to "${String(String(board.name))}" (${String(id)})`);
+        formatter.success(
+          `Default board set to "${String(String((board.data as Board).name))}" (${String(id)})`
+        );
       } catch (error) {
         formatter.error(
           `Failed to set default board: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
@@ -921,14 +931,15 @@ export function registerBoardCommands(program: Command): void {
             ],
           };
 
-          if (!templates[options.template]) {
+          const templateKey = options.template as keyof typeof templates;
+          if (!templates[templateKey]) {
             formatter.error(
               `Invalid template: ${String(String(options.template))}. Available: ${String(String(Object.keys(templates).join(', ')))}`
             );
             process.exit(1);
           }
 
-          defaults.columns = templates[options.template];
+          defaults.columns = templates[templateKey];
         }
 
         formatter.info('Starting quick board setup...');
@@ -947,13 +958,12 @@ export function registerBoardCommands(program: Command): void {
         }
 
         // Transform data for API
-        const createData = {
+        const createData: CreateBoardRequest = {
           name: boardData.name,
-          description: boardData.description,
-          isPublic: boardData.isPublic,
+          ...(boardData.description && { description: boardData.description }),
           columns: boardData.columns.map(col => ({
             name: col.name,
-            order: col.order,
+            position: col.order,
           })),
         };
 
@@ -967,9 +977,14 @@ export function registerBoardCommands(program: Command): void {
           }
         );
 
-        formatter.success(
-          `Board "${String(String(boardData.name))}" created with ID: ${String((board as { id: string }).id)}`
-        );
+        if (isSuccessResponse(board)) {
+          formatter.success(
+            `Board "${String(String(boardData.name))}" created with ID: ${String(board.data.id)}`
+          );
+        } else {
+          formatter.error('Failed to create board');
+          process.exit(1);
+        }
 
         // Show board details
         formatter.info('\n📊 Board Summary:');
@@ -983,35 +998,36 @@ export function registerBoardCommands(program: Command): void {
         );
 
         // Set as default if requested
-        if (options.setDefault) {
-          config.setDefaultBoard((board as { id: string }).id);
+        if (options.setDefault && isSuccessResponse(board)) {
+          config.setDefaultBoard(board.data.id);
           formatter.success('Set as default board');
-        } else {
+        } else if (!options.setDefault && isSuccessResponse(board)) {
           // Ask if they want to set it as default
           const setAsDefault = await confirmAction('Set this board as your default?', false);
 
           if (setAsDefault) {
-            config.setDefaultBoard((board as { id: string }).id);
+            config.setDefaultBoard(board.data.id);
             formatter.success('Set as default board');
           }
         }
 
         // Offer quick actions
-        formatter.info('\n💡 Quick Actions:');
-        formatter.info(`  View board: kanban board view ${String((board as { id: string }).id)}`);
-        formatter.info(`  Create task: kanban task create --interactive`);
-        formatter.info(`  List tasks: kanban task list`);
+        if (isSuccessResponse(board)) {
+          formatter.info('\n💡 Quick Actions:');
+          formatter.info(`  View board: kanban board view ${String(board.data.id)}`);
+          formatter.info(`  Create task: kanban task create --interactive`);
+          formatter.info(`  List tasks: kanban task list`);
 
-        formatter.output(board);
+          formatter.output(board.data);
+        }
       } catch (error) {
-        if (error.message === 'Board setup cancelled') {
+        if (error instanceof Error && error.message === 'Board setup cancelled') {
           formatter.warn('Board setup cancelled');
           return;
         }
 
-        formatter.error(
-          `Failed to setup board: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
-        );
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        formatter.error(`Failed to setup board: ${String(errorMessage)}`);
         process.exit(1);
       }
     });

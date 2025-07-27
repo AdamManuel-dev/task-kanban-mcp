@@ -83,8 +83,8 @@ export class MCPKanbanServer {
   constructor() {
     this.server = new Server(
       {
-        name: config.mcp.serverName,
-        version: config.mcp.serverVersion,
+        name: 'mcp-kanban-server',
+        version: '1.0.0',
       },
       {
         capabilities: {
@@ -146,7 +146,7 @@ export class MCPKanbanServer {
    * - Prompt listing and generation
    * - Error handling and logging
    */
-  private static setupHandlers(): void {
+  private setupHandlers(): void {
     // Tool handlers
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
       const tools = await this.toolRegistry.listTools();
@@ -157,7 +157,7 @@ export class MCPKanbanServer {
       const { name, arguments: args } = request.params;
 
       try {
-        const result = await this.toolRegistry.callTool(name, args || {});
+        const result = await this.toolRegistry.callTool(name, args ?? {});
         return {
           content: [
             {
@@ -195,7 +195,7 @@ export class MCPKanbanServer {
           contents: [
             {
               uri,
-              mimeType: resource.mimeType || 'application/json',
+              mimeType: resource.mimeType ?? 'application/json',
               text: resource.text,
             },
           ],
@@ -216,7 +216,7 @@ export class MCPKanbanServer {
       const { name, arguments: args } = request.params;
 
       try {
-        const prompt = await this.promptRegistry.getPrompt(name, args || {});
+        const prompt = await this.promptRegistry.getPrompt(name, args ?? {});
         return {
           description: prompt.description,
           messages: prompt.messages,

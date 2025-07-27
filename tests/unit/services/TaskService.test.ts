@@ -6,8 +6,8 @@
  */
 
 import { TaskService } from '@/services/TaskService';
+import * as fs from 'fs';
 import { DatabaseConnection } from '@/database/connection';
-import { logger } from '@/utils/logger';
 
 // Mock the logger to avoid console output during tests
 jest.mock('@/utils/logger', () => ({
@@ -72,7 +72,6 @@ describe('TaskService', () => {
     }
 
     // Clean up test database
-    const fs = require('fs');
     const testDbPath = './data/kanban-test.db';
     if (fs.existsSync(testDbPath)) {
       try {
@@ -264,13 +263,17 @@ describe('TaskService', () => {
 
     it('should handle pagination', async () => {
       // Create more tasks for pagination test
-      for (let i = 3; i <= 5; i++) {
-        await taskService.createTask({
-          title: `Task ${String(i)}`,
-          board_id: boardId,
-          column_id: columnId,
-        });
+      const taskPromises = [];
+      for (let i = 3; i <= 5; i += 1) {
+        taskPromises.push(
+          taskService.createTask({
+            title: `Task ${String(i)}`,
+            board_id: boardId,
+            column_id: columnId,
+          })
+        );
       }
+      await Promise.all(taskPromises);
 
       const firstPage = await taskService.getTasks({
         board_id: boardId,

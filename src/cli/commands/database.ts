@@ -1,6 +1,8 @@
 import type { Command } from 'commander';
 import inquirer from 'inquirer';
 import type { CliComponents } from '../types';
+import { logger } from '../../utils/logger';
+import { isSuccessResponse } from '../api-client-wrapper';
 
 export function registerDatabaseCommands(program: Command): void {
   const dbCmd = program.command('db').description('Database management commands');
@@ -20,7 +22,7 @@ export function registerDatabaseCommands(program: Command): void {
 
         const result = await apiClient.request('/api/database/optimize', {
           method: 'POST',
-          body: { verbose: options.verbose || false },
+          body: { verbose: options.verbose ?? false },
         });
 
         formatter.success('Database optimization completed');
@@ -134,7 +136,7 @@ export function registerDatabaseCommands(program: Command): void {
 
         // Table stats
         if ((stats as any).tables && options.tables) {
-          logger.log('\n--- Table Statistics ---');
+          logger.info('\n--- Table Statistics ---');
           formatter.output((stats as any).tables, {
             fields: ['name', 'rowCount', 'size', 'lastModified'],
             headers: ['Table', 'Rows', 'Size', 'Last Modified'],
@@ -142,18 +144,18 @@ export function registerDatabaseCommands(program: Command): void {
         }
 
         // Index stats
-        if (stats.indexes && options.indexes) {
-          logger.log('\n--- Index Statistics ---');
-          formatter.output(stats.indexes, {
+        if ((stats as any).indexes && options.indexes) {
+          logger.info('\n--- Index Statistics ---');
+          formatter.output((stats as any).indexes, {
             fields: ['name', 'table', 'size', 'usage'],
             headers: ['Index', 'Table', 'Size', 'Usage'],
           });
         }
 
         // Performance metrics
-        if (stats.performance && options.performance) {
-          logger.log('\n--- Performance Metrics ---');
-          formatter.output(stats.performance, {
+        if ((stats as any).performance && options.performance) {
+          logger.info('\n--- Performance Metrics ---');
+          formatter.output((stats as any).performance, {
             fields: ['metric', 'value', 'unit'],
             headers: ['Metric', 'Value', 'Unit'],
           });
@@ -178,10 +180,10 @@ export function registerDatabaseCommands(program: Command): void {
 
         const result = await apiClient.request('/api/database/check', {
           method: 'POST',
-          body: { repair: options.repair || false },
+          body: { repair: options.repair ?? false },
         });
 
-        if (result.healthy) {
+        if (isSuccessResponse(result) && (result.data as any).healthy) {
           formatter.success('Database integrity check passed');
         } else {
           formatter.error('Database integrity issues found');
@@ -192,9 +194,13 @@ export function registerDatabaseCommands(program: Command): void {
           headers: ['Check', 'Status', 'Details'],
         });
 
-        if (result.issues && result.issues.length > 0) {
-          logger.log('\n--- Issues Found ---');
-          formatter.output(result.issues, {
+        if (
+          isSuccessResponse(result) &&
+          (result.data as any).issues &&
+          (result.data as any).issues.length > 0
+        ) {
+          logger.info('\n--- Issues Found ---');
+          formatter.output((result.data as any).issues, {
             fields: ['type', 'severity', 'message', 'suggestion'],
             headers: ['Type', 'Severity', 'Message', 'Suggestion'],
           });
@@ -235,7 +241,7 @@ export function registerDatabaseCommands(program: Command): void {
         }
 
         const repairData = {
-          createBackup: options.backup || false,
+          createBackup: options.backup ?? false,
         };
 
         formatter.info('Repairing database...');
@@ -270,7 +276,7 @@ export function registerDatabaseCommands(program: Command): void {
       try {
         const migrations = await apiClient.request('/api/database/migrations/status');
 
-        if (!migrations || migrations.length === 0) {
+        if (!migrations || !('length' in migrations) || (migrations as any).length === 0) {
           formatter.info('No migrations found');
           return;
         }
@@ -379,12 +385,12 @@ export function registerDatabaseCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const migration = await apiClient.request('/api/database/migrations/create', {
+        const migration = (await apiClient.request('/api/database/migrations/create', {
           method: 'POST',
           body: { name },
-        });
+        })) as any;
 
-        formatter.success(`Migration created: ${String(String(migration.filename))}`);
+        formatter.success(`Migration created: ${String(migration.filename || 'Unknown')}`);
         formatter.output(migration, {
           fields: ['name', 'version', 'filename', 'createdAt'],
           headers: ['Name', 'Version', 'Filename', 'Created At'],

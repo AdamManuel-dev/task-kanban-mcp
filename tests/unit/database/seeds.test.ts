@@ -122,10 +122,12 @@ export async function run(): Promise<void>(db) {
       await fs.writeFile(
         path.join(tempDir, '001_test_data.ts'),
         `
+import { Database } from 'sqlite3';
+
 export const name = 'Test Data';
 export const description = 'Insert test data';
 
-export async function run(): Promise<void>(db) {
+export async function run(db: Database): Promise<void> {
   await db.run('INSERT INTO test_table (name) VALUES (?)', ['test-record']);
 }
         `
@@ -155,10 +157,12 @@ export async function run(): Promise<void>(db) {
       await fs.writeFile(
         path.join(tempDir, '001_test_data.ts'),
         `
+import { Database } from 'sqlite3';
+
 export const name = 'Test Data';
 export const description = 'Insert test data';
 
-export async function run(): Promise<void>(db) {
+export async function run(db: Database): Promise<void> {
   await db.run('INSERT INTO test_table (name) VALUES (?)', ['test-record']);
 }
         `
@@ -190,10 +194,12 @@ export async function run(): Promise<void>(db) {
       await fs.writeFile(
         path.join(tempDir, '001_test_data.ts'),
         `
+import { Database } from 'sqlite3';
+
 export const name = 'Test Data';
 export const description = 'Insert test data';
 
-export async function run(): Promise<void>(db) {
+export async function run(db: Database): Promise<void> {
   await db.run('INSERT INTO test_table (name) VALUES (?)', ['test-record']);
 }
         `
@@ -246,8 +252,10 @@ export async function run(): Promise<void>(db) {
       await fs.writeFile(
         path.join(tempDir, '001_first_seed.ts'),
         `
+import { Database } from 'sqlite3';
+
 export const name = 'First Seed';
-export async function run(): Promise<void>(db) {
+export async function run(db: Database): Promise<void> {
   await db.run('INSERT INTO test_table (name) VALUES (?)', ['first']);
 }
         `
@@ -256,8 +264,10 @@ export async function run(): Promise<void>(db) {
       await fs.writeFile(
         path.join(tempDir, '002_second_seed.ts'),
         `
+import { Database } from 'sqlite3';
+
 export const name = 'Second Seed';
-export async function run(): Promise<void>(db) {
+export async function run(db: Database): Promise<void> {
   await db.run('INSERT INTO test_table (name) VALUES (?)', ['second']);
 }
         `
@@ -290,8 +300,10 @@ export async function run(): Promise<void>(db) {
       await fs.writeFile(
         path.join(tempDir, '001_test_seed.ts'),
         `
+import { Database } from 'sqlite3';
+
 export const name = 'Test Seed';
-export async function run(): Promise<void>(db) {
+export async function run(db: Database): Promise<void> {
   await db.run('INSERT INTO test_table (name) VALUES (?)', ['test']);
 }
         `

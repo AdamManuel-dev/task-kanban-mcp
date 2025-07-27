@@ -1,9 +1,9 @@
-import { logger } from '@/utils/logger';
-import { TaskService } from '@/services/TaskService';
-import { BoardService } from '@/services/BoardService';
-import { NoteService } from '@/services/NoteService';
-import { TagService } from '@/services/TagService';
-import { dbConnection } from '@/database/connection';
+import { logger } from '../utils/logger';
+import { TaskService } from '../services/TaskService';
+import { BoardService } from '../services/BoardService';
+import { NoteService } from '../services/NoteService';
+import { TagService } from '../services/TagService';
+import { dbConnection } from '../database/connection';
 import type { WebSocketManager } from './server';
 import type {
   WebSocketMessage,
@@ -152,7 +152,7 @@ export class MessageHandler {
     }
 
     const channel = payload.channel as SubscriptionChannel;
-    const filters = payload.filters || {};
+    const filters = payload.filters ?? {};
 
     const result = this.webSocketManager
       .getSubscriptionManager()
@@ -178,7 +178,7 @@ export class MessageHandler {
       this.webSocketManager.sendError(
         clientId,
         'SUBSCRIBE_FAILED',
-        result.error || 'Subscription failed',
+        result.error ?? 'Subscription failed',
         message.id
       );
     }
@@ -338,7 +338,7 @@ export class MessageHandler {
       // Broadcast update to subscribers
       this.webSocketManager
         .getSubscriptionManager()
-        .publishTaskUpdated(updatedTask, updates, client.user?.id || 'unknown');
+        .publishTaskUpdated(updatedTask, updates, client.user?.id ?? 'unknown');
     } catch (error) {
       logger.error('Error updating task', { taskId, updates, error });
       this.webSocketManager.sendError(
@@ -390,7 +390,7 @@ export class MessageHandler {
       // Broadcast creation to subscribers
       this.webSocketManager
         .getSubscriptionManager()
-        .publishTaskCreated(newTask, client.user?.id || 'unknown');
+        .publishTaskCreated(newTask, client.user?.id ?? 'unknown');
     } catch (error) {
       logger.error('Error creating task', { taskData, error });
       this.webSocketManager.sendError(
@@ -449,7 +449,7 @@ export class MessageHandler {
       // Broadcast deletion to subscribers
       this.webSocketManager
         .getSubscriptionManager()
-        .publishTaskDeleted(taskId, task.board_id, client.user?.id || 'unknown');
+        .publishTaskDeleted(taskId, task.board_id, client.user?.id ?? 'unknown');
     } catch (error) {
       logger.error('Error deleting task', { taskId, error });
       this.webSocketManager.sendError(
@@ -556,7 +556,7 @@ export class MessageHandler {
         data: {
           board: updatedBoard,
           changes: updates,
-          updatedBy: client.user?.id || 'unknown',
+          updatedBy: client.user?.id ?? 'unknown',
         },
         timestamp: new Date().toISOString(),
       });
@@ -613,7 +613,7 @@ export class MessageHandler {
       if (task) {
         this.webSocketManager
           .getSubscriptionManager()
-          .publishNoteAdded(newNote, noteData.task_id, task.board_id, client.user?.id || 'unknown');
+          .publishNoteAdded(newNote, noteData.task_id, task.board_id, client.user?.id ?? 'unknown');
       }
     } catch (error) {
       logger.error('Error adding note', { noteData, error });
@@ -663,7 +663,7 @@ export class MessageHandler {
       if (task) {
         this.webSocketManager
           .getSubscriptionManager()
-          .publishTagAssigned(taskId, tagId, task.board_id, client.user?.id || 'unknown');
+          .publishTagAssigned(taskId, tagId, task.board_id, client.user?.id ?? 'unknown');
       }
     } catch (error) {
       logger.error('Error assigning tag', { taskId, tagId, error });
@@ -726,7 +726,7 @@ export class MessageHandler {
     // Broadcast typing indicator
     this.webSocketManager
       .getSubscriptionManager()
-      .publishTaskUpdate(taskId || 'unknown', boardId || 'unknown', {
+      .publishTaskUpdate(taskId ?? 'unknown', boardId ?? 'unknown', {
         type: 'typing:start',
         data: {
           userId: client.user.id,
@@ -749,7 +749,7 @@ export class MessageHandler {
     // Broadcast typing stop indicator
     this.webSocketManager
       .getSubscriptionManager()
-      .publishTaskUpdate(taskId || 'unknown', boardId || 'unknown', {
+      .publishTaskUpdate(taskId ?? 'unknown', boardId ?? 'unknown', {
         type: 'typing:stop',
         data: {
           userId: client.user.id,

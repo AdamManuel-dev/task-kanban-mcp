@@ -96,7 +96,7 @@ export class BoardService {
   async createBoard(data: CreateBoardRequest): Promise<Board> {
     // Validate required fields
     if (!data.name || data.name.trim().length === 0) {
-      throw this.createError('INVALID_NAME', 'Board name is required and cannot be empty');
+      throw BoardService.createError('INVALID_NAME', 'Board name is required and cannot be empty');
     }
 
     const id = uuidv4();
@@ -106,7 +106,7 @@ export class BoardService {
       id,
       name: data.name,
       description: data.description,
-      color: data.color || '#2196F3',
+      color: data.color ?? '#2196F3',
       created_at: now,
       updated_at: now,
       archived: false,
@@ -154,7 +154,7 @@ export class BoardService {
       return board;
     } catch (error) {
       logger.error('Failed to create board', { error, data });
-      throw this.createError('BOARD_CREATE_FAILED', 'Failed to create board', error);
+      throw BoardService.createError('BOARD_CREATE_FAILED', 'Failed to create board', error);
     }
   }
 
@@ -191,10 +191,10 @@ export class BoardService {
         Object.assign(board, boardData);
       }
 
-      return board || null;
+      return board ?? null;
     } catch (error) {
       logger.error('Failed to get board by ID', { error, id });
-      throw this.createError('BOARD_FETCH_FAILED', 'Failed to fetch board', error);
+      throw BoardService.createError('BOARD_FETCH_FAILED', 'Failed to fetch board', error);
     }
   }
 
@@ -300,11 +300,11 @@ export class BoardService {
 
       return {
         ...board,
-        taskCount: taskStats?.total || 0,
-        completedTasks: taskStats?.completed || 0,
-        inProgressTasks: taskStats?.in_progress || 0,
-        todoTasks: taskStats?.todo || 0,
-        columnCount: columnCount?.count || 0,
+        taskCount: taskStats?.total ?? 0,
+        completedTasks: taskStats?.completed ?? 0,
+        inProgressTasks: taskStats?.in_progress ?? 0,
+        todoTasks: taskStats?.todo ?? 0,
+        columnCount: columnCount?.count ?? 0,
       };
     } catch (error) {
       logger.error('Failed to get board with stats', { error, id });
@@ -571,7 +571,7 @@ export class BoardService {
       }
 
       const duplicatedBoard = await this.createBoard({
-        name: newName || `${String(String(originalBoard.name))} (Copy)`,
+        name: newName ?? `${String(String(originalBoard.name))} (Copy)`,
         description: originalBoard.description,
         color: originalBoard.color,
       });

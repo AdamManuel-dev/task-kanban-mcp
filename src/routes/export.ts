@@ -170,7 +170,7 @@ router.get(
       const options: any = {
         ...validated,
         anonymize: true,
-        anonymizationOptions: validated.anonymizationOptions || {
+        anonymizationOptions: validated.anonymizationOptions ?? {
           anonymizeUserData: true,
           anonymizeTaskTitles: true,
           anonymizeDescriptions: true,

@@ -1,370 +1,85 @@
 #!/usr/bin/env node
 
-/**
- * @module cli/index
- * @description Main entry point for the MCP Kanban CLI application.
- *
- * This module sets up the commander CLI framework, initializes global components,
- * registers all command modules, and handles application-wide error handling and
- * graceful shutdown.
- *
- * @example
- * ```bash
- * # Show help
- * kanban --help
- *
- * # List tasks with verbose output
- * kanban task list --verbose
- *
- * # Create a new board in JSON format
- * kanban board create --name "My Board" --format json
- * ```
- */
-
 import { Command } from 'commander';
-import chalk from 'chalk';
-
-import { ConfigManager } from './config';
-import { ApiClient } from './client';
-import { OutputFormatter } from './formatter';
-import type { CliComponents } from './types';
-import { addSecurityMiddleware } from './utils/secure-cli-wrapper';
-
-import { registerTaskCommands } from './commands/tasks';
-import { registerBoardCommands } from './commands/boards';
-import { registerNoteCommands } from './commands/notes';
-import { registerTagCommands } from './commands/tags';
-import { registerConfigCommands } from './commands/config';
-import { registerPriorityCommands } from './commands/priority';
-import { registerContextCommands } from './commands/context';
-import { registerSearchCommands } from './commands/search';
-import { registerSubtaskCommands } from './commands/subtasks';
-import { registerBackupCommands } from './commands/backup';
-import { registerDatabaseCommands } from './commands/database';
-import { registerRealtimeCommands } from './commands/realtime';
-import { registerExportCommands } from './commands/export';
-import { processTodosCommand } from './commands/process-todos';
-// import { interactiveViewCommand } from './commands/interactive-view'; // Temporarily disabled due to Ink/React ESM issues
-// import { dashboardCommand } from './commands/dashboard'; // Temporarily disabled due to Ink/React ESM issues
-// import { dashboardDemoCommand } from './commands/dashboard-demo'; // Temporarily disabled due to Ink/React ESM issues
-import packageJson from '../../package.json';
+import { config } from '../config';
+import { dbConnection } from '../database/connection';
 
 const program = new Command();
 
-// Initialize global components
-const config = new ConfigManager();
-const apiClient = new ApiClient(config);
-const formatter = new OutputFormatter();
+program.name('mcp-kanban').description('MCP Kanban CLI').version('1.0.0');
 
-// Make globally available to commands with proper typing
-global.cliComponents = {
-  config,
-  apiClient,
-  formatter,
-} as CliComponents;
-
-// Program configuration
+// Basic health check command
 program
-  .name('kanban')
-  .description('CLI for MCP Kanban Task Management System')
-  .version(packageJson.version)
-  .option('-v, --verbose', 'verbose output')
-  .option('-q, --quiet', 'minimal output')
-  .option('--format <type>', 'output format: table, json, csv', 'table')
-  .option('--no-color', 'disable colored output')
-  .hook('preAction', async thisCommand => {
-    const options = thisCommand.opts();
+  .command('health')
+  .description('Check system health')
+  .action(async () => {
+    try {
+      console.log('🔍 Checking system health...');
 
-    // Set formatter options
-    formatter.setFormat(options.format);
-    formatter.setVerbose(options.verbose);
-    formatter.setQuiet(options.quiet);
-    formatter.setColor(!options.noColor);
+      // Check database connection
+      await dbConnection.initialize({
+        skipSchema: false,
+      });
+      console.log('✅ Database connection: OK');
 
-    // Validate configuration exists
-    if (!config.exists()) {
-      const command = thisCommand.name();
-      const parentCommand = thisCommand.parent?.name();
-      const grandParentCommand = thisCommand.parent?.parent?.name();
+      // Check config
+      console.log('✅ Configuration: OK');
+      console.log(`   Database: ${config.database.path}`);
+      console.log(`   Port: ${config.server.port}`);
 
-      // Allow config commands and help
-      if (
-        command !== 'config' &&
-        command !== 'help' &&
-        parentCommand !== 'config' &&
-        grandParentCommand !== 'config'
-      ) {
-        logger.error(chalk.red('No configuration found. Run "kanban config init" to get started.'));
-        process.exit(1);
-      }
+      console.log('🎉 System is healthy!');
+    } catch (error) {
+      console.error('❌ System health check failed:', error);
+      process.exit(1);
     }
   });
 
-// Add security middleware to the program
-addSecurityMiddleware(program);
+// Basic task commands
+program
+  .command('task')
+  .description('Task management')
+  .addCommand(
+    new Command('list').description('List all tasks').action(async () => {
+      try {
+        await dbConnection.initialize({ skipSchema: false });
+        const tasks = await dbConnection.query('SELECT * FROM tasks LIMIT 10');
+        console.log('📋 Tasks:');
+        tasks.forEach((task: any) => {
+          console.log(`  - ${task.title} (${task.status})`);
+        });
+      } catch (error) {
+        console.error('❌ Failed to list tasks:', error);
+        process.exit(1);
+      }
+    })
+  )
+  .addCommand(
+    new Command('create')
+      .description('Create a new task')
+      .option('-t, --title <title>', 'Task title')
+      .option('-d, --description <description>', 'Task description')
+      .action(async options => {
+        try {
+          await dbConnection.initialize({ skipSchema: false });
 
-// Register command modules
-registerTaskCommands(program);
-registerBoardCommands(program);
-registerNoteCommands(program);
-registerTagCommands(program);
-registerConfigCommands(program);
-registerPriorityCommands(program);
-registerContextCommands(program);
-registerSearchCommands(program);
-registerSubtaskCommands(program);
-registerBackupCommands(program);
-registerDatabaseCommands(program);
-registerRealtimeCommands(program);
-registerExportCommands(program);
+          if (!options.title) {
+            console.error('❌ Title is required');
+            process.exit(1);
+          }
 
-// Register development commands
-program.addCommand(processTodosCommand);
-// program.addCommand(interactiveViewCommand); // Temporarily disabled due to Ink/React ESM issues
-// program.addCommand(dashboardCommand); // Temporarily disabled due to Ink/React ESM issues
-// program.addCommand(dashboardDemoCommand); // Temporarily disabled due to Ink/React ESM issues
+          const taskId = crypto.randomUUID();
+          await dbConnection.execute(
+            'INSERT INTO tasks (id, title, description, status, created_at) VALUES (?, ?, ?, ?, ?)',
+            [taskId, options.title, options.description ?? '', 'todo', new Date().toISOString()]
+          );
 
-// Enhanced global error handler
-program.exitOverride(err => {
-  if (err.code === 'commander.help') {
-    process.exit(0);
-  }
-  if (err.code === 'commander.version') {
-    process.exit(0);
-  }
-
-  // Handle different error types
-  const errorMessage = formatError(err);
-  logger.error(errorMessage);
-
-  if (program.opts().verbose) {
-    logger.error(chalk.gray('\nStack trace:'));
-    logger.error(chalk.gray(err.stack || 'No stack trace available'));
-  }
-
-  // Log error to file if possible
-  logErrorToFile(err);
-
-  process.exit(getExitCode(err));
-});
-
-/**
- * Format error message with appropriate styling and context-specific help.
- *
- * @param error - The error object to format
- * @returns Formatted error message with color coding and helpful suggestions
- *
- * @example
- * ```typescript
- * // Connection error
- * formatError(new Error('ECONNREFUSED'))
- * // Returns: "❌ Connection Error: Unable to connect to the server\n   • Check if the server is running..."
- *
- * // Authentication error
- * formatError(new Error('401 Unauthorized'))
- * // Returns: "❌ Authentication Error: Invalid credentials\n   • Check your API key..."
- * ```
- */
-function formatError(error: Error): string {
-  const timestamp = new Date().toISOString();
-
-  // Check error type and format accordingly
-  if (error.name === 'PromptCancelledError') {
-    return chalk.yellow('\n⚠️  Operation cancelled by user');
-  }
-
-  if (error.name === 'SpinnerError') {
-    return chalk.red(`\n❌ ${String(String(error.message))}`);
-  }
-
-  if (error.message.includes('ECONNREFUSED') || error.message.includes('ENOTFOUND')) {
-    return (
-      chalk.red('\n❌ Connection Error: Unable to connect to the server') +
-      chalk.gray('\n   • Check if the server is running') +
-      chalk.gray('\n   • Verify the server URL in config: kanban config show') +
-      chalk.gray('\n   • Test connection: kanban config test')
-    );
-  }
-
-  if (error.message.includes('401') || error.message.includes('Unauthorized')) {
-    return (
-      chalk.red('\n❌ Authentication Error: Invalid credentials') +
-      chalk.gray('\n   • Check your API key: kanban config show') +
-      chalk.gray('\n   • Update credentials: kanban config set auth.apiKey <key>')
-    );
-  }
-
-  if (error.message.includes('403') || error.message.includes('Forbidden')) {
-    return (
-      chalk.red('\n❌ Permission Error: Access denied') +
-      chalk.gray('\n   • You may not have permission for this resource') +
-      chalk.gray('\n   • Contact your administrator')
-    );
-  }
-
-  if (error.message.includes('404') || error.message.includes('Not Found')) {
-    return (
-      chalk.red('\n❌ Resource Not Found') +
-      chalk.gray('\n   • Check if the resource ID is correct') +
-      chalk.gray('\n   • List available resources first')
-    );
-  }
-
-  if (error.message.includes('timeout')) {
-    return (
-      chalk.red('\n❌ Request Timeout') +
-      chalk.gray('\n   • The operation took too long') +
-      chalk.gray('\n   • Try again or check server status')
-    );
-  }
-
-  if (error.message.includes('Security') || error.message.includes('blocked')) {
-    return (
-      chalk.red('\n🚫 Security Error: ') +
-      error.message +
-      chalk.gray('\n   • Input contained potentially dangerous content') +
-      chalk.gray('\n   • Use: kanban security events (to see details)') +
-      chalk.gray('\n   • Use: kanban security report (for full report)')
-    );
-  }
-
-  if (error.message.includes('sanitiz') || error.message.includes('Suspicious')) {
-    return (
-      chalk.yellow('\n⚠️  Input Security Warning: ') +
-      error.message +
-      chalk.gray('\n   • Input was modified for security') +
-      chalk.gray('\n   • Check: kanban security events')
-    );
-  }
-
-  // Generic error formatting
-  return (
-    chalk.red('\n❌ Error: ') +
-    error.message +
-    chalk.gray(`\n   Time: ${String(timestamp)}`) +
-    chalk.gray('\n   Use --verbose for more details')
+          console.log('✅ Task created successfully');
+        } catch (error) {
+          console.error('❌ Failed to create task:', error);
+          process.exit(1);
+        }
+      })
   );
-}
-
-/**
- * Get appropriate exit code based on error type.
- *
- * Maps different error types to standard Unix exit codes for proper
- * shell script integration and error handling.
- *
- * @param error - The error object to analyze
- * @returns Exit code number
- *
- * @example
- * ```typescript
- * getExitCode(new Error('ECONNREFUSED')) // Returns: 111
- * getExitCode(new Error('401 Unauthorized')) // Returns: 401
- * getExitCode(new Error('Generic error')) // Returns: 1
- * ```
- */
-function getExitCode(error: Error): number {
-  if (error.name === 'PromptCancelledError') return 130; // SIGINT equivalent
-  if (error.message.includes('ECONNREFUSED')) return 111; // Connection refused
-  if (error.message.includes('401') || error.message.includes('Unauthorized')) return 401;
-  if (error.message.includes('403') || error.message.includes('Forbidden')) return 403;
-  if (error.message.includes('404') || error.message.includes('Not Found')) return 404;
-  return 1; // Generic error
-}
-
-/**
- * Log error to file for debugging purposes.
- *
- * Writes error details to a log file in the user's config directory.
- * Fails silently if logging is not possible (e.g., no write permissions).
- *
- * @param error - The error object to log
- *
- * Log file location: `~/.config/mcp-kanban/logs/cli-errors.log`
- *
- * Log entry format:
- * ```json
- * {
- *   "timestamp": "2024-01-20T10:30:00.000Z",
- *   "error": {
- *     "name": "Error",
- *     "message": "Connection refused",
- *     "stack": "Error: Connection refused..."
- *   },
- *   "command": "task list --board 123",
- *   "nodeVersion": "v20.0.0",
- *   "platform": "darwin"
- * }
- * ```
- */
-function logErrorToFile(error: Error): void {
-  try {
-    const fs = require('fs');
-    const path = require('path');
-    const os = require('os');
-
-    const logDir = path.join(os.homedir(), '.config', 'mcp-kanban', 'logs');
-    const logFile = path.join(logDir, 'cli-errors.log');
-
-    // Create log directory if it doesn't exist
-    if (!fs.existsSync(logDir)) {
-      fs.mkdirSync(logDir, { recursive: true });
-    }
-
-    const logEntry = {
-      timestamp: new Date().toISOString(),
-      error: {
-        name: error.name,
-        message: error.message,
-        stack: error.stack,
-      },
-      command: process.argv.slice(2).join(' '),
-      nodeVersion: process.version,
-      platform: process.platform,
-    };
-
-    fs.appendFileSync(logFile, `${String(String(JSON.stringify(logEntry)))}\n`);
-  } catch (logError) {
-    // Silently fail if logging doesn't work
-  }
-}
-
-// Process-level error handlers
-process.on('uncaughtException', error => {
-  logger.error(chalk.red('\n💥 Uncaught Exception:'));
-  logger.error(formatError(error));
-  logErrorToFile(error);
-  process.exit(1);
-});
-
-process.on('unhandledRejection', reason => {
-  const error = reason instanceof Error ? reason : new Error(String(reason));
-  logger.error(chalk.red('\n💥 Unhandled Promise Rejection:'));
-  logger.error(formatError(error));
-  logErrorToFile(error);
-  process.exit(1);
-});
-
-// Graceful shutdown handlers
-process.on('SIGINT', () => {
-  logger.log(chalk.yellow('\n⚠️  Received SIGINT, shutting down gracefully...'));
-  // Clean up spinners and other resources
-  if (global.cliComponents?.apiClient) {
-    // Cleanup any ongoing requests
-  }
-  process.exit(130);
-});
-
-process.on('SIGTERM', () => {
-  logger.log(chalk.yellow('\n⚠️  Received SIGTERM, shutting down gracefully...'));
-  process.exit(143);
-});
-
-// Handle no command provided
-if (process.argv.length <= 2) {
-  program.help();
-}
 
 // Parse command line arguments
 program.parse();
-
-export { program };

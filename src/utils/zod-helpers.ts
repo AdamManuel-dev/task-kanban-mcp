@@ -74,10 +74,10 @@ export function withUndefinedTransform<T>(
 export function optionalString(
   baseSchema?: z.ZodString
 ): z.ZodEffects<z.ZodOptional<z.ZodString>, string | undefined, unknown> {
-  const stringSchema = baseSchema || z.string();
+  const stringSchema = baseSchema ?? z.string();
 
   return z.preprocess(val => {
-    if (val === '' || val === null || val === undefined) {
+    if ((val === '' || val === null) ?? val === undefined) {
       return undefined;
     }
     return val;

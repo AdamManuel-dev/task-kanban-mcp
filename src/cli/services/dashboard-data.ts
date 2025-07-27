@@ -1,5 +1,6 @@
 import type { ApiClient } from '../client';
 import type { DashboardData } from '../utils/dashboard-manager';
+import { logger } from '../../utils/logger';
 
 /**
  * Service to fetch and transform data for dashboard components
@@ -15,18 +16,18 @@ export class DashboardDataService {
       const [tasks, activity] = await Promise.all([this.fetchTasks(), this.fetchActivity()]);
 
       return {
-        tasks: this.transformTaskData(tasks),
+        tasks: DashboardDataService.transformTaskData(tasks),
         velocity: await this.calculateVelocity(),
         teamMembers: await this.fetchTeamMembers(),
         burndown: await this.calculateBurndown(),
-        activity: this.transformActivityData(activity),
+        activity: DashboardDataService.transformActivityData(activity),
       };
     } catch (error) {
       logger.warn(
         'Failed to fetch dashboard data, using sample data:',
         error instanceof Error ? error.message : 'Unknown error'
       );
-      return this.generateSampleData();
+      return DashboardDataService.generateSampleData();
     }
   }
 
@@ -53,7 +54,7 @@ export class DashboardDataService {
   // private async fetchBoards(): Promise<any[]> {
   //   try {
   //     const response = await this.apiClient.get('/boards');
-  //     return response.data || [];
+  //     return response.data ?? [];
   //   } catch (error) {
   //     throw new Error(
   //       `Failed to fetch boards: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
@@ -92,12 +93,12 @@ export class DashboardDataService {
 
     tasks.forEach(task => {
       // Count by status
-      const status = task.status || 'todo';
-      byStatus[status] = (byStatus[status] || 0) + 1;
+      const status = task.status ?? 'todo';
+      byStatus[status] = (byStatus[status] ?? 0) + 1;
 
       // Count by priority
-      const priority = task.priority || 'P3';
-      byPriority[priority] = (byPriority[priority] || 0) + 1;
+      const priority = task.priority ?? 'P3';
+      byPriority[priority] = (byPriority[priority] ?? 0) + 1;
 
       // Count completed
       if (status === 'done' || status === 'completed') {
@@ -138,12 +139,12 @@ export class DashboardDataService {
         ('data' in response && Array.isArray(response.data) ? response.data : [])?.map(
           (item: any, index: number) => ({
             period: `W${String(index + 1)}`,
-            completed: item.completed_count || 0,
+            completed: item.completed_count ?? 0,
           })
-        ) || this.generateSampleVelocity()
+        ) || DashboardDataService.generateSampleVelocity()
       );
     } catch (error) {
-      return this.generateSampleVelocity();
+      return DashboardDataService.generateSampleVelocity();
     }
   }
 
@@ -157,14 +158,14 @@ export class DashboardDataService {
       return (
         ('data' in response && Array.isArray(response.data) ? response.data : [])?.map(
           (member: any) => ({
-            name: member.name || member.username,
-            taskCount: member.active_tasks || 0,
-            load: member.workload_percentage || 0,
+            name: member.name ?? member.username,
+            taskCount: member.active_tasks ?? 0,
+            load: member.workload_percentage ?? 0,
           })
-        ) || this.generateSampleTeamMembers()
+        ) || DashboardDataService.generateSampleTeamMembers()
       );
     } catch (error) {
-      return this.generateSampleTeamMembers();
+      return DashboardDataService.generateSampleTeamMembers();
     }
   }
 
@@ -179,13 +180,13 @@ export class DashboardDataService {
         ('data' in response && Array.isArray(response.data) ? response.data : [])?.map(
           (item: any) => ({
             day: item.day,
-            remaining: item.remaining_tasks || 0,
-            ideal: item.ideal_remaining || 0,
+            remaining: item.remaining_tasks ?? 0,
+            ideal: item.ideal_remaining ?? 0,
           })
-        ) || this.generateSampleBurndown()
+        ) || DashboardDataService.generateSampleBurndown()
       );
     } catch (error) {
-      return this.generateSampleBurndown();
+      return DashboardDataService.generateSampleBurndown();
     }
   }
 
@@ -199,7 +200,7 @@ export class DashboardDataService {
         minute: '2-digit',
       }),
       event: this.formatActivityEvent(activity),
-      user: activity.user?.name || activity.user?.username || 'System',
+      user: activity.user?.name ?? activity.user?.username ?? 'System',
     }));
   }
 
@@ -207,10 +208,10 @@ export class DashboardDataService {
    * Format activity event for display
    */
   private static formatActivityEvent(activity: any): string {
-    const action = activity.action || 'updated';
-    const entityType = activity.entity_type || 'task';
+    const action = activity.action ?? 'updated';
+    const entityType = activity.entity_type ?? 'task';
     const entityName =
-      activity.entity_name || `${String(entityType)} #${String(String(activity.entity_id))}`;
+      activity.entity_name ?? `${String(entityType)} #${String(String(activity.entity_id))}`;
 
     switch (action) {
       case 'create':

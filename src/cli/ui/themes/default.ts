@@ -161,7 +161,7 @@ export class ThemeManager {
 
   formatStatus(status: string, text?: string): string {
     const statusConfig = this.currentTheme.status[status as keyof typeof this.currentTheme.status];
-    if (!statusConfig) return text || status;
+    if (!statusConfig) return text ?? status;
 
     const { icon } = statusConfig;
     const coloredIcon = statusConfig.color(icon);
@@ -173,9 +173,9 @@ export class ThemeManager {
 
   formatPriority(priority: string, text?: string): string {
     const colorFn = this.currentTheme.priority[priority as keyof typeof this.currentTheme.priority];
-    if (!colorFn) return text || priority;
+    if (!colorFn) return text ?? priority;
 
-    return colorFn(text || priority);
+    return colorFn(text ?? priority);
   }
 
   formatBorder(type: 'light' | 'heavy' | 'double', length: number): string {

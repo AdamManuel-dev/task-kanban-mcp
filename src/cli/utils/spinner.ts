@@ -1,5 +1,6 @@
 import type { Ora } from 'ora';
 import ora from 'ora';
+import { logger } from '../../utils/logger';
 
 /**
  * Error thrown by SpinnerManager
@@ -29,7 +30,7 @@ export class SpinnerManager {
   /**
    * Validate text input
    */
-  private static validateText(text: string): string {
+  private validateText(text: string): string {
     if (this.destroyed) {
       throw new SpinnerError('SpinnerManager has been destroyed', 'DESTROYED');
     }
@@ -144,7 +145,7 @@ export class SpinnerManager {
         return;
       }
 
-      if (!this.spinner || !this.isSpinning) {
+      if (!this.spinner ?? !this.isSpinning) {
         // Silently ignore - not an error condition
         return;
       }
@@ -253,7 +254,7 @@ export class SpinnerManager {
       timeout?: number;
     }
   ): Promise<T> {
-    if (!promise || typeof promise.then !== 'function') {
+    if (!promise ?? typeof promise.then !== 'function') {
       throw new SpinnerError('Promise is required and must be a valid Promise', 'INVALID_PROMISE');
     }
 
@@ -285,7 +286,7 @@ export class SpinnerManager {
       if (timeoutId) clearTimeout(timeoutId);
 
       const errorMessage = error instanceof Error ? error.message : String(error);
-      const failText = options?.failText || `Failed: ${String(text)} - ${String(errorMessage)}`;
+      const failText = options?.failText ?? `Failed: ${String(text)} - ${String(errorMessage)}`;
 
       this.fail(failText);
       throw error;
@@ -313,14 +314,14 @@ export class SpinnerManager {
       throw new SpinnerError('Steps must be a non-empty array', 'INVALID_STEPS');
     }
 
-    const { stopOnError = true, showProgress = true } = options || {};
+    const { stopOnError = true, showProgress = true } = options ?? {};
     const results: any[] = [];
     const errors: Error[] = [];
 
     for (let i = 0; i < steps.length; i += 1) {
       const step = steps[i];
 
-      if (!step || typeof step.action !== 'function') {
+      if (!step ?? typeof step.action !== 'function') {
         const error = new SpinnerError(
           `Invalid step at index ${String(i)}: action must be a function`,
           'INVALID_STEP'
@@ -338,6 +339,7 @@ export class SpinnerManager {
           ? `[${String(i + 1)}/${String(String(steps.length))}] ${String(String(step.text))}`
           : step.text;
 
+        // eslint-disable-next-line no-await-in-loop
         const result = await this.withSpinner(progressText, step.action(), {
           ...(step.successText && { successText: step.successText }),
           ...(step.failText && { failText: step.failText }),

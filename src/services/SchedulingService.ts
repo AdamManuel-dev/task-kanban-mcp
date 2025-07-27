@@ -90,7 +90,7 @@ export interface UpdateScheduleOptions {
  * including cron-based scheduling, retention policies, and failure handling.
  */
 export class SchedulingService {
-  private readonly activeJobs = new Map<string, cron.ScheduledTask>();
+  private static readonly activeJobs = new Map<string, cron.ScheduledTask>();
 
   private isRunning = false;
 
@@ -116,7 +116,7 @@ export class SchedulingService {
   async createSchedule(options: CreateScheduleOptions): Promise<BackupSchedule> {
     // Validate cron expression
     if (!cron.validate(options.cronExpression)) {
-      throw new Error(`Invalid cron expression: ${String(String(options.cronExpression))}`);
+      throw new Error(`Invalid cron expression: ${options.cronExpression}`);
     }
 
     const id = uuidv4();
@@ -127,13 +127,13 @@ export class SchedulingService {
       name: options.name,
       cronExpression: options.cronExpression,
       backupType: options.backupType,
-      enabled: options.enabled || true,
-      nextRunAt: this.calculateNextRun(options.cronExpression),
+      enabled: options.enabled ?? true,
+      nextRunAt: SchedulingService.calculateNextRun(options.cronExpression),
       runCount: 0,
       failureCount: 0,
-      retentionDays: options.retentionDays || 30,
-      compressionEnabled: options.compressionEnabled || true,
-      verificationEnabled: options.verificationEnabled || true,
+      retentionDays: options.retentionDays ?? 30,
+      compressionEnabled: options.compressionEnabled ?? true,
+      verificationEnabled: options.verificationEnabled ?? true,
       createdAt: now,
       updatedAt: now,
     };
@@ -149,7 +149,7 @@ export class SchedulingService {
         this.startJob(schedule);
       }
 
-      logger.info(`Backup schedule created: ${String(String(schedule.name))}`, { scheduleId: id });
+      logger.info(`Backup schedule created: ${schedule.name}`, { scheduleId: id });
       return schedule;
     } catch (error) {
       logger.error('Failed to create backup schedule', error);
@@ -191,7 +191,7 @@ export class SchedulingService {
     }
 
     const rows = await this.db.query(query, params);
-    return rows.map(row => this.deserializeSchedule(row));
+    return rows.map(row => SchedulingService.deserializeSchedule(row));
   }
 
   /**
@@ -202,7 +202,7 @@ export class SchedulingService {
    */
   async getScheduleById(id: string): Promise<BackupSchedule | null> {
     const row = await this.db.queryOne('SELECT * FROM backup_schedules WHERE id = ?', [id]);
-    return row ? this.deserializeSchedule(row) : null;
+    return row ? SchedulingService.deserializeSchedule(row) : null;
   }
 
   /**
@@ -215,102 +215,68 @@ export class SchedulingService {
   async updateSchedule(id: string, options: UpdateScheduleOptions): Promise<BackupSchedule> {
     const existingSchedule = await this.getScheduleById(id);
     if (!existingSchedule) {
-      throw new Error(`Schedule not found: ${String(id)}`);
+      throw new Error(`Schedule not found: ${id}`);
     }
 
     // Validate cron expression if provided
     if (options.cronExpression && !cron.validate(options.cronExpression)) {
-      throw new Error(`Invalid cron expression: ${String(String(options.cronExpression))}`);
+      throw new Error(`Invalid cron expression: ${options.cronExpression}`);
     }
 
-    const updates: string[] = [];
-    const params: any[] = [];
+    // Update fields
+    const updatedSchedule: BackupSchedule = {
+      ...existingSchedule,
+      ...options,
+      updatedAt: new Date().toISOString(),
+    };
 
-    if (options.name !== undefined) {
-      updates.push('name = ?');
-      params.push(options.name);
-    }
-    if (options.description !== undefined) {
-      updates.push('description = ?');
-      params.push(options.description);
-    }
-    if (options.cronExpression !== undefined) {
-      updates.push('cron_expression = ?', 'next_run_at = ?');
-      params.push(options.cronExpression, this.calculateNextRun(options.cronExpression));
-    }
-    if (options.backupType !== undefined) {
-      updates.push('backup_type = ?');
-      params.push(options.backupType);
-    }
-    if (options.enabled !== undefined) {
-      updates.push('enabled = ?');
-      params.push(options.enabled ? 1 : 0);
-    }
-    if (options.retentionDays !== undefined) {
-      updates.push('retention_days = ?');
-      params.push(options.retentionDays);
-    }
-    if (options.compressionEnabled !== undefined) {
-      updates.push('compression_enabled = ?');
-      params.push(options.compressionEnabled ? 1 : 0);
-    }
-    if (options.verificationEnabled !== undefined) {
-      updates.push('verification_enabled = ?');
-      params.push(options.verificationEnabled ? 1 : 0);
+    // Recalculate next run if cron expression changed
+    if (options.cronExpression) {
+      updatedSchedule.nextRunAt = SchedulingService.calculateNextRun(options.cronExpression);
     }
 
-    if (updates.length === 0) {
-      return existingSchedule;
-    }
+    try {
+      await this.storeSchedule(updatedSchedule);
 
-    updates.push('updated_at = ?');
-    params.push(new Date().toISOString());
-    params.push(id);
-
-    await this.db.execute(
-      `
-      UPDATE backup_schedules 
-      SET ${String(String(updates.join(', ')))}
-      WHERE id = ?
-    `,
-      params
-    );
-
-    const updatedSchedule = await this.getScheduleById(id);
-    if (!updatedSchedule) {
-      throw new Error('Schedule disappeared after update');
-    }
-
-    // Restart job if scheduler is running
-    if (this.isRunning) {
-      this.stopJob(id);
-      if (updatedSchedule.enabled) {
-        this.startJob(updatedSchedule);
+      // Restart job if scheduler is running
+      if (this.isRunning) {
+        SchedulingService.stopJob(id);
+        if (updatedSchedule.enabled) {
+          this.startJob(updatedSchedule);
+        }
       }
-    }
 
-    logger.info(`Backup schedule updated: ${String(String(updatedSchedule.name))}`, { scheduleId: id });
-    return updatedSchedule;
+      logger.info(`Backup schedule updated: ${updatedSchedule.name}`, { scheduleId: id });
+      return updatedSchedule;
+    } catch (error) {
+      logger.error('Failed to update backup schedule', error);
+      throw error;
+    }
   }
 
   /**
    * Delete a backup schedule
    *
    * @param {string} id - Schedule ID
-   * @returns {Promise<void>}
    */
   async deleteSchedule(id: string): Promise<void> {
-    const schedule = await this.getScheduleById(id);
-    if (!schedule) {
-      throw new Error(`Schedule not found: ${String(id)}`);
+    const existingSchedule = await this.getScheduleById(id);
+    if (!existingSchedule) {
+      throw new Error(`Schedule not found: ${id}`);
     }
 
-    // Stop the job if running
-    this.stopJob(id);
+    try {
+      // Stop the job if running
+      SchedulingService.stopJob(id);
 
-    await this.db.execute('DELETE FROM backup_schedules WHERE id = ?', [id]);
+      // Delete from database
+      await this.db.execute('DELETE FROM backup_schedules WHERE id = ?', [id]);
 
-    logger.info(`Backup schedule deleted: ${String(String(schedule.name))}`, { scheduleId: id });
+      logger.info(`Backup schedule deleted: ${existingSchedule.name}`, { scheduleId: id });
+    } catch (error) {
+      logger.error('Failed to delete backup schedule', error);
+      throw error;
+    }
   }
 
   /**
@@ -323,10 +289,7 @@ export class SchedulingService {
     }
 
     this.isRunning = true;
-
-    // Load and start all enabled schedules
     this.loadAndStartSchedules();
-
     logger.info('Backup scheduler started');
   }
 
@@ -339,27 +302,30 @@ export class SchedulingService {
       return;
     }
 
-    // Stop all active jobs
-    for (const [scheduleId, task] of this.activeJobs) {
-      task.stop();
-      this.activeJobs.delete(scheduleId);
-    }
-
     this.isRunning = false;
+
+    // Stop all active jobs
+    for (const [scheduleId, task] of SchedulingService.activeJobs) {
+      task.stop();
+      SchedulingService.activeJobs.delete(scheduleId);
+    }
 
     logger.info('Backup scheduler stopped');
   }
 
   /**
-   * Execute a schedule manually
+   * Manually execute a schedule
    *
    * @param {string} id - Schedule ID
-   * @returns {Promise<void>}
    */
   async executeSchedule(id: string): Promise<void> {
     const schedule = await this.getScheduleById(id);
     if (!schedule) {
-      throw new Error(`Schedule not found: ${String(id)}`);
+      throw new Error(`Schedule not found: ${id}`);
+    }
+
+    if (!schedule.enabled) {
+      throw new Error(`Schedule is disabled: ${id}`);
     }
 
     await this.executeBackup(schedule);
@@ -367,28 +333,22 @@ export class SchedulingService {
 
   /**
    * Clean up old backups based on retention policies
-   *
-   * @returns {Promise<void>}
    */
   async cleanupOldBackups(): Promise<void> {
     const schedules = await this.getSchedules({ enabled: true });
 
     await Promise.all(
-  schedules.map(async (schedule) => {
-    await this.backupService.listBackups({
-            limit: 1000,
-          });
-  })
-);`, {
-              scheduleId: schedule.id,
-              backupId: backup.id,
-            });
+      schedules
+        .filter(schedule => schedule.retentionDays)
+        .map(async schedule => {
+          try {
+            await this.backupService.cleanupOldBackups(schedule.retentionDays!);
+            logger.info(`Cleaned up old backups for schedule: ${schedule.name}`);
+          } catch (error) {
+            logger.error(`Failed to cleanup backups for schedule: ${schedule.name}`, error);
           }
-        } catch (error) {
-          logger.error(`Failed to cleanup old backups for schedule ${String(String(schedule.name))}:`, error);
-        }
-      }
-    }
+        })
+    );
   }
 
   /**
@@ -398,27 +358,9 @@ export class SchedulingService {
     try {
       const schedules = await this.getSchedules({ enabled: true });
 
-      await Promise.all(
-  schedules.map(async (schedule) => {
-    await this.executeBackup(schedule);
-  })
-);,
-        {
-          scheduled: false,
-          timezone: 'UTC',
-        }
-      );
-
-      task.start();
-      this.activeJobs.set(schedule.id, task);
-
-      logger.info(`Started backup job: ${String(String(schedule.name))}`, {
-        scheduleId: schedule.id,
-        cronExpression: schedule.cronExpression,
-        nextRun: schedule.nextRunAt,
-      });
+      await Promise.all(schedules.map(schedule => this.executeBackup(schedule)));
     } catch (error) {
-      logger.error(`Failed to start backup job: ${String(String(schedule.name))}`, error);
+      logger.error('Failed to load and start schedules:', error);
     }
   }
 
@@ -428,11 +370,11 @@ export class SchedulingService {
    * @param {string} scheduleId - Schedule ID
    */
   private static stopJob(scheduleId: string): void {
-    const task = this.activeJobs.get(scheduleId);
+    const task = SchedulingService.activeJobs.get(scheduleId);
     if (task) {
       task.stop();
-      this.activeJobs.delete(scheduleId);
-      logger.info(`Stopped backup job for schedule: ${String(scheduleId)}`);
+      SchedulingService.activeJobs.delete(scheduleId);
+      logger.info(`Stopped backup job for schedule: ${scheduleId}`);
     }
   }
 
@@ -445,11 +387,13 @@ export class SchedulingService {
     const startTime = Date.now();
 
     try {
-      logger.info(`Executing scheduled backup: ${String(String(schedule.name))}`, { scheduleId: schedule.id });
+      logger.info(`Executing scheduled backup: ${schedule.name}`, {
+        scheduleId: schedule.id,
+      });
 
       // Create backup name with timestamp
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const backupName = `${String(String(schedule.name))}-${String(timestamp)}`;
+      const backupName = `${schedule.name}-${timestamp}`;
 
       // Execute backup based on type
       let backup;
@@ -467,7 +411,7 @@ export class SchedulingService {
         if (parentBackup) {
           backup = await this.backupService.createIncrementalBackup({
             name: backupName,
-            description: `Scheduled incremental backup from ${String(String(schedule.name))}`,
+            description: `Scheduled incremental backup from ${schedule.name}`,
             compress: schedule.compressionEnabled,
             verify: schedule.verificationEnabled,
             parentBackupId: parentBackup.id,
@@ -479,7 +423,7 @@ export class SchedulingService {
           );
           backup = await this.backupService.createFullBackup({
             name: backupName,
-            description: `Scheduled full backup from ${String(String(schedule.name))} (fallback)`,
+            description: `Scheduled full backup from ${schedule.name} (fallback)`,
             compress: schedule.compressionEnabled,
             verify: schedule.verificationEnabled,
           });
@@ -487,7 +431,7 @@ export class SchedulingService {
       } else {
         backup = await this.backupService.createFullBackup({
           name: backupName,
-          description: `Scheduled full backup from ${String(String(schedule.name))}`,
+          description: `Scheduled full backup from ${schedule.name}`,
           compress: schedule.compressionEnabled,
           verify: schedule.verificationEnabled,
         });
@@ -497,10 +441,10 @@ export class SchedulingService {
       await this.updateScheduleStats(schedule.id, true);
 
       const duration = Date.now() - startTime;
-      logger.info(`Scheduled backup completed: ${String(String(schedule.name))}`, {
+      logger.info(`Scheduled backup completed: ${schedule.name}`, {
         scheduleId: schedule.id,
         backupId: backup.id,
-        duration: `${String(duration)}ms`,
+        duration: `${duration}ms`,
         size: backup.size,
       });
     } catch (error) {
@@ -508,9 +452,9 @@ export class SchedulingService {
       await this.updateScheduleStats(schedule.id, false);
 
       const duration = Date.now() - startTime;
-      logger.error(`Scheduled backup failed: ${String(String(schedule.name))}`, {
+      logger.error(`Scheduled backup failed: ${schedule.name}`, {
         scheduleId: schedule.id,
-        duration: `${String(duration)}ms`,
+        duration: `${duration}ms`,
         error,
       });
     }
@@ -528,7 +472,7 @@ export class SchedulingService {
 
     if (!schedule) return;
 
-    const nextRun = this.calculateNextRun(schedule.cronExpression);
+    const nextRun = SchedulingService.calculateNextRun(schedule.cronExpression);
 
     await this.db.execute(
       `
@@ -651,8 +595,8 @@ export class SchedulingService {
       cronExpression: row.cron_expression,
       backupType: row.backup_type as 'full' | 'incremental',
       enabled: Boolean(row.enabled),
-      runCount: row.run_count || 0,
-      failureCount: row.failure_count || 0,
+      runCount: row.run_count ?? 0,
+      failureCount: row.failure_count ?? 0,
       retentionDays: row.retention_days,
       compressionEnabled: Boolean(row.compression_enabled),
       verificationEnabled: Boolean(row.verification_enabled),
@@ -666,5 +610,21 @@ export class SchedulingService {
     if (row.next_run_at) schedule.nextRunAt = row.next_run_at;
 
     return schedule;
+  }
+
+  /**
+   * Start a job for a schedule
+   */
+  private startJob(schedule: BackupSchedule): void {
+    // Stop existing job if any
+    SchedulingService.stopJob(schedule.id);
+
+    // Create new cron job
+    const task = cron.schedule(schedule.cronExpression, () => {
+      this.executeBackup(schedule);
+    });
+
+    SchedulingService.activeJobs.set(schedule.id, task);
+    logger.info(`Started backup job for schedule: ${schedule.name}`, { scheduleId: schedule.id });
   }
 }

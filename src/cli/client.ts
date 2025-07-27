@@ -366,6 +366,6 @@ export class ApiClient {
    */
   updateConfig(): void {
     this.baseUrl = this.config.getServerUrl();
-    this.apiKey = this.config.getApiKey() || undefined;
+    this.apiKey = this.config.getApiKey() ?? undefined;
   }
 }

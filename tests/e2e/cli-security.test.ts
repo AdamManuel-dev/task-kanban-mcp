@@ -135,7 +135,7 @@ describe('CLI Security E2E Tests', () => {
       process.env.KANBAN_API_KEY = 'invalid-key-with-secrets';
 
       try {
-        const _result = execSync(`node dist/cli/index.js task list`, {
+        execSync(`node dist/cli/index.js task list`, {
           encoding: 'utf8',
           cwd: process.cwd(),
         });
@@ -152,13 +152,10 @@ describe('CLI Security E2E Tests', () => {
       const maliciousTitle = '<script>logger.log("XSS in error")</script>';
 
       try {
-        const _result = execSync(
-          `node dist/cli/index.js task create --title "${String(maliciousTitle)}"`,
-          {
-            encoding: 'utf8',
-            cwd: process.cwd(),
-          }
-        );
+        execSync(`node dist/cli/index.js task create --title "${String(maliciousTitle)}"`, {
+          encoding: 'utf8',
+          cwd: process.cwd(),
+        });
       } catch (error) {
         const errorOutput = error.toString();
         expect(errorOutput).not.toContain('<script>');

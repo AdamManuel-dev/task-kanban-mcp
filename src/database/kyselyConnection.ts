@@ -18,62 +18,61 @@ export class KyselyConnection {
 
   private _sqliteDb: Database.Database | null = null;
 
-  private static constructor() {
-  // Static method implementation
-}) {
-        logger.warn('Kysely connection already initialized');
-        return;
-      }
+  private constructor() {
+    // Private constructor for singleton pattern
+  }
 
+  /**
+   * Initialize the Kysely database connection
+   */
+  public static async initialize(): Promise<KyselyConnection> {
+    if (this.instance) {
+      logger.warn('Kysely connection already initialized');
+      return this.instance;
+    }
+
+    this.instance = new KyselyConnection();
+
+    try {
       // Create SQLite database instance
-      this._sqliteDb = new Database(config.database.path, {
+      this.instance._sqliteDb = new Database(config.database.path, {
         verbose: config.database.verbose ? logger.debug.bind(logger) : undefined,
       });
 
       // Configure SQLite pragmas for optimal performance
-      this._sqliteDb.pragma('journal_mode = WAL');
-      this._sqliteDb.pragma('synchronous = NORMAL');
-      this._sqliteDb.pragma('cache_size = 1000');
-      this._sqliteDb.pragma('foreign_keys = ON');
-      this._sqliteDb.pragma('temp_store = MEMORY');
+      this.instance._sqliteDb.pragma('journal_mode = WAL');
+      this.instance._sqliteDb.pragma('synchronous = NORMAL');
+      this.instance._sqliteDb.pragma('cache_size = 1000');
+      this.instance._sqliteDb.pragma('foreign_keys = ON');
+      this.instance._sqliteDb.pragma('temp_store = MEMORY');
 
       // Create Kysely instance with SQLite dialect
-      this._db = new Kysely<DatabaseSchema>({
+      this.instance._db = new Kysely<DatabaseSchema>({
         dialect: new SqliteDialect({
-          database: this._sqliteDb,
+          database: this.instance._sqliteDb,
         }),
-        log: config.database.verbose
-          ? (event: {
-              level: string;
-              query?: { sql: string; parameters: unknown[] };
-              queryDurationMillis?: number;
-              error?: unknown;
-            }) => {
-              if (event.level === 'query') {
-                logger.debug('Kysely Query', {
-                  sql: event.query?.sql,
-                  parameters: event.query?.parameters,
-                  duration: event.queryDurationMillis,
-                });
-              } else if (event.level === 'error') {
-                logger.error('Kysely Error', {
-                  error: event.error,
-                  sql: event.query?.sql,
-                  parameters: event.query?.parameters,
-                });
-              }
-            }
-          : undefined,
       });
 
       logger.info('Kysely database connection initialized', {
         path: config.database.path,
         walMode: true,
       });
+
+      return this.instance;
     } catch (error) {
       logger.error('Failed to initialize Kysely connection', { error });
       throw error;
     }
+  }
+
+  /**
+   * Get the singleton instance
+   */
+  public static getInstance(): KyselyConnection {
+    if (!this.instance) {
+      throw new Error('Kysely connection not initialized. Call initialize() first.');
+    }
+    return this.instance;
   }
 
   /**
@@ -119,13 +118,12 @@ export class KyselyConnection {
   }
 
   /**
-   * Execute a transaction with type safety
+   * Execute a transaction
    */
   public async transaction<T>(callback: (trx: Kysely<DatabaseSchema>) => Promise<T>): Promise<T> {
     if (!this._db) {
       throw new Error('Database not initialized');
     }
-
     return this._db.transaction().execute(callback);
   }
 
@@ -141,19 +139,19 @@ export class KyselyConnection {
       errorMessage?: string;
     };
   }> {
-    try {
-      if (!this._db) {
-        return {
-          status: 'unhealthy',
-          details: {
-            connected: false,
-            tablesExist: false,
-            canQuery: false,
-            errorMessage: 'Database not initialized',
-          },
-        };
-      }
+    if (!this._db) {
+      return {
+        status: 'unhealthy',
+        details: {
+          connected: false,
+          tablesExist: false,
+          canQuery: false,
+          errorMessage: 'Database not initialized',
+        },
+      };
+    }
 
+    try {
       // Test basic query
       await this._db.selectFrom('boards').select(['id']).limit(1).execute();
 
@@ -190,32 +188,35 @@ export class KyselyConnection {
     totalSize: number;
     walSize: number;
   }> {
-    if (!this._db || !this._sqliteDb) {
+    if (!this._db ?? !this._sqliteDb) {
       throw new Error('Database not initialized');
     }
 
     try {
       // Get table statistics
       const tables = ['boards', 'tasks', 'notes', 'tags', 'task_tags', 'task_dependencies'];
-      const tableStats = [];
 
-      await Promise.all(
-  tables.map(async (table) => {
-    this._db
-          .selectFrom(table as TableName)
-          .select([this._db.fn.count<number>('id').as('count')])
-          .executeTakeFirst();
-  })
-);
-          >(`SELECT SUM(pgsize) as size FROM dbstat WHERE name = ?`)
-          .get(table);
+      const tableStats = await Promise.all(
+        tables.map(async table => {
+          const countResult = await this._db
+            .selectFrom(table as any)
+            .select([this._db.fn.count<number>('id').as('count')])
+            .executeTakeFirst();
 
-        tableStats.push({
-          name: table,
-          rowCount: countResult?.count || 0,
-          diskSize: sizeResult?.size || 0,
-        });
-      }
+          const sizeResult = this._sqliteDb
+            .prepare<
+              unknown[],
+              { size: number }
+            >(`SELECT SUM(pgsize) as size FROM dbstat WHERE name = ?`)
+            .get(table);
+
+          return {
+            name: table,
+            rowCount: countResult?.count ?? 0,
+            diskSize: sizeResult?.size ?? 0,
+          };
+        })
+      );
 
       // Get total database size
       const totalSizeResult = this._sqliteDb
@@ -235,8 +236,8 @@ export class KyselyConnection {
 
       return {
         tableStats,
-        totalSize: totalSizeResult?.size || 0,
-        walSize: walSizeResult?.size || 0,
+        totalSize: totalSizeResult?.size ?? 0,
+        walSize: walSizeResult?.size ?? 0,
       };
     } catch (error) {
       logger.error('Failed to get Kysely database stats', { error });
