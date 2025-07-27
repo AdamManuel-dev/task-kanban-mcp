@@ -1,19 +1,12 @@
 import type { Command } from 'commander';
 import inquirer from 'inquirer';
-import type { ConfigManager } from '../config';
-import type { ApiClient } from '../client';
-import type { OutputFormatter } from '../formatter';
+import type { CliComponents, DatabaseOptimizationResult, DatabaseVacuumResult, DatabaseAnalysisResult, DatabaseStats, DatabaseIntegrityResult, DatabaseRepairResult, Migration, MigrationResult } from '../types';
 
 export function registerDatabaseCommands(program: Command): void {
   const dbCmd = program.command('db').description('Database management commands');
 
-  // Get global components
-  const getComponents = () =>
-    (global as any).cliComponents as {
-      config: ConfigManager;
-      apiClient: ApiClient;
-      formatter: OutputFormatter;
-    };
+  // Get global components with proper typing
+  const getComponents = (): CliComponents => global.cliComponents;
 
   dbCmd
     .command('optimize')
@@ -28,7 +21,7 @@ export function registerDatabaseCommands(program: Command): void {
         const result = await apiClient.request('/api/database/optimize', {
           method: 'POST',
           body: { verbose: options.verbose || false },
-        });
+        }) as DatabaseOptimizationResult[];
 
         formatter.success('Database optimization completed');
         formatter.output(result, {
@@ -71,7 +64,7 @@ export function registerDatabaseCommands(program: Command): void {
 
         const result = await apiClient.request('/api/database/vacuum', {
           method: 'POST',
-        });
+        }) as DatabaseVacuumResult;
 
         formatter.success('Database vacuum completed');
         formatter.output(result, {
@@ -97,7 +90,7 @@ export function registerDatabaseCommands(program: Command): void {
 
         const result = await apiClient.request('/api/database/analyze', {
           method: 'POST',
-        });
+        }) as DatabaseAnalysisResult[];
 
         formatter.success('Database analysis completed');
         formatter.output(result, {
@@ -123,11 +116,11 @@ export function registerDatabaseCommands(program: Command): void {
 
       try {
         const params: Record<string, string> = {};
-        if (options.tables) params['tables'] = 'true';
-        if (options.indexes) params['indexes'] = 'true';
-        if (options.performance) params['performance'] = 'true';
+        if (options.tables) params.tables = 'true';
+        if (options.indexes) params.indexes = 'true';
+        if (options.performance) params.performance = 'true';
 
-        const stats = await apiClient.request('/api/database/stats', { params }) as any;
+        const stats = await apiClient.request('/api/database/stats', { params }) as DatabaseStats;
 
         formatter.info('Database Statistics:');
 
@@ -186,7 +179,7 @@ export function registerDatabaseCommands(program: Command): void {
         const result = await apiClient.request('/api/database/check', {
           method: 'POST',
           body: { repair: options.repair || false },
-        }) as any;
+        }) as DatabaseIntegrityResult;
 
         if (result.healthy) {
           formatter.success('Database integrity check passed');
@@ -241,7 +234,7 @@ export function registerDatabaseCommands(program: Command): void {
           }
         }
 
-        const repairData: any = {
+        const repairData = {
           createBackup: options.backup || false,
         };
 
@@ -250,7 +243,7 @@ export function registerDatabaseCommands(program: Command): void {
         const result = await apiClient.request('/api/database/repair', {
           method: 'POST',
           body: repairData,
-        });
+        }) as DatabaseRepairResult;
 
         formatter.success('Database repair completed');
         formatter.output(result, {
@@ -275,7 +268,7 @@ export function registerDatabaseCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const migrations = await apiClient.request('/api/database/migrations/status') as any;
+        const migrations = await apiClient.request('/api/database/migrations/status') as Migration[];
 
         if (!migrations || migrations.length === 0) {
           formatter.info('No migrations found');
@@ -302,7 +295,7 @@ export function registerDatabaseCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const migrateData: any = {};
+        const migrateData: { targetVersion?: string } = {};
         if (options.to) {
           migrateData.targetVersion = options.to;
         }
@@ -312,7 +305,7 @@ export function registerDatabaseCommands(program: Command): void {
         const result = await apiClient.request('/api/database/migrations/up', {
           method: 'POST',
           body: migrateData,
-        });
+        }) as MigrationResult[];
 
         formatter.success('Migrations completed');
         formatter.output(result, {
@@ -354,7 +347,7 @@ export function registerDatabaseCommands(program: Command): void {
           }
         }
 
-        const rollbackData: any = {};
+        const rollbackData: { targetVersion?: string } = {};
         if (options.to) {
           rollbackData.targetVersion = options.to;
         }
@@ -364,7 +357,7 @@ export function registerDatabaseCommands(program: Command): void {
         const result = await apiClient.request('/api/database/migrations/down', {
           method: 'POST',
           body: rollbackData,
-        });
+        }) as MigrationResult[];
 
         formatter.success('Migration rollback completed');
         formatter.output(result, {
@@ -389,7 +382,7 @@ export function registerDatabaseCommands(program: Command): void {
         const migration = await apiClient.request('/api/database/migrations/create', {
           method: 'POST',
           body: { name },
-        }) as any;
+        }) as Migration;
 
         formatter.success(`Migration created: ${migration.filename}`);
         formatter.output(migration, {

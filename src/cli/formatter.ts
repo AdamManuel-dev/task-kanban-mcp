@@ -126,8 +126,8 @@ export class OutputFormatter {
     console.log(headers.join(','));
 
     // Output rows
-    items.forEach(item => {
-      const values = fields.map(field => {
+    items.forEach((item): void => {
+      const values = fields.map((field): string => {
         const value = this.getNestedValue(item, field);
         const stringValue = this.formatValue(value);
         // Escape commas and quotes in CSV
@@ -154,10 +154,10 @@ export class OutputFormatter {
     }
 
     const fields = options?.fields || this.getTableFields(items[0]);
-    const headers = options?.headers || fields.map(field => this.formatHeader(field));
+    const headers = options?.headers || fields.map((field): string => this.formatHeader(field));
 
     const table = new Table({
-      head: headers.map(h => this.colorize(h, 'cyan')),
+      head: headers.map((h): string => this.colorize(h, 'cyan')),
       style: {
         'padding-left': 1,
         'padding-right': 1,
@@ -165,8 +165,8 @@ export class OutputFormatter {
       },
     });
 
-    items.forEach(item => {
-      const row = fields.map(field => {
+    items.forEach((item): void => {
+      const row = fields.map((field): string => {
         const value = this.getNestedValue(item, field);
         return this.formatTableValue(value, field);
       });
@@ -187,7 +187,7 @@ export class OutputFormatter {
       },
     });
 
-    Object.entries(obj as Record<string, unknown>).forEach(([key, value]) => {
+    Object.entries(obj as Record<string, unknown>).forEach(([key, value]): void => {
       table.push([
         this.colorize(this.formatHeader(key), 'cyan'),
         this.formatTableValue(value, key),
@@ -203,7 +203,10 @@ export class OutputFormatter {
   private getNestedValue(obj: unknown, path: string): unknown {
     return path
       .split('.')
-      .reduce((current: any, key) => (current && current[key] !== undefined ? current[key] : ''), obj);
+      .reduce(
+        (current: any, key): any => (current && current[key] !== undefined ? current[key] : ''),
+        obj
+      );
   }
 
   /**
@@ -272,7 +275,7 @@ export class OutputFormatter {
   private formatHeader(field: string): string {
     return field
       .replace(/([A-Z])/g, ' $1')
-      .replace(/^./, str => str.toUpperCase())
+      .replace(/^./, (str): string => str.toUpperCase())
       .trim();
   }
 
@@ -295,7 +298,7 @@ export class OutputFormatter {
     };
 
     // Sort fields by priority, then alphabetically
-    return allFields.sort((a, b) => {
+    return allFields.sort((a, b): number => {
       const priorityA = priorities[a as keyof typeof priorities] || 6;
       const priorityB = priorities[b as keyof typeof priorities] || 6;
 
@@ -392,7 +395,7 @@ export class OutputFormatter {
     lines.push(`ID: ${schedule.id}`);
     lines.push(`Type: ${schedule.backupType?.toUpperCase() || 'N/A'}`);
     lines.push(`Status: ${schedule.enabled ? chalk.green('ENABLED') : chalk.red('DISABLED')}`);
-    lines.push(`Cron: ${schedule.cronExpression || schedule.cron || 'N/A'}`)
+    lines.push(`Cron: ${schedule.cronExpression || schedule.cron || 'N/A'}`);
 
     if (schedule.description) {
       lines.push(`Description: ${schedule.description}`);

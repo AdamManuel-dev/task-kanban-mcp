@@ -1,8 +1,6 @@
 import type { Command } from 'commander';
 import inquirer from 'inquirer';
-import type { ConfigManager } from '../config';
-import type { ApiClient } from '../client';
-import type { OutputFormatter } from '../formatter';
+import type { CliComponents } from '../types';
 
 export function registerSubtaskCommands(program: Command): void {
   const subtaskCmd = program
@@ -10,13 +8,8 @@ export function registerSubtaskCommands(program: Command): void {
     .alias('sub')
     .description('Manage subtasks and dependencies');
 
-  // Get global components
-  const getComponents = () =>
-    (global as any).cliComponents as {
-      config: ConfigManager;
-      apiClient: ApiClient;
-      formatter: OutputFormatter;
-    };
+  // Get global components with proper typing
+  const getComponents = (): CliComponents => global.cliComponents;
 
   subtaskCmd
     .command('create <parentId>')
@@ -31,7 +24,7 @@ export function registerSubtaskCommands(program: Command): void {
 
       try {
         // Verify parent task exists
-        const parentTask = await apiClient.getTask(parentId) as any;
+        const parentTask = (await apiClient.getTask(parentId)) as any;
         if (!parentTask) {
           formatter.error(`Parent task ${parentId} not found`);
           process.exit(1);
@@ -100,7 +93,7 @@ export function registerSubtaskCommands(program: Command): void {
           subtaskData.dueDate = options.due || subtaskData.dueDate;
         }
 
-        const subtask = await apiClient.createTask(subtaskData) as any;
+        const subtask = (await apiClient.createTask(subtaskData)) as any;
         formatter.success(`Subtask created successfully: ${subtask.id}`);
         formatter.output(subtask);
       } catch (error) {
@@ -126,10 +119,10 @@ export function registerSubtaskCommands(program: Command): void {
         };
 
         if (options.status) {
-          params['status'] = options.status;
+          params.status = options.status;
         }
 
-        const subtasks = await apiClient.getTasks(params) as any;
+        const subtasks = (await apiClient.getTasks(params)) as any;
 
         if (!subtasks || subtasks.length === 0) {
           formatter.info(`No subtasks found for task ${parentId}`);
@@ -205,7 +198,7 @@ export function registerSubtaskCommands(program: Command): void {
       try {
         if (options.blocked) {
           // Show tasks that are blocked by this task
-          const blockedTasks = await apiClient.request(`/api/tasks/${taskId}/blocking`) as any;
+          const blockedTasks = (await apiClient.request(`/api/tasks/${taskId}/blocking`)) as any;
 
           if (!blockedTasks || blockedTasks.length === 0) {
             formatter.info(`No tasks are blocked by task ${taskId}`);
@@ -219,7 +212,9 @@ export function registerSubtaskCommands(program: Command): void {
           });
         } else {
           // Show dependencies of this task
-          const dependencies = await apiClient.request(`/api/tasks/${taskId}/dependencies`) as any;
+          const dependencies = (await apiClient.request(
+            `/api/tasks/${taskId}/dependencies`
+          )) as any;
 
           if (!dependencies || dependencies.length === 0) {
             formatter.info(`Task ${taskId} has no dependencies`);
@@ -249,9 +244,9 @@ export function registerSubtaskCommands(program: Command): void {
 
       try {
         const depth = parseInt(options.depth, 10);
-        const graph = await apiClient.request(`/api/tasks/${taskId}/dependency-graph`, {
+        const graph = (await apiClient.request(`/api/tasks/${taskId}/dependency-graph`, {
           params: { depth: depth.toString() },
-        }) as any;
+        })) as any;
 
         if (!graph) {
           formatter.info(`No dependency graph available for task ${taskId}`);

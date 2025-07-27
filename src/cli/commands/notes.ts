@@ -1,19 +1,12 @@
 import type { Command } from 'commander';
 import inquirer from 'inquirer';
-import type { ConfigManager } from '../config';
-import type { ApiClient } from '../client';
-import type { OutputFormatter } from '../formatter';
+import type { CliComponents } from '../types';
 
 export function registerNoteCommands(program: Command): void {
   const noteCmd = program.command('note').alias('n').description('Manage notes');
 
-  // Get global components
-  const getComponents = () =>
-    (global as any).cliComponents as {
-      config: ConfigManager;
-      apiClient: ApiClient;
-      formatter: OutputFormatter;
-    };
+  // Get global components with proper typing
+  const getComponents = (): CliComponents => global.cliComponents;
 
   noteCmd
     .command('list')
@@ -35,11 +28,11 @@ export function registerNoteCommands(program: Command): void {
           order: options.order,
         };
 
-        if (options.category) params['category'] = options.category;
-        if (options.task) params['taskId'] = options.task;
-        if (options.pinned) params['pinned'] = 'true';
+        if (options.category) params.category = options.category;
+        if (options.task) params.taskId = options.task;
+        if (options.pinned) params.pinned = 'true';
 
-        const notes = await apiClient.getNotes(params) as any;
+        const notes = (await apiClient.getNotes(params)) as any;
 
         if (!notes || notes.length === 0) {
           formatter.info('No notes found');
@@ -65,7 +58,7 @@ export function registerNoteCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const note = await apiClient.getNote(id) as any;
+        const note = (await apiClient.getNote(id)) as any;
 
         if (!note) {
           formatter.error(`Note ${id} not found`);
@@ -155,7 +148,7 @@ export function registerNoteCommands(program: Command): void {
       noteData.pinned = options.pin || noteData.pinned || false;
 
       try {
-        const note = await apiClient.createNote(noteData) as any;
+        const note = (await apiClient.createNote(noteData)) as any;
         formatter.success(`Note created successfully: ${note.id}`);
         formatter.output(note);
       } catch (error) {
@@ -181,7 +174,7 @@ export function registerNoteCommands(program: Command): void {
 
       try {
         // Get current note data
-        const currentNote = await apiClient.getNote(id) as any;
+        const currentNote = (await apiClient.getNote(id)) as any;
         if (!currentNote) {
           formatter.error(`Note ${id} not found`);
           process.exit(1);
@@ -233,7 +226,7 @@ export function registerNoteCommands(program: Command): void {
           return;
         }
 
-        const updatedNote = await apiClient.updateNote(id, updates) as any;
+        const updatedNote = (await apiClient.updateNote(id, updates)) as any;
         formatter.success('Note updated successfully');
         formatter.output(updatedNote);
       } catch (error) {
@@ -254,7 +247,7 @@ export function registerNoteCommands(program: Command): void {
 
       try {
         if (!options.force) {
-          const note = await apiClient.getNote(id) as any;
+          const note = (await apiClient.getNote(id)) as any;
           if (!note) {
             formatter.error(`Note ${id} not found`);
             process.exit(1);
@@ -296,10 +289,10 @@ export function registerNoteCommands(program: Command): void {
 
       try {
         const searchParams: Record<string, string> = {};
-        if (options.category) searchParams['category'] = options.category;
-        if (options.limit) searchParams['limit'] = options.limit;
+        if (options.category) searchParams.category = options.category;
+        if (options.limit) searchParams.limit = options.limit;
 
-        const notes = await apiClient.searchNotes(query) as any;
+        const notes = (await apiClient.searchNotes(query)) as any;
 
         if (!notes || notes.length === 0) {
           formatter.info(`No notes found matching "${query}"`);

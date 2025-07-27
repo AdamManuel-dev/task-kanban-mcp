@@ -3,6 +3,22 @@
  */
 
 import type { Task, Board, Note, Tag } from '../types';
+import type { ConfigManager } from './config';
+import type { ApiClient } from './client';
+import type { OutputFormatter } from './formatter';
+
+// Global CLI components interface
+export interface CliComponents {
+  config: ConfigManager;
+  apiClient: ApiClient;
+  formatter: OutputFormatter;
+}
+
+// Global type declaration to extend Node.js global
+declare global {
+  // eslint-disable-next-line no-var
+  var cliComponents: CliComponents;
+}
 
 // Health check response
 export interface HealthResponse {
@@ -147,8 +163,178 @@ export interface ErrorResponse {
   };
 }
 
+// Backup-related types
+export interface BackupInfo {
+  id: string;
+  name: string;
+  size: number;
+  compressed: boolean;
+  verified: boolean;
+  createdAt: string;
+  description?: string;
+}
+
+export interface BackupResponse extends ApiResponse<BackupInfo> {
+  data: BackupInfo;
+}
+
+export interface BackupsResponse extends ApiResponse<BackupInfo[]> {
+  data: BackupInfo[];
+  count?: number;
+}
+
+export interface RestoreResult {
+  success: boolean;
+  message?: string;
+  backupsApplied?: number;
+}
+
+export interface VerificationResult {
+  valid: boolean;
+  message?: string;
+  details?: Record<string, unknown>;
+}
+
+export interface BackupSchedule {
+  id: string;
+  name: string;
+  cronExpression: string;
+  backupType: 'full' | 'incremental';
+  description?: string;
+  retentionDays: number;
+  compressionEnabled: boolean;
+  verificationEnabled: boolean;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+  lastRun?: string;
+  nextRun?: string;
+}
+
+export interface ScheduleResponse extends ApiResponse<BackupSchedule> {
+  data: BackupSchedule;
+}
+
+export interface SchedulesResponse extends ApiResponse<BackupSchedule[]> {
+  data: BackupSchedule[];
+  count?: number;
+}
+
+// Database-related types
+export interface DatabaseOptimizationResult {
+  operation: string;
+  duration: string;
+  before: string;
+  after: string;
+  improvement: string;
+}
+
+export interface DatabaseVacuumResult {
+  sizeBefore: string;
+  sizeAfter: string;
+  spaceReclaimed: string;
+  duration: string;
+}
+
+export interface DatabaseAnalysisResult {
+  table: string;
+  rowCount: number;
+  indexCount: number;
+  avgRowSize: string;
+  totalSize: string;
+}
+
+export interface DatabaseStats {
+  general?: Array<{
+    metric: string;
+    value: string;
+  }>;
+  tables?: Array<{
+    name: string;
+    rowCount: number;
+    size: string;
+    lastModified: string;
+  }>;
+  indexes?: Array<{
+    name: string;
+    table: string;
+    size: string;
+    usage: string;
+  }>;
+  performance?: Array<{
+    metric: string;
+    value: string;
+    unit: string;
+  }>;
+}
+
+export interface DatabaseIntegrityResult {
+  healthy: boolean;
+  check: string;
+  status: string;
+  details: string;
+  issues?: Array<{
+    type: string;
+    severity: string;
+    message: string;
+    suggestion: string;
+  }>;
+}
+
+export interface DatabaseRepairResult {
+  operation: string;
+  status: string;
+  recordsFixed: number;
+  backupCreated: boolean;
+}
+
+export interface Migration {
+  name: string;
+  version: string;
+  status: 'pending' | 'applied' | 'failed';
+  appliedAt?: string;
+  filename?: string;
+  createdAt?: string;
+}
+
+export interface MigrationResult {
+  migration: string;
+  status: string;
+  duration: string;
+}
+
+// Export/Import-related types
+export interface ExportParams {
+  format: 'json' | 'csv';
+  includeBoards: boolean;
+  includeTasks: boolean;
+  includeTags: boolean;
+  includeNotes: boolean;
+  boardIds?: string[];
+  [key: string]: string | boolean | string[] | undefined;
+}
+
+export interface ExportResponse {
+  data: unknown;
+  filePath?: string;
+  itemCount?: number;
+}
+
+export interface ImportValidationResponse {
+  valid: boolean;
+  wouldImport: number;
+  wouldSkip: number;
+  errors: string[];
+}
+
+export interface ImportResponse {
+  imported: number;
+  skipped: number;
+  errors: string[];
+}
+
 // Union type for all possible API responses
-export type AnyApiResponse = 
+export type AnyApiResponse =
   | HealthResponse
   | TaskResponse
   | TasksResponse
@@ -158,5 +344,9 @@ export type AnyApiResponse =
   | NotesResponse
   | TagResponse
   | TagsResponse
+  | BackupResponse
+  | BackupsResponse
+  | ScheduleResponse
+  | SchedulesResponse
   | ErrorResponse
   | ApiResponse;

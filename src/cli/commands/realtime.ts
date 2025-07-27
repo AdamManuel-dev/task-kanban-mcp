@@ -1,17 +1,10 @@
 import type { Command } from 'commander';
 import * as WebSocket from 'ws';
-import type { ConfigManager } from '../config';
-import type { ApiClient } from '../client';
-import type { OutputFormatter } from '../formatter';
+import type { CliComponents } from '../types';
 
 export function registerRealtimeCommands(program: Command): void {
-  // Get global components
-  const getComponents = () =>
-    (global as any).cliComponents as {
-      config: ConfigManager;
-      apiClient: ApiClient;
-      formatter: OutputFormatter;
-    };
+  // Get global components with proper typing
+  const getComponents = (): CliComponents => global.cliComponents;
 
   program
     .command('watch')
@@ -143,8 +136,8 @@ export function registerRealtimeCommands(program: Command): void {
           level: options.level,
         };
 
-        if (options.component) params['component'] = options.component;
-        if (options.since) params['since'] = options.since;
+        if (options.component) params.component = options.component;
+        if (options.since) params.since = options.since;
 
         if (options.follow) {
           // Stream logs in real-time
@@ -152,7 +145,7 @@ export function registerRealtimeCommands(program: Command): void {
 
           const streamLogs = async () => {
             try {
-              const logs = await apiClient.request('/api/logs/stream', { params }) as any;
+              const logs = (await apiClient.request('/api/logs/stream', { params })) as any;
 
               if (logs && logs.length > 0) {
                 logs.forEach((log: any) => {
@@ -181,7 +174,7 @@ export function registerRealtimeCommands(program: Command): void {
           await streamLogs();
         } else {
           // One-time log fetch
-          const logs = await apiClient.request('/api/logs', { params }) as any;
+          const logs = (await apiClient.request('/api/logs', { params })) as any;
 
           if (!logs || logs.length === 0) {
             formatter.info('No logs found');
@@ -216,7 +209,7 @@ export function registerRealtimeCommands(program: Command): void {
       'subtask:completed': '✓',
       default: '📋',
     };
-    return icons[eventType] || icons['default'] || '📋';
+    return icons[eventType] || icons.default || '📋';
   }
 
   function getEventColor(_eventType: string): (text: string) => string {

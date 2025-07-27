@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/explicit-function-return-type, @typescript-eslint/require-await, no-plusplus */
+/* eslint-disable @typescript-eslint/require-await, no-plusplus */
 /**
  * Database query result validation schemas
  *
@@ -7,17 +7,7 @@
  */
 
 import { z } from 'zod';
-import type {
-  Board,
-  Column,
-  Task,
-  TaskDependency,
-  Note,
-  Tag,
-  TaskTag,
-  BoardWithStats,
-  TagWithStats,
-} from '@/types';
+// Type imports removed as they're not being used with satisfies clauses anymore
 
 /**
  * SQLite returns 0/1 for booleans, this transformer handles the conversion
@@ -209,7 +199,11 @@ export const TagWithStatsSchema = TagSchema.extend({
 /**
  * Validate a single database row
  */
-export function validateRow<TOutput, TInput = TOutput>(row: unknown, schema: z.ZodType<TOutput, z.ZodTypeDef, TInput>, context?: string): TOutput {
+export function validateRow<TOutput, TInput = TOutput>(
+  row: unknown,
+  schema: z.ZodType<TOutput, z.ZodTypeDef, TInput>,
+  context?: string
+): TOutput {
   try {
     return schema.parse(row);
   } catch (error) {
@@ -224,7 +218,11 @@ export function validateRow<TOutput, TInput = TOutput>(row: unknown, schema: z.Z
 /**
  * Validate an array of database rows
  */
-export function validateRows<TOutput, TInput = TOutput>(rows: unknown[], schema: z.ZodType<TOutput, z.ZodTypeDef, TInput>, context?: string): TOutput[] {
+export function validateRows<TOutput, TInput = TOutput>(
+  rows: unknown[],
+  schema: z.ZodType<TOutput, z.ZodTypeDef, TInput>,
+  context?: string
+): TOutput[] {
   return rows.map((row, index) =>
     validateRow(row, schema, `${context || 'row'} at index ${index}`)
   );
@@ -233,7 +231,10 @@ export function validateRows<TOutput, TInput = TOutput>(rows: unknown[], schema:
 /**
  * Create a validated database query function
  */
-export function createValidatedQuery<TOutput, TInput = TOutput>(schema: z.ZodType<TOutput, z.ZodTypeDef, TInput>, queryName: string) {
+export function createValidatedQuery<TOutput, TInput = TOutput>(
+  schema: z.ZodType<TOutput, z.ZodTypeDef, TInput>,
+  queryName: string
+) {
   return {
     /**
      * Validate a single row result

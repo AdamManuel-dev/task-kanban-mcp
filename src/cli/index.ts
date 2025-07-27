@@ -6,6 +6,7 @@ import chalk from 'chalk';
 import { ConfigManager } from './config';
 import { ApiClient } from './client';
 import { OutputFormatter } from './formatter';
+import type { CliComponents } from './types';
 
 import { registerTaskCommands } from './commands/tasks';
 import { registerBoardCommands } from './commands/boards';
@@ -20,6 +21,10 @@ import { registerBackupCommands } from './commands/backup';
 import { registerDatabaseCommands } from './commands/database';
 import { registerRealtimeCommands } from './commands/realtime';
 import { registerExportCommands } from './commands/export';
+import { processTodosCommand } from './commands/process-todos';
+import { interactiveViewCommand } from './commands/interactive-view';
+import { dashboardCommand } from './commands/dashboard';
+import { dashboardDemoCommand } from './commands/dashboard-demo';
 
 const packageJson = require('../../package.json');
 
@@ -30,12 +35,12 @@ const config = new ConfigManager();
 const apiClient = new ApiClient(config);
 const formatter = new OutputFormatter();
 
-// Make globally available to commands
-(global as any).cliComponents = {
+// Make globally available to commands with proper typing
+global.cliComponents = {
   config,
   apiClient,
   formatter,
-};
+} as CliComponents;
 
 // Program configuration
 program
@@ -50,10 +55,10 @@ program
     const options = thisCommand.opts();
 
     // Set formatter options
-    formatter.setFormat(options['format']);
-    formatter.setVerbose(options['verbose']);
-    formatter.setQuiet(options['quiet']);
-    formatter.setColor(!options['noColor']);
+    formatter.setFormat(options.format);
+    formatter.setVerbose(options.verbose);
+    formatter.setQuiet(options.quiet);
+    formatter.setColor(!options.noColor);
 
     // Validate configuration exists
     if (!config.exists()) {
@@ -80,6 +85,12 @@ registerDatabaseCommands(program);
 registerRealtimeCommands(program);
 registerExportCommands(program);
 
+// Register development commands
+program.addCommand(processTodosCommand);
+program.addCommand(interactiveViewCommand);
+program.addCommand(dashboardCommand);
+program.addCommand(dashboardDemoCommand);
+
 // Global error handler
 program.exitOverride(err => {
   if (err.code === 'commander.help') {
@@ -90,7 +101,7 @@ program.exitOverride(err => {
   }
 
   console.error(chalk.red('Error:'), err.message);
-  if (program.opts()['verbose']) {
+  if (program.opts().verbose) {
     console.error(err.stack);
   }
   process.exit(1);

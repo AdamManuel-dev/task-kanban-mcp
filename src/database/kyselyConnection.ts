@@ -1,6 +1,6 @@
 /**
  * Kysely database connection and query builder setup
- * 
+ *
  * This provides a type-safe query builder alternative to raw SQL queries.
  * Can be used alongside the existing connection for incremental migration.
  */
@@ -13,7 +13,9 @@ import type { Database as DatabaseSchema } from './kyselySchema';
 
 export class KyselyConnection {
   private static instance: KyselyConnection | null = null;
+
   private _db: Kysely<DatabaseSchema> | null = null;
+
   private _sqliteDb: Database.Database | null = null;
 
   private constructor() {}
@@ -52,12 +54,17 @@ export class KyselyConnection {
         dialect: new SqliteDialect({
           database: this._sqliteDb,
         }),
-        log: config.database.verbose 
-          ? (event) => {
+        log: config.database.verbose
+          ? (event: {
+              level: string;
+              query?: { sql: string; parameters: unknown[] };
+              queryDurationMillis?: number;
+              error?: unknown;
+            }) => {
               if (event.level === 'query') {
                 logger.debug('Kysely Query', {
-                  sql: event.query.sql,
-                  parameters: event.query.parameters,
+                  sql: event.query?.sql,
+                  parameters: event.query?.parameters,
                   duration: event.queryDurationMillis,
                 });
               } else if (event.level === 'error') {
@@ -75,7 +82,6 @@ export class KyselyConnection {
         path: config.database.path,
         walMode: true,
       });
-
     } catch (error) {
       logger.error('Failed to initialize Kysely connection', { error });
       throw error;
@@ -127,9 +133,7 @@ export class KyselyConnection {
   /**
    * Execute a transaction with type safety
    */
-  public async transaction<T>(
-    callback: (trx: Kysely<DatabaseSchema>) => Promise<T>
-  ): Promise<T> {
+  public async transaction<T>(callback: (trx: Kysely<DatabaseSchema>) => Promise<T>): Promise<T> {
     if (!this._db) {
       throw new Error('Database not initialized');
     }
@@ -163,11 +167,7 @@ export class KyselyConnection {
       }
 
       // Test basic query
-      const result = await this._db
-        .selectFrom('boards')
-        .select(['id'])
-        .limit(1)
-        .execute();
+      await this._db.selectFrom('boards').select(['id']).limit(1).execute();
 
       return {
         status: 'healthy',
@@ -177,7 +177,6 @@ export class KyselyConnection {
           canQuery: true,
         },
       };
-
     } catch (error) {
       return {
         status: 'unhealthy',
@@ -213,14 +212,18 @@ export class KyselyConnection {
       const tableStats = [];
 
       for (const table of tables) {
+        type TableName = 'boards' | 'tasks' | 'notes' | 'tags' | 'task_tags' | 'task_dependencies';
         const countResult = await this._db
-          .selectFrom(table as any)
+          .selectFrom(table as TableName)
           .select([this._db.fn.count<number>('id').as('count')])
           .executeTakeFirst();
 
         const sizeResult = this._sqliteDb
-          .prepare(`SELECT SUM(pgsize) as size FROM dbstat WHERE name = ?`)
-          .get(table) as { size: number } | undefined;
+          .prepare<
+            unknown[],
+            { size: number }
+          >(`SELECT SUM(pgsize) as size FROM dbstat WHERE name = ?`)
+          .get(table);
 
         tableStats.push({
           name: table,
@@ -231,20 +234,25 @@ export class KyselyConnection {
 
       // Get total database size
       const totalSizeResult = this._sqliteDb
-        .prepare(`SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size()`)
-        .get() as { size: number };
+        .prepare<
+          unknown[],
+          { size: number }
+        >(`SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size()`)
+        .get();
 
       // Get WAL file size
       const walSizeResult = this._sqliteDb
-        .prepare(`SELECT SUM(pgsize) as size FROM dbstat WHERE name LIKE '%-wal'`)
-        .get() as { size: number } | undefined;
+        .prepare<
+          unknown[],
+          { size: number }
+        >(`SELECT SUM(pgsize) as size FROM dbstat WHERE name LIKE '%-wal'`)
+        .get();
 
       return {
         tableStats,
-        totalSize: totalSizeResult.size,
+        totalSize: totalSizeResult?.size || 0,
         walSize: walSizeResult?.size || 0,
       };
-
     } catch (error) {
       logger.error('Failed to get Kysely database stats', { error });
       throw error;

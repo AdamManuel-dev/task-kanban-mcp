@@ -4,6 +4,7 @@
     "src/**/*",
     "tests/**/*",
     "scripts/**/*",
+    "cli-upgrade/**/*",
     "jest.config.js",
     "jest.setup.js"
   ],

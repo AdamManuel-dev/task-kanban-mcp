@@ -1,19 +1,12 @@
 import type { Command } from 'commander';
 import inquirer from 'inquirer';
-import type { ConfigManager } from '../config';
-import type { ApiClient } from '../client';
-import type { OutputFormatter } from '../formatter';
+import type { CliComponents } from '../types';
 
 export function registerTaskCommands(program: Command): void {
   const taskCmd = program.command('task').alias('t').description('Manage tasks');
 
-  // Get global components
-  const getComponents = () =>
-    (global as any).cliComponents as {
-      config: ConfigManager;
-      apiClient: ApiClient;
-      formatter: OutputFormatter;
-    };
+  // Get global components with proper typing
+  const getComponents = (): CliComponents => global.cliComponents;
 
   taskCmd
     .command('list')
@@ -35,16 +28,16 @@ export function registerTaskCommands(program: Command): void {
           order: options.order,
         };
 
-        if (options.board) params['board'] = options.board;
-        if (options.status) params['status'] = options.status;
-        if (options.tags) params['tags'] = options.tags;
+        if (options.board) params.board = options.board;
+        if (options.status) params.status = options.status;
+        if (options.tags) params.tags = options.tags;
 
         // Use default board if no board specified
         if (!options.board && config.getDefaultBoard()) {
-          params['board'] = config.getDefaultBoard()!;
+          params.board = config.getDefaultBoard()!;
         }
 
-        const tasks = await apiClient.getTasks(params) as any;
+        const tasks = (await apiClient.getTasks(params)) as any;
 
         if (!tasks || tasks.length === 0) {
           formatter.info('No tasks found');
@@ -205,7 +198,7 @@ export function registerTaskCommands(program: Command): void {
           process.exit(1);
         }
 
-        const task = await apiClient.createTask(taskData) as any;
+        const task = (await apiClient.createTask(taskData)) as any;
         formatter.success(`Task created successfully: ${task.id}`);
         formatter.output(task);
       } catch (error) {
@@ -230,7 +223,7 @@ export function registerTaskCommands(program: Command): void {
 
       try {
         // Get current task data
-        const currentTask = await apiClient.getTask(id) as any;
+        const currentTask = (await apiClient.getTask(id)) as any;
         if (!currentTask) {
           formatter.error(`Task ${id} not found`);
           process.exit(1);
@@ -244,26 +237,26 @@ export function registerTaskCommands(program: Command): void {
               type: 'input',
               name: 'title',
               message: 'Task title:',
-              default: (currentTask as any).title,
+              default: currentTask.title,
             },
             {
               type: 'input',
               name: 'description',
               message: 'Task description:',
-              default: (currentTask as any).description || '',
+              default: currentTask.description || '',
             },
             {
               type: 'list',
               name: 'status',
               message: 'Status:',
               choices: ['todo', 'in_progress', 'completed', 'blocked'],
-              default: (currentTask as any).status,
+              default: currentTask.status,
             },
             {
               type: 'number',
               name: 'priority',
               message: 'Priority (1-10):',
-              default: (currentTask as any).priority || 5,
+              default: currentTask.priority || 5,
               validate: (input: number) =>
                 (input >= 1 && input <= 10) || 'Priority must be between 1 and 10',
             },
@@ -304,7 +297,7 @@ export function registerTaskCommands(program: Command): void {
 
       try {
         if (!options.force) {
-          const task = await apiClient.getTask(id) as any;
+          const task = (await apiClient.getTask(id)) as any;
           if (!task) {
             formatter.error(`Task ${id} not found`);
             process.exit(1);
@@ -314,7 +307,7 @@ export function registerTaskCommands(program: Command): void {
             {
               type: 'confirm',
               name: 'confirm',
-              message: `Delete task "${(task as any).title}"?`,
+              message: `Delete task "${task.title}"?`,
               default: false,
             },
           ]);

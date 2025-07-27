@@ -102,10 +102,9 @@ export class TransactionManager {
         await this.executeRollbackActions(context);
       }
 
-      throw new DatabaseError(
-        `Transaction ${transactionId} failed: ${(error as Error).message}`,
-        error as Error
-      );
+      throw new DatabaseError(`Transaction ${transactionId} failed: ${(error as Error).message}`, {
+        originalError: String(error),
+      });
     } finally {
       this.activeTransactions.delete(transactionId);
     }

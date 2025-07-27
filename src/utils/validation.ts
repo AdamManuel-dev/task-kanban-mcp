@@ -45,17 +45,15 @@ export const BoardValidation = {
   create: z.object({
     name: z.string().min(1, 'Board name is required').max(100, 'Board name too long'),
     description: optionalWithUndefined(z.string().max(500, 'Description too long')),
-    color: optionalWithUndefined(
-      z.string().regex(/^#[0-9A-F]{6}$/i, 'Invalid color format')
-    ),
+    color: optionalWithUndefined(z.string().regex(/^#[0-9A-F]{6}$/i, 'Invalid color format')),
   }),
 
   update: z.object({
-    name: optionalWithUndefined(z.string().min(1, 'Board name is required').max(100, 'Board name too long')),
-    description: optionalWithUndefined(z.string().max(500, 'Description too long')),
-    color: optionalWithUndefined(
-      z.string().regex(/^#[0-9A-F]{6}$/i, 'Invalid color format')
+    name: optionalWithUndefined(
+      z.string().min(1, 'Board name is required').max(100, 'Board name too long')
     ),
+    description: optionalWithUndefined(z.string().max(500, 'Description too long')),
+    color: optionalWithUndefined(z.string().regex(/^#[0-9A-F]{6}$/i, 'Invalid color format')),
     archived: optionalWithUndefined(z.boolean()),
   }),
 };
@@ -83,7 +81,9 @@ export const TaskValidation = {
   }),
 
   update: z.object({
-    title: optionalWithUndefined(z.string().min(1, 'Task title is required').max(200, 'Title too long')),
+    title: optionalWithUndefined(
+      z.string().min(1, 'Task title is required').max(200, 'Title too long')
+    ),
     description: optionalWithUndefined(z.string().max(2000, 'Description too long')),
     column_id: optionalWithUndefined(z.string().uuid('Invalid column ID')),
     position: optionalWithUndefined(z.number().int().min(0)),
@@ -114,13 +114,19 @@ export const NoteValidation = {
   create: z.object({
     task_id: z.string().uuid('Invalid task ID'),
     content: z.string().min(1, 'Note content is required').max(5000, 'Content too long'),
-    category: optionalWithUndefined(z.enum(['general', 'progress', 'blocker', 'decision', 'question'])),
+    category: optionalWithUndefined(
+      z.enum(['general', 'progress', 'blocker', 'decision', 'question'])
+    ),
     pinned: optionalWithUndefined(z.boolean()),
   }),
 
   update: z.object({
-    content: optionalWithUndefined(z.string().min(1, 'Note content is required').max(5000, 'Content too long')),
-    category: optionalWithUndefined(z.enum(['general', 'progress', 'blocker', 'decision', 'question'])),
+    content: optionalWithUndefined(
+      z.string().min(1, 'Note content is required').max(5000, 'Content too long')
+    ),
+    category: optionalWithUndefined(
+      z.enum(['general', 'progress', 'blocker', 'decision', 'question'])
+    ),
     pinned: optionalWithUndefined(z.boolean()),
   }),
 
@@ -145,18 +151,16 @@ export const NoteValidation = {
 export const TagValidation = {
   create: z.object({
     name: z.string().min(1, 'Tag name is required').max(50, 'Tag name too long'),
-    color: optionalWithUndefined(
-      z.string().regex(/^#[0-9A-F]{6}$/i, 'Invalid color format')
-    ),
+    color: optionalWithUndefined(z.string().regex(/^#[0-9A-F]{6}$/i, 'Invalid color format')),
     description: optionalWithUndefined(z.string().max(200, 'Description too long')),
     parent_tag_id: optionalWithUndefined(z.string().uuid('Invalid parent tag ID')),
   }),
 
   update: z.object({
-    name: optionalWithUndefined(z.string().min(1, 'Tag name is required').max(50, 'Tag name too long')),
-    color: optionalWithUndefined(
-      z.string().regex(/^#[0-9A-F]{6}$/i, 'Invalid color format')
+    name: optionalWithUndefined(
+      z.string().min(1, 'Tag name is required').max(50, 'Tag name too long')
     ),
+    color: optionalWithUndefined(z.string().regex(/^#[0-9A-F]{6}$/i, 'Invalid color format')),
     description: optionalWithUndefined(z.string().max(200, 'Description too long')),
     parent_tag_id: optionalWithUndefined(z.string().uuid('Invalid parent tag ID')),
   }),

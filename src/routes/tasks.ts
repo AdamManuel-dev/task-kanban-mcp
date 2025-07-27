@@ -5,7 +5,7 @@ import { TagService } from '@/services/TagService';
 import { dbConnection } from '@/database/connection';
 import { requirePermission } from '@/middleware/auth';
 import { TaskValidation, NoteValidation, validateInput } from '@/utils/validation';
-import { NotFoundError } from '@/utils/errors';
+import { NotFoundError, ValidationError } from '@/utils/errors';
 
 export async function taskRoutes(): Promise<Router> {
   const router = Router();
@@ -33,7 +33,23 @@ export async function taskRoutes(): Promise<Router> {
         overdue,
       } = req.query;
 
-      const options: any = {
+      interface TaskListOptions {
+        limit: number;
+        offset: number;
+        sortBy: string;
+        sortOrder: 'asc' | 'desc';
+        overdue: boolean;
+        board_id?: string;
+        column_id?: string;
+        status?: string;
+        assignee?: string;
+        parent_task_id?: string;
+        search?: string;
+        priority_min?: number;
+        priority_max?: number;
+      }
+
+      const options: TaskListOptions = {
         limit: parseInt(limit as string, 10),
         offset: parseInt(offset as string, 10),
         sortBy: sortBy as string,
@@ -77,7 +93,7 @@ export async function taskRoutes(): Promise<Router> {
       const taskData = Object.fromEntries(
         Object.entries(rawTaskData).filter(([, value]) => value !== undefined)
       );
-      const task = await taskService.createTask(taskData as any);
+      const task = await taskService.createTask(taskData);
       return res.status(201).apiSuccess(task);
     } catch (error) {
       return next(error);
@@ -237,7 +253,7 @@ export async function taskRoutes(): Promise<Router> {
     try {
       const { id } = req.params;
       if (!id) {
-        throw new NotFoundError('Task', id);
+        throw new ValidationError('Task ID is required');
       }
       const taskWithSubtasks = await taskService.getTaskWithSubtasks(id);
 
@@ -256,7 +272,7 @@ export async function taskRoutes(): Promise<Router> {
     try {
       const { id } = req.params;
       if (!id) {
-        throw new NotFoundError('Task', id);
+        throw new ValidationError('Task ID is required');
       }
       const validatedBody = validateInput(NoteValidation.create, req.body);
       const noteData = {
@@ -287,7 +303,7 @@ export async function taskRoutes(): Promise<Router> {
       };
 
       if (!id) {
-        throw new NotFoundError('Task', id);
+        throw new ValidationError('Task ID is required');
       }
       const notes = await noteService.getTaskNotes(id, options);
       return res.apiSuccess(notes);
@@ -307,7 +323,7 @@ export async function taskRoutes(): Promise<Router> {
       }
 
       if (!id) {
-        throw new NotFoundError('Task', id);
+        throw new ValidationError('Task ID is required');
       }
       const assignedTags = [];
       for (const tagId of tag_ids) {
@@ -346,7 +362,7 @@ export async function taskRoutes(): Promise<Router> {
     try {
       const { id } = req.params;
       if (!id) {
-        throw new NotFoundError('Task', id);
+        throw new ValidationError('Task ID is required');
       }
       const tags = await tagService.getTaskTags(id);
       return res.apiSuccess(tags);

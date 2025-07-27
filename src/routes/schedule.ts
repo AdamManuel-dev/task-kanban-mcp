@@ -17,8 +17,20 @@ import { logger } from '@/utils/logger';
 import { z } from 'zod';
 
 const router = Router();
-const backupService = new BackupService(dbConnection);
-const schedulingService = new SchedulingService(dbConnection, backupService);
+
+// Lazy initialization of services
+let backupService: BackupService;
+let schedulingService: SchedulingService;
+
+function getServices() {
+  if (!backupService) {
+    backupService = new BackupService(dbConnection);
+  }
+  if (!schedulingService) {
+    schedulingService = new SchedulingService(dbConnection, backupService);
+  }
+  return { backupService, schedulingService };
+}
 
 // Validation schemas
 const CreateScheduleSchema = z.object({
@@ -116,6 +128,7 @@ router.use(authenticateApiKey);
  */
 router.post('/create', validateRequest(CreateScheduleSchema), async (req, res) => {
   try {
+    const { schedulingService } = getServices();
     const schedule = await schedulingService.createSchedule(req.body);
 
     logger.info(`Backup schedule created via API: ${schedule.id}`);
@@ -165,9 +178,10 @@ router.post('/create', validateRequest(CreateScheduleSchema), async (req, res) =
  *       200:
  *         description: Schedules retrieved successfully
  */
-router.get('/list', validateRequest(ListSchedulesSchema, 'query'), async (req, res) => {
+router.get('/list', validateRequest(ListSchedulesSchema), async (req, res) => {
   try {
     const options = req.query as any;
+    const { schedulingService } = getServices();
     const schedules = await schedulingService.getSchedules(options);
 
     return res.json(formatSuccessResponse(schedules));
@@ -212,6 +226,7 @@ router.get('/:id', async (req, res) => {
     if (!id) {
       return res.status(400).json(formatErrorResponse('Schedule ID is required'));
     }
+    const { schedulingService } = getServices();
     const schedule = await schedulingService.getScheduleById(id);
 
     if (!schedule) {
@@ -288,6 +303,7 @@ router.put('/:id', validateRequest(UpdateScheduleSchema), async (req, res) => {
     if (!id) {
       return res.status(400).json(formatErrorResponse('Schedule ID is required'));
     }
+    const { schedulingService } = getServices();
     const schedule = await schedulingService.updateSchedule(id, req.body);
 
     logger.info(`Schedule updated via API: ${id}`);
@@ -339,6 +355,7 @@ router.post('/:id/execute', async (req, res) => {
     if (!id) {
       return res.status(400).json(formatErrorResponse('Schedule ID is required'));
     }
+    const { schedulingService } = getServices();
     await schedulingService.executeSchedule(id);
 
     logger.info(`Schedule executed manually via API: ${id}`);
@@ -390,6 +407,7 @@ router.delete('/:id', async (req, res) => {
     if (!id) {
       return res.status(400).json(formatErrorResponse('Schedule ID is required'));
     }
+    const { schedulingService } = getServices();
     await schedulingService.deleteSchedule(id);
 
     logger.info(`Schedule deleted via API: ${id}`);
@@ -428,6 +446,7 @@ router.delete('/:id', async (req, res) => {
  */
 router.post('/cleanup', async (_req, res) => {
   try {
+    const { schedulingService } = getServices();
     await schedulingService.cleanupOldBackups();
 
     logger.info('Manual backup cleanup executed via API');
@@ -462,6 +481,7 @@ router.post('/cleanup', async (_req, res) => {
  */
 router.post('/start', async (_req, res) => {
   try {
+    const { schedulingService } = getServices();
     schedulingService.start();
 
     logger.info('Backup scheduler started via API');
@@ -496,6 +516,7 @@ router.post('/start', async (_req, res) => {
  */
 router.post('/stop', async (_req, res) => {
   try {
+    const { schedulingService } = getServices();
     schedulingService.stop();
 
     logger.info('Backup scheduler stopped via API');

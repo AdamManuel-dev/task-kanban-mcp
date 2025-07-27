@@ -9,6 +9,7 @@ process.env.NODE_ENV = 'test';
 process.env.DATABASE_PATH = ':memory:';
 process.env.LOG_LEVEL = 'error';
 process.env.API_KEY_SECRET = 'test-secret-key-minimum-16-chars';
+process.env.API_KEYS = 'dev-key-1,test-key-1';
 
 // Global test configuration
 const originalConsole = console;

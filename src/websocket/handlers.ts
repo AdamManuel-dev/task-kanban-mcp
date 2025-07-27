@@ -680,14 +680,12 @@ export class MessageHandler {
 
     try {
       // Broadcast presence update
-      this.webSocketManager
-        .getSubscriptionManager()
-        .publishUserPresence(client.user.id, status, { 
-          boardId, 
-          taskId,
-          userId: client.user.id,
-          timestamp: new Date().toISOString() 
-        });
+      this.webSocketManager.getSubscriptionManager().publishUserPresence(client.user.id, status, {
+        boardId,
+        taskId,
+        userId: client.user.id,
+        timestamp: new Date().toISOString(),
+      });
 
       this.webSocketManager.sendToClient(clientId, {
         type: 'presence_updated',

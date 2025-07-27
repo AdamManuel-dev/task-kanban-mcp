@@ -15,7 +15,8 @@ import { Command } from 'commander';
 import path from 'path';
 import { dbConnection } from '../src/database/connection';
 import { SeedRunner } from '../src/database/seeds';
-import { logger } from '../src/utils/logger';
+
+/* eslint-disable no-console */
 
 const program = new Command();
 
@@ -25,10 +26,10 @@ program
   .command('run')
   .description('Run database seeds')
   .option('-f, --force', 'Force re-run seeds that have already been applied')
-  .action(async options => {
+  .action(async (options: { force?: boolean }) => {
     try {
       await dbConnection.initialize({ skipSchema: true });
-      const count = await dbConnection.runSeeds({ force: options.force });
+      const count = await dbConnection.runSeeds({ force: options.force ?? false });
 
       if (count === 0) {
         console.log('✅ No pending seeds');
@@ -95,10 +96,10 @@ program
   .command('create <name>')
   .description('Create a new seed file')
   .option('-d, --description <description>', 'Description of the seed', '')
-  .action(async (name: string, options) => {
+  .action(async (name: string, options: { description?: string }) => {
     try {
       const seedsPath = path.join(__dirname, '..', 'src', 'database', 'seeds');
-      const filename = await SeedRunner.createSeed(name, options.description, seedsPath);
+      const filename = await SeedRunner.createSeed(name, options.description ?? '', seedsPath);
       console.log(`✅ Created seed: ${filename}`);
       console.log(`📝 Edit the file at: ${path.join(seedsPath, filename)}`);
     } catch (error) {

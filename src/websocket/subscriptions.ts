@@ -2,11 +2,7 @@ import { logger } from '@/utils/logger';
 import type { WebSocketClient, SubscriptionFilter } from './types';
 import { SubscriptionChannel } from './types';
 import type { WebSocketManager } from './server';
-import type {
-  AllWebSocketMessages,
-  SystemNotification,
-  PublicationContext
-} from './messageTypes';
+import type { AllWebSocketMessages, SystemNotification, PublicationContext } from './messageTypes';
 
 export interface Subscription {
   id: string;
@@ -254,14 +250,14 @@ export class SubscriptionManager {
     const message = {
       type: 'connection:status' as const,
       data: {
-        status: status === 'online' ? 'connected' as const : 'disconnected' as const,
+        status: status === 'online' ? ('connected' as const) : ('disconnected' as const),
         timestamp: new Date().toISOString(),
         clientId: userId,
       },
       timestamp: new Date().toISOString(),
       ...context,
     };
-    
+
     return this.publishToChannel(
       SubscriptionChannel.USER_PRESENCE,
       message,
@@ -276,7 +272,7 @@ export class SubscriptionManager {
       data: notification,
       timestamp: new Date().toISOString(),
     };
-    
+
     return this.publishToChannel(
       SubscriptionChannel.SYSTEM_NOTIFICATIONS,
       message,
@@ -386,10 +382,10 @@ export class SubscriptionManager {
     // - boardId: message.data.boardId
     // - taskId: message.data.taskId
     // - userId: message.data.userId
-    
+
     const keys = path.split('.');
     let current: any = obj;
-    
+
     for (const key of keys) {
       if (current && typeof current === 'object' && key in current) {
         current = current[key];
@@ -397,7 +393,7 @@ export class SubscriptionManager {
         return undefined;
       }
     }
-    
+
     return current;
   }
 
@@ -414,7 +410,11 @@ export class SubscriptionManager {
     });
   }
 
-  publishTaskUpdated(task: import('../types').Task, changes: Record<string, unknown>, updatedBy: string): number {
+  publishTaskUpdated(
+    task: import('../types').Task,
+    changes: Record<string, unknown>,
+    updatedBy: string
+  ): number {
     return this.publishTaskUpdate(task.id, task.board_id, {
       type: 'task:updated',
       data: {
@@ -439,7 +439,12 @@ export class SubscriptionManager {
     });
   }
 
-  publishNoteAdded(note: import('../types').Note, taskId: string, boardId: string, addedBy: string): number {
+  publishNoteAdded(
+    note: import('../types').Note,
+    taskId: string,
+    boardId: string,
+    addedBy: string
+  ): number {
     return this.publishTaskUpdate(taskId, boardId, {
       type: 'note:added',
       data: {

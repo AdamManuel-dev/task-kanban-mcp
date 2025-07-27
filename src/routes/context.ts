@@ -41,7 +41,7 @@ export async function contextRoutes(): Promise<Router> {
       const context = await contextService.getProjectContext(options);
 
       if (!context) {
-        throw new NotFoundError('Project', id);
+        throw new NotFoundError('Project', id || 'unknown');
       }
 
       return res.apiSuccess(context);
@@ -97,7 +97,7 @@ export async function contextRoutes(): Promise<Router> {
       const context = await contextService.getProjectContext(options);
 
       if (!context) {
-        throw new NotFoundError('Board', id);
+        throw new NotFoundError('Board', id || 'unknown');
       }
 
       return res.apiSuccess(context);

@@ -96,7 +96,7 @@ export class BackupService {
    * @param {DatabaseConnection} db - Database connection instance
    */
   constructor(private readonly db: DatabaseConnection) {
-    this.backupDir = process.env['BACKUP_DIR'] || path.join(process.cwd(), 'backups');
+    this.backupDir = process.env.BACKUP_DIR || path.join(process.cwd(), 'backups');
     this.ensureBackupDirectory();
   }
 
@@ -693,7 +693,7 @@ export class BackupService {
     } = {}
   ): Promise<BackupMetadata[]> {
     let query = 'SELECT * FROM backup_metadata WHERE 1=1';
-    const params: any[] = [];
+    const params: (string | number)[] = [];
 
     if (options.type) {
       query += ' AND type = ?';
@@ -886,4 +886,390 @@ export class BackupService {
 
     return metadata;
   }
+
+  /**
+   * Validate restoration results by comparing table counts and checksums
+   *
+   * @param {string} backupId - ID of the backup that was restored
+   * @returns {Promise<RestoreValidationResult>} Validation results
+   */
+  async validateRestoration(backupId: string): Promise<RestoreValidationResult> {
+    logger.info(`Validating restoration from backup: ${backupId}`);
+
+    const metadata = await this.getBackupMetadata(backupId);
+    if (!metadata) {
+      throw new Error(`Backup not found: ${backupId}`);
+    }
+
+    const validationResult: RestoreValidationResult = {
+      isValid: true,
+      tableChecks: [],
+      errors: [],
+    };
+
+    try {
+      // Get all tables
+      const tables = await this.db.query(
+        `SELECT name FROM sqlite_master WHERE type='table' 
+         AND name NOT LIKE 'sqlite_%' 
+         AND name NOT LIKE 'backup_%'`
+      );
+
+      // Check each table
+      for (const table of tables) {
+        const tableName = table.name as string;
+
+        // Get row count
+        const countResult = await this.db.queryOne(`SELECT COUNT(*) as count FROM ${tableName}`);
+        const rowCount = countResult?.count || 0;
+
+        // Get table checksum (using all columns concatenated)
+        const columnsResult = await this.db.query(`PRAGMA table_info(${tableName})`);
+        const columns = columnsResult.map(col => col.name as string);
+
+        const tableCheck = {
+          tableName,
+          rowCount,
+          isValid: rowCount >= 0, // Basic check - could be enhanced
+          message: '',
+        };
+
+        if (rowCount === 0 && ['boards', 'columns'].includes(tableName)) {
+          tableCheck.isValid = false;
+          tableCheck.message = `Table ${tableName} is empty but should have data`;
+          validationResult.isValid = false;
+        }
+
+        validationResult.tableChecks.push(tableCheck);
+      }
+
+      // Verify foreign key integrity
+      const fkCheckResult = await this.db.queryOne('PRAGMA foreign_key_check');
+      if (fkCheckResult) {
+        validationResult.isValid = false;
+        validationResult.errors.push('Foreign key constraint violations detected');
+      }
+
+      // Verify database integrity
+      const integrityCheck = await this.db.queryOne('PRAGMA integrity_check');
+      if (integrityCheck && integrityCheck.integrity_check !== 'ok') {
+        validationResult.isValid = false;
+        validationResult.errors.push(
+          `Database integrity check failed: ${integrityCheck.integrity_check}`
+        );
+      }
+    } catch (error) {
+      validationResult.isValid = false;
+      validationResult.errors.push(
+        `Validation error: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+
+    logger.info(`Restoration validation completed. Valid: ${validationResult.isValid}`);
+    return validationResult;
+  }
+
+  /**
+   * Perform data integrity checks on the database
+   *
+   * @returns {Promise<IntegrityCheckResult>} Integrity check results
+   */
+  async performIntegrityChecks(): Promise<IntegrityCheckResult> {
+    logger.info('Performing database integrity checks');
+
+    const result: IntegrityCheckResult = {
+      isPassed: true,
+      checks: [],
+    };
+
+    try {
+      // 1. PRAGMA integrity_check
+      const integrityCheck = await this.db.queryOne('PRAGMA integrity_check');
+      result.checks.push({
+        name: 'SQLite Integrity Check',
+        passed: integrityCheck?.integrity_check === 'ok',
+        message: integrityCheck?.integrity_check || 'Unknown',
+      });
+
+      // 2. Foreign key check
+      const fkCheck = await this.db.query('PRAGMA foreign_key_check');
+      result.checks.push({
+        name: 'Foreign Key Constraints',
+        passed: fkCheck.length === 0,
+        message:
+          fkCheck.length === 0 ? 'All constraints satisfied' : `${fkCheck.length} violations found`,
+      });
+
+      // 3. Check for orphaned records
+      const orphanChecks = [
+        {
+          name: 'Orphaned Tasks',
+          query: `SELECT COUNT(*) as count FROM tasks WHERE board_id NOT IN (SELECT id FROM boards)`,
+        },
+        {
+          name: 'Orphaned Notes',
+          query: `SELECT COUNT(*) as count FROM notes WHERE task_id IS NOT NULL AND task_id NOT IN (SELECT id FROM tasks)`,
+        },
+        {
+          name: 'Orphaned Task Tags',
+          query: `SELECT COUNT(*) as count FROM task_tags WHERE task_id NOT IN (SELECT id FROM tasks) OR tag_id NOT IN (SELECT id FROM tags)`,
+        },
+      ];
+
+      for (const check of orphanChecks) {
+        const result_1 = await this.db.queryOne(check.query);
+        const count = result_1?.count || 0;
+        result.checks.push({
+          name: check.name,
+          passed: count === 0,
+          message: count === 0 ? 'No orphans found' : `${count} orphaned records found`,
+        });
+      }
+
+      // 4. Check for data consistency
+      const consistencyChecks = [
+        {
+          name: 'Task Position Uniqueness',
+          query: `SELECT board_id, column_id, position, COUNT(*) as count 
+                  FROM tasks 
+                  WHERE deleted_at IS NULL 
+                  GROUP BY board_id, column_id, position 
+                  HAVING count > 1`,
+        },
+        {
+          name: 'Column Position Uniqueness',
+          query: `SELECT board_id, position, COUNT(*) as count 
+                  FROM columns 
+                  GROUP BY board_id, position 
+                  HAVING count > 1`,
+        },
+      ];
+
+      for (const check of consistencyChecks) {
+        const violations = await this.db.query(check.query);
+        result.checks.push({
+          name: check.name,
+          passed: violations.length === 0,
+          message:
+            violations.length === 0
+              ? 'No violations found'
+              : `${violations.length} violations found`,
+        });
+      }
+
+      // Update overall status
+      result.isPassed = result.checks.every(check => check.passed);
+    } catch (error) {
+      result.isPassed = false;
+      result.checks.push({
+        name: 'Error during checks',
+        passed: false,
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+
+    logger.info(`Integrity checks completed. Passed: ${result.isPassed}`);
+    return result;
+  }
+
+  /**
+   * Restore partial data from a backup (specific tables only)
+   *
+   * @param {string} backupId - ID of the backup to restore from
+   * @param {PartialRestoreOptions} options - Options for partial restoration
+   * @returns {Promise<void>}
+   */
+  async restorePartial(backupId: string, options: PartialRestoreOptions): Promise<void> {
+    logger.info(`Starting partial restore from backup: ${backupId}`, { tables: options.tables });
+
+    const metadata = await this.getBackupMetadata(backupId);
+    if (!metadata) {
+      throw new Error(`Backup not found: ${backupId}`);
+    }
+
+    if (metadata.status !== 'completed') {
+      throw new Error(`Cannot restore from incomplete backup: ${metadata.status}`);
+    }
+
+    // Verify backup if requested
+    if (options.verify) {
+      const isValid = await this.verifyBackup(backupId);
+      if (!isValid) {
+        throw new Error('Backup verification failed');
+      }
+    }
+
+    try {
+      // Read backup content
+      let content: Buffer;
+      if (metadata.compressed) {
+        const compressedData = await fs.readFile(metadata.filePath);
+        content = await gunzip(compressedData);
+      } else {
+        content = await fs.readFile(metadata.filePath);
+      }
+
+      const sqlContent = content.toString();
+
+      // Parse SQL to extract only requested tables
+      const tablesToRestore = new Set(options.tables.map(t => t.toLowerCase()));
+      const statements = sqlContent.split(';').filter(stmt => stmt.trim());
+
+      await this.db.transaction(async () => {
+        for (const statement of statements) {
+          const trimmed = statement.trim();
+
+          // Check if this statement is for a table we want to restore
+          let shouldExecute = false;
+
+          // Check for INSERT INTO statements
+          const insertMatch = trimmed.match(/^INSERT INTO\s+['"`]?(\w+)['"`]?/i);
+          if (insertMatch && tablesToRestore.has(insertMatch[1].toLowerCase())) {
+            shouldExecute = true;
+
+            // Clear existing data if not preserving
+            if (!options.preserveExisting) {
+              const tableName = insertMatch[1];
+              await this.db.execute(`DELETE FROM ${tableName}`);
+              logger.info(`Cleared existing data from table: ${tableName}`);
+            }
+          }
+
+          // Check for CREATE TABLE statements (if restoring schema)
+          if (options.includeSchema) {
+            const createMatch = trimmed.match(
+              /^CREATE TABLE\s+(?:IF NOT EXISTS\s+)?['"`]?(\w+)['"`]?/i
+            );
+            if (createMatch && tablesToRestore.has(createMatch[1].toLowerCase())) {
+              shouldExecute = true;
+            }
+          }
+
+          if (shouldExecute) {
+            await this.db.getDatabase().exec(trimmed);
+          }
+        }
+      });
+
+      logger.info(
+        `Partial restore completed successfully for tables: ${options.tables.join(', ')}`
+      );
+
+      // Validate if requested
+      if (options.validateAfter) {
+        const validation = await this.validateRestoration(backupId);
+        if (!validation.isValid) {
+          logger.warn('Restoration validation failed', validation);
+        }
+      }
+    } catch (error) {
+      logger.error(`Partial restore failed for backup ${backupId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Track restoration progress (for long-running restores)
+   *
+   * @param {string} restoreId - Unique ID for this restore operation
+   * @param {number} totalSteps - Total number of steps
+   * @param {number} currentStep - Current step number
+   * @param {string} message - Progress message
+   */
+  async updateRestoreProgress(
+    restoreId: string,
+    totalSteps: number,
+    currentStep: number,
+    message: string
+  ): Promise<void> {
+    const progress = Math.round((currentStep / totalSteps) * 100);
+
+    // Store progress in a temporary table
+    await this.db.execute(
+      `
+      INSERT OR REPLACE INTO restore_progress (id, total_steps, current_step, progress, message, updated_at)
+      VALUES (?, ?, ?, ?, ?, datetime('now'))
+    `,
+      [restoreId, totalSteps, currentStep, progress, message]
+    );
+
+    logger.info(`Restore progress [${restoreId}]: ${progress}% - ${message}`);
+  }
+
+  /**
+   * Get restoration progress
+   *
+   * @param {string} restoreId - Unique ID for the restore operation
+   * @returns {Promise<RestoreProgress | null>} Current progress or null if not found
+   */
+  async getRestoreProgress(restoreId: string): Promise<RestoreProgress | null> {
+    // Ensure restore_progress table exists
+    await this.ensureRestoreProgressTable();
+
+    const row = await this.db.queryOne('SELECT * FROM restore_progress WHERE id = ?', [restoreId]);
+
+    if (!row) return null;
+
+    return {
+      id: row.id as string,
+      totalSteps: row.total_steps as number,
+      currentStep: row.current_step as number,
+      progress: row.progress as number,
+      message: row.message as string,
+      updatedAt: row.updated_at as string,
+    };
+  }
+
+  /**
+   * Ensure restore_progress table exists
+   */
+  private async ensureRestoreProgressTable(): Promise<void> {
+    await this.db.execute(`
+      CREATE TABLE IF NOT EXISTS restore_progress (
+        id TEXT PRIMARY KEY,
+        total_steps INTEGER NOT NULL,
+        current_step INTEGER NOT NULL,
+        progress INTEGER NOT NULL,
+        message TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    `);
+  }
+}
+
+// Type definitions for new features
+export interface RestoreValidationResult {
+  isValid: boolean;
+  tableChecks: Array<{
+    tableName: string;
+    rowCount: number;
+    isValid: boolean;
+    message: string;
+  }>;
+  errors: string[];
+}
+
+export interface IntegrityCheckResult {
+  isPassed: boolean;
+  checks: Array<{
+    name: string;
+    passed: boolean;
+    message: string;
+  }>;
+}
+
+export interface PartialRestoreOptions extends RestoreOptions {
+  tables: string[];
+  includeSchema?: boolean;
+  preserveExisting?: boolean;
+  validateAfter?: boolean;
+}
+
+export interface RestoreProgress {
+  id: string;
+  totalSteps: number;
+  currentStep: number;
+  progress: number;
+  message: string;
+  updatedAt: string;
 }

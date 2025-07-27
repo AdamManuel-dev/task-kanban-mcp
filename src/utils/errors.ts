@@ -1,4 +1,4 @@
-/* eslint-disable max-classes-per-file, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, no-param-reassign, default-param-last */
+/* eslint-disable max-classes-per-file, no-param-reassign, default-param-last */
 import { logger } from '@/utils/logger';
 import type { ServiceError } from '@/types';
 import { isError, isRecord, getErrorMessage } from './typeGuards';
@@ -30,7 +30,7 @@ export class BaseServiceError extends Error implements ServiceError {
 
   public readonly details?: ErrorDetails;
 
-  public readonly context?: ErrorContext;
+  public readonly context?: ErrorContext | undefined;
 
   public readonly timestamp: Date;
 
@@ -46,7 +46,7 @@ export class BaseServiceError extends Error implements ServiceError {
     this.code = code;
     this.statusCode = statusCode;
     this.details = details;
-    this.context = context || {};
+    this.context = context;
     this.timestamp = new Date();
 
     Error.captureStackTrace(this, this.constructor);
@@ -160,7 +160,10 @@ export const createDatabaseError: ErrorFactory<[string, ErrorDetails?, ErrorCont
  * Global error handler with proper typing
  */
 class GlobalErrorHandler {
-  private readonly errorHandlers = new Map<string, ErrorFactory<[unknown, ErrorContext]>>();
+  private readonly errorHandlers = new Map<
+    string,
+    (error: unknown, context: ErrorContext) => BaseServiceError
+  >();
 
   constructor() {
     this.registerDefaultHandlers();
@@ -187,7 +190,10 @@ class GlobalErrorHandler {
     // Add more default handlers...
   }
 
-  registerHandler(errorName: string, handler: ErrorFactory<[unknown, ErrorContext]>): void {
+  registerHandler(
+    errorName: string,
+    handler: (error: unknown, context: ErrorContext) => BaseServiceError
+  ): void {
     this.errorHandlers.set(errorName, handler);
   }
 
@@ -195,7 +201,25 @@ class GlobalErrorHandler {
     // If already a BaseServiceError, enhance with context
     if (error instanceof BaseServiceError) {
       if (!error.context) {
-        return new (error.constructor as any)(
+        // Create a new instance of the same error type with context
+        if (error instanceof ValidationError) {
+          return new ValidationError(error.message, error.details, context);
+        }
+        if (error instanceof NotFoundError) {
+          return new NotFoundError(
+            ((error.details as Record<string, unknown>)?.resource as string) || 'Resource',
+            ((error.details as Record<string, unknown>)?.id as string | number) || 'unknown',
+            context
+          );
+        }
+        if (error instanceof ConflictError) {
+          return new ConflictError(error.message, error.details, context);
+        }
+        if (error instanceof DatabaseError) {
+          return new DatabaseError(error.message, error.details, context);
+        }
+        // For other error types, return as is with context
+        return new BaseServiceError(
           error.code,
           error.message,
           error.statusCode,
@@ -318,12 +342,15 @@ export function createErrorBoundary(serviceName: string) {
         );
 
         methodNames.forEach(methodName => {
-          const originalMethod = prototype[methodName];
+          const originalMethod = (prototype as Record<string, unknown>)[methodName];
           if (typeof originalMethod === 'function') {
-            prototype[methodName] = withErrorContext(originalMethod.bind(this), {
-              service: serviceName,
-              method: methodName,
-            });
+            (prototype as Record<string, unknown>)[methodName] = withErrorContext(
+              originalMethod.bind(this),
+              {
+                service: serviceName,
+                method: methodName,
+              }
+            );
           }
         });
       }

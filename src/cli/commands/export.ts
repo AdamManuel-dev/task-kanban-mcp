@@ -1,20 +1,13 @@
 import type { Command } from 'commander';
 import fs from 'fs/promises';
 import path from 'path';
-import type { ConfigManager } from '../config';
-import type { ApiClient } from '../client';
-import type { OutputFormatter } from '../formatter';
+import type { CliComponents, ExportParams, ExportResponse, ImportValidationResponse, ImportResponse } from '../types';
 
 export function registerExportCommands(program: Command): void {
   const exportCmd = program.command('export').description('Export kanban data');
 
-  // Get global components
-  const getComponents = () =>
-    (global as any).cliComponents as {
-      config: ConfigManager;
-      apiClient: ApiClient;
-      formatter: OutputFormatter;
-    };
+  // Get global components with proper typing
+  const getComponents = (): CliComponents => global.cliComponents;
   const importCmd = program.command('import').description('Import kanban data');
 
   // Export to JSON
@@ -33,7 +26,7 @@ export function registerExportCommands(program: Command): void {
 
         formatter.info('Exporting data to JSON...');
 
-        const params: any = {
+        const params: ExportParams = {
           format: 'json',
           includeBoards: options.boards,
           includeTasks: options.tasks,
@@ -45,7 +38,7 @@ export function registerExportCommands(program: Command): void {
           params.boardIds = options.boardIds;
         }
 
-        const response = await apiClient.get('/export', { params }) as any;
+        const response = await apiClient.get('/export', { params }) as ExportResponse;
 
         if (file) {
           const outputPath = path.resolve(file);
@@ -58,9 +51,9 @@ export function registerExportCommands(program: Command): void {
         } else {
           formatter.output(JSON.stringify(response.data, null, 2));
         }
-      } catch (error: any) {
+      } catch (error) {
         const { formatter } = getComponents();
-        formatter.error(`Export failed: ${error.message}`);
+        formatter.error(`Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
         process.exit(1);
       }
     });
@@ -79,7 +72,7 @@ export function registerExportCommands(program: Command): void {
 
         formatter.info('Exporting data to CSV...');
 
-        const params: any = {
+        const params: ExportParams = {
           format: 'csv',
           includeBoards: options.boards,
           includeTasks: options.tasks,
@@ -87,14 +80,14 @@ export function registerExportCommands(program: Command): void {
           includeNotes: options.notes,
         };
 
-        const response = await apiClient.get('/export', { params }) as any;
+        const response = await apiClient.get('/export', { params }) as ExportResponse;
 
         formatter.success('CSV export completed');
-        formatter.info(`Files: ${response.data.filePath}`);
-        formatter.info(`Items: ${response.data.itemCount}`);
-      } catch (error: any) {
+        formatter.info(`Files: ${response.filePath}`);
+        formatter.info(`Items: ${response.itemCount}`);
+      } catch (error) {
         const { formatter } = getComponents();
-        formatter.error(`Export failed: ${error.message}`);
+        formatter.error(`Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
         process.exit(1);
       }
     });
@@ -129,35 +122,37 @@ export function registerExportCommands(program: Command): void {
         }
 
         const endpoint = options.validateOnly ? '/import/validate' : '/import';
-        const response = await apiClient.post(endpoint, formData) as any;
+        const response = await apiClient.post(endpoint, formData) as { data: ImportValidationResponse | ImportResponse };
 
         if (options.validateOnly) {
+          const validationData = response.data as ImportValidationResponse;
           formatter.success('Validation completed');
-          formatter.info(`Valid: ${response.data.valid}`);
-          formatter.info(`Would import: ${response.data.wouldImport} items`);
-          formatter.info(`Would skip: ${response.data.wouldSkip} items`);
+          formatter.info(`Valid: ${validationData.valid}`);
+          formatter.info(`Would import: ${validationData.wouldImport} items`);
+          formatter.info(`Would skip: ${validationData.wouldSkip} items`);
 
-          if (response.data.errors.length > 0) {
+          if (validationData.errors.length > 0) {
             formatter.error('Validation errors:');
-            response.data.errors.forEach((err: string) => {
+            validationData.errors.forEach((err: string) => {
               formatter.error(`  • ${err}`);
             });
           }
         } else {
+          const importData = response.data as ImportResponse;
           formatter.success('Import completed');
-          formatter.info(`Imported: ${response.data.imported} items`);
-          formatter.info(`Skipped: ${response.data.skipped} items`);
+          formatter.info(`Imported: ${importData.imported} items`);
+          formatter.info(`Skipped: ${importData.skipped} items`);
 
-          if (response.data.errors.length > 0) {
+          if (importData.errors.length > 0) {
             formatter.error('Import errors:');
-            response.data.errors.forEach((err: string) => {
+            importData.errors.forEach((err: string) => {
               formatter.error(`  • ${err}`);
             });
           }
         }
-      } catch (error: any) {
+      } catch (error) {
         const { formatter } = getComponents();
-        formatter.error(`Import failed: ${error.message}`);
+        formatter.error(`Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
         process.exit(1);
       }
     });

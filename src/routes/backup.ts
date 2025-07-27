@@ -176,7 +176,7 @@ router.post('/create', validateRequest(CreateBackupSchema), async (req, res) => 
  *                   items:
  *                     $ref: '#/components/schemas/BackupMetadata'
  */
-router.get('/list', validateRequest(ListBackupsSchema, 'query'), async (req, res) => {
+router.get('/list', validateRequest(ListBackupsSchema), async (req, res) => {
   try {
     const options = req.query as any;
     const backups = await backupService.listBackups(options);
@@ -536,7 +536,7 @@ router.get('/:id/export', async (req, res) => {
     if (!id) {
       return res.status(400).json(formatErrorResponse('Backup ID is required'));
     }
-    const format = (req.query['format'] as string) || 'json';
+    const format = (req.query.format as string) || 'json';
 
     const backup = await backupService.getBackupMetadata(id);
     if (!backup) {
@@ -631,6 +631,213 @@ router.delete('/:id', async (req, res) => {
       .json(
         formatErrorResponse(
           'Failed to delete backup',
+          error instanceof Error ? error.message : 'Unknown error'
+        )
+      );
+  }
+});
+
+/**
+ * @openapi
+ * /api/backup/{id}/validate:
+ *   post:
+ *     summary: Validate restoration from a backup
+ *     tags: [Backup]
+ *     security:
+ *       - apiKey: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Backup ID
+ *     responses:
+ *       200:
+ *         description: Validation result
+ *       404:
+ *         description: Backup not found
+ *       500:
+ *         description: Server error
+ */
+router.post('/:id/validate', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const validationResult = await backupService.validateRestoration(id);
+
+    logger.info(`Backup restoration validated via API: ${id}, valid: ${validationResult.isValid}`);
+    return res.json(formatSuccessResponse(validationResult));
+  } catch (error) {
+    logger.error(`Failed to validate restoration for ${req.params.id}:`, error);
+    return res
+      .status(500)
+      .json(
+        formatErrorResponse(
+          'Failed to validate restoration',
+          error instanceof Error ? error.message : 'Unknown error'
+        )
+      );
+  }
+});
+
+/**
+ * @openapi
+ * /api/backup/integrity-check:
+ *   get:
+ *     summary: Perform database integrity checks
+ *     tags: [Backup]
+ *     security:
+ *       - apiKey: []
+ *     responses:
+ *       200:
+ *         description: Integrity check results
+ *       500:
+ *         description: Server error
+ */
+router.get('/integrity-check', async (_req, res) => {
+  try {
+    const integrityResult = await backupService.performIntegrityChecks();
+
+    logger.info(`Database integrity check performed via API. Passed: ${integrityResult.isPassed}`);
+    return res.json(formatSuccessResponse(integrityResult));
+  } catch (error) {
+    logger.error('Failed to perform integrity check:', error);
+    return res
+      .status(500)
+      .json(
+        formatErrorResponse(
+          'Failed to perform integrity check',
+          error instanceof Error ? error.message : 'Unknown error'
+        )
+      );
+  }
+});
+
+/**
+ * @openapi
+ * /api/backup/restore-partial:
+ *   post:
+ *     summary: Restore specific tables from a backup
+ *     tags: [Backup]
+ *     security:
+ *       - apiKey: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - backupId
+ *               - tables
+ *             properties:
+ *               backupId:
+ *                 type: string
+ *                 description: ID of the backup to restore from
+ *               tables:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: List of table names to restore
+ *               includeSchema:
+ *                 type: boolean
+ *                 default: false
+ *                 description: Whether to restore table schemas
+ *               preserveExisting:
+ *                 type: boolean
+ *                 default: false
+ *                 description: Whether to preserve existing data
+ *               verify:
+ *                 type: boolean
+ *                 default: true
+ *                 description: Whether to verify backup before restore
+ *               validateAfter:
+ *                 type: boolean
+ *                 default: true
+ *                 description: Whether to validate after restoration
+ *     responses:
+ *       200:
+ *         description: Partial restore completed successfully
+ *       400:
+ *         description: Invalid request
+ *       404:
+ *         description: Backup not found
+ *       500:
+ *         description: Server error
+ */
+router.post(
+  '/restore-partial',
+  validateRequest(
+    z.object({
+      backupId: z.string().uuid(),
+      tables: z.array(z.string()).min(1),
+      includeSchema: z.boolean().optional().default(false),
+      preserveExisting: z.boolean().optional().default(false),
+      verify: z.boolean().optional().default(true),
+      validateAfter: z.boolean().optional().default(true),
+    })
+  ),
+  async (req, res) => {
+    try {
+      const { backupId, ...options } = req.body;
+      await backupService.restorePartial(backupId, options);
+
+      logger.info(`Partial restore completed via API from backup: ${backupId}`);
+      return res.json(formatSuccessResponse(null, 'Partial restore completed successfully'));
+    } catch (error) {
+      logger.error('Failed to perform partial restore:', error);
+      return res
+        .status(500)
+        .json(
+          formatErrorResponse(
+            'Failed to perform partial restore',
+            error instanceof Error ? error.message : 'Unknown error'
+          )
+        );
+    }
+  }
+);
+
+/**
+ * @openapi
+ * /api/backup/restore-progress/{id}:
+ *   get:
+ *     summary: Get restoration progress
+ *     tags: [Backup]
+ *     security:
+ *       - apiKey: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Restore operation ID
+ *     responses:
+ *       200:
+ *         description: Restore progress information
+ *       404:
+ *         description: Restore operation not found
+ *       500:
+ *         description: Server error
+ */
+router.get('/restore-progress/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const progress = await backupService.getRestoreProgress(id);
+
+    if (!progress) {
+      return res.status(404).json(formatErrorResponse('Restore operation not found'));
+    }
+
+    return res.json(formatSuccessResponse(progress));
+  } catch (error) {
+    logger.error(`Failed to get restore progress for ${req.params.id}:`, error);
+    return res
+      .status(500)
+      .json(
+        formatErrorResponse(
+          'Failed to get restore progress',
           error instanceof Error ? error.message : 'Unknown error'
         )
       );

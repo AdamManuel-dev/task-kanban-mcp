@@ -13,7 +13,7 @@ import type {
   BoardResponse,
   NoteResponse,
   TagResponse,
-  AnyApiResponse
+  AnyApiResponse,
 } from './types';
 
 interface RequestOptions {
@@ -75,17 +75,18 @@ export class ApiClient {
       const response = await fetch(url.toString(), requestOptions);
 
       if (!response.ok) {
-        await this.handleErrorResponse(response);
+        await ApiClient.handleErrorResponse(response);
       }
 
       const contentType = response.headers.get('content-type');
       if (contentType && contentType.includes('application/json')) {
-        const data = (await response.json()) as T;
+        const data = await response.json();
         // Handle both wrapped and unwrapped responses
         if (data && typeof data === 'object' && 'data' in data) {
-          return (data as any).data;
+          const wrappedData = data as { data: T };
+          return wrappedData.data;
         }
-        return data;
+        return data as T;
       }
 
       return (await response.text()) as T;
@@ -105,14 +106,21 @@ export class ApiClient {
   /**
    * Handle error responses
    */
-  private async handleErrorResponse(response: Response): Promise<never> {
+  private static async handleErrorResponse(response: Response): Promise<never> {
     const contentType = response.headers.get('content-type');
     let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
 
     try {
       if (contentType && contentType.includes('application/json')) {
-        const errorData = (await response.json()) as { error?: { message: string }; message?: string };
-        if (errorData.error && typeof errorData.error === 'object' && 'message' in errorData.error) {
+        const errorData = (await response.json()) as {
+          error?: { message: string };
+          message?: string;
+        };
+        if (
+          errorData.error &&
+          typeof errorData.error === 'object' &&
+          'message' in errorData.error
+        ) {
           errorMessage = errorData.error.message;
         } else if (errorData.message) {
           errorMessage = errorData.message;
@@ -170,11 +178,11 @@ export class ApiClient {
   }
 
   // Task API methods
-  async getTasks(params?: Record<string, string>) {
+  async getTasks(params?: Record<string, string>): Promise<AnyApiResponse> {
     return this.request('/api/tasks', params ? { params } : {});
   }
 
-  async getTask(id: string) {
+  async getTask(id: string): Promise<AnyApiResponse> {
     return this.request(`/api/tasks/${id}`);
   }
 
@@ -186,11 +194,11 @@ export class ApiClient {
     return this.request(`/api/tasks/${id}`, { method: 'PATCH', body: updates });
   }
 
-  async deleteTask(id: string) {
+  async deleteTask(id: string): Promise<AnyApiResponse> {
     return this.request(`/api/tasks/${id}`, { method: 'DELETE' });
   }
 
-  async moveTask(id: string, columnId: string, position?: number) {
+  async moveTask(id: string, columnId: string, position?: number): Promise<AnyApiResponse> {
     return this.request(`/api/tasks/${id}/move`, {
       method: 'PATCH',
       body: { columnId, position },
@@ -198,11 +206,11 @@ export class ApiClient {
   }
 
   // Board API methods
-  async getBoards() {
+  async getBoards(): Promise<AnyApiResponse> {
     return this.request('/api/boards');
   }
 
-  async getBoard(id: string) {
+  async getBoard(id: string): Promise<AnyApiResponse> {
     return this.request(`/api/boards/${id}`);
   }
 
@@ -214,20 +222,20 @@ export class ApiClient {
     return this.request(`/api/boards/${id}`, { method: 'PATCH', body: updates });
   }
 
-  async deleteBoard(id: string) {
+  async deleteBoard(id: string): Promise<AnyApiResponse> {
     return this.request(`/api/boards/${id}`, { method: 'DELETE' });
   }
 
-  async getBoardStats(id: string) {
+  async getBoardStats(id: string): Promise<AnyApiResponse> {
     return this.request(`/api/boards/${id}/stats`);
   }
 
   // Note API methods
-  async getNotes(params?: Record<string, string>) {
+  async getNotes(params?: Record<string, string>): Promise<AnyApiResponse> {
     return this.request('/api/notes', params ? { params } : {});
   }
 
-  async getNote(id: string) {
+  async getNote(id: string): Promise<AnyApiResponse> {
     return this.request(`/api/notes/${id}`);
   }
 
@@ -239,20 +247,20 @@ export class ApiClient {
     return this.request(`/api/notes/${id}`, { method: 'PATCH', body: updates });
   }
 
-  async deleteNote(id: string) {
+  async deleteNote(id: string): Promise<AnyApiResponse> {
     return this.request(`/api/notes/${id}`, { method: 'DELETE' });
   }
 
-  async searchNotes(query: string) {
+  async searchNotes(query: string): Promise<AnyApiResponse> {
     return this.request('/api/notes/search', { params: { q: query } });
   }
 
   // Tag API methods
-  async getTags() {
+  async getTags(): Promise<AnyApiResponse> {
     return this.request('/api/tags');
   }
 
-  async getTag(id: string) {
+  async getTag(id: string): Promise<AnyApiResponse> {
     return this.request(`/api/tags/${id}`);
   }
 
@@ -260,14 +268,14 @@ export class ApiClient {
     return this.request('/api/tags', { method: 'POST', body: tag });
   }
 
-  async addTagsToTask(taskId: string, tags: string[]) {
+  async addTagsToTask(taskId: string, tags: string[]): Promise<AnyApiResponse> {
     return this.request(`/api/tasks/${taskId}/tags`, {
       method: 'POST',
       body: { tags },
     });
   }
 
-  async removeTagFromTask(taskId: string, tag: string) {
+  async removeTagFromTask(taskId: string, tag: string): Promise<AnyApiResponse> {
     return this.request(`/api/tasks/${taskId}/tags/${tag}`, {
       method: 'DELETE',
     });
@@ -277,15 +285,15 @@ export class ApiClient {
     return this.request(`/api/tags/${id}`, { method: 'PATCH', body: updates });
   }
 
-  async deleteTag(id: string) {
+  async deleteTag(id: string): Promise<AnyApiResponse> {
     return this.request(`/api/tags/${id}`, { method: 'DELETE' });
   }
 
-  async searchTags(query: string) {
+  async searchTags(query: string): Promise<AnyApiResponse> {
     return this.request('/api/tags/search', { params: { q: query } });
   }
 
-  async mergeTags(fromId: string, toId: string) {
+  async mergeTags(fromId: string, toId: string): Promise<AnyApiResponse> {
     return this.request(`/api/tags/${fromId}/merge`, {
       method: 'POST',
       body: { targetTagId: toId },
@@ -293,19 +301,19 @@ export class ApiClient {
   }
 
   // Priority API methods
-  async getPriorities() {
+  async getPriorities(): Promise<AnyApiResponse> {
     return this.request('/api/priorities');
   }
 
-  async getNextTask() {
+  async getNextTask(): Promise<AnyApiResponse> {
     return this.request('/api/priorities/next');
   }
 
-  async recalculatePriorities() {
+  async recalculatePriorities(): Promise<AnyApiResponse> {
     return this.request('/api/priorities/calculate', { method: 'POST' });
   }
 
-  async updateTaskPriority(id: string, priority: number) {
+  async updateTaskPriority(id: string, priority: number): Promise<AnyApiResponse> {
     return this.request(`/api/tasks/${id}/priority`, {
       method: 'PATCH',
       body: { priority },
@@ -313,20 +321,20 @@ export class ApiClient {
   }
 
   // Context API methods
-  async getContext() {
+  async getContext(): Promise<AnyApiResponse> {
     return this.request('/api/context');
   }
 
-  async getTaskContext(id: string) {
+  async getTaskContext(id: string): Promise<AnyApiResponse> {
     return this.request(`/api/context/task/${id}`);
   }
 
-  async getProjectSummary() {
+  async getProjectSummary(): Promise<AnyApiResponse> {
     return this.request('/api/context/summary');
   }
 
   // Search API methods
-  async searchTasks(query: string, params?: Record<string, string>) {
+  async searchTasks(query: string, params?: Record<string, string>): Promise<AnyApiResponse> {
     return this.request('/api/search/tasks', {
       params: { q: query, ...params },
     });
@@ -335,14 +343,21 @@ export class ApiClient {
   /**
    * Convenience method for GET requests
    */
-  async get<T = any>(endpoint: string, options?: Omit<RequestOptions, 'method'>): Promise<T> {
+  async get<T = AnyApiResponse>(
+    endpoint: string,
+    options?: Omit<RequestOptions, 'method'>
+  ): Promise<T> {
     return this.request<T>(endpoint, { ...options, method: 'GET' });
   }
 
   /**
    * Convenience method for POST requests
    */
-  async post<T = AnyApiResponse>(endpoint: string, body?: unknown, options?: Omit<RequestOptions, 'method' | 'body'>): Promise<T> {
+  async post<T = AnyApiResponse>(
+    endpoint: string,
+    body?: unknown,
+    options?: Omit<RequestOptions, 'method' | 'body'>
+  ): Promise<T> {
     return this.request<T>(endpoint, { ...options, method: 'POST', body });
   }
 
@@ -351,6 +366,6 @@ export class ApiClient {
    */
   updateConfig(): void {
     this.baseUrl = this.config.getServerUrl();
-    this.apiKey = this.config.getApiKey() || undefined;
+    this.apiKey = this.config.getApiKey() ?? undefined;
   }
 }

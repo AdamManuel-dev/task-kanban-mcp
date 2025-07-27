@@ -1,19 +1,12 @@
 import type { Command } from 'commander';
 import inquirer from 'inquirer';
-import type { ConfigManager } from '../config';
-import type { ApiClient } from '../client';
-import type { OutputFormatter } from '../formatter';
+import type { CliComponents } from '../types';
 
 export function registerTagCommands(program: Command): void {
   const tagCmd = program.command('tag').description('Manage tags');
 
-  // Get global components
-  const getComponents = () =>
-    (global as any).cliComponents as {
-      config: ConfigManager;
-      apiClient: ApiClient;
-      formatter: OutputFormatter;
-    };
+  // Get global components with proper typing
+  const getComponents = (): CliComponents => global.cliComponents;
 
   tagCmd
     .command('list')
@@ -26,7 +19,7 @@ export function registerTagCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const tags = await apiClient.getTags() as any;
+        const tags = (await apiClient.getTags()) as any;
 
         if (!tags || tags.length === 0) {
           formatter.info('No tags found');
@@ -69,7 +62,7 @@ export function registerTagCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const tag = await apiClient.getTag(id) as any;
+        const tag = (await apiClient.getTag(id)) as any;
 
         if (!tag) {
           formatter.error(`Tag ${id} not found`);
@@ -141,7 +134,7 @@ export function registerTagCommands(program: Command): void {
       }
 
       try {
-        const tag = await apiClient.createTag(tagData) as any;
+        const tag = (await apiClient.createTag(tagData)) as any;
         formatter.success(`Tag created successfully: ${tag.id}`);
         formatter.output(tag);
       } catch (error) {
@@ -165,7 +158,7 @@ export function registerTagCommands(program: Command): void {
 
       try {
         // Get current tag data
-        const currentTag = await apiClient.getTag(id) as any;
+        const currentTag = (await apiClient.getTag(id)) as any;
         if (!currentTag) {
           formatter.error(`Tag ${id} not found`);
           process.exit(1);
@@ -212,7 +205,7 @@ export function registerTagCommands(program: Command): void {
           return;
         }
 
-        const updatedTag = await apiClient.updateTag(id, updates) as any;
+        const updatedTag = (await apiClient.updateTag(id, updates)) as any;
         formatter.success('Tag updated successfully');
         formatter.output(updatedTag);
       } catch (error) {
@@ -233,7 +226,7 @@ export function registerTagCommands(program: Command): void {
 
       try {
         if (!options.force) {
-          const tag = await apiClient.getTag(id) as any;
+          const tag = (await apiClient.getTag(id)) as any;
           if (!tag) {
             formatter.error(`Tag ${id} not found`);
             process.exit(1);
@@ -308,7 +301,7 @@ export function registerTagCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const tags = await apiClient.searchTags(query) as any;
+        const tags = (await apiClient.searchTags(query)) as any;
 
         if (!tags || tags.length === 0) {
           formatter.info(`No tags found matching "${query}"`);
@@ -336,8 +329,8 @@ export function registerTagCommands(program: Command): void {
 
       try {
         if (!options.force) {
-          const fromTag = await apiClient.getTag(fromId) as any;
-          const toTag = await apiClient.getTag(toId) as any;
+          const fromTag = (await apiClient.getTag(fromId)) as any;
+          const toTag = (await apiClient.getTag(toId)) as any;
 
           if (!fromTag || !toTag) {
             formatter.error('One or both tags not found');

@@ -1,18 +1,11 @@
 import type { Command } from 'commander';
-import type { ConfigManager } from '../config';
-import type { ApiClient } from '../client';
-import type { OutputFormatter } from '../formatter';
+import type { CliComponents } from '../types';
 
 export function registerPriorityCommands(program: Command): void {
   const priorityCmd = program.command('priority').alias('p').description('Manage task priorities');
 
-  // Get global components
-  const getComponents = () =>
-    (global as any).cliComponents as {
-      config: ConfigManager;
-      apiClient: ApiClient;
-      formatter: OutputFormatter;
-    };
+  // Get global components with proper typing
+  const getComponents = (): CliComponents => global.cliComponents;
 
   priorityCmd
     .command('next')
@@ -73,7 +66,7 @@ export function registerPriorityCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const priorities = await apiClient.getPriorities() as any;
+        const priorities = (await apiClient.getPriorities()) as any;
 
         if (!priorities || priorities.length === 0) {
           formatter.info('No prioritized tasks available');
@@ -82,7 +75,9 @@ export function registerPriorityCommands(program: Command): void {
 
         let filteredTasks = priorities as any[];
         if (options.status) {
-          filteredTasks = (priorities as any[]).filter((task: any) => task.status === options.status);
+          filteredTasks = (priorities as any[]).filter(
+            (task: any) => task.status === options.status
+          );
         }
 
         const limitedTasks = filteredTasks.slice(0, parseInt(options.limit, 10));
@@ -167,7 +162,7 @@ export function registerPriorityCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const task = await apiClient.getTask(taskId) as any;
+        const task = (await apiClient.getTask(taskId)) as any;
         if (!task) {
           formatter.error(`Task ${taskId} not found`);
           process.exit(1);
@@ -195,7 +190,7 @@ export function registerPriorityCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const task = await apiClient.getTask(taskId) as any;
+        const task = (await apiClient.getTask(taskId)) as any;
         if (!task) {
           formatter.error(`Task ${taskId} not found`);
           process.exit(1);

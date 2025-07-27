@@ -14,7 +14,8 @@ import { Command } from 'commander';
 import path from 'path';
 import { dbConnection } from '../src/database/connection';
 import { MigrationRunner } from '../src/database/migrations';
-import { logger } from '../src/utils/logger';
+
+/* eslint-disable no-console */
 
 const program = new Command();
 
@@ -24,7 +25,7 @@ program
   .command('up')
   .description('Run pending migrations')
   .option('-t, --target <migration>', 'Target migration to migrate up to')
-  .action(async options => {
+  .action(async (options: { target?: string }) => {
     try {
       await dbConnection.initialize({ skipSchema: true });
       const count = await dbConnection.runMigrations(options.target);
@@ -46,7 +47,7 @@ program
   .command('down')
   .description('Rollback migrations')
   .option('-t, --target <migration>', 'Target migration to rollback to')
-  .action(async options => {
+  .action(async (options: { target?: string }) => {
     try {
       await dbConnection.initialize({ skipSchema: true });
       const count = await dbConnection.rollbackMigrations(options.target);

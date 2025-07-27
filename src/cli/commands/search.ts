@@ -1,18 +1,11 @@
 import type { Command } from 'commander';
-import type { ConfigManager } from '../config';
-import type { ApiClient } from '../client';
-import type { OutputFormatter } from '../formatter';
+import type { CliComponents } from '../types';
 
 export function registerSearchCommands(program: Command): void {
   const searchCmd = program.command('search').alias('s').description('Search tasks and content');
 
-  // Get global components
-  const getComponents = () =>
-    (global as any).cliComponents as {
-      config: ConfigManager;
-      apiClient: ApiClient;
-      formatter: OutputFormatter;
-    };
+  // Get global components with proper typing
+  const getComponents = (): CliComponents => global.cliComponents;
 
   searchCmd
     .command('tasks <query>')
@@ -34,13 +27,13 @@ export function registerSearchCommands(program: Command): void {
           order: options.order,
         };
 
-        if (options.board) params['board'] = options.board;
-        if (options.status) params['status'] = options.status;
-        if (options.tags) params['tags'] = options.tags;
+        if (options.board) params.board = options.board;
+        if (options.status) params.status = options.status;
+        if (options.tags) params.tags = options.tags;
 
         // Use default board if no board specified
         if (!options.board && config.getDefaultBoard()) {
-          params['board'] = config.getDefaultBoard()!;
+          params.board = config.getDefaultBoard()!;
         }
 
         const results = await apiClient.searchTasks(query, params);
@@ -81,7 +74,7 @@ export function registerSearchCommands(program: Command): void {
           order: options.order,
         };
 
-        if (options.category) params['category'] = options.category;
+        if (options.category) params.category = options.category;
 
         const results = await apiClient.searchNotes(query);
 
@@ -165,7 +158,7 @@ export function registerSearchCommands(program: Command): void {
         let totalResults = 0;
         results.forEach((result, index) => {
           const type = searchTypes[index];
-          const count = result ? (result as any).length : 0;
+          const count = result ? result.length : 0;
           totalResults += count;
 
           if (count > 0 && type) {
@@ -226,25 +219,25 @@ export function registerSearchCommands(program: Command): void {
           limit: options.limit,
         };
 
-        if (options.title) params['title'] = options.title;
-        if (options.description) params['description'] = options.description;
-        if (options.tags) params['tags'] = options.tags;
-        if (options.status) params['status'] = options.status;
-        if (options.priorityMin) params['priorityMin'] = options.priorityMin;
-        if (options.priorityMax) params['priorityMax'] = options.priorityMax;
-        if (options.createdAfter) params['createdAfter'] = options.createdAfter;
-        if (options.createdBefore) params['createdBefore'] = options.createdBefore;
-        if (options.dueAfter) params['dueAfter'] = options.dueAfter;
-        if (options.dueBefore) params['dueBefore'] = options.dueBefore;
+        if (options.title) params.title = options.title;
+        if (options.description) params.description = options.description;
+        if (options.tags) params.tags = options.tags;
+        if (options.status) params.status = options.status;
+        if (options.priorityMin) params.priorityMin = options.priorityMin;
+        if (options.priorityMax) params.priorityMax = options.priorityMax;
+        if (options.createdAfter) params.createdAfter = options.createdAfter;
+        if (options.createdBefore) params.createdBefore = options.createdBefore;
+        if (options.dueAfter) params.dueAfter = options.dueAfter;
+        if (options.dueBefore) params.dueBefore = options.dueBefore;
 
-        const results = await apiClient.request('/api/search/advanced', { params }) as any;
+        const results = (await apiClient.request('/api/search/advanced', { params })) as any;
 
-        if (!results || (results as any).length === 0) {
+        if (!results || results.length === 0) {
           formatter.info('No results found with the specified filters');
           return;
         }
 
-        formatter.success(`Found ${(results as any).length} results with advanced filters`);
+        formatter.success(`Found ${results.length} results with advanced filters`);
         formatter.output(results, {
           fields: ['id', 'title', 'status', 'priority', 'dueDate', 'createdAt'],
           headers: ['ID', 'Title', 'Status', 'Priority', 'Due Date', 'Created'],
