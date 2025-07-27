@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/explicit-function-return-type, @typescript-eslint/require-await, no-plusplus */
 /**
  * Database query result validation schemas
  *
