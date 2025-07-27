@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { ValidationError } from '@/utils/errors';
 import { CommonValidations } from '@/utils/validation';
 
-export function requestValidationMiddleware(req: Request, _res: Response, next: NextFunction) {
+export function requestValidationMiddleware(req: Request, _res: Response, next: NextFunction): void {
   // Validate request size
   const contentLength = parseInt(req.get('Content-Length') || '0', 10);
   const maxSize = 10 * 1024 * 1024; // 10MB

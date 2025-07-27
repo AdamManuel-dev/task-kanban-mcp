@@ -7,7 +7,7 @@ import { requirePermission } from '@/middleware/auth';
 import { TaskValidation, NoteValidation, validateInput } from '@/utils/validation';
 import { NotFoundError } from '@/utils/errors';
 
-export async function taskRoutes() {
+export async function taskRoutes(): Promise<Router> {
   const router = Router();
 
   const taskService = new TaskService(dbConnection);

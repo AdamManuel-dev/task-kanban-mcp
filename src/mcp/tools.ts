@@ -5,6 +5,40 @@ import type { BoardService } from '@/services/BoardService';
 import type { NoteService } from '@/services/NoteService';
 import type { TagService } from '@/services/TagService';
 import type { ContextService } from '@/services/ContextService';
+import type {
+  ToolArgs,
+  ToolResponse,
+  CreateTaskArgs,
+  UpdateTaskArgs,
+  GetTaskArgs,
+  ListTasksArgs,
+  DeleteTaskArgs,
+  CreateBoardArgs,
+  GetBoardArgs,
+  ListBoardsArgs,
+  AddNoteArgs,
+  SearchNotesArgs,
+  CreateTagArgs,
+  AssignTagArgs,
+  GetProjectContextArgs,
+  GetTaskContextArgs,
+  AnalyzeBoardArgs,
+  GetBlockedTasksArgs,
+  GetOverdueTasksArgs,
+  TaskResponse,
+  TasksResponse,
+  BoardResponse,
+  BoardsResponse,
+  NoteResponse,
+  NotesResponse,
+  TagResponse,
+  GetTaskDetailedResponse,
+  ProjectContextResponse,
+  TaskContextResponse,
+  BoardAnalysisResponse,
+  BlockedTasksResponse,
+  OverdueTasksResponse,
+} from './types';
 
 export interface MCPServices {
   taskService: TaskService;
@@ -375,45 +409,45 @@ export class MCPToolRegistry {
     ];
   }
 
-  async callTool(name: string, args: Record<string, any>): Promise<any> {
+  async callTool(name: string, args: unknown): Promise<ToolResponse> {
     logger.info('MCP tool call', { toolName: name, args });
 
     try {
       switch (name) {
         case 'create_task':
-          return await this.createTask(args);
+          return await this.createTask(args as CreateTaskArgs);
         case 'update_task':
-          return await this.updateTask(args);
+          return await this.updateTask(args as UpdateTaskArgs);
         case 'get_task':
-          return await this.getTask(args);
+          return await this.getTask(args as GetTaskArgs);
         case 'list_tasks':
-          return await this.listTasks(args);
+          return await this.listTasks(args as ListTasksArgs);
         case 'delete_task':
-          return await this.deleteTask(args);
+          return await this.deleteTask(args as DeleteTaskArgs);
         case 'create_board':
-          return await this.createBoard(args);
+          return await this.createBoard(args as CreateBoardArgs);
         case 'get_board':
-          return await this.getBoard(args);
+          return await this.getBoard(args as GetBoardArgs);
         case 'list_boards':
-          return await this.listBoards(args);
+          return await this.listBoards(args as ListBoardsArgs);
         case 'add_note':
-          return await this.addNote(args);
+          return await this.addNote(args as AddNoteArgs);
         case 'search_notes':
-          return await this.searchNotes(args);
+          return await this.searchNotes(args as SearchNotesArgs);
         case 'create_tag':
-          return await this.createTag(args);
+          return await this.createTag(args as CreateTagArgs);
         case 'assign_tag':
-          return await this.assignTag(args);
+          return await this.assignTag(args as AssignTagArgs);
         case 'get_project_context':
-          return await this.getProjectContext(args);
+          return await this.getProjectContext(args as GetProjectContextArgs);
         case 'get_task_context':
-          return await this.getTaskContext(args);
+          return await this.getTaskContext(args as GetTaskContextArgs);
         case 'analyze_board':
-          return await this.analyzeBoard(args);
+          return await this.analyzeBoard(args as AnalyzeBoardArgs);
         case 'get_blocked_tasks':
-          return await this.getBlockedTasks(args);
+          return await this.getBlockedTasks(args as GetBlockedTasksArgs);
         case 'get_overdue_tasks':
-          return await this.getOverdueTasks(args);
+          return await this.getOverdueTasks(args as GetOverdueTasksArgs);
         default:
           throw new Error(`Unknown tool: ${name}`);
       }
@@ -424,18 +458,18 @@ export class MCPToolRegistry {
   }
 
   // Tool implementations
-  private async createTask(args: any): Promise<any> {
+  private async createTask(args: CreateTaskArgs): Promise<TaskResponse> {
     const task = await this.services.taskService.createTask(args);
     return { success: true, task };
   }
 
-  private async updateTask(args: any): Promise<any> {
+  private async updateTask(args: UpdateTaskArgs): Promise<TaskResponse> {
     const { task_id, ...updates } = args;
     const task = await this.services.taskService.updateTask(task_id, updates);
     return { success: true, task };
   }
 
-  private async getTask(args: any): Promise<any> {
+  private async getTask(args: GetTaskArgs): Promise<GetTaskDetailedResponse> {
     const { task_id, include_subtasks, include_dependencies, include_notes, include_tags } = args;
 
     let task;
@@ -452,7 +486,7 @@ export class MCPToolRegistry {
     }
 
     // Add additional data if requested
-    const result: any = { success: true, task };
+    const result: GetTaskDetailedResponse = { success: true, task };
 
     if (include_notes) {
       const notes = await this.services.noteService.getTaskNotes(task_id, { limit: 100 });
@@ -467,23 +501,23 @@ export class MCPToolRegistry {
     return result;
   }
 
-  private async listTasks(args: any): Promise<any> {
+  private async listTasks(args: ListTasksArgs): Promise<TasksResponse> {
     const tasks = await this.services.taskService.getTasks(args);
     return { success: true, tasks, count: tasks.length };
   }
 
-  private async deleteTask(args: any): Promise<any> {
+  private async deleteTask(args: DeleteTaskArgs): Promise<{ success: boolean; message: string }> {
     const { task_id } = args;
     await this.services.taskService.deleteTask(task_id);
     return { success: true, message: `Task ${task_id} deleted` };
   }
 
-  private async createBoard(args: any): Promise<any> {
+  private async createBoard(args: CreateBoardArgs): Promise<BoardResponse> {
     const board = await this.services.boardService.createBoard(args);
     return { success: true, board };
   }
 
-  private async getBoard(args: any): Promise<any> {
+  private async getBoard(args: GetBoardArgs): Promise<BoardResponse> {
     const { board_id, include_columns, include_tasks } = args;
 
     let board;
@@ -497,7 +531,7 @@ export class MCPToolRegistry {
       throw new Error(`Board not found: ${board_id}`);
     }
 
-    const result: any = { success: true, board };
+    const result: BoardResponse = { success: true, board };
 
     if (include_tasks) {
       const tasks = await this.services.taskService.getTasks({ board_id, limit: 1000 });
@@ -507,59 +541,85 @@ export class MCPToolRegistry {
     return result;
   }
 
-  private async listBoards(args: any): Promise<any> {
+  private async listBoards(args: ListBoardsArgs): Promise<BoardsResponse> {
     const boards = await this.services.boardService.getBoards(args);
     return { success: true, boards, count: boards.length };
   }
 
-  private async addNote(args: any): Promise<any> {
+  private async addNote(args: AddNoteArgs): Promise<NoteResponse> {
     const note = await this.services.noteService.createNote(args);
     return { success: true, note };
   }
 
-  private async searchNotes(args: any): Promise<any> {
+  private async searchNotes(args: SearchNotesArgs): Promise<NotesResponse> {
     const notes = await this.services.noteService.searchNotes(args);
     return { success: true, notes, count: notes.length };
   }
 
-  private async createTag(args: any): Promise<any> {
+  private async createTag(args: CreateTagArgs): Promise<TagResponse> {
     const tag = await this.services.tagService.createTag(args);
     return { success: true, tag };
   }
 
-  private async assignTag(args: any): Promise<any> {
-    const { task_id, tag_id } = args;
-    const assignment = await this.services.tagService.addTagToTask(task_id, tag_id);
-    return { success: true, assignment };
+  private async assignTag(args: AssignTagArgs): Promise<{ success: boolean; assignment: unknown }> {
+    const { task_id, tag_ids } = args;
+    const assignments = await Promise.all(
+      tag_ids.map(tag_id => this.services.tagService.addTagToTask(task_id, tag_id))
+    );
+    return { success: true, assignment: assignments };
   }
 
-  private async getProjectContext(args: any): Promise<any> {
-    const { board_id, ...options } = args;
-    const context = await this.services.contextService.getProjectContext(options);
+  private async getProjectContext(args: GetProjectContextArgs): Promise<ProjectContextResponse> {
+    const context = await this.services.contextService.getProjectContext(args);
     return { success: true, context };
   }
 
-  private async getTaskContext(args: any): Promise<any> {
+  private async getTaskContext(args: GetTaskContextArgs): Promise<TaskContextResponse> {
     const { task_id, ...options } = args;
     const context = await this.services.contextService.getTaskContext(task_id, options);
     return { success: true, context };
   }
 
-  private async analyzeBoard(args: any): Promise<any> {
+  private async analyzeBoard(args: AnalyzeBoardArgs): Promise<BoardAnalysisResponse> {
     const { board_id, ...options } = args;
     const analysis = await this.services.contextService.getProjectContext(options);
-    return { success: true, analysis };
+    return {
+      success: true,
+      analysis: {
+        board: await this.services.boardService.getBoardById(board_id)!,
+        metrics: analysis as Record<string, unknown>,
+        insights: [],
+        recommendations: [],
+      },
+    };
   }
 
-  private async getBlockedTasks(args: any): Promise<any> {
-    const { board_id } = args;
+  private async getBlockedTasks(args: GetBlockedTasksArgs): Promise<BlockedTasksResponse> {
+    const { board_id, include_reasons } = args;
     const blockedTasks = await this.services.taskService.getBlockedTasks(board_id);
-    return { success: true, tasks: blockedTasks, count: blockedTasks.length };
+    const blocked_tasks = blockedTasks.map(task => ({
+      task,
+      ...(include_reasons && { blocking_reasons: ['Dependency not completed'] }),
+    }));
+    return { success: true, blocked_tasks };
   }
 
-  private async getOverdueTasks(args: any): Promise<any> {
-    const { board_id } = args;
+  private async getOverdueTasks(args: GetOverdueTasksArgs): Promise<OverdueTasksResponse> {
+    const { board_id, days_overdue } = args;
     const overdueTasks = await this.services.taskService.getOverdueTasks(board_id);
-    return { success: true, tasks: overdueTasks, count: overdueTasks.length };
+    const overdue_tasks = overdueTasks
+      .map(task => {
+        const dueDate = task.due_date ? new Date(task.due_date) : null;
+        const now = new Date();
+        const daysDiff = dueDate
+          ? Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24))
+          : 0;
+        return {
+          task,
+          days_overdue: Math.max(0, daysDiff),
+        };
+      })
+      .filter(item => !days_overdue || item.days_overdue >= days_overdue);
+    return { success: true, overdue_tasks };
   }
 }

@@ -1,8 +1,24 @@
 import type { ConfigManager } from './config';
+import type {
+  HealthResponse,
+  CreateTaskRequest,
+  UpdateTaskRequest,
+  CreateBoardRequest,
+  UpdateBoardRequest,
+  CreateNoteRequest,
+  UpdateNoteRequest,
+  CreateTagRequest,
+  UpdateTagRequest,
+  TaskResponse,
+  BoardResponse,
+  NoteResponse,
+  TagResponse,
+  AnyApiResponse
+} from './types';
 
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-  body?: any;
+  body?: unknown;
   params?: Record<string, string> | undefined;
   timeout?: number;
 }
@@ -23,7 +39,7 @@ export class ApiClient {
   /**
    * Make authenticated API request
    */
-  async request<T = any>(endpoint: string, options: RequestOptions = {}): Promise<T> {
+  async request<T = AnyApiResponse>(endpoint: string, options: RequestOptions = {}): Promise<T> {
     const { method = 'GET', body, params, timeout = 10000 } = options;
 
     // Build URL with query parameters
@@ -64,8 +80,12 @@ export class ApiClient {
 
       const contentType = response.headers.get('content-type');
       if (contentType && contentType.includes('application/json')) {
-        const data = (await response.json()) as any;
-        return data.data || data;
+        const data = (await response.json()) as T;
+        // Handle both wrapped and unwrapped responses
+        if (data && typeof data === 'object' && 'data' in data) {
+          return (data as any).data;
+        }
+        return data;
       }
 
       return (await response.text()) as T;
@@ -91,8 +111,12 @@ export class ApiClient {
 
     try {
       if (contentType && contentType.includes('application/json')) {
-        const errorData = (await response.json()) as any;
-        errorMessage = errorData.error || errorData.message || errorMessage;
+        const errorData = (await response.json()) as { error?: { message: string }; message?: string };
+        if (errorData.error && typeof errorData.error === 'object' && 'message' in errorData.error) {
+          errorMessage = errorData.error.message;
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
+        }
       } else {
         const text = await response.text();
         if (text) {
@@ -141,7 +165,7 @@ export class ApiClient {
   /**
    * Get server health status
    */
-  async getHealth(): Promise<any> {
+  async getHealth(): Promise<HealthResponse> {
     return this.request('/api/health/detailed');
   }
 
@@ -154,11 +178,11 @@ export class ApiClient {
     return this.request(`/api/tasks/${id}`);
   }
 
-  async createTask(task: any) {
+  async createTask(task: CreateTaskRequest): Promise<TaskResponse> {
     return this.request('/api/tasks', { method: 'POST', body: task });
   }
 
-  async updateTask(id: string, updates: any) {
+  async updateTask(id: string, updates: UpdateTaskRequest): Promise<TaskResponse> {
     return this.request(`/api/tasks/${id}`, { method: 'PATCH', body: updates });
   }
 
@@ -182,11 +206,11 @@ export class ApiClient {
     return this.request(`/api/boards/${id}`);
   }
 
-  async createBoard(board: any) {
+  async createBoard(board: CreateBoardRequest): Promise<BoardResponse> {
     return this.request('/api/boards', { method: 'POST', body: board });
   }
 
-  async updateBoard(id: string, updates: any) {
+  async updateBoard(id: string, updates: UpdateBoardRequest): Promise<BoardResponse> {
     return this.request(`/api/boards/${id}`, { method: 'PATCH', body: updates });
   }
 
@@ -207,11 +231,11 @@ export class ApiClient {
     return this.request(`/api/notes/${id}`);
   }
 
-  async createNote(note: any) {
+  async createNote(note: CreateNoteRequest): Promise<NoteResponse> {
     return this.request('/api/notes', { method: 'POST', body: note });
   }
 
-  async updateNote(id: string, updates: any) {
+  async updateNote(id: string, updates: UpdateNoteRequest): Promise<NoteResponse> {
     return this.request(`/api/notes/${id}`, { method: 'PATCH', body: updates });
   }
 
@@ -232,7 +256,7 @@ export class ApiClient {
     return this.request(`/api/tags/${id}`);
   }
 
-  async createTag(tag: any) {
+  async createTag(tag: CreateTagRequest): Promise<TagResponse> {
     return this.request('/api/tags', { method: 'POST', body: tag });
   }
 
@@ -249,7 +273,7 @@ export class ApiClient {
     });
   }
 
-  async updateTag(id: string, updates: any) {
+  async updateTag(id: string, updates: UpdateTagRequest): Promise<TagResponse> {
     return this.request(`/api/tags/${id}`, { method: 'PATCH', body: updates });
   }
 
@@ -318,7 +342,7 @@ export class ApiClient {
   /**
    * Convenience method for POST requests
    */
-  async post<T = any>(endpoint: string, body?: any, options?: Omit<RequestOptions, 'method' | 'body'>): Promise<T> {
+  async post<T = AnyApiResponse>(endpoint: string, body?: unknown, options?: Omit<RequestOptions, 'method' | 'body'>): Promise<T> {
     return this.request<T>(endpoint, { ...options, method: 'POST', body });
   }
 

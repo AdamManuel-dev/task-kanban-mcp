@@ -47,7 +47,7 @@ export function registerBackupCommands(program: Command): void {
         const backup = await apiClient.request('/api/backup/create', {
           method: 'POST',
           body: backupData,
-        });
+        }) as any; // Type assertion for backup response
 
         formatter.success(`Backup created successfully: ${backup.id}`);
         formatter.output(backup, {
@@ -79,9 +79,9 @@ export function registerBackupCommands(program: Command): void {
           order: options.order,
         };
 
-        const backups = await apiClient.request('/api/backup/list', { params });
+        const backups = await apiClient.request('/api/backup/list', { params }) as any[];
 
-        if (!backups || backups.length === 0) {
+        if (!backups || !Array.isArray(backups) || backups.length === 0) {
           formatter.info('No backups found');
           return;
         }
@@ -108,7 +108,7 @@ export function registerBackupCommands(program: Command): void {
 
       try {
         // Get backup info
-        const backup = await apiClient.request(`/api/backup/${id}`);
+        const backup = await apiClient.request(`/api/backup/${id}`) as any;
         if (!backup) {
           formatter.error(`Backup ${id} not found`);
           process.exit(1);
@@ -143,7 +143,7 @@ export function registerBackupCommands(program: Command): void {
         const result = await apiClient.request(`/api/backup/${id}/restore`, {
           method: 'POST',
           body: restoreData,
-        });
+        }) as any;
 
         formatter.success('Database restored successfully');
         formatter.output(result);
@@ -165,7 +165,7 @@ export function registerBackupCommands(program: Command): void {
 
       try {
         if (!options.force) {
-          const backup = await apiClient.request(`/api/backup/${id}`);
+          const backup = await apiClient.request(`/api/backup/${id}`) as any;
           if (!backup) {
             formatter.error(`Backup ${id} not found`);
             process.exit(1);
@@ -207,7 +207,7 @@ export function registerBackupCommands(program: Command): void {
 
         const result = await apiClient.request(`/api/backup/${id}/verify`, {
           method: 'POST',
-        });
+        }) as any;
 
         if (result.valid) {
           formatter.success('Backup verification passed');
@@ -232,7 +232,7 @@ export function registerBackupCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const backup = await apiClient.request(`/api/backup/${id}`);
+        const backup = await apiClient.request(`/api/backup/${id}`) as any;
         if (!backup) {
           formatter.error(`Backup ${id} not found`);
           process.exit(1);
@@ -246,7 +246,7 @@ export function registerBackupCommands(program: Command): void {
 
         const data = await apiClient.request(`/api/backup/${id}/export`, {
           params: { format: options.format || 'json' },
-        });
+        }) as any;
 
         // Ensure directory exists
         const dir = path.dirname(exportPath);
@@ -258,7 +258,7 @@ export function registerBackupCommands(program: Command): void {
         if (options.format === 'json') {
           fs.writeFileSync(exportPath, JSON.stringify(data, null, 2));
         } else {
-          fs.writeFileSync(exportPath, data);
+          fs.writeFileSync(exportPath, data as any);
         }
 
         const stats = fs.statSync(exportPath);
@@ -373,7 +373,7 @@ export function registerBackupCommands(program: Command): void {
             verify: !options['no-verify'],
             preserveExisting: options['preserve-existing'],
           }),
-        });
+        }) as any;
 
         formatter.success('Point-in-time restoration completed successfully');
         formatter.info(`Database restored to: ${restoreTime}`);
@@ -503,7 +503,7 @@ export function registerBackupCommands(program: Command): void {
         const schedule = await apiClient.request('/api/schedule/create', {
           method: 'POST',
           body: JSON.stringify(scheduleData),
-        });
+        }) as any;
 
         formatter.success('Backup schedule created successfully');
         console.log(formatter.formatSchedule(schedule.data));
@@ -532,7 +532,7 @@ export function registerBackupCommands(program: Command): void {
         const queryString = new URLSearchParams(params).toString();
         const url = `/api/schedule/list${queryString ? `?${queryString}` : ''}`;
 
-        const response = await apiClient.request(url);
+        const response = await apiClient.request(url) as any;
         const schedules = response.data;
 
         if (schedules.length === 0) {
@@ -558,7 +558,7 @@ export function registerBackupCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const response = await apiClient.request(`/api/schedule/${id}`);
+        const response = await apiClient.request(`/api/schedule/${id}`) as any;
         const schedule = response.data;
 
         console.log(formatter.formatSchedule(schedule));

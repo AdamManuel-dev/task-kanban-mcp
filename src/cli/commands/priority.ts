@@ -36,19 +36,19 @@ export function registerPriorityCommands(program: Command): void {
           formatter.success('Next prioritized task:');
           formatter.output(nextTask);
 
-          if (options.explain && nextTask.priorityReasoning) {
+          if (options.explain && (nextTask as any).priorityReasoning) {
             console.log('\n--- Priority Reasoning ---');
-            console.log(nextTask.priorityReasoning);
+            console.log((nextTask as any).priorityReasoning);
           }
         } else {
           const priorities = await apiClient.getPriorities();
 
-          if (!priorities || priorities.length === 0) {
+          if (!priorities || (priorities as any).length === 0) {
             formatter.info('No prioritized tasks available');
             return;
           }
 
-          const topTasks = priorities.slice(0, count);
+          const topTasks = (priorities as any[]).slice(0, count);
           formatter.success(`Top ${count} prioritized tasks:`);
           formatter.output(topTasks, {
             fields: ['id', 'title', 'priority', 'status', 'dueDate'],
@@ -73,16 +73,16 @@ export function registerPriorityCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const priorities = await apiClient.getPriorities();
+        const priorities = await apiClient.getPriorities() as any;
 
         if (!priorities || priorities.length === 0) {
           formatter.info('No prioritized tasks available');
           return;
         }
 
-        let filteredTasks = priorities;
+        let filteredTasks = priorities as any[];
         if (options.status) {
-          filteredTasks = priorities.filter((task: any) => task.status === options.status);
+          filteredTasks = (priorities as any[]).filter((task: any) => task.status === options.status);
         }
 
         const limitedTasks = filteredTasks.slice(0, parseInt(options.limit, 10));
@@ -111,12 +111,12 @@ export function registerPriorityCommands(program: Command): void {
         const result = await apiClient.recalculatePriorities();
 
         formatter.success('Priority recalculation completed');
-        if (result.message) {
-          formatter.info(result.message);
+        if ((result as any).message) {
+          formatter.info((result as any).message);
         }
 
-        if (result.updated) {
-          formatter.info(`Updated ${result.updated} task priorities`);
+        if ((result as any).updated) {
+          formatter.info(`Updated ${(result as any).updated} task priorities`);
         }
       } catch (error) {
         formatter.error(
@@ -167,7 +167,7 @@ export function registerPriorityCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const task = await apiClient.getTask(taskId);
+        const task = await apiClient.getTask(taskId) as any;
         if (!task) {
           formatter.error(`Task ${taskId} not found`);
           process.exit(1);
@@ -195,7 +195,7 @@ export function registerPriorityCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const task = await apiClient.getTask(taskId);
+        const task = await apiClient.getTask(taskId) as any;
         if (!task) {
           formatter.error(`Task ${taskId} not found`);
           process.exit(1);

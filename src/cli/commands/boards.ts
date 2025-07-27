@@ -25,7 +25,7 @@ export function registerBoardCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const boards = await apiClient.getBoards();
+        const boards = (await apiClient.getBoards()) as any;
 
         if (!boards || boards.length === 0) {
           formatter.info('No boards found');
@@ -61,7 +61,7 @@ export function registerBoardCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const board = await apiClient.getBoard(id);
+        const board = (await apiClient.getBoard(id)) as any;
 
         if (!board) {
           formatter.error(`Board ${id} not found`);
@@ -143,7 +143,7 @@ export function registerBoardCommands(program: Command): void {
       boardData.description = options.description || boardData.description;
 
       try {
-        const board = await apiClient.createBoard(boardData);
+        const board = (await apiClient.createBoard(boardData)) as any;
         formatter.success(`Board created successfully: ${board.id}`);
         formatter.output(board);
 
@@ -171,7 +171,7 @@ export function registerBoardCommands(program: Command): void {
 
       try {
         // Get current board data
-        const currentBoard = await apiClient.getBoard(id);
+        const currentBoard = (await apiClient.getBoard(id)) as any;
         if (!currentBoard) {
           formatter.error(`Board ${id} not found`);
           process.exit(1);
@@ -227,7 +227,7 @@ export function registerBoardCommands(program: Command): void {
 
       try {
         if (!options.force) {
-          const board = await apiClient.getBoard(id);
+          const board = (await apiClient.getBoard(id)) as any;
           if (!board) {
             formatter.error(`Board ${id} not found`);
             process.exit(1);
@@ -266,7 +266,7 @@ export function registerBoardCommands(program: Command): void {
 
       try {
         // Verify board exists
-        const board = await apiClient.getBoard(id);
+        const board = (await apiClient.getBoard(id)) as any;
         if (!board) {
           formatter.error(`Board ${id} not found`);
           process.exit(1);

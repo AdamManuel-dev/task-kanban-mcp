@@ -44,7 +44,7 @@ export function registerTaskCommands(program: Command): void {
           params['board'] = config.getDefaultBoard()!;
         }
 
-        const tasks = await apiClient.getTasks(params);
+        const tasks = await apiClient.getTasks(params) as any;
 
         if (!tasks || tasks.length === 0) {
           formatter.info('No tasks found');
@@ -205,7 +205,7 @@ export function registerTaskCommands(program: Command): void {
           process.exit(1);
         }
 
-        const task = await apiClient.createTask(taskData);
+        const task = await apiClient.createTask(taskData) as any;
         formatter.success(`Task created successfully: ${task.id}`);
         formatter.output(task);
       } catch (error) {
@@ -230,7 +230,7 @@ export function registerTaskCommands(program: Command): void {
 
       try {
         // Get current task data
-        const currentTask = await apiClient.getTask(id);
+        const currentTask = await apiClient.getTask(id) as any;
         if (!currentTask) {
           formatter.error(`Task ${id} not found`);
           process.exit(1);
@@ -244,26 +244,26 @@ export function registerTaskCommands(program: Command): void {
               type: 'input',
               name: 'title',
               message: 'Task title:',
-              default: currentTask.title,
+              default: (currentTask as any).title,
             },
             {
               type: 'input',
               name: 'description',
               message: 'Task description:',
-              default: currentTask.description || '',
+              default: (currentTask as any).description || '',
             },
             {
               type: 'list',
               name: 'status',
               message: 'Status:',
               choices: ['todo', 'in_progress', 'completed', 'blocked'],
-              default: currentTask.status,
+              default: (currentTask as any).status,
             },
             {
               type: 'number',
               name: 'priority',
               message: 'Priority (1-10):',
-              default: currentTask.priority || 5,
+              default: (currentTask as any).priority || 5,
               validate: (input: number) =>
                 (input >= 1 && input <= 10) || 'Priority must be between 1 and 10',
             },
@@ -304,7 +304,7 @@ export function registerTaskCommands(program: Command): void {
 
       try {
         if (!options.force) {
-          const task = await apiClient.getTask(id);
+          const task = await apiClient.getTask(id) as any;
           if (!task) {
             formatter.error(`Task ${id} not found`);
             process.exit(1);
@@ -314,7 +314,7 @@ export function registerTaskCommands(program: Command): void {
             {
               type: 'confirm',
               name: 'confirm',
-              message: `Delete task "${task.title}"?`,
+              message: `Delete task "${(task as any).title}"?`,
               default: false,
             },
           ]);

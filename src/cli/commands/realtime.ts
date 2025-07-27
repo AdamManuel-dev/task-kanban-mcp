@@ -152,7 +152,7 @@ export function registerRealtimeCommands(program: Command): void {
 
           const streamLogs = async () => {
             try {
-              const logs = await apiClient.request('/api/logs/stream', { params });
+              const logs = await apiClient.request('/api/logs/stream', { params }) as any;
 
               if (logs && logs.length > 0) {
                 logs.forEach((log: any) => {
@@ -181,7 +181,7 @@ export function registerRealtimeCommands(program: Command): void {
           await streamLogs();
         } else {
           // One-time log fetch
-          const logs = await apiClient.request('/api/logs', { params });
+          const logs = await apiClient.request('/api/logs', { params }) as any;
 
           if (!logs || logs.length === 0) {
             formatter.info('No logs found');

@@ -2,6 +2,11 @@ import { logger } from '@/utils/logger';
 import type { WebSocketClient, SubscriptionFilter } from './types';
 import { SubscriptionChannel } from './types';
 import type { WebSocketManager } from './server';
+import type {
+  AllWebSocketMessages,
+  SystemNotification,
+  PublicationContext
+} from './messageTypes';
 
 export interface Subscription {
   id: string;
@@ -163,7 +168,7 @@ export class SubscriptionManager {
   // Publish message to channel subscribers
   publishToChannel(
     channel: SubscriptionChannel,
-    message: any,
+    message: AllWebSocketMessages,
     filterCallback?: (subscription: Subscription, client: WebSocketClient) => boolean
   ): number {
     const channelSubs = this.channelSubscriptions.get(channel);
@@ -211,7 +216,7 @@ export class SubscriptionManager {
   }
 
   // Publish to specific board subscribers
-  publishBoardUpdate(boardId: string, message: any): number {
+  publishBoardUpdate(boardId: string, message: AllWebSocketMessages): number {
     return this.publishToChannel(
       SubscriptionChannel.BOARD,
       message,
@@ -220,7 +225,7 @@ export class SubscriptionManager {
   }
 
   // Publish to specific task subscribers
-  publishTaskUpdate(taskId: string, boardId: string, message: any): number {
+  publishTaskUpdate(taskId: string, boardId: string, message: AllWebSocketMessages): number {
     let count = 0;
 
     // Send to task subscribers
@@ -244,25 +249,37 @@ export class SubscriptionManager {
   publishUserPresence(
     userId: string,
     status: 'online' | 'offline' | 'away',
-    context?: any
+    context?: PublicationContext
   ): number {
+    const message = {
+      type: 'connection:status' as const,
+      data: {
+        status: status === 'online' ? 'connected' as const : 'disconnected' as const,
+        timestamp: new Date().toISOString(),
+        clientId: userId,
+      },
+      timestamp: new Date().toISOString(),
+      ...context,
+    };
+    
     return this.publishToChannel(
       SubscriptionChannel.USER_PRESENCE,
-      {
-        userId,
-        status,
-        timestamp: new Date().toISOString(),
-        ...context,
-      },
+      message,
       subscription => !subscription.filters.userId || subscription.filters.userId === userId
     );
   }
 
   // Publish system notifications
-  publishSystemNotification(notification: any, targetUsers?: string[]): number {
+  publishSystemNotification(notification: SystemNotification, targetUsers?: string[]): number {
+    const message = {
+      type: 'system:notification' as const,
+      data: notification,
+      timestamp: new Date().toISOString(),
+    };
+    
     return this.publishToChannel(
       SubscriptionChannel.SYSTEM_NOTIFICATIONS,
-      notification,
+      message,
       (_subscription, client) => {
         if (!targetUsers) return true;
         return !!(client.user && targetUsers.includes(client.user.id));
@@ -341,7 +358,7 @@ export class SubscriptionManager {
   }
 
   // Private helper methods
-  private matchesFilters(message: any, filters: SubscriptionFilter): boolean {
+  private matchesFilters(message: AllWebSocketMessages, filters: SubscriptionFilter): boolean {
     // If no filters, match all
     if (!filters || Object.keys(filters).length === 0) {
       return true;
@@ -363,63 +380,87 @@ export class SubscriptionManager {
     return true;
   }
 
-  private getNestedProperty(obj: any, path: string): any {
-    return path
-      .split('.')
-      .reduce(
-        (current, key) => (current && current[key] !== undefined ? current[key] : undefined),
-        obj
-      );
+  private getNestedProperty(obj: AllWebSocketMessages, path: string): unknown {
+    // For our message structure, common paths are:
+    // - type: message.type
+    // - boardId: message.data.boardId
+    // - taskId: message.data.taskId
+    // - userId: message.data.userId
+    
+    const keys = path.split('.');
+    let current: any = obj;
+    
+    for (const key of keys) {
+      if (current && typeof current === 'object' && key in current) {
+        current = current[key];
+      } else {
+        return undefined;
+      }
+    }
+    
+    return current;
   }
 
   // Message type specific publishing methods
-  publishTaskCreated(task: any, createdBy: string): number {
+  publishTaskCreated(task: import('../types').Task, createdBy: string): number {
     return this.publishTaskUpdate(task.id, task.board_id, {
-      type: 'task_created',
-      task,
-      createdBy,
+      type: 'task:created',
+      data: {
+        task,
+        createdBy,
+        boardId: task.board_id,
+      },
       timestamp: new Date().toISOString(),
     });
   }
 
-  publishTaskUpdated(task: any, changes: Record<string, any>, updatedBy: string): number {
+  publishTaskUpdated(task: import('../types').Task, changes: Record<string, unknown>, updatedBy: string): number {
     return this.publishTaskUpdate(task.id, task.board_id, {
-      type: 'task_updated',
-      task,
-      changes,
-      updatedBy,
+      type: 'task:updated',
+      data: {
+        task,
+        changes,
+        updatedBy,
+        boardId: task.board_id,
+      },
       timestamp: new Date().toISOString(),
     });
   }
 
   publishTaskDeleted(taskId: string, boardId: string, deletedBy: string): number {
     return this.publishTaskUpdate(taskId, boardId, {
-      type: 'task_deleted',
-      taskId,
-      boardId,
-      deletedBy,
+      type: 'task:deleted',
+      data: {
+        taskId,
+        deletedBy,
+        boardId,
+      },
       timestamp: new Date().toISOString(),
     });
   }
 
-  publishNoteAdded(note: any, taskId: string, boardId: string, addedBy: string): number {
+  publishNoteAdded(note: import('../types').Note, taskId: string, boardId: string, addedBy: string): number {
     return this.publishTaskUpdate(taskId, boardId, {
-      type: 'note_added',
-      note,
-      taskId,
-      boardId,
-      addedBy,
+      type: 'note:added',
+      data: {
+        note,
+        taskId,
+        boardId,
+        addedBy,
+      },
       timestamp: new Date().toISOString(),
     });
   }
 
   publishTagAssigned(taskId: string, tagId: string, boardId: string, assignedBy: string): number {
     return this.publishTaskUpdate(taskId, boardId, {
-      type: 'tag_assigned',
-      taskId,
-      tagId,
-      boardId,
-      assignedBy,
+      type: 'tag:assigned',
+      data: {
+        taskId,
+        tagId,
+        boardId,
+        assignedBy,
+      },
       timestamp: new Date().toISOString(),
     });
   }

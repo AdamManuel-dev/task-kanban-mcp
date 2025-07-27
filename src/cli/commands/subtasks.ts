@@ -31,7 +31,7 @@ export function registerSubtaskCommands(program: Command): void {
 
       try {
         // Verify parent task exists
-        const parentTask = await apiClient.getTask(parentId);
+        const parentTask = await apiClient.getTask(parentId) as any;
         if (!parentTask) {
           formatter.error(`Parent task ${parentId} not found`);
           process.exit(1);
@@ -100,7 +100,7 @@ export function registerSubtaskCommands(program: Command): void {
           subtaskData.dueDate = options.due || subtaskData.dueDate;
         }
 
-        const subtask = await apiClient.createTask(subtaskData);
+        const subtask = await apiClient.createTask(subtaskData) as any;
         formatter.success(`Subtask created successfully: ${subtask.id}`);
         formatter.output(subtask);
       } catch (error) {
@@ -129,7 +129,7 @@ export function registerSubtaskCommands(program: Command): void {
           params['status'] = options.status;
         }
 
-        const subtasks = await apiClient.getTasks(params);
+        const subtasks = await apiClient.getTasks(params) as any;
 
         if (!subtasks || subtasks.length === 0) {
           formatter.info(`No subtasks found for task ${parentId}`);
@@ -205,7 +205,7 @@ export function registerSubtaskCommands(program: Command): void {
       try {
         if (options.blocked) {
           // Show tasks that are blocked by this task
-          const blockedTasks = await apiClient.request(`/api/tasks/${taskId}/blocking`);
+          const blockedTasks = await apiClient.request(`/api/tasks/${taskId}/blocking`) as any;
 
           if (!blockedTasks || blockedTasks.length === 0) {
             formatter.info(`No tasks are blocked by task ${taskId}`);
@@ -219,7 +219,7 @@ export function registerSubtaskCommands(program: Command): void {
           });
         } else {
           // Show dependencies of this task
-          const dependencies = await apiClient.request(`/api/tasks/${taskId}/dependencies`);
+          const dependencies = await apiClient.request(`/api/tasks/${taskId}/dependencies`) as any;
 
           if (!dependencies || dependencies.length === 0) {
             formatter.info(`Task ${taskId} has no dependencies`);
@@ -251,7 +251,7 @@ export function registerSubtaskCommands(program: Command): void {
         const depth = parseInt(options.depth, 10);
         const graph = await apiClient.request(`/api/tasks/${taskId}/dependency-graph`, {
           params: { depth: depth.toString() },
-        });
+        }) as any;
 
         if (!graph) {
           formatter.info(`No dependency graph available for task ${taskId}`);

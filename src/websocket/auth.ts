@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { logger } from '@/utils/logger';
 import type { AuthenticationResult, WebSocketUser } from './types';
+import type { AuthPayload } from './messageTypes';
 
 export class WebSocketAuth {
   private readonly apiKeys: Map<string, WebSocketUser> = new Map();
@@ -30,7 +31,7 @@ export class WebSocketAuth {
     }
   }
 
-  async authenticate(payload: any): Promise<AuthenticationResult> {
+  async authenticate(payload: AuthPayload): Promise<AuthenticationResult> {
     try {
       if (!payload) {
         return {
@@ -74,7 +75,7 @@ export class WebSocketAuth {
         logger.warn('JWT authentication using default secret - configure JWT_SECRET in production');
       }
 
-      const decoded = jwt.verify(token, jwtSecret) as any;
+      const decoded = jwt.verify(token, jwtSecret) as { userId: string; exp?: number; iat?: number };
 
       if (!decoded.userId) {
         return {
@@ -279,7 +280,7 @@ export class WebSocketAuth {
       logger.warn('JWT generation using default secret - configure JWT_SECRET in production');
     }
 
-    const payload: any = {
+    const payload: { userId: string; iat: number; exp: number } = {
       userId: user.id,
       permissions,
     };

@@ -151,8 +151,8 @@ const configSchema = z.object({
  * Parses environment variable values to their appropriate types
  *
  * @param {string | undefined} value - The raw environment variable value
- * @param {any} defaultValue - The default value which determines the expected type
- * @returns {any} The parsed value in the appropriate type
+ * @param {unknown} defaultValue - The default value which determines the expected type
+ * @returns {unknown} The parsed value in the appropriate type
  *
  * @example
  * ```typescript
@@ -164,7 +164,7 @@ const configSchema = z.object({
  *
  * @private
  */
-function parseEnvVar(value: string | undefined, defaultValue: any): any {
+function parseEnvVar(value: string | undefined, defaultValue: unknown): unknown {
   if (value === undefined) return defaultValue;
 
   // Handle boolean values
@@ -199,9 +199,7 @@ function parseEnvVar(value: string | undefined, defaultValue: any): any {
 }
 
 // Helper function to access environment variables with bracket notation
-const getEnv = (key: string): string | undefined => {
-  return process.env[key];
-};
+const getEnv = (key: string): string | undefined => process.env[key];
 
 // Build configuration from environment variables
 const rawConfig = {

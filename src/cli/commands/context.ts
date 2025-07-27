@@ -24,7 +24,7 @@ export function registerContextCommands(program: Command): void {
 
       try {
         formatter.info('Generating current work context...');
-        const context = await apiClient.getContext();
+        const context = (await apiClient.getContext()) as any;
 
         if (!context) {
           formatter.info('No context available');
@@ -108,7 +108,7 @@ export function registerContextCommands(program: Command): void {
 
       try {
         formatter.info('Generating project summary...');
-        const summary = await apiClient.getProjectSummary();
+        const summary = (await apiClient.getProjectSummary()) as any;
 
         if (!summary) {
           formatter.info('No project summary available');
@@ -167,7 +167,7 @@ export function registerContextCommands(program: Command): void {
 
       try {
         formatter.info(`Generating context for task ${id}...`);
-        const taskContext = await apiClient.getTaskContext(id);
+        const taskContext = (await apiClient.getTaskContext(id)) as any;
 
         if (!taskContext) {
           formatter.error(`No context available for task ${id}`);
@@ -246,7 +246,7 @@ export function registerContextCommands(program: Command): void {
 
       try {
         formatter.info('Analyzing work patterns...');
-        const context = await apiClient.getContext();
+        const context = (await apiClient.getContext()) as any;
 
         if (!context?.insights) {
           formatter.info('No insights available');

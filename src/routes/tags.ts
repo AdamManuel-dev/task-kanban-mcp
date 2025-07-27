@@ -5,7 +5,7 @@ import { requirePermission } from '@/middleware/auth';
 import { TagValidation, validateInput } from '@/utils/validation';
 import { NotFoundError } from '@/utils/errors';
 
-export async function tagRoutes() {
+export async function tagRoutes(): Promise<Router> {
   const router = Router();
 
   const tagService = new TagService(dbConnection);

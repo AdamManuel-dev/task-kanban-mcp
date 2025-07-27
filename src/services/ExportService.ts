@@ -22,7 +22,20 @@ export interface ExportResult {
   format: string;
   itemCount: number;
   filePath?: string;
-  data?: any;
+  data?: ExportData;
+}
+
+export interface ExportData {
+  boards?: Board[];
+  tasks?: Task[];
+  tags?: Tag[];
+  notes?: Note[];
+  columns?: Column[];
+  metadata?: {
+    exportDate: string;
+    version: string;
+    totalItems: number;
+  };
 }
 
 export interface ImportOptions {
@@ -50,7 +63,7 @@ export class ExportService {
     logger.info('Starting JSON export', { options });
 
     try {
-      const data: any = {
+      const data: { version: string; exportDate: string; data: ExportData } = {
         version: '1.0',
         exportDate: new Date().toISOString(),
         data: {}
@@ -192,7 +205,7 @@ export class ExportService {
   /**
    * Import data from JSON
    */
-  async importFromJSON(data: any, options: ImportOptions): Promise<ImportResult> {
+  async importFromJSON(data: ExportData | { data: ExportData }, options: ImportOptions): Promise<ImportResult> {
     logger.info('Starting JSON import', { options });
     
     const result: ImportResult = {
@@ -272,7 +285,7 @@ export class ExportService {
             // Force rollback for validation
             throw new Error('VALIDATION_ONLY');
           });
-        } catch (error: any) {
+        } catch (error: unknown) {
           if (error.message !== 'VALIDATION_ONLY') {
             throw error;
           }
@@ -352,7 +365,7 @@ export class ExportService {
 
   private async getBoards(options: ExportOptions): Promise<Board[]> {
     let query = 'SELECT * FROM boards WHERE 1=1';
-    const params: any[] = [];
+    const params: unknown[] = [];
 
     if (options.boardIds && options.boardIds.length > 0) {
       query += ` AND id IN (${options.boardIds.map(() => '?').join(',')})`;
@@ -371,7 +384,7 @@ export class ExportService {
 
   private async getTasks(options: ExportOptions): Promise<Task[]> {
     let query = 'SELECT * FROM tasks WHERE 1=1';
-    const params: any[] = [];
+    const params: unknown[] = [];
 
     if (options.boardIds && options.boardIds.length > 0) {
       query += ` AND board_id IN (${options.boardIds.map(() => '?').join(',')})`;
@@ -401,13 +414,13 @@ export class ExportService {
     return this.db.query<Tag>('SELECT * FROM tags ORDER BY name');
   }
 
-  private async getTaskTags(_options: ExportOptions): Promise<any[]> {
+  private async getTaskTags(_options: ExportOptions): Promise<Array<{ task_id: string; tag_id: string }>> {
     return this.db.query('SELECT * FROM task_tags ORDER BY task_id, tag_id');
   }
 
   private async getNotes(options: ExportOptions): Promise<Note[]> {
     let query = 'SELECT * FROM notes WHERE 1=1';
-    const params: any[] = [];
+    const params: unknown[] = [];
 
     if (options.dateFrom) {
       query += ' AND created_at >= ?';
@@ -423,7 +436,7 @@ export class ExportService {
     return this.db.query<Note>(query, params);
   }
 
-  private convertToCSV(data: any[], columns: string[]): string {
+  private convertToCSV(data: unknown[], columns: string[]): string {
     const header = columns.join(',');
     const rows = data.map(item => {
       return columns.map(col => {
@@ -456,10 +469,10 @@ export class ExportService {
 
         await this.db.execute(
           'INSERT OR REPLACE INTO boards (id, name, description, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-          [board.id, board.name, board.description, (board as any).is_active || true, board.created_at, board.updated_at]
+          [board.id, board.name, board.description, (board as Board & { is_active?: boolean }).is_active ?? true, board.created_at, board.updated_at]
         );
         result.imported++;
-      } catch (error: any) {
+      } catch (error: unknown) {
         result.errors.push(`Failed to import board ${board.name}: ${error.message}`);
       }
     }
@@ -477,7 +490,7 @@ export class ExportService {
           [column.id, column.board_id, column.name, column.position, column.wip_limit, column.created_at, column.updated_at]
         );
         result.imported++;
-      } catch (error: any) {
+      } catch (error: unknown) {
         result.errors.push(`Failed to import column ${column.name}: ${error.message}`);
       }
     }
@@ -518,7 +531,7 @@ export class ExportService {
           ]
         );
         result.imported++;
-      } catch (error: any) {
+      } catch (error: unknown) {
         result.errors.push(`Failed to import task ${task.title}: ${error.message}`);
       }
     }
@@ -550,7 +563,7 @@ export class ExportService {
           [tag.id, tag.name, tag.color, tag.description, tag.parent_tag_id, tag.created_at]
         );
         result.imported++;
-      } catch (error: any) {
+      } catch (error: unknown) {
         result.errors.push(`Failed to import tag ${tag.name}: ${error.message}`);
       }
     }
@@ -568,7 +581,7 @@ export class ExportService {
           [note.id, note.content, note.category, note.task_id, note.pinned, note.created_at, note.updated_at]
         );
         result.imported++;
-      } catch (error: any) {
+      } catch (error: unknown) {
         result.errors.push(`Failed to import note: ${error.message}`);
       }
     }
@@ -576,7 +589,7 @@ export class ExportService {
     return result;
   }
 
-  private async importTaskTags(taskTags: any[], _options: ImportOptions): Promise<ImportResult> {
+  private async importTaskTags(taskTags: Array<{ task_id: string; tag_id: string }>, _options: ImportOptions): Promise<ImportResult> {
     const result: ImportResult = { imported: 0, skipped: 0, errors: [], conflicts: [] };
     
     for (const mapping of taskTags) {
@@ -586,7 +599,7 @@ export class ExportService {
           [mapping.task_id, mapping.tag_id, mapping.created_at]
         );
         result.imported++;
-      } catch (error: any) {
+      } catch (error: unknown) {
         result.errors.push(`Failed to import task-tag mapping: ${error.message}`);
       }
     }

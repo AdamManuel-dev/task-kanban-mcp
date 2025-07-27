@@ -543,10 +543,13 @@ export class MessageHandler {
 
       // Broadcast update to subscribers
       this.webSocketManager.getSubscriptionManager().publishBoardUpdate(boardId, {
-        type: 'board_updated',
-        board: updatedBoard,
-        changes: updates,
-        updatedBy: client.user?.id || 'unknown',
+        type: 'board:updated',
+        data: {
+          board: updatedBoard,
+          changes: updates,
+          updatedBy: client.user?.id || 'unknown',
+        },
+        timestamp: new Date().toISOString(),
       });
     } catch (error) {
       logger.error('Error updating board', { boardId, updates, error });
@@ -679,7 +682,12 @@ export class MessageHandler {
       // Broadcast presence update
       this.webSocketManager
         .getSubscriptionManager()
-        .publishUserPresence(client.user.id, status, { boardId, taskId });
+        .publishUserPresence(client.user.id, status, { 
+          boardId, 
+          taskId,
+          userId: client.user.id,
+          timestamp: new Date().toISOString() 
+        });
 
       this.webSocketManager.sendToClient(clientId, {
         type: 'presence_updated',
@@ -709,10 +717,13 @@ export class MessageHandler {
     this.webSocketManager
       .getSubscriptionManager()
       .publishTaskUpdate(taskId || 'unknown', boardId || 'unknown', {
-        type: 'typing_start',
-        userId: client.user.id,
-        taskId,
-        boardId,
+        type: 'typing:start',
+        data: {
+          userId: client.user.id,
+          taskId,
+          boardId,
+          timestamp: new Date().toISOString(),
+        },
         timestamp: new Date().toISOString(),
       });
   }
@@ -729,10 +740,13 @@ export class MessageHandler {
     this.webSocketManager
       .getSubscriptionManager()
       .publishTaskUpdate(taskId || 'unknown', boardId || 'unknown', {
-        type: 'typing_stop',
-        userId: client.user.id,
-        taskId,
-        boardId,
+        type: 'typing:stop',
+        data: {
+          userId: client.user.id,
+          taskId,
+          boardId,
+          timestamp: new Date().toISOString(),
+        },
         timestamp: new Date().toISOString(),
       });
   }

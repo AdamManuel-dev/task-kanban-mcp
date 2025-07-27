@@ -37,7 +37,7 @@ export class OutputFormatter {
   /**
    * Format and output data in the specified format
    */
-  output<T = any>(data: T, options?: { headers?: string[]; fields?: string[] }): void {
+  output<T = unknown>(data: T, options?: { headers?: string[]; fields?: string[] }): void {
     if (this.options.quiet && this.options.format !== 'json') {
       return;
     }
@@ -114,7 +114,7 @@ export class OutputFormatter {
       data = [data] as T;
     }
 
-    const items = data as any[];
+    const items = Array.isArray(data) ? data : [data];
     if (items.length === 0) {
       return;
     }
@@ -147,7 +147,7 @@ export class OutputFormatter {
       return;
     }
 
-    const items = data as any[];
+    const items = Array.isArray(data) ? data : [data];
     if (items.length === 0) {
       console.log(this.colorize('No items found', 'gray'));
       return;
@@ -156,7 +156,7 @@ export class OutputFormatter {
     const fields = options?.fields || this.getTableFields(items[0]);
     const headers = options?.headers || fields.map(field => this.formatHeader(field));
 
-    const table = new (Table as any)({
+    const table = new Table({
       head: headers.map(h => this.colorize(h, 'cyan')),
       style: {
         'padding-left': 1,
@@ -180,14 +180,14 @@ export class OutputFormatter {
    * Output single object as key-value table
    */
   private outputObjectTable<T>(obj: T): void {
-    const table = new (Table as any)({
+    const table = new Table({
       style: {
         'padding-left': 1,
         'padding-right': 1,
       },
     });
 
-    Object.entries(obj as any).forEach(([key, value]) => {
+    Object.entries(obj as Record<string, unknown>).forEach(([key, value]) => {
       table.push([
         this.colorize(this.formatHeader(key), 'cyan'),
         this.formatTableValue(value, key),
@@ -200,7 +200,7 @@ export class OutputFormatter {
   /**
    * Get nested value from object using dot notation
    */
-  private getNestedValue(obj: any, path: string): any {
+  private getNestedValue(obj: unknown, path: string): unknown {
     return path
       .split('.')
       .reduce((current, key) => (current && current[key] !== undefined ? current[key] : ''), obj);
@@ -209,7 +209,7 @@ export class OutputFormatter {
   /**
    * Format value for display
    */
-  private formatValue(value: any): string {
+  private formatValue(value: unknown): string {
     if (value === null || value === undefined) {
       return '';
     }
@@ -232,7 +232,7 @@ export class OutputFormatter {
   /**
    * Format value for table display with colors
    */
-  private formatTableValue(value: any, field: string): string {
+  private formatTableValue(value: unknown, field: string): string {
     const formatted = this.formatValue(value);
 
     if (!this.options.color) {
@@ -279,7 +279,7 @@ export class OutputFormatter {
   /**
    * Get appropriate fields for table display
    */
-  private getTableFields(obj: any): string[] {
+  private getTableFields(obj: Record<string, unknown>): string[] {
     const allFields = Object.keys(obj);
 
     // Define field priority for common objects
@@ -381,7 +381,7 @@ export class OutputFormatter {
   /**
    * Format backup schedule information
    */
-  formatSchedule(schedule: any): string {
+  formatSchedule(schedule: { name?: string; cron?: string; enabled?: boolean; next_run?: string }): string {
     const lines = [];
 
     // Header

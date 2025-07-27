@@ -45,12 +45,12 @@ export function registerSearchCommands(program: Command): void {
 
         const results = await apiClient.searchTasks(query, params);
 
-        if (!results || results.length === 0) {
+        if (!results || (results as any).length === 0) {
           formatter.info(`No tasks found for "${query}"`);
           return;
         }
 
-        formatter.success(`Found ${results.length} tasks matching "${query}"`);
+        formatter.success(`Found ${(results as any).length} tasks matching "${query}"`);
         formatter.output(results, {
           fields: ['id', 'title', 'status', 'priority', 'relevance', 'board'],
           headers: ['ID', 'Title', 'Status', 'Priority', 'Relevance', 'Board'],
@@ -85,12 +85,12 @@ export function registerSearchCommands(program: Command): void {
 
         const results = await apiClient.searchNotes(query);
 
-        if (!results || results.length === 0) {
+        if (!results || (results as any).length === 0) {
           formatter.info(`No notes found for "${query}"`);
           return;
         }
 
-        formatter.success(`Found ${results.length} notes matching "${query}"`);
+        formatter.success(`Found ${(results as any).length} notes matching "${query}"`);
         formatter.output(results, {
           fields: ['id', 'title', 'category', 'relevance', 'createdAt'],
           headers: ['ID', 'Title', 'Category', 'Relevance', 'Created'],
@@ -113,12 +113,12 @@ export function registerSearchCommands(program: Command): void {
       try {
         const results = await apiClient.searchTags(query);
 
-        if (!results || results.length === 0) {
+        if (!results || (results as any).length === 0) {
           formatter.info(`No tags found for "${query}"`);
           return;
         }
 
-        formatter.success(`Found ${results.length} tags matching "${query}"`);
+        formatter.success(`Found ${(results as any).length} tags matching "${query}"`);
         formatter.output(results, {
           fields: ['id', 'name', 'description', 'taskCount', 'parentId'],
           headers: ['ID', 'Name', 'Description', 'Tasks', 'Parent'],
@@ -165,7 +165,7 @@ export function registerSearchCommands(program: Command): void {
         let totalResults = 0;
         results.forEach((result, index) => {
           const type = searchTypes[index];
-          const count = result ? result.length : 0;
+          const count = result ? (result as any).length : 0;
           totalResults += count;
 
           if (count > 0 && type) {
@@ -237,14 +237,14 @@ export function registerSearchCommands(program: Command): void {
         if (options.dueAfter) params['dueAfter'] = options.dueAfter;
         if (options.dueBefore) params['dueBefore'] = options.dueBefore;
 
-        const results = await apiClient.request('/api/search/advanced', { params });
+        const results = await apiClient.request('/api/search/advanced', { params }) as any;
 
-        if (!results || results.length === 0) {
+        if (!results || (results as any).length === 0) {
           formatter.info('No results found with the specified filters');
           return;
         }
 
-        formatter.success(`Found ${results.length} results with advanced filters`);
+        formatter.success(`Found ${(results as any).length} results with advanced filters`);
         formatter.output(results, {
           fields: ['id', 'title', 'status', 'priority', 'dueDate', 'createdAt'],
           headers: ['ID', 'Title', 'Status', 'Priority', 'Due Date', 'Created'],

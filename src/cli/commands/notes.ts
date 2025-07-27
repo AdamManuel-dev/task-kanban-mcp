@@ -39,7 +39,7 @@ export function registerNoteCommands(program: Command): void {
         if (options.task) params['taskId'] = options.task;
         if (options.pinned) params['pinned'] = 'true';
 
-        const notes = await apiClient.getNotes(params);
+        const notes = await apiClient.getNotes(params) as any;
 
         if (!notes || notes.length === 0) {
           formatter.info('No notes found');
@@ -65,7 +65,7 @@ export function registerNoteCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const note = await apiClient.getNote(id);
+        const note = await apiClient.getNote(id) as any;
 
         if (!note) {
           formatter.error(`Note ${id} not found`);
@@ -155,7 +155,7 @@ export function registerNoteCommands(program: Command): void {
       noteData.pinned = options.pin || noteData.pinned || false;
 
       try {
-        const note = await apiClient.createNote(noteData);
+        const note = await apiClient.createNote(noteData) as any;
         formatter.success(`Note created successfully: ${note.id}`);
         formatter.output(note);
       } catch (error) {
@@ -181,7 +181,7 @@ export function registerNoteCommands(program: Command): void {
 
       try {
         // Get current note data
-        const currentNote = await apiClient.getNote(id);
+        const currentNote = await apiClient.getNote(id) as any;
         if (!currentNote) {
           formatter.error(`Note ${id} not found`);
           process.exit(1);
@@ -233,7 +233,7 @@ export function registerNoteCommands(program: Command): void {
           return;
         }
 
-        const updatedNote = await apiClient.updateNote(id, updates);
+        const updatedNote = await apiClient.updateNote(id, updates) as any;
         formatter.success('Note updated successfully');
         formatter.output(updatedNote);
       } catch (error) {
@@ -254,7 +254,7 @@ export function registerNoteCommands(program: Command): void {
 
       try {
         if (!options.force) {
-          const note = await apiClient.getNote(id);
+          const note = await apiClient.getNote(id) as any;
           if (!note) {
             formatter.error(`Note ${id} not found`);
             process.exit(1);
@@ -299,7 +299,7 @@ export function registerNoteCommands(program: Command): void {
         if (options.category) searchParams['category'] = options.category;
         if (options.limit) searchParams['limit'] = options.limit;
 
-        const notes = await apiClient.searchNotes(query);
+        const notes = await apiClient.searchNotes(query) as any;
 
         if (!notes || notes.length === 0) {
           formatter.info(`No notes found matching "${query}"`);

@@ -111,8 +111,8 @@ export const UnsubscribeMessageSchema = WebSocketMessageBaseSchema.extend({
  */
 export function validateWebSocketMessage(
   message: unknown
-): { type: string; payload?: unknown; id?: string } | null {
-  if (!isRecord(message) || !isString(message.type)) {
+): { type: string; payload?: unknown; id?: string | undefined } | null {
+  if (!isRecord(message) || !isString(message['type'])) {
     return null;
   }
 
@@ -124,7 +124,7 @@ export function validateWebSocketMessage(
     return {
       type: base.type,
       id: base.id,
-      payload: hasProperty(message, 'payload') ? message.payload : undefined,
+      payload: hasProperty(message, 'payload') ? message['payload'] : undefined,
     };
   } catch {
     return null;
@@ -157,10 +157,10 @@ export function createApiResponseHandler<T>(schema: z.ZodType<T>) {
 
       try {
         const errorData = JSON.parse(text);
-        if (isRecord(errorData) && isString(errorData.error)) {
-          errorMessage = errorData.error;
-        } else if (isRecord(errorData) && isString(errorData.message)) {
-          errorMessage = errorData.message;
+        if (isRecord(errorData) && isString(errorData['error'])) {
+          errorMessage = errorData['error'];
+        } else if (isRecord(errorData) && isString(errorData['message'])) {
+          errorMessage = errorData['message'];
         }
       } catch {
         // Use text as error message if not JSON

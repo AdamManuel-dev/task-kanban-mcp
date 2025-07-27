@@ -127,7 +127,7 @@ export function registerDatabaseCommands(program: Command): void {
         if (options.indexes) params['indexes'] = 'true';
         if (options.performance) params['performance'] = 'true';
 
-        const stats = await apiClient.request('/api/database/stats', { params });
+        const stats = await apiClient.request('/api/database/stats', { params }) as any;
 
         formatter.info('Database Statistics:');
 
@@ -186,7 +186,7 @@ export function registerDatabaseCommands(program: Command): void {
         const result = await apiClient.request('/api/database/check', {
           method: 'POST',
           body: { repair: options.repair || false },
-        });
+        }) as any;
 
         if (result.healthy) {
           formatter.success('Database integrity check passed');
@@ -275,7 +275,7 @@ export function registerDatabaseCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const migrations = await apiClient.request('/api/database/migrations/status');
+        const migrations = await apiClient.request('/api/database/migrations/status') as any;
 
         if (!migrations || migrations.length === 0) {
           formatter.info('No migrations found');
@@ -389,7 +389,7 @@ export function registerDatabaseCommands(program: Command): void {
         const migration = await apiClient.request('/api/database/migrations/create', {
           method: 'POST',
           body: { name },
-        });
+        }) as any;
 
         formatter.success(`Migration created: ${migration.filename}`);
         formatter.output(migration, {

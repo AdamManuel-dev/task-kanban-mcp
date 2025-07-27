@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { config } from '@/config';
 import { logger } from '@/utils/logger';
 import type { WebSocketMessage, WebSocketClient, WebSocketError } from './types';
+import type { RequestInfo } from './messageTypes';
 import { WebSocketAuth } from './auth';
 import { MessageHandler } from './handlers';
 import { SubscriptionManager } from './subscriptions';
@@ -122,9 +123,9 @@ export class WebSocketManager {
     }
   }
 
-  private async handleConnection(ws: WebSocket, request: any): Promise<void> {
+  private async handleConnection(ws: WebSocket, request: RequestInfo): Promise<void> {
     const clientId = uuidv4();
-    const clientIP = request.socket.remoteAddress;
+    const clientIP = request.socket.remoteAddress || 'unknown';
 
     logger.info('New WebSocket connection', { clientId, clientIP });
 

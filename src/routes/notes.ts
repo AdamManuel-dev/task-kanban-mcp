@@ -5,7 +5,7 @@ import { requirePermission } from '@/middleware/auth';
 import { NoteValidation, validateInput } from '@/utils/validation';
 import { NotFoundError } from '@/utils/errors';
 
-export async function noteRoutes() {
+export async function noteRoutes(): Promise<Router> {
   const router = Router();
 
   const noteService = new NoteService(dbConnection);

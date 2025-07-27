@@ -9,7 +9,7 @@ import { requirePermission } from '@/middleware/auth';
 // import { validateInput } from '@/utils/validation'; // Unused
 import { NotFoundError } from '@/utils/errors';
 
-export async function contextRoutes() {
+export async function contextRoutes(): Promise<Router> {
   const router = Router();
 
   const boardService = new BoardService(dbConnection);

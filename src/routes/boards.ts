@@ -6,7 +6,7 @@ import { requirePermission } from '@/middleware/auth';
 import { BoardValidation, validateInput } from '@/utils/validation';
 import { NotFoundError } from '@/utils/errors';
 
-export async function boardRoutes() {
+export async function boardRoutes(): Promise<Router> {
   const router = Router();
 
   const boardService = new BoardService(dbConnection);

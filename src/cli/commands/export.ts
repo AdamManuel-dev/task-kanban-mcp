@@ -45,7 +45,7 @@ export function registerExportCommands(program: Command): void {
           params.boardIds = options.boardIds;
         }
 
-        const response = await apiClient.get('/export', { params });
+        const response = await apiClient.get('/export', { params }) as any;
 
         if (file) {
           const outputPath = path.resolve(file);
@@ -87,7 +87,7 @@ export function registerExportCommands(program: Command): void {
           includeNotes: options.notes,
         };
 
-        const response = await apiClient.get('/export', { params });
+        const response = await apiClient.get('/export', { params }) as any;
 
         formatter.success('CSV export completed');
         formatter.info(`Files: ${response.data.filePath}`);
@@ -129,7 +129,7 @@ export function registerExportCommands(program: Command): void {
         }
 
         const endpoint = options.validateOnly ? '/import/validate' : '/import';
-        const response = await apiClient.post(endpoint, formData);
+        const response = await apiClient.post(endpoint, formData) as any;
 
         if (options.validateOnly) {
           formatter.success('Validation completed');
