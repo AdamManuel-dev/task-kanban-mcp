@@ -81,7 +81,7 @@ export function registerPriorityCommands(program: Command): void {
 
         let filteredTasks = priorities;
         if (options.status) {
-          filteredTasks = priorities.filter((task: any) => task.status === options.status);
+          filteredTasks = priorities.filter((task: { status: string }) => task.status === options.status);
         }
 
         const limitedTasks = filteredTasks.slice(0, parseInt(String(options.limit || '20'), 10));
@@ -140,7 +140,7 @@ export function registerPriorityCommands(program: Command): void {
           process.exit(1);
         }
 
-        const updateData: any = { priority: priorityNum };
+        const updateData: { priority: number; reason?: string } = { priority: priorityNum };
         if (options.reason) {
           updateData.priorityReason = options.reason;
         }
@@ -676,7 +676,7 @@ function getPriorityChangeIcon(oldPriority: string, newPriority: string): string
   return '➡️'; // Same priority
 }
 
-function getPriorityChangeColor(oldPriority: string, newPriority: string) {
+function getPriorityChangeColor(oldPriority: string, newPriority: string): typeof chalk.red {
   const oldNum = parseInt(oldPriority) || 0;
   const newNum = parseInt(newPriority) || 0;
 
@@ -702,7 +702,7 @@ function getTrendIcon(trend: string): string {
   }
 }
 
-function getTrendColor(trend: string) {
+function getTrendColor(trend: string): typeof chalk.red {
   switch (trend) {
     case 'increasing':
       return chalk.red;
@@ -737,7 +737,7 @@ function getPatternIcon(patternType: string): string {
   }
 }
 
-function getScoreColor(score: number) {
+function getScoreColor(score: number): typeof chalk.red {
   if (score >= 0.8) return chalk.red.bold;
   if (score >= 0.6) return chalk.yellow.bold;
   if (score >= 0.4) return chalk.blue.bold;

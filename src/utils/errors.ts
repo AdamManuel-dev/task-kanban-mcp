@@ -771,7 +771,7 @@ export const globalErrorHandler = new GlobalErrorHandler();
  * }
  * ```
  */
-export function createServiceErrorHandler(serviceName: string) {
+export function createServiceErrorHandler(serviceName: string): <T extends Record<string, unknown>>(target: T, propertyKey: string, descriptor: PropertyDescriptor) => PropertyDescriptor {
   return function handleServiceError<T extends Record<string, unknown>>(
     _target: T,
     propertyKey: string,
@@ -872,7 +872,7 @@ export function withErrorContext<TFn extends (...args: unknown[]) => unknown>(
  * }
  * ```
  */
-export function createErrorBoundary(serviceName: string) {
+export function createErrorBoundary(serviceName: string): <T extends new (...args: any[]) => object>(constructor: T) => T {
   return function <T extends new (...args: any[]) => object>(constructor: T): T {
     return class extends constructor {
       constructor(...args: any[]) {

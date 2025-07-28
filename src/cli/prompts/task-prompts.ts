@@ -1,4 +1,3 @@
-import { prompt } from 'enquirer';
 import chalk from 'chalk';
 import type { Priority, TaskSize } from './validators';
 import {
@@ -9,95 +8,29 @@ import {
   TASK_SIZES,
 } from './validators';
 import { TaskSizeEstimator } from '../estimation/task-size-estimator';
+import { logger } from '../../utils/logger';
+import { safePrompt, createFormatter } from './utils';
+import { withErrorHandling } from './errors';
+import type {
+  TaskInput,
+  MoveTaskInput,
+  BulkActionInput,
+  TaskEstimation
+} from './types';
 
-// Define the prompt options type based on enquirer's internal types
+// Create formatter for task prompts
+const formatter = createFormatter('task-prompts');
 
-interface TaskEstimation {
-  size: TaskSize;
-  avgHours: number;
-  confidence: string;
-  reasoning: string[];
-}
-
-interface FormatterInterface {
-  info: (message: string) => void;
-  success: (message: string) => void;
-  warn: (message: string) => void;
-  error: (message: string) => void;
-}
-
-// Simple formatter for prompts - falls back to console if no proper formatter available
-const simpleFormatter: FormatterInterface = {
-  info: (message: string): void => console.log(chalk.cyan(message)),
-  success: (message: string): void => console.log(chalk.green(message)),
-  warn: (message: string): void => console.log(chalk.yellow(message)),
-  error: (message: string): void => console.log(chalk.red(message)),
-};
-
-/**
- * Error thrown when a prompt is cancelled
- */
-export class PromptCancelledError extends Error {
-  constructor(message = 'Prompt was cancelled by user') {
-    super(message);
-    this.name = 'PromptCancelledError';
-  }
-}
-
-/**
- * Wrapper for prompt that handles cancellation
- */
-async function safePrompt<T>(promptConfig: any): Promise<T> {
-  try {
-    return await prompt(promptConfig);
-  } catch (error) {
-    // Check if it's a cancellation (Ctrl+C, ESC, etc.)
-    if (error instanceof Error) {
-      const errorMessage = error.message.toLowerCase();
-      if (
-        errorMessage.includes('cancel') ||
-        errorMessage.includes('abort') ||
-        errorMessage.includes('interrupt') ||
-        error.name === 'SIGINT'
-      ) {
-        throw new PromptCancelledError(`Operation cancelled: ${error.message}`);
-      }
-    }
-    // Re-throw other errors
-    throw error;
-  }
-}
-
-export interface TaskInput {
-  title: string;
-  description?: string;
-  priority?: Priority;
-  size?: TaskSize;
-  assignee?: string;
-  due_date?: string;
-  estimated_hours?: number;
-  tags?: string[];
-}
-
-export interface MoveTaskInput {
-  taskId: string;
-  targetColumn: string;
-  position?: number;
-}
-
-export interface BulkActionInput {
-  taskIds: string[];
-  action: 'move' | 'delete' | 'archive' | 'assign' | 'tag';
-  params?: Record<string, unknown>;
-}
+// Types are now imported from ./types
 
 /**
  * Create task interactive prompt
  */
 export async function createTaskPrompt(defaults?: Partial<TaskInput>): Promise<TaskInput> {
-  try {
-    simpleFormatter.info('\n📝 Create New Task\n');
-    simpleFormatter.info(chalk.gray('Press Ctrl+C to cancel at any time\n'));
+  return withErrorHandling('Task creation', async () => {
+    logger.info('Starting task creation prompt', { hasDefaults: !!defaults });
+    formatter.info('\n📝 Create New Task\n');
+    formatter.info(chalk.gray('Press Ctrl+C to cancel at any time\n'));
 
     // Create estimator instance
     const estimator = new TaskSizeEstimator();
@@ -127,27 +60,37 @@ export async function createTaskPrompt(defaults?: Partial<TaskInput>): Promise<T
 
     if (basicInfo.title) {
       try {
-        estimation = estimator.estimateTime({
+        logger.debug('Generating task size estimation', { title: basicInfo.title });
+        const taskForEstimation = {
           title: basicInfo.title,
-          description: basicInfo.description,
-        }) as TaskEstimation;
+          ...(basicInfo.description && { description: basicInfo.description }),
+        };
+        const estimateResult = estimator.estimateTime(taskForEstimation);
+        estimation = {
+          size: estimateResult.size,
+          avgHours: estimateResult.avgHours,
+          confidence: estimateResult.confidence,
+          reasoning: estimateResult.reasoning
+        };
         suggestedSize = estimation.size;
+        logger.debug('Size estimation completed', { suggestedSize, avgHours: estimation.avgHours });
 
         // Show estimation
-        simpleFormatter.info(chalk.cyan('\n🤖 AI Size Estimation:'));
-        simpleFormatter.info(
+        formatter.info(chalk.cyan('\n🤖 AI Size Estimation:'));
+        formatter.info(
           chalk.yellow(`  Suggested Size: ${suggestedSize} (${estimation.avgHours} hours)`)
         );
-        simpleFormatter.info(chalk.gray(`  Confidence: ${estimation.confidence}`));
+        formatter.info(chalk.gray(`  Confidence: ${Math.round(estimation.confidence * 100)}%`));
         if (estimation.reasoning?.length > 0) {
-          simpleFormatter.info(chalk.gray('  Reasoning:'));
+          formatter.info(chalk.gray('  Reasoning:'));
           estimation.reasoning.forEach((reason: string) => {
-            simpleFormatter.info(chalk.gray(`    • ${reason}`));
+            formatter.info(chalk.gray(`    • ${reason}`));
           });
         }
-        simpleFormatter.info('');
+        formatter.info('');
       } catch (error) {
-        simpleFormatter.warn('⚠️  Size estimation unavailable\n');
+        logger.warn('Size estimation failed', { error: error instanceof Error ? error.message : String(error) });
+        formatter.warn('⚠️  Size estimation unavailable\n');
       }
     }
 
@@ -260,10 +203,10 @@ export async function createTaskPrompt(defaults?: Partial<TaskInput>): Promise<T
     if (response.description?.trim()) {
       cleanedResponse.description = response.description.trim();
     }
-    if (response.priority && response.priority !== ('undefined' as any)) {
+    if (response.priority && typeof response.priority === 'string') {
       cleanedResponse.priority = response.priority as Priority;
     }
-    if (response.size && response.size !== ('undefined' as any)) {
+    if (response.size && typeof response.size === 'string') {
       cleanedResponse.size = response.size as TaskSize;
     }
     if (response.assignee?.trim()) {
@@ -281,17 +224,16 @@ export async function createTaskPrompt(defaults?: Partial<TaskInput>): Promise<T
         .filter((tag: string) => tag.length > 0);
     }
 
+    logger.info('Task creation completed', {
+      title: cleanedResponse.title,
+      priority: cleanedResponse.priority,
+      size: cleanedResponse.size,
+      hasDueDate: !!cleanedResponse.due_date,
+      hasAssignee: !!cleanedResponse.assignee,
+      tagCount: cleanedResponse.tags?.length ?? 0
+    });
     return cleanedResponse;
-  } catch (error) {
-    if (error instanceof PromptCancelledError) {
-      simpleFormatter.warn('\n⚠️  Task creation cancelled\n');
-      throw error;
-    }
-    simpleFormatter.error(
-      `\n❌ Failed to create task: ${error instanceof Error ? error.message : String(error)}`
-    );
-    throw error;
-  }
+  }, { hasDefaults: !!defaults });
 }
 
 /**
@@ -301,9 +243,10 @@ export async function moveTaskPrompt(
   taskId: string,
   availableColumns: Array<{ id: string; name: string; taskCount: number }>
 ): Promise<MoveTaskInput> {
-  try {
-    simpleFormatter.info(chalk.cyan(`\n🔄 Move Task ${taskId}\n`));
-    simpleFormatter.info(chalk.gray('Press Ctrl+C to cancel at any time\n'));
+  return withErrorHandling('Move task', async () => {
+    logger.info('Starting move task prompt', { taskId, availableColumns: availableColumns.length });
+    formatter.info(chalk.cyan(`\n🔄 Move Task ${taskId}\n`));
+    formatter.info(chalk.gray('Press Ctrl+C to cancel at any time\n'));
 
     const response = await safePrompt<{
       targetColumn: string;
@@ -351,21 +294,14 @@ export async function moveTaskPrompt(
     }
     // 'bottom' leaves position undefined, which means append
 
-    return {
+    const result: MoveTaskInput = {
       taskId,
       targetColumn: response.targetColumn,
-      position: position ?? undefined,
+      ...(position !== undefined && { position }),
     };
-  } catch (error) {
-    if (error instanceof PromptCancelledError) {
-      simpleFormatter.warn('\n⚠️  Move operation cancelled\n');
-      throw error;
-    }
-    simpleFormatter.error(
-      `\n❌ Failed to move task: ${error instanceof Error ? error.message : String(error)}`
-    );
-    throw error;
-  }
+    logger.info('Move task completed', result);
+    return result;
+  }, { taskId, availableColumns: availableColumns.length });
 }
 
 /**
@@ -374,21 +310,25 @@ export async function moveTaskPrompt(
 export async function bulkTaskActionPrompt(
   tasks: Array<{ id: string; title: string; status: string }>
 ): Promise<BulkActionInput | null> {
-  try {
-    simpleFormatter.info(chalk.cyan(`\n📦 Bulk Action for ${tasks.length} tasks\n`));
-    simpleFormatter.info(chalk.gray('Press Ctrl+C to cancel at any time\n'));
+  return withErrorHandling('Bulk task action', async () => {
+    logger.info('Starting bulk action prompt', { 
+      taskCount: tasks.length, 
+      taskIds: tasks.map(t => t.id) 
+    });
+    formatter.info(chalk.cyan(`\n📦 Bulk Action for ${tasks.length} tasks\n`));
+    formatter.info(chalk.gray('Press Ctrl+C to cancel at any time\n'));
 
     // Show selected tasks
-    simpleFormatter.info(chalk.gray('Selected tasks:'));
+    formatter.info(chalk.gray('Selected tasks:'));
     tasks.forEach((task, index) => {
       if (index < 5) {
-        simpleFormatter.info(chalk.gray(`  - [${task.id}] ${task.title}`));
+        formatter.info(chalk.gray(`  - [${task.id}] ${task.title}`));
       }
     });
     if (tasks.length > 5) {
-      simpleFormatter.info(chalk.gray(`  ... and ${tasks.length - 5} more`));
+      formatter.info(chalk.gray(`  ... and ${tasks.length - 5} more`));
     }
-    simpleFormatter.info('');
+    formatter.info('');
 
     const { action } = await safePrompt<{ action: string }>({
       type: 'select',
@@ -405,6 +345,7 @@ export async function bulkTaskActionPrompt(
     });
 
     if (action === 'cancel') {
+      logger.info('Bulk action cancelled by user', { taskCount: tasks.length });
       return null;
     }
 
@@ -477,21 +418,14 @@ export async function bulkTaskActionPrompt(
         throw new Error(`Unknown action: ${action}`);
     }
 
-    return {
+    const result: BulkActionInput = {
       taskIds,
       action: action as BulkActionInput['action'],
-      params: Object.keys(params).length > 0 ? params : undefined,
+      ...(Object.keys(params).length > 0 && { params }),
     };
-  } catch (error) {
-    if (error instanceof PromptCancelledError) {
-      simpleFormatter.warn('\n⚠️  Bulk action cancelled\n');
-      return null;
-    }
-    simpleFormatter.error(
-      `\n❌ Failed to execute bulk action: ${error instanceof Error ? error.message : String(error)}`
-    );
-    throw error;
-  }
+    logger.info('Bulk action completed', { action, taskCount: taskIds.length, params });
+    return result;
+  }, { taskCount: tasks.length });
 }
 
 /**
@@ -504,9 +438,10 @@ export async function taskFilterPrompt(): Promise<{
   tags?: string[];
   dateRange?: { start: string; end: string };
 }> {
-  try {
-    simpleFormatter.info(chalk.cyan('\n🔍 Filter Tasks\n'));
-    simpleFormatter.info(chalk.gray('Press Ctrl+C to cancel at any time\n'));
+  return withErrorHandling('Task filter configuration', async () => {
+    logger.info('Starting task filter prompt');
+    formatter.info(chalk.cyan('\n🔍 Filter Tasks\n'));
+    formatter.info(chalk.gray('Press Ctrl+C to cancel at any time\n'));
 
     const response = await safePrompt<{
       filterBy: string[];
@@ -531,7 +466,13 @@ export async function taskFilterPrompt(): Promise<{
         type: 'multiselect',
         name: 'status',
         message: 'Select statuses:',
-        choices: ['todo', 'in_progress', 'done', 'blocked', 'cancelled'],
+        choices: [
+          { name: 'To Do', value: 'todo' },
+          { name: 'In Progress', value: 'in_progress' },
+          { name: 'Done', value: 'done' },
+          { name: 'Blocked', value: 'blocked' },
+          { name: 'Cancelled', value: 'cancelled' }
+        ],
       });
       if (status.length > 0) filters['status'] = status;
     }
@@ -587,15 +528,10 @@ export async function taskFilterPrompt(): Promise<{
       }
     }
 
+    logger.info('Filter configuration completed', { 
+      filterTypes: Object.keys(filters),
+      filterCount: Object.keys(filters).length 
+    });
     return filters;
-  } catch (error) {
-    if (error instanceof PromptCancelledError) {
-      simpleFormatter.warn('\n⚠️  Filter cancelled\n');
-      return {};
-    }
-    simpleFormatter.error(
-      `\n❌ Failed to apply filters: ${error instanceof Error ? error.message : String(error)}`
-    );
-    throw error;
-  }
+  });
 }

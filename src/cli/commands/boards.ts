@@ -50,12 +50,12 @@ interface ShowBoardOptions {
 interface BoardData {
   id: string;
   name: string;
-  description?: string;
+  description?: string | undefined;
   archived: boolean;
   createdAt: string;
-  updatedAt?: string;
-  columns?: Column[];
-  tasks?: Task[];
+  updatedAt?: string | undefined;
+  columns?: Column[] | undefined;
+  tasks?: Task[] | undefined;
 }
 
 interface ApiColumnData {
@@ -409,7 +409,16 @@ export function registerBoardCommands(program: Command): void {
         let shouldRefresh = false;
 
         const InteractiveBoardView = (): React.ReactElement => {
-          const [currentBoard, setCurrentBoard] = React.useState<Board>(board);
+          const [currentBoard, setCurrentBoard] = React.useState<BoardData>({
+            id: board.id,
+            name: board.name,
+            description: board.description || undefined,
+            archived: board.archived,
+            createdAt: board.created_at.toISOString(),
+            updatedAt: board.updated_at.toISOString(),
+            columns: [],
+            tasks: []
+          });
 
           // Auto-refresh functionality
           React.useEffect(() => {
@@ -433,10 +442,18 @@ export function registerBoardCommands(program: Command): void {
                         archived: false,
                       };
 
-                      // TODO: Process refreshed columns and tasks when needed
-                      // const refreshedColumns: Column[] = (apiResponse.columns ?? []).map(...);
-                      // const refreshedTasks: Task[] = (apiResponse.columns ?? []).flatMap(...);
-                      setCurrentBoard(refreshedBoard);
+                      // Process refreshed board data with proper typing
+                      const boardWithContent: BoardData = {
+                        id: refreshedBoard.id,
+                        name: refreshedBoard.name,
+                        description: refreshedBoard.description || undefined,
+                        archived: refreshedBoard.archived,
+                        createdAt: refreshedBoard.created_at.toISOString(),
+                        updatedAt: refreshedBoard.updated_at.toISOString(),
+                        columns: (refreshedApiResponse.columns || []) as Column[],
+                        tasks: [],
+                      };
+                      setCurrentBoard(boardWithContent);
                     }
                   } catch (error) {
                     // Silently fail refresh
@@ -459,10 +476,20 @@ export function registerBoardCommands(program: Command): void {
             shouldRefresh = true;
           }, []);
 
+          const boardForView: Board = {
+            id: currentBoard.id,
+            name: currentBoard.name,
+            description: currentBoard.description,
+            color: '#2196F3',
+            created_at: new Date(currentBoard.createdAt),
+            updated_at: new Date(currentBoard.updatedAt || currentBoard.createdAt),
+            archived: currentBoard.archived
+          };
+
           return React.createElement(BoardView, {
-            board: currentBoard,
-            columns: [], // TODO: Get columns from API
-            tasks: [], // TODO: Get tasks from API
+            board: boardForView,
+            columns: currentBoard.columns || [],
+            tasks: currentBoard.tasks || [],
             showDetails: false,
           });
         };
@@ -620,10 +647,8 @@ export function registerBoardCommands(program: Command): void {
           updates = answers;
         } else {
           // Use command line options
-          // eslint-disable-next-line dot-notation
-          if (options.name) updates['name'] = options.name;
-          // eslint-disable-next-line dot-notation
-          if (options.description) updates['description'] = options.description;
+          if (options.name) updates.name = options.name;
+          if (options.description) updates.description = options.description;
         }
 
         if (Object.keys(updates).length === 0) {

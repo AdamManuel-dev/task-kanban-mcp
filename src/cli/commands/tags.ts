@@ -129,8 +129,17 @@ export function registerTagCommands(program: Command): void {
         });
 
         if (options.tasks) {
-          // TODO: Implement task listing for tag
-          formatter.info('Task listing for tags not yet implemented');
+          // Get tasks with this tag
+          const tasksResponse = await apiClient.getTasks({ tags: id });
+          if (tasksResponse && 'data' in tasksResponse && tasksResponse.data) {
+            formatter.info(`\n📋 Tasks with tag "${tag.name}":`);
+            formatter.output(tasksResponse, {
+              fields: ['id', 'title', 'status', 'priority'],
+              headers: ['ID', 'Title', 'Status', 'Priority']
+            });
+          } else {
+            formatter.info(`No tasks found with tag "${tag.name}"`);
+          }
         }
       } catch (error) {
         formatter.error(
@@ -152,7 +161,7 @@ export function registerTagCommands(program: Command): void {
     .action(async (options: CreateTagOptions) => {
       const { apiClient, formatter } = getComponents();
 
-      let tagData: any = {};
+      let tagData: { name?: string; description?: string; color?: string; parentId?: string } = {};
 
       if (options.interactive || !options.name) {
         const answers = await inquirer.prompt([
@@ -220,7 +229,7 @@ export function registerTagCommands(program: Command): void {
           process.exit(1);
         }
 
-        let updates: any = {};
+        let updates: Partial<{ name: string; description: string; color: string; parentId: string }> = {};
 
         if (options.interactive) {
           const answers = await inquirer.prompt([
@@ -386,8 +395,8 @@ export function registerTagCommands(program: Command): void {
 
 // Helper function to display tag tree
 function displayTagTree(
-  tags: any[],
-  allTags: any[],
+  tags: Array<{ id: string; name: string; parentId?: string }>,
+  allTags: Array<{ id: string; name: string; parentId?: string }>,
   formatter: OutputFormatter,
   depth: number
 ): void {
@@ -399,7 +408,7 @@ function displayTagTree(
     );
 
     // Find and display children
-    const children = allTags.filter((t: any) => t.parentId === tag.id);
+    const children = allTags.filter((t) => t.parentId === tag.id);
     if (children.length > 0) {
       displayTagTree(children, allTags, formatter, depth + 1);
     }

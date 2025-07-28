@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { logger } from '@/utils/logger';
 
-export function requestLoggingMiddleware(req: Request, res: Response, next: NextFunction) {
+export function requestLoggingMiddleware(req: Request, res: Response, next: NextFunction): void {
   const startTime = Date.now();
 
   // Log incoming request

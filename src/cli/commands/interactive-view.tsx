@@ -2,14 +2,21 @@ import React, { useState } from 'react';
 import { render, useApp, useInput } from 'ink';
 import { Command } from 'commander';
 import chalk from 'chalk';
-import { type Task, type BoardWithColumns } from '@/types';
+import { type Task, type BoardWithColumns, type Board, type Column } from '@/types';
 import BoardView from '../ui/components/BoardView';
 import { createTaskList } from '../ui/components/TaskList';
 import { StatusIndicatorFormatter } from '../ui/components/StatusIndicator';
 
+interface InteractiveViewData {
+  tasks: Task[];
+  boards: Board[];
+  columns: Column[];
+  board?: BoardWithColumns;
+}
+
 interface InteractiveViewProps {
   mode: 'tasks' | 'board';
-  data: any;
+  data: InteractiveViewData;
 }
 
 const InteractiveView: React.FC<InteractiveViewProps> = ({ mode, data }) => {
@@ -163,7 +170,7 @@ const InteractiveView: React.FC<InteractiveViewProps> = ({ mode, data }) => {
 };
 
 // Sample data generator
-const generateSampleData = (): { tasks: Task[]; boards: any[]; columns: any[] } => {
+const generateSampleData = (): InteractiveViewData => {
   const now = new Date();
   const sampleTasks: Task[] = [
     {
@@ -315,7 +322,7 @@ export const interactiveViewCommand = new Command('interactive')
   });
 
 // Placeholder for real data fetching
-function fetchRealData(): { tasks: Task[]; boards: any[]; columns: any[] } {
+function fetchRealData(): InteractiveViewData {
   // This would connect to the actual API
   // For now, return sample data
   return generateSampleData();

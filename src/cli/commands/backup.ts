@@ -648,11 +648,8 @@ export function registerBackupCommands(program: Command): void {
       try {
         const params: Record<string, string> = {};
 
-        // eslint-disable-next-line dot-notation
         if (options.enabled) params['enabled'] = 'true';
-        // eslint-disable-next-line dot-notation
         if (options.disabled) params['enabled'] = 'false';
-        // eslint-disable-next-line dot-notation
         if (options.limit) params['limit'] = options.limit;
 
         const response = await apiClient.request<AnyApiResponse>(

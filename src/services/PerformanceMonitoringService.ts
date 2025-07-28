@@ -134,7 +134,7 @@ export class PerformanceMonitoringService extends EventEmitter {
   /**
    * Express middleware for performance tracking
    */
-  trackPerformance() {
+  trackPerformance(): (req: Request, res: Response, next: NextFunction) => void {
     return (req: Request, res: Response, next: NextFunction): void => {
       const startTime = Date.now();
       const startCpuUsage = process.cpuUsage();

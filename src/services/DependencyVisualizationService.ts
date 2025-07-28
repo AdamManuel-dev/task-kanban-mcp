@@ -255,7 +255,7 @@ export class DependencyVisualizationService {
       const visited = new Set<string>();
 
       // Find all indirect dependents using DFS
-      const findIndirectDependents = (nodeId: string) => {
+      const findIndirectDependents = (nodeId: string): void => {
         if (visited.has(nodeId)) return;
         visited.add(nodeId);
 

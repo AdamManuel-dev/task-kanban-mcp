@@ -11,6 +11,28 @@ import type {
 } from '../types';
 import { isSuccessResponse } from '../api-client-wrapper';
 
+interface AnonymizeExportOptions {
+  boards?: boolean;
+  tasks?: boolean;
+  tags?: boolean;
+  notes?: boolean;
+  boardIds?: string;
+  format?: string;
+  anonymizeUserData?: boolean;
+  anonymizeTaskTitles?: boolean;
+  anonymizeDescriptions?: boolean;
+  anonymizeNotes?: boolean;
+  preserveStructure?: boolean;
+  hashSeed?: string;
+}
+
+interface ConvertOptions {
+  from?: string;
+  to?: string;
+  delimiter?: string;
+  pretty?: boolean;
+}
+
 export function registerExportCommands(program: Command): void {
   const exportCmd = program.command('export').alias('e').description('Export data');
 
@@ -197,7 +219,7 @@ export function registerExportCommands(program: Command): void {
     .option('--anonymize-notes', 'Anonymize note content', true)
     .option('--preserve-structure', 'Preserve data structure while anonymizing')
     .option('--hash-seed <seed>', 'Custom hash seed for deterministic anonymization')
-    .action(async (file: string | undefined, options: any) => {
+    .action(async (file: string | undefined, options: AnonymizeExportOptions) => {
       try {
         const { apiClient, formatter } = getComponents();
 
@@ -268,11 +290,11 @@ export function registerExportCommands(program: Command): void {
     .option('--to <format>', 'Output format (json|csv|xml)', 'csv')
     .option('--delimiter <delimiter>', 'CSV delimiter', ',')
     .option('--pretty', 'Pretty print JSON/XML output', false)
-    .action(async (input: string, output: string, options: any) => {
+    .action(async (input: string, output: string, options: ConvertOptions) => {
       const { formatter } = getComponents();
       try {
-        const fromFormat = options['from'].toLowerCase();
-        const toFormat = options['to'].toLowerCase();
+        const fromFormat = (options.from || 'json').toLowerCase();
+        const toFormat = (options.to || 'csv').toLowerCase();
         const supported = getSupportedConversions();
         if (!supported['from']?.includes(fromFormat) || !supported['to']?.includes(toFormat)) {
           formatter.error(`Unsupported conversion: ${fromFormat} → ${toFormat}`);

@@ -202,7 +202,7 @@ export function registerNoteCommands(program: Command): void {
           process.exit(1);
         }
 
-        let updates: any = {};
+        let updates: Partial<{ title: string; content: string; tags: string; isPrivate: boolean; }> = {};
 
         if (options.interactive) {
           const answers = await inquirer.prompt([

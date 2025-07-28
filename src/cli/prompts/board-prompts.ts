@@ -1,6 +1,7 @@
 import prompts from 'prompts';
 import chalk from 'chalk';
 import { validateBoardName, validateColumnName } from './validators';
+import { logger } from '../../utils/logger';
 
 export interface BoardSetupInput {
   name: string;
@@ -17,36 +18,41 @@ export interface ColumnInput {
 
 /**
  * Quick board setup with prompts library
+ * Note: Console.log is intentionally used here for CLI user interface display
+ * alongside structured logging for debugging/monitoring
  */
 export async function quickBoardSetup(
   defaults?: Partial<BoardSetupInput>
 ): Promise<BoardSetupInput> {
-  // eslint-disable-next-line no-console
-  console.log(chalk.cyan('\n🚀 Quick Board Setup\n'));
+  try {
+    logger.info('Starting quick board setup', { hasDefaults: !!defaults });
+    // Console output is intentional for CLI user interface
+    console.log(chalk.cyan('\n🚀 Quick Board Setup\n'));
 
-  // Board name and description
-  const boardInfo = await prompts([
-    {
-      type: 'text',
-      name: 'name',
-      message: 'Board name:',
-      initial: defaults?.name,
-      validate: value => {
-        const result = validateBoardName(value);
-        return result === true ? true : result;
+    // Board name and description
+    const boardInfo = await prompts([
+      {
+        type: 'text',
+        name: 'name',
+        message: 'Board name:',
+        initial: defaults?.name,
+        validate: value => {
+          const result = validateBoardName(value);
+          return result === true ? true : result;
+        },
       },
-    },
-    {
-      type: 'text',
-      name: 'description',
-      message: 'Description (optional):',
-      initial: defaults?.description,
-    },
-  ]);
+      {
+        type: 'text',
+        name: 'description',
+        message: 'Description (optional):',
+        initial: defaults?.description,
+      },
+    ]);
 
-  if (!boardInfo.name) {
-    throw new Error('Board setup cancelled');
-  }
+    if (!boardInfo.name) {
+      logger.warn('Board setup cancelled - no name provided');
+      throw new Error('Board setup cancelled');
+    }
 
   // Column setup
   const { useTemplate } = await prompts({
@@ -138,13 +144,13 @@ export async function quickBoardSetup(
         break;
     }
   } else {
-    // Custom columns
+    // Custom columns - sequential prompting is necessary for dynamic column creation
     let addingColumns = true;
     let order = 0;
 
-    // eslint-disable-next-line no-await-in-loop
+    // Note: Sequential await in loop is intentional here - we need to collect
+    // column names one by one until user decides to stop
     while (addingColumns) {
-      // eslint-disable-next-line no-await-in-loop
       const { columnName } = await prompts({
         type: 'text',
         name: 'columnName',
@@ -165,6 +171,7 @@ export async function quickBoardSetup(
     }
 
     if (columns.length === 0) {
+      logger.error('Board setup failed - no columns configured');
       throw new Error('Board must have at least one column');
     }
   }
@@ -180,6 +187,13 @@ export async function quickBoardSetup(
   });
 
   // Show summary
+  logger.info('Board configuration completed', {
+    name: boardInfo.name,
+    description: boardInfo.description,
+    isPublic,
+    columnCount: columns.length,
+    columns: columns.map(c => c.name)
+  });
   console.log(chalk.green('\n✅ Board Configuration:'));
   console.log(chalk.gray('─'.repeat(40)));
   console.log(`Name: ${chalk.bold(boardInfo.name)}`);
@@ -190,26 +204,44 @@ export async function quickBoardSetup(
   console.log(`Columns: ${columns.map(c => c.name).join(' → ')}`);
   console.log(chalk.gray('─'.repeat(40)));
 
-  return {
-    name: boardInfo.name,
-    description: boardInfo.description ?? undefined,
-    columns,
-    isPublic,
-  };
+    return {
+      name: boardInfo.name,
+      description: boardInfo.description ?? undefined,
+      columns,
+      isPublic,
+    };
+  } catch (error) {
+    logger.error('Quick board setup failed', {
+      error: error instanceof Error ? error.message : String(error),
+      hasDefaults: !!defaults
+    });
+    throw error;
+  }
 }
 
 /**
  * Confirm action utility
  */
 export async function confirmAction(message: string, defaultAnswer = false): Promise<boolean> {
-  const response = await prompts({
-    type: 'confirm',
-    name: 'confirmed',
-    message,
-    initial: defaultAnswer,
-  });
+  try {
+    logger.debug('Confirmation prompt', { message, defaultAnswer });
+    const response = await prompts({
+      type: 'confirm',
+      name: 'confirmed',
+      message,
+      initial: defaultAnswer,
+    });
 
-  return response.confirmed ?? false;
+    const confirmed = response.confirmed ?? false;
+    logger.debug('Confirmation result', { confirmed, message });
+    return confirmed;
+  } catch (error) {
+    logger.error('Confirmation prompt failed', {
+      error: error instanceof Error ? error.message : String(error),
+      message
+    });
+    throw error;
+  }
 }
 
 /**
@@ -224,6 +256,7 @@ export async function selectFromList<T extends { id: string; name: string }>(
   }
 ): Promise<T | T[] | null> {
   if (items.length === 0) {
+    logger.warn('No items available for selection', { context: message });
     console.log(chalk.yellow('No items available to select'));
     return null;
   }
@@ -269,34 +302,37 @@ export async function selectFromList<T extends { id: string; name: string }>(
 export async function addColumnPrompt(
   existingColumns: Array<{ id: string; name: string; order: number }>
 ): Promise<ColumnInput | null> {
-  console.log(chalk.cyan('\n➕ Add New Column\n'));
+  try {
+    logger.info('Starting add column prompt', { existingColumnCount: existingColumns.length });
+    console.log(chalk.cyan('\n➕ Add New Column\n'));
 
-  const response = await prompts([
-    {
-      type: 'text',
-      name: 'name',
-      message: 'Column name:',
-      validate: value => {
-        const result = validateColumnName(value);
-        return result === true ? true : result;
+    const response = await prompts([
+      {
+        type: 'text',
+        name: 'name',
+        message: 'Column name:',
+        validate: value => {
+          const result = validateColumnName(value);
+          return result === true ? true : result;
+        },
       },
-    },
-    {
-      type: 'select',
-      name: 'position',
-      message: 'Position:',
-      choices: [
-        { title: 'At the beginning', value: 'start' },
-        { title: 'At the end', value: 'end' },
-        { title: 'After specific column', value: 'after' },
-      ],
-      initial: 1, // Default to 'end'
-    },
-  ]);
+      {
+        type: 'select',
+        name: 'position',
+        message: 'Position:',
+        choices: [
+          { title: 'At the beginning', value: 'start' },
+          { title: 'At the end', value: 'end' },
+          { title: 'After specific column', value: 'after' },
+        ],
+        initial: 1, // Default to 'end'
+      },
+    ]);
 
-  if (!response.name) {
-    return null;
-  }
+    if (!response.name) {
+      logger.info('Add column cancelled - no name provided');
+      return null;
+    }
 
   let afterColumn: string | undefined;
 
@@ -308,16 +344,21 @@ export async function addColumnPrompt(
     }
   }
 
-  const result: any = {
-    name: response.name,
-    position: response.position,
-  };
-  
-  if (afterColumn !== undefined) {
-    result.afterColumn = afterColumn;
+    const result: ColumnInput = {
+      name: response.name,
+      position: response.position,
+      ...(afterColumn !== undefined && { afterColumn }),
+    };
+    
+    logger.info('Add column completed', { columnName: response.name, position: response.position });
+    return result;
+  } catch (error) {
+    logger.error('Add column prompt failed', {
+      error: error instanceof Error ? error.message : String(error),
+      existingColumnCount: existingColumns.length
+    });
+    throw error;
   }
-  
-  return result;
 }
 
 /**
@@ -330,48 +371,50 @@ export async function boardSettingsPrompt(currentSettings: {
   defaultAssignee?: string;
   autoArchiveDays?: number;
 }): Promise<Partial<typeof currentSettings>> {
-  console.log(chalk.cyan('\n⚙️  Board Settings\n'));
+  try {
+    logger.info('Opening board settings', { currentName: currentSettings.name });
+    console.log(chalk.cyan('\n⚙️  Board Settings\n'));
 
-  const response = await prompts([
-    {
-      type: 'text',
-      name: 'name',
-      message: 'Board name:',
-      initial: currentSettings.name,
-      validate: value => {
-        const result = validateBoardName(value);
-        return result === true ? true : result;
+    const response = await prompts([
+      {
+        type: 'text',
+        name: 'name',
+        message: 'Board name:',
+        initial: currentSettings.name,
+        validate: value => {
+          const result = validateBoardName(value);
+          return result === true ? true : result;
+        },
       },
-    },
-    {
-      type: 'text',
-      name: 'description',
-      message: 'Description:',
-      initial: currentSettings.description,
-    },
-    {
-      type: 'toggle',
-      name: 'isPublic',
-      message: 'Public board?',
-      initial: currentSettings.isPublic,
-      active: 'yes',
-      inactive: 'no',
-    },
-    {
-      type: 'text',
-      name: 'defaultAssignee',
-      message: 'Default assignee (optional):',
-      initial: currentSettings.defaultAssignee,
-    },
-    {
-      type: 'number',
-      name: 'autoArchiveDays',
-      message: 'Auto-archive completed tasks after (days, 0 to disable):',
-      initial: currentSettings.autoArchiveDays ?? 0,
-      min: 0,
-      max: 365,
-    },
-  ]);
+      {
+        type: 'text',
+        name: 'description',
+        message: 'Description:',
+        initial: currentSettings.description,
+      },
+      {
+        type: 'toggle',
+        name: 'isPublic',
+        message: 'Public board?',
+        initial: currentSettings.isPublic,
+        active: 'yes',
+        inactive: 'no',
+      },
+      {
+        type: 'text',
+        name: 'defaultAssignee',
+        message: 'Default assignee (optional):',
+        initial: currentSettings.defaultAssignee,
+      },
+      {
+        type: 'number',
+        name: 'autoArchiveDays',
+        message: 'Auto-archive completed tasks after (days, 0 to disable):',
+        initial: currentSettings.autoArchiveDays ?? 0,
+        min: 0,
+        max: 365,
+      },
+    ]);
 
   // Filter out unchanged values
   const changes: Partial<typeof currentSettings> = {};
@@ -392,7 +435,18 @@ export async function boardSettingsPrompt(currentSettings: {
     changes.autoArchiveDays = response.autoArchiveDays ?? undefined;
   }
 
-  return changes;
+    logger.info('Board settings updated', {
+      changeCount: Object.keys(changes).length,
+      changes: Object.keys(changes)
+    });
+    return changes;
+  } catch (error) {
+    logger.error('Board settings prompt failed', {
+      error: error instanceof Error ? error.message : String(error),
+      boardName: currentSettings.name
+    });
+    throw error;
+  }
 }
 
 /**
@@ -406,28 +460,46 @@ export async function confirmDelete(
     requireTyping?: boolean;
   }
 ): Promise<boolean> {
-  console.log(chalk.red(`\n⚠️  Delete ${itemType}\n`));
-
-  if (options?.showWarning) {
-    console.log(chalk.yellow(options.showWarning));
-    console.log();
-  }
-
-  console.log(`You are about to delete: ${chalk.bold(itemName)}`);
-  console.log(chalk.gray('This action cannot be undone.\n'));
-
-  if (options?.requireTyping) {
-    const { confirmText } = await prompts({
-      type: 'text',
-      name: 'confirmText',
-      message: `Type "${itemName}" to confirm:`,
-      validate: value => (value === itemName ? true : `Please type exactly: ${itemName}`),
+  try {
+    logger.warn('Delete confirmation requested', {
+      itemType,
+      itemName,
+      hasWarning: !!options?.showWarning,
+      requireTyping: !!options?.requireTyping
     });
+    console.log(chalk.red(`\n⚠️  Delete ${itemType}\n`));
 
-    if (confirmText !== itemName) {
-      return false;
+    if (options?.showWarning) {
+      console.log(chalk.yellow(options.showWarning));
+      console.log();
     }
-  }
 
-  return confirmAction(`Are you sure you want to delete this ${itemType}?`, false);
+    console.log(`You are about to delete: ${chalk.bold(itemName)}`);
+    console.log(chalk.gray('This action cannot be undone.\n'));
+
+    if (options?.requireTyping) {
+      const { confirmText } = await prompts({
+        type: 'text',
+        name: 'confirmText',
+        message: `Type "${itemName}" to confirm:`,
+        validate: value => (value === itemName ? true : `Please type exactly: ${itemName}`),
+      });
+
+      if (confirmText !== itemName) {
+        logger.info('Delete cancelled - confirmation text mismatch', { itemType, itemName });
+        return false;
+      }
+    }
+
+    const confirmed = await confirmAction(`Are you sure you want to delete this ${itemType}?`, false);
+    logger.warn('Delete confirmation result', { itemType, itemName, confirmed });
+    return confirmed;
+  } catch (error) {
+    logger.error('Delete confirmation failed', {
+      error: error instanceof Error ? error.message : String(error),
+      itemType,
+      itemName
+    });
+    throw error;
+  }
 }

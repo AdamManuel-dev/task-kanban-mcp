@@ -25,10 +25,8 @@ export const dashboardCommand = new Command('dashboard')
       try {
         // Handle list themes option
         if (options.listThemes) {
-          // eslint-disable-next-line no-console
           console.log(chalk.cyan('🎨 Available Dashboard Themes:'));
           getThemeNames().forEach(theme => {
-            // eslint-disable-next-line no-console
             console.log(`  ${chalk.yellow('•')} ${theme}`);
           });
           return;
@@ -41,14 +39,11 @@ export const dashboardCommand = new Command('dashboard')
             theme: options.theme,
             availableThemes,
           });
-          // eslint-disable-next-line no-console
           console.error(chalk.red(`Invalid theme: ${options.theme}`));
-          // eslint-disable-next-line no-console
           console.log(chalk.yellow('Available themes:'), availableThemes.join(', '));
           return;
         }
 
-        // eslint-disable-next-line no-console
         console.log(chalk.cyan('🚀 Launching Kanban Dashboard...'));
 
         const config = {
@@ -74,7 +69,6 @@ export const dashboardCommand = new Command('dashboard')
             break;
           default:
             logger.warn('Unknown dashboard layout, using overview', { layout: options.layout });
-            // eslint-disable-next-line no-console
             console.warn(chalk.yellow(`Unknown layout: ${options.layout}. Using overview.`));
             dashboard.switchLayout('overview');
         }
@@ -82,11 +76,9 @@ export const dashboardCommand = new Command('dashboard')
         // Start the dashboard
         dashboard.start();
 
-        // eslint-disable-next-line no-console
         console.log(chalk.green('Dashboard started! Press "h" for help, "q" to quit.'));
       } catch (error) {
         logger.error('Failed to start dashboard', { error });
-        // eslint-disable-next-line no-console
         console.error(
           chalk.red('Failed to start dashboard:'),
           error instanceof Error ? error.message : 'Unknown error'

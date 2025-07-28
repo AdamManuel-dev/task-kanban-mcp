@@ -328,8 +328,16 @@ export function createDependenciesCommand(): Command {
           chalk.blue(`🔗 Adding dependency: ${task.title} depends on ${dependsOnTask.title}`)
         );
 
-        // TODO: Implement addDependency method in TaskService
-        logger.warn(chalk.yellow('⚠️  Dependency addition not yet implemented in TaskService'));
+        // Call the API to add dependency relationship
+        await apiClient.request('POST', '/api/tasks/dependencies', {
+          task_id: targetTaskId,
+          depends_on: dependencyTaskId,
+          dependency_type: 'blocks', // Default to blocking dependency
+        });
+
+        logger.success(
+          chalk.green(`✅ Added dependency: ${dependencyTaskId} blocks ${targetTaskId}`)
+        );
       } catch (error) {
         logger.error('Failed to add dependency:', error);
         logger.error(chalk.red('❌ Failed to add dependency'));

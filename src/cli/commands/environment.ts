@@ -28,6 +28,7 @@ import { cloudEnvironment } from '../../config';
 import { envManager } from '../../config/env-manager';
 import { generateEnvironmentDocs, validateCloudEnvironment } from '../../config/cloud-env';
 import type { CliComponents } from '../types';
+import type { OutputFormatter } from '../formatter';
 
 interface EnvironmentOptions {
   format?: string;
@@ -41,6 +42,7 @@ interface EnvironmentOptions {
  */
 function getComponents(): CliComponents {
   // Import dynamically to avoid circular dependencies
+  // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
   const { ServiceContainer } = require('../services/ServiceContainer');
   const serviceContainer = new ServiceContainer();
 
@@ -53,113 +55,9 @@ function getComponents(): CliComponents {
 }
 
 /**
- * Environment information command implementation
- */
-export function addEnvironmentCommands(program: Command): void {
-  const envCommand = program
-    .command('environment')
-    .alias('env')
-    .description('Cloud environment detection and configuration management');
-
-  // Main environment info command
-  envCommand
-    .command('info')
-    .description('Show cloud environment information and configuration status')
-    .option('-f, --format <format>', 'Output format (table, json, yaml)', 'table')
-    .option(
-      '--include-secrets',
-      'Include sensitive environment variables (use with caution)',
-      false
-    )
-    .option('--validate', 'Run full environment validation', false)
-    .action(async (options: EnvironmentOptions) => {
-      const { formatter } = getComponents();
-
-      try {
-        await showEnvironmentInfo(formatter, options);
-      } catch (error) {
-        formatter.error(
-          `Failed to show environment info: ${error instanceof Error ? error.message : 'Unknown error'}`
-        );
-        process.exit(1);
-      }
-    });
-
-  // Environment validation command
-  envCommand
-    .command('validate')
-    .description('Validate all environment variables and cloud configuration')
-    .option('-f, --format <format>', 'Output format (table, json)', 'table')
-    .action(async (options: Pick<EnvironmentOptions, 'format'>) => {
-      const { formatter } = getComponents();
-
-      try {
-        await validateEnvironment(formatter, options);
-      } catch (error) {
-        formatter.error(
-          `Failed to validate environment: ${error instanceof Error ? error.message : 'Unknown error'}`
-        );
-        process.exit(1);
-      }
-    });
-
-  // Generate documentation command
-  envCommand
-    .command('docs')
-    .description('Generate environment variable documentation')
-    .option('-o, --output <file>', 'Output file (defaults to stdout)')
-    .action(async (options: { output?: string }) => {
-      const { formatter } = getComponents();
-
-      try {
-        await generateEnvironmentDocumentation(formatter, options);
-      } catch (error) {
-        formatter.error(
-          `Failed to generate docs: ${error instanceof Error ? error.message : 'Unknown error'}`
-        );
-        process.exit(1);
-      }
-    });
-
-  // Cloud platform specific commands
-  envCommand
-    .command('platform')
-    .description('Show detailed platform-specific information')
-    .action(async () => {
-      const { formatter } = getComponents();
-
-      try {
-        await showPlatformInfo(formatter);
-      } catch (error) {
-        formatter.error(
-          `Failed to show platform info: ${error instanceof Error ? error.message : 'Unknown error'}`
-        );
-        process.exit(1);
-      }
-    });
-
-  // URL information command
-  envCommand
-    .command('urls')
-    .description('Show application URLs for current environment')
-    .action(async () => {
-      const { formatter } = getComponents();
-
-      try {
-        await showEnvironmentUrls(formatter);
-      } catch (error) {
-        formatter.error(
-          `Failed to show URLs: ${error instanceof Error ? error.message : 'Unknown error'}`
-        );
-        process.exit(1);
-      }
-    });
-}
-
-/**
  * Shows comprehensive environment information
  */
-async function showEnvironmentInfo(formatter: any, options: EnvironmentOptions): Promise<void> {
+function showEnvironmentInfo(formatter: OutputFormatter, options: EnvironmentOptions): void {
   const { info, validation, urls, features, limits, isCloud, platform } = cloudEnvironment;
 
   formatter.info('🌐 Cloud Environment Information\n');
@@ -213,67 +111,50 @@ async function showEnvironmentInfo(formatter: any, options: EnvironmentOptions):
     formatter.info('');
   }
 
-  // Environment validation status
-  formatter.info('✅ **Environment Validation**:');
-  const validationInfo = [
-    { Check: 'Overall Status', Result: validation.valid ? '✅ Valid' : '❌ Invalid' },
-    { Check: 'Variables Loaded', Result: `${Object.keys(validation.values).length}` },
-    { Check: 'Errors', Result: validation.errors.length.toString() },
-    { Check: 'Warnings', Result: validation.warnings.length.toString() },
-    { Check: 'Missing', Result: validation.missing.length.toString() },
-  ];
-
-  formatter.output(validationInfo, {
-    fields: ['Check', 'Result'],
-    headers: ['Check', 'Result'],
-  });
-
-  // Show errors and warnings if any
-  if (validation.errors.length > 0) {
-    formatter.info('');
-    formatter.error('**Validation Errors**:');
-    validation.errors.forEach((error: string) => formatter.error(`• ${error}`));
-  }
-
-  if (validation.warnings.length > 0) {
-    formatter.info('');
-    formatter.warn('**Validation Warnings**:');
-    validation.warnings.forEach((warning: string) => formatter.warn(`• ${warning}`));
-  }
-
-  // Environment variables (if requested)
-  if (options.includeSecrets || options.format === 'json') {
-    formatter.info('');
-    formatter.info('🔧 **Environment Variables**:');
-
-    const envVars = envManager.getAll(options.includeSecrets || false);
-
-    if (options.format === 'json') {
-      formatter.output(JSON.stringify(envVars, null, 2));
-    } else {
-      const envTable = Object.entries(envVars).map(([key, value]) => ({
-        Variable: key,
-        Value: typeof value === 'string' ? value : JSON.stringify(value),
-      }));
-
-      formatter.output(envTable, {
-        fields: ['Variable', 'Value'],
-        headers: ['Variable', 'Value'],
-      });
-    }
-  }
-
-  // Run additional validation if requested
+  // Environment validation
   if (options.validate) {
-    formatter.info('');
-    await validateEnvironment(formatter, options.format ? { format: options.format } : {});
+    formatter.info('🔍 **Environment Validation**:');
+    const validationTable = [
+      {
+        Check: 'Environment Variables',
+        Status: validation.env.valid ? '✅ Valid' : '❌ Invalid',
+        Details: validation.env.valid
+          ? 'All required variables present'
+          : `Missing: ${validation.env.missing.join(', ')}`,
+      },
+      {
+        Check: 'Cloud Configuration',
+        Status: validation.cloud.valid ? '✅ Valid' : '❌ Invalid',
+        Details: validation.cloud.message,
+      },
+    ];
+
+    formatter.output(validationTable, {
+      fields: ['Check', 'Status', 'Details'],
+      headers: ['Check', 'Status', 'Details'],
+    });
+  }
+
+  // Show environment variable details if requested
+  if (options.includeSecrets) {
+    formatter.info('\n⚠️  **Environment Variables** (including sensitive):');
+    const envData = envManager.getAll(true); // true = include secrets
+    const envTable = Object.entries(envData).map(([key, value]) => ({
+      Variable: key,
+      Value: String(value),
+    }));
+
+    formatter.output(envTable, {
+      fields: ['Variable', 'Value'],
+      headers: ['Variable', 'Value'],
+    });
   }
 }
 
 /**
  * Validates environment configuration
  */
-function validateEnvironment(formatter: any, _options: Pick<EnvironmentOptions, 'format'>): void {
+function validateEnvironment(formatter: OutputFormatter, _options: Pick<EnvironmentOptions, 'format'>): void {
   formatter.info('🔍 **Running Environment Validation**...\n');
 
   // Re-run validation
@@ -292,21 +173,14 @@ function validateEnvironment(formatter: any, _options: Pick<EnvironmentOptions, 
       Status:
         validation.missing.length === 0
           ? '✅ All Present'
-          : `❌ ${validation.missing.length} Missing`,
+          : `❌ Missing: ${validation.missing.join(', ')}`,
     },
     {
       Check: 'Type Validation',
       Status:
         validation.invalid.length === 0
           ? '✅ All Valid'
-          : `❌ ${validation.invalid.length} Invalid`,
-    },
-    {
-      Check: 'Security Check',
-      Status:
-        validation.warnings.length === 0
-          ? '✅ Secure'
-          : `⚠️ ${validation.warnings.length} Warnings`,
+          : `❌ Invalid: ${validation.invalid.join(', ')}`,
     },
   ];
 
@@ -316,210 +190,73 @@ function validateEnvironment(formatter: any, _options: Pick<EnvironmentOptions, 
   });
 
   // Cloud environment validation
-  if (cloudEnvironment.isCloud) {
-    formatter.info('\n**Cloud Environment**:');
-    const cloudResults = [
-      { Check: 'Platform Detection', Status: '✅ Detected' },
-      {
-        Check: 'Required Features',
-        Status:
-          cloudValidation.errors.length === 0
-            ? '✅ Available'
-            : `❌ ${cloudValidation.errors.length} Missing`,
-      },
-      {
-        Check: 'Optimization',
-        Status:
-          cloudValidation.warnings.length === 0
-            ? '✅ Optimized'
-            : `⚠️ ${cloudValidation.warnings.length} Suggestions`,
-      },
-    ];
+  formatter.info('\n**Cloud Configuration**:');
+  const cloudResults = [
+    { Check: 'Platform Detection', Status: cloudValidation.platform ? '✅ Valid' : '❌ Invalid' },
+    { Check: 'Service URLs', Status: cloudValidation.urls ? '✅ Valid' : '❌ Invalid' },
+    { Check: 'Resource Limits', Status: cloudValidation.limits ? '✅ Valid' : '❌ Invalid' },
+  ];
 
-    formatter.output(cloudResults, {
-      fields: ['Check', 'Status'],
-      headers: ['Check', 'Status'],
-    });
+  formatter.output(cloudResults, {
+    fields: ['Check', 'Status'],
+    headers: ['Check', 'Status'],
+  });
 
-    // Show cloud-specific issues
-    if (cloudValidation.errors.length > 0) {
-      formatter.info('\n**Cloud Environment Errors**:');
-      cloudValidation.errors.forEach(error => formatter.error(`• ${error}`));
-    }
-
-    if (cloudValidation.warnings.length > 0) {
-      formatter.info('\n**Cloud Environment Suggestions**:');
-      cloudValidation.warnings.forEach(warning => formatter.warn(`• ${warning}`));
-    }
-  }
-
-  // Detailed error information
-  if (!validation.valid) {
-    formatter.info('\n**Detailed Issues**:');
-
-    if (validation.missing.length > 0) {
-      formatter.error('Missing Required Variables:');
-      validation.missing.forEach(key => formatter.error(`• ${key}`));
-    }
-
-    if (validation.invalid.length > 0) {
-      formatter.error('Invalid Values:');
-      validation.invalid.forEach(key => formatter.error(`• ${key}`));
-    }
-
-    if (validation.errors.length > 0) {
-      formatter.error('Validation Errors:');
-      validation.errors.forEach(error => formatter.error(`• ${error}`));
-    }
-  }
-
-  // Exit with error code if validation failed
   if (!overallValid) {
+    formatter.error('\n❌ Environment validation failed. Please check configuration.');
     process.exit(1);
+  } else {
+    formatter.success('\n✅ Environment validation passed.');
   }
 }
 
 /**
- * Shows platform-specific information
+ * Shows detailed platform-specific information
  */
-function showPlatformInfo(formatter: any): void {
+function showPlatformInfo(formatter: OutputFormatter): void {
   const { info, platform, isCloud } = cloudEnvironment;
 
-  formatter.info(
-    `🚀 **${platform.charAt(0).toUpperCase() + platform.slice(1)} Platform Information**\n`
-  );
+  formatter.info(`🚀 **${platform} Platform Information**\n`);
 
-  if (!isCloud) {
-    formatter.info('Running in **local development environment**.');
-    formatter.info('No cloud-specific optimizations applied.');
-    return;
-  }
-
-  // Platform-specific information
-  switch (platform) {
-    case 'replit':
-      formatter.info('**Replit Cloud Development Environment**');
-      formatter.info('• Optimized for collaborative development');
-      formatter.info('• Automatic port forwarding enabled');
-      formatter.info('• Git integration available');
-      formatter.info('• Database stored in ./data/kanban.db');
-      formatter.info('• Memory limit: 512MB');
-      break;
-
-    case 'codespaces':
-      formatter.info('**GitHub Codespaces Environment**');
-      formatter.info('• Full development environment with VS Code');
-      formatter.info('• Excellent Git integration');
-      formatter.info('• Generous resource limits (8GB RAM, 4 CPU cores)');
-      formatter.info('• Port forwarding with authentication');
-      break;
-
-    case 'gitpod':
-      formatter.info('**GitPod Cloud IDE Environment**');
-      formatter.info('• Optimized for Git workflows');
-      formatter.info('• Automatic workspace snapshots');
-      formatter.info('• Resource limits: 3.5GB RAM, 4 CPU cores');
-      formatter.info('• Prebuilt workspace support');
-      break;
-
-    case 'stackblitz':
-      formatter.info('**StackBlitz Web IDE Environment**');
-      formatter.info('• Browser-based development');
-      formatter.info('• Limited WebSocket support');
-      formatter.info('• Reduced memory limits (256MB)');
-      formatter.info('• File system limitations');
-      break;
-
-    case 'codesandbox':
-      formatter.info('**CodeSandbox Environment**');
-      formatter.info('• Focused on web development');
-      formatter.info('• Limited terminal access');
-      formatter.info('• Resource limits: 1GB RAM');
-      formatter.info('• Hot reloading enabled');
-      break;
-  }
-
-  formatter.info('');
-
-  // Show optimization recommendations
-  formatter.info('💡 **Platform Optimizations Applied**:');
-
-  const optimizations = [];
-
-  if (info.defaultHost === '0.0.0.0') {
-    optimizations.push('• Host binding configured for cloud access');
-  }
-
-  if (info.limits.memory < 1024) {
-    optimizations.push('• Memory usage optimized for limited resources');
-  }
-
-  if (platform === 'replit') {
-    optimizations.push('• JSON logging enabled for better cloud monitoring');
-    optimizations.push('• CORS configured for Replit domain');
-  }
-
-  if (platform === 'stackblitz' && !info.urls.websocket) {
-    optimizations.push('• WebSockets disabled due to platform limitations');
-  }
-
-  optimizations.forEach(opt => formatter.info(opt));
-}
-
-/**
- * Shows environment URLs
- */
-function showEnvironmentUrls(formatter: any): void {
-  const { urls, platform, isCloud, info } = cloudEnvironment;
-
-  formatter.info('🔗 **Application URLs**\n');
-
-  if (!isCloud) {
-    formatter.info('**Local Development**:');
-    formatter.info(`• Web Application: http://localhost:3000`);
-    formatter.info(`• WebSocket Server: ws://localhost:3001`);
-    formatter.info(`• API Health Check: http://localhost:3000/api/health`);
-    return;
-  }
-
-  formatter.info(`**${platform.charAt(0).toUpperCase() + platform.slice(1)} Cloud Environment**:`);
-
-  if (urls.webapp) {
-    formatter.info(`• **Web Application**: ${urls.webapp}`);
-    formatter.info(`• **API Health Check**: ${urls.webapp}/api/health`);
-    formatter.info(`• **API Documentation**: ${urls.webapp}/api/docs`);
+  if (isCloud) {
+    formatter.info('**Cloud Features**:');
+    formatter.info(`- Auto-scaling: ${info.features?.autoScaling ? '✅ Enabled' : '❌ Disabled'}`);
+    formatter.info(`- Load balancing: ${info.features?.loadBalancing ? '✅ Enabled' : '❌ Disabled'}`);
+    formatter.info(`- High availability: ${info.features?.highAvailability ? '✅ Enabled' : '❌ Disabled'}`);
+    formatter.info(`- Backup service: ${info.features?.backupService ? '✅ Enabled' : '❌ Disabled'}`);
   } else {
-    formatter.warn('• Web application URL not available (check platform configuration)');
+    formatter.info('**Local Development Features**:');
+    formatter.info('- File watching: ✅ Enabled');
+    formatter.info('- Hot reload: ✅ Enabled');
+    formatter.info('- Debug mode: ✅ Enabled');
   }
 
-  if (urls.websocket) {
-    formatter.info(`• **WebSocket Server**: ${urls.websocket}`);
-  } else if (info.websocketPort) {
-    formatter.warn('• WebSocket URL not available (check platform configuration)');
+  formatter.info('\n**Configuration Recommendations**:');
+
+  if (platform === 'vercel') {
+    formatter.info('- Use environment variables for configuration');
+    formatter.info('- Enable preview deployments for testing');
+    formatter.info('- Configure custom domains for production');
+  } else if (platform === 'netlify') {
+    formatter.info('- Configure build commands in netlify.toml');
+    formatter.info('- Use Netlify Functions for API endpoints');
+    formatter.info('- Enable form handling for user input');
+  } else if (platform === 'heroku') {
+    formatter.info('- Use Heroku Config Vars for environment variables');
+    formatter.info('- Configure dyno scaling for traffic');
+    formatter.info('- Enable Heroku Postgres for database');
   } else {
-    formatter.info('• WebSocket disabled for this platform');
-  }
-
-  if (urls.preview && urls.preview !== urls.webapp) {
-    formatter.info(`• **Preview URL**: ${urls.preview}`);
-  }
-
-  formatter.info('');
-  formatter.info('💡 **Usage Tips**:');
-  formatter.info('• Use the web application URL to access the dashboard');
-  formatter.info('• Test API connectivity with the health check endpoint');
-  formatter.info('• WebSocket URL is needed for real-time features');
-
-  if (platform === 'replit') {
-    formatter.info('• Replit URLs are automatically generated and may change');
+    formatter.info('- Ensure proper environment variable configuration');
+    formatter.info('- Configure reverse proxy if needed');
+    formatter.info('- Set up monitoring and logging');
   }
 }
 
 /**
- * Generates environment documentation
+ * Generates comprehensive environment documentation
  */
 async function generateEnvironmentDocumentation(
-  formatter: any,
+  formatter: OutputFormatter,
   options: { output?: string }
 ): Promise<void> {
   const docs = generateEnvironmentDocs(cloudEnvironment.info);
@@ -528,12 +265,98 @@ async function generateEnvironmentDocumentation(
   const fullDocs = `${docs}\n\n${envDocs}`;
 
   if (options.output) {
-    // Write to file
     const fs = await import('fs/promises');
-    await fs.writeFile(options.output, fullDocs, 'utf8');
-    formatter.success(`Documentation written to ${options.output}`);
+    await fs.writeFile(options.output, fullDocs, 'utf-8');
+    formatter.success(`Documentation written to: ${options.output}`);
   } else {
-    // Output to console
-    formatter.info(fullDocs);
+    formatter.output(fullDocs);
   }
+}
+
+/**
+ * Environment information command implementation
+ */
+export function addEnvironmentCommands(program: Command): void {
+  const envCommand = program
+    .command('environment')
+    .alias('env')
+    .description('Cloud environment detection and configuration management');
+
+  // Main environment info command
+  envCommand
+    .command('info')
+    .description('Show cloud environment information and configuration status')
+    .option('-f, --format <format>', 'Output format (table, json, yaml)', 'table')
+    .option(
+      '--include-secrets',
+      'Include sensitive environment variables (use with caution)',
+      false
+    )
+    .option('--validate', 'Run full environment validation', false)
+    .action(async (options: EnvironmentOptions) => {
+      const { formatter } = getComponents();
+
+      try {
+        showEnvironmentInfo(formatter, options);
+      } catch (error) {
+        formatter.error(
+          `Failed to show environment info: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+        process.exit(1);
+      }
+    });
+
+  // Environment validation command
+  envCommand
+    .command('validate')
+    .description('Validate all environment variables and cloud configuration')
+    .option('-f, --format <format>', 'Output format (table, json)', 'table')
+    .action(async (options: Pick<EnvironmentOptions, 'format'>) => {
+      const { formatter } = getComponents();
+
+      try {
+        validateEnvironment(formatter, options);
+      } catch (error) {
+        formatter.error(
+          `Failed to validate environment: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+        process.exit(1);
+      }
+    });
+
+  // Generate documentation command
+  envCommand
+    .command('docs')
+    .description('Generate environment variable documentation')
+    .option('-o, --output <file>', 'Output file (defaults to stdout)')
+    .action(async (options: { output?: string }) => {
+      const { formatter } = getComponents();
+
+      try {
+        await generateEnvironmentDocumentation(formatter, options);
+      } catch (error) {
+        formatter.error(
+          `Failed to generate docs: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+        process.exit(1);
+      }
+    });
+
+  // Cloud platform specific commands
+  envCommand
+    .command('platform')
+    .description('Show detailed platform-specific information')
+    .action(async () => {
+      const { formatter } = getComponents();
+
+      try {
+        showPlatformInfo(formatter);
+      } catch (error) {
+        formatter.error(
+          `Failed to show platform info: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+        process.exit(1);
+      }
+    });
+
 }

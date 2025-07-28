@@ -18,6 +18,15 @@ interface NextTaskOptions {
   explain?: boolean;
 }
 
+interface NextTaskParams {
+  exclude_blocked: boolean;
+  board_id?: string;
+  assignee?: string;
+  skill_context?: string;
+  priority_min?: number;
+  exclude_task_ids?: string[];
+}
+
 export function registerNextCommands(program: Command): void {
   program
     .command('next')
@@ -34,7 +43,7 @@ export function registerNextCommands(program: Command): void {
 
       try {
         // Build request parameters for MCP get_next_task tool
-        const params: any = {
+        const params: NextTaskParams = {
           exclude_blocked: true,
         };
 

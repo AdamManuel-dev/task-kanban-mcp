@@ -230,28 +230,22 @@ export function registerContextCommands(program: Command): void {
 
         formatter.info('📊 Project Summary\n');
 
-        // eslint-disable-next-line dot-notation
-        if (summary['overview']) {
-          // eslint-disable-next-line dot-notation
-          formatter.info(summary['overview'] as string);
+        if (summary.overview) {
+          formatter.info(summary.overview as string);
           formatter.info('');
         }
 
-        // eslint-disable-next-line dot-notation
-        if (summary['progress']) {
+        if (summary.progress) {
           formatter.info('📈 Progress Overview:');
-          // eslint-disable-next-line dot-notation
-          Object.entries(summary['progress'] as Record<string, unknown>).forEach(([key, value]) => {
+          Object.entries(summary.progress as Record<string, unknown>).forEach(([key, value]) => {
             formatter.info(`  ${String(key)}: ${String(value)}`);
           });
           formatter.info('');
         }
 
-        // eslint-disable-next-line dot-notation
-        if (summary['recentActivity']) {
+        if (summary.recentActivity) {
           formatter.info('🔄 Recent Activity:');
-          // eslint-disable-next-line dot-notation
-          (summary['recentActivity'] as Array<{ description: string; date: string }>).forEach(
+          (summary.recentActivity as Array<{ description: string; date: string }>).forEach(
             activity => {
               formatter.info(`• ${String(activity.description)} (${String(activity.date)})`);
             }
@@ -259,18 +253,14 @@ export function registerContextCommands(program: Command): void {
           formatter.info('');
         }
 
-        // eslint-disable-next-line dot-notation
-        if (options.includeMetrics && summary['metrics']) {
+        if (options.includeMetrics && summary.metrics) {
           formatter.info('📊 Performance Metrics:');
-          // eslint-disable-next-line dot-notation
-          formatter.output(summary['metrics']);
+          formatter.output(summary.metrics);
         }
 
-        // eslint-disable-next-line dot-notation
-        if (summary['keyInsights']) {
+        if (summary.keyInsights) {
           formatter.info('🔍 Key Insights:');
-          // eslint-disable-next-line dot-notation
-          (summary['keyInsights'] as string[]).forEach((insight: string) => {
+          (summary.keyInsights as string[]).forEach((insight: string) => {
             formatter.info(`• ${String(insight)}`);
           });
         }

@@ -1,14 +1,14 @@
 import type { Command } from 'commander';
 import inquirer from 'inquirer';
-import type { 
-  CliComponents, 
-  AnyApiResponse, 
+import type {
+  CliComponents,
+  AnyApiResponse,
   ApiResponse,
   DatabaseVacuumResult,
   DatabaseHealthResponse,
   MigrationsResponse,
   MigrationResponse,
-  MigrationResult
+  MigrationResult,
 } from '../types';
 import { buildDatabaseStatsParams } from '../utils/parameter-builder';
 import { logger } from '../../utils/logger';

@@ -144,7 +144,7 @@ export function registerRealtimeCommands(program: Command): void {
           // Stream logs in real-time
           formatter.info('Following logs... (Press Ctrl+C to stop)');
 
-          const streamLogs = async () => {
+          const streamLogs = async (): Promise<void> => {
             try {
               const logs = (await apiClient.request(
                 'GET',
@@ -154,7 +154,7 @@ export function registerRealtimeCommands(program: Command): void {
               )) as any;
 
               if (logs && logs.length > 0) {
-                logs.forEach((log: any) => {
+                logs.forEach((log: { timestamp: string; level: string; message: string; [key: string]: unknown }) => {
                   const timestamp = new Date(log.timestamp).toLocaleTimeString();
                   const level = log.level.toUpperCase().padEnd(5);
                   const component = log.component ? `[${String(String(log.component))}]` : '';
@@ -227,7 +227,7 @@ export function registerRealtimeCommands(program: Command): void {
     return (text: string) => text; // In real implementation, apply colors based on event type
   }
 
-  function formatEventMessage(event: any): string {
+  function formatEventMessage(event: { type: string; data?: unknown; timestamp?: string; [key: string]: unknown }): string {
     switch (event.type) {
       case 'task:created':
         return `Task "${String(String(event.data.title))}" created`;

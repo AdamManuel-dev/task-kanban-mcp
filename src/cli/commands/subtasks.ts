@@ -3,6 +3,13 @@ import type { Command } from 'commander';
 import inquirer from 'inquirer';
 import type { CliComponents, AnyApiResponse } from '../types';
 
+interface DependencyNode {
+  id: string;
+  title: string;
+  status: string;
+  dependencies?: DependencyNode[];
+}
+
 export function registerSubtaskCommands(program: Command): void {
   const subtaskCmd = program
     .command('subtask')
@@ -292,7 +299,7 @@ export function registerSubtaskCommands(program: Command): void {
         formatter.info(`Dependency graph for task ${String(taskId)}:`);
 
         // Simple text-based visualization
-        const printNode = (node: any, indent = 0) => {
+        const printNode = (node: DependencyNode, indent = 0) => {
           const prefix = '  '.repeat(indent) + (indent > 0 ? '└─ ' : '');
           let status: string;
           if (node.status === 'completed') {
@@ -307,7 +314,7 @@ export function registerSubtaskCommands(program: Command): void {
           );
 
           if (node.dependencies && node.dependencies.length > 0) {
-            node.dependencies.forEach((dep: any) => printNode(dep, indent + 1));
+            node.dependencies.forEach((dep: DependencyNode) => printNode(dep, indent + 1));
           }
         };
 

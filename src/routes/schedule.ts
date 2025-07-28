@@ -22,7 +22,7 @@ const router = Router();
 let backupService: BackupService;
 let schedulingService: SchedulingService;
 
-function getServices() {
+function getServices(): { backupService: BackupService; schedulingService: SchedulingService } {
   if (!backupService) {
     backupService = new BackupService(dbConnection);
   }
