@@ -295,7 +295,7 @@ export class DashboardManager {
       label: 'Team Capacity',
       width: '30%',
       height: '30%',
-      border: { type: 'line', fg: 'cyan' },
+      border: { type: 'line' as any, fg: 'cyan' },
       columnSpacing: 10,
       columnWidth: [16, 12, 12],
     });
@@ -343,7 +343,7 @@ export class DashboardManager {
       label: 'My Tasks',
       width: '30%',
       height: '30%',
-      border: { type: 'line', fg: 'cyan' },
+      border: { type: 'line' as any, fg: 'cyan' },
       columnSpacing: 10,
       columnWidth: [20, 12, 12],
     });
@@ -370,7 +370,7 @@ export class DashboardManager {
     // Today's focus box
     const focusBox = this.grid.set(9, 0, 3, 12, blessed.box, {
       label: "Today's Focus",
-      border: { type: 'line', fg: 'yellow' },
+      border: { type: 'line' as any, fg: 'yellow' },
       style: { fg: 'white' },
       padding: { left: 2, right: 2 },
     });
@@ -455,7 +455,7 @@ export class DashboardManager {
       right: 1,
       width: Math.floor((this.screen as any).width * 0.4),
       height: 3,
-      border: { type: 'line', fg: 'red' },
+      border: { type: 'line' as any as any, fg: 'red' },
       style: { fg: 'white', bg: 'red' },
       label: '⚠️  Error',
       content: message,
@@ -481,7 +481,7 @@ export class DashboardManager {
       left: 1,
       width: Math.floor((this.screen as any).width * 0.3),
       height: 3,
-      border: { type: 'line', fg: this.themeHelper.getColor('primary') },
+      border: { type: 'line' as any, fg: this.themeHelper.getColor('primary') },
       style: {
         fg: this.themeHelper.getColor('foreground'),
         bg: this.themeHelper.getColor('secondary'),
@@ -510,7 +510,7 @@ export class DashboardManager {
       left: 'center',
       width: '50%',
       height: '60%',
-      border: { type: 'line', fg: 'yellow' },
+      border: { type: 'line' as any, fg: 'yellow' },
       style: { fg: 'white', bg: 'black' },
       label: '📖 Dashboard Help',
       content: `
@@ -837,7 +837,7 @@ Press any key to close this help...
       left: 'center',
       width: '60%',
       height: '50%',
-      border: { type: 'line', fg: this.themeHelper.getColor('primary') },
+      border: { type: 'line' as any, fg: this.themeHelper.getColor('primary') },
       style: {
         fg: this.themeHelper.getColor('foreground'),
         bg: this.themeHelper.getColor('background'),
@@ -910,7 +910,7 @@ Press any key to close...
       right: 0,
       width: '25%',
       height: '30%',
-      border: { type: 'line', fg: 'yellow' },
+      border: { type: 'line' as any, fg: 'yellow' },
       style: { fg: 'yellow', bg: 'black' },
       label: '🐛 Debug Info',
       content: `
@@ -964,7 +964,7 @@ ${String(debugInfo)}
       left: 'center',
       width: '50%',
       height: 3,
-      border: { type: 'line', fg: this.themeHelper.getColor('info') },
+      border: { type: 'line' as any, fg: this.themeHelper.getColor('info') },
       style: {
         fg: this.themeHelper.getColor('foreground'),
         bg: this.themeHelper.getColor('secondary'),

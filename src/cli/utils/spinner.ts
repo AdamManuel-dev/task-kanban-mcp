@@ -19,7 +19,7 @@ export class SpinnerError extends Error {
  * Manages loading spinners for CLI operations with comprehensive error handling
  */
 export class SpinnerManager {
-  private readonly spinner: Ora | null = null;
+  private readonly _spinner: Ora | null = null;
 
   private readonly isSpinning = false;
 

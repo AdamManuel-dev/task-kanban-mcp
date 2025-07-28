@@ -109,8 +109,8 @@ export class KeyboardHandler {
     this.helpVisible = true;
     console.clear();
 
-    logger.log(chalk.cyan.bold('\n📋 Keyboard Shortcuts\n'));
-    logger.log(chalk.gray('─'.repeat(50)));
+    console.log(chalk.cyan.bold('\n📋 Keyboard Shortcuts\n'));
+    console.log(chalk.gray('─'.repeat(50)));
 
     const globalShortcuts = Array.from(this.shortcuts.values())
       .filter(s => s.global)
@@ -121,23 +121,23 @@ export class KeyboardHandler {
       .sort((a, b) => a.key.localeCompare(b.key));
 
     if (globalShortcuts.length > 0) {
-      logger.log(chalk.yellow.bold('\nGlobal Shortcuts:'));
+      console.log(chalk.yellow.bold('\nGlobal Shortcuts:'));
       globalShortcuts.forEach(shortcut => {
         const keyDisplay = this.formatKeyDisplay(shortcut.key);
-        logger.log(`  ${String(keyDisplay)} - ${String(String(shortcut.description))}`);
+        console.log(`  ${String(keyDisplay)} - ${String(String(shortcut.description))}`);
       });
     }
 
     if (localShortcuts.length > 0) {
-      logger.log(chalk.yellow.bold('\nContext Shortcuts:'));
+      console.log(chalk.yellow.bold('\nContext Shortcuts:'));
       localShortcuts.forEach(shortcut => {
         const keyDisplay = this.formatKeyDisplay(shortcut.key);
-        logger.log(`  ${String(keyDisplay)} - ${String(String(shortcut.description))}`);
+        console.log(`  ${String(keyDisplay)} - ${String(String(shortcut.description))}`);
       });
     }
 
-    logger.log(chalk.gray('\n─'.repeat(50)));
-    logger.log(chalk.gray('Press ? again to hide help, Ctrl+C to exit\n'));
+    console.log(chalk.gray('\n─'.repeat(50)));
+    console.log(chalk.gray('Press ? again to hide help, Ctrl+C to exit\n'));
   }
 
   /**
@@ -148,7 +148,7 @@ export class KeyboardHandler {
 
     this.helpVisible = false;
     console.clear();
-    logger.log(chalk.gray('Help hidden. Press ? to show again.\n'));
+    console.log(chalk.gray('Help hidden. Press ? to show again.\n'));
   }
 
   /**
@@ -196,7 +196,7 @@ export class KeyboardHandler {
       key: '/',
       description: 'Search/filter',
       action: () => {
-        logger.log(chalk.cyan('🔍 Search mode (not implemented)'));
+        console.log(chalk.cyan('🔍 Search mode (not implemented)'));
       },
       global: true,
     });
@@ -206,7 +206,7 @@ export class KeyboardHandler {
       key: String.fromCharCode(14), // Ctrl+N
       description: 'Create new item',
       action: () => {
-        logger.log(chalk.cyan('📝 Create new item (not implemented)'));
+        console.log(chalk.cyan('📝 Create new item (not implemented)'));
       },
       global: true,
     });
@@ -216,7 +216,7 @@ export class KeyboardHandler {
       key: 'q',
       description: 'Quit application',
       action: () => {
-        logger.log(chalk.yellow('👋 Goodbye!'));
+        console.log(chalk.yellow('👋 Goodbye!'));
         process.exit(0);
       },
       global: true,
@@ -250,9 +250,9 @@ export class KeyboardHandler {
   private async executeRefresh(): Promise<void> {
     if (this.refreshCallback) {
       try {
-        logger.log(chalk.cyan('🔄 Refreshing...'));
+        console.log(chalk.cyan('🔄 Refreshing...'));
         await this.refreshCallback();
-        logger.log(chalk.green('✅ Refreshed'));
+        console.log(chalk.green('✅ Refreshed'));
       } catch (error) {
         logger.error(
           chalk.red('❌ Refresh failed:'),
@@ -260,7 +260,7 @@ export class KeyboardHandler {
         );
       }
     } else {
-      logger.log(chalk.yellow('⚠️  No refresh action available in current context'));
+      console.log(chalk.yellow('⚠️  No refresh action available in current context'));
     }
   }
 

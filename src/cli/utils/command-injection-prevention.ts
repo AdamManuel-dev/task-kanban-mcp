@@ -544,7 +544,7 @@ export class CommandInjectionPrevention {
         if (!validation.safe) {
           throw new Error(`Invalid argument: ${validation.blockedPatterns.join(', ')}`);
         }
-        return validation.sanitizedArgs[0];
+        return validation.sanitizedArgs[0] || '';
       },
 
       execute: (args: string[], options: CommandExecutionOptions = {}): Promise<ExecutionResult> =>

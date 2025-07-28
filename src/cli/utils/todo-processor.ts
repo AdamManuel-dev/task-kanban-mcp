@@ -1,6 +1,6 @@
 import { readFile, writeFile } from 'fs/promises';
 import { Listr } from 'listr2';
-import chalk from 'chalk';
+// Removed unused import: chalk
 import type { TaskGroup } from './task-runner';
 import { TaskRunner } from './task-runner';
 import { logger } from '../../utils/logger';
@@ -211,7 +211,7 @@ export class TodoProcessor {
     const listr = new Listr(
       groups.map((group, index) => ({
         title: `Execution Group ${index + 1} (${group.length} tasks)`,
-        task: (_ctx, task) => {
+        task: (_ctx, _task) => {
           const subtasks = group.map(todo => ({
             title: `${todo.id}: ${todo.text}`,
             task: async () => {
