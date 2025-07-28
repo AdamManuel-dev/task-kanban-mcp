@@ -166,8 +166,8 @@ router.get(
 router.get(
   '/metrics/endpoint',
   asyncHandler((req, res) => {
-    const endpoint = req.query.endpoint as string;
-    const timeframe = req.query.timeframe ? Number(req.query.timeframe) : undefined;
+    const endpoint = req.query['endpoint'] as string;
+    const timeframe = req.query['timeframe'] ? Number(req.query['timeframe']) : undefined;
 
     const metrics = performanceMonitor.getEndpointMetrics(endpoint, timeframe);
 
@@ -234,7 +234,7 @@ router.get(
 router.get(
   '/export',
   asyncHandler((req, res) => {
-    const format = (req.query.format as 'json' | 'prometheus') || 'json';
+    const format = (req.query['format'] as 'json' | 'prometheus') || 'json';
 
     const metrics = performanceMonitor.exportMetrics(format);
 

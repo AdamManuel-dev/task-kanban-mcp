@@ -30,11 +30,10 @@ const DEFAULT_CONFIG: ConfigData = {
     url: 'http://localhost:3000',
   },
   auth: {
-    apiKey: undefined,
-    token: undefined,
+    // apiKey and token are optional and not set initially
   },
   defaults: {
-    board: undefined,
+    // board is optional and not set initially
     format: 'table',
     verbose: false,
   },
@@ -129,7 +128,7 @@ export class ConfigManager {
    */
   set(path: string, value: unknown): void {
     const parts = path.split('.');
-    let current: Record<string, unknown> = this.config as Record<string, unknown>;
+    let current: Record<string, unknown> = this.config as unknown as Record<string, unknown>;
 
     for (let i = 0; i < parts.length - 1; i += 1) {
       const part = parts[i];

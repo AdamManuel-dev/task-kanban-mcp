@@ -68,6 +68,46 @@ describe('MCP API E2E Tests', () => {
     return serverProcess;
   }
 
+  /**
+   * Helper function to send messages to MCP server and receive responses
+   */
+  async function sendMCPMessage(process: ChildProcess, message: MCPMessage): Promise<MCPMessage> {
+    return new Promise((resolve, reject) => {
+      const messageStr = `${JSON.stringify(message)}\n`;
+      let responseData = '';
+
+      const timeout = setTimeout(() => {
+        reject(new Error('MCP message timeout'));
+      }, 10000);
+
+      const onData = (data: Buffer) => {
+        responseData += data.toString();
+        
+        // Check if we have a complete JSON message
+        const lines = responseData.split('\n');
+        for (const line of lines) {
+          if (line.trim()) {
+            try {
+              const response = JSON.parse(line.trim()) as MCPMessage;
+              if (response.id === message.id || response.error) {
+                clearTimeout(timeout);
+                process.stdout?.removeListener('data', onData);
+                resolve(response);
+                return;
+              }
+            } catch (error) {
+              // Continue parsing other lines
+            }
+          }
+        }
+      };
+
+      process.stdout?.on('data', onData);
+      
+      process.stdin?.write(messageStr);
+    });
+  }
+
   describe('MCP Protocol Compliance', () => {
     beforeEach(async () => {
       mcpProcess = await startMCPServer();

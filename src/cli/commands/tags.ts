@@ -47,34 +47,7 @@ interface TagApiResponse {
   error?: string;
 }
 
-interface CreateTagPromptResult {
-  name: string;
-  description?: string;
-  color?: string;
-}
-
-interface UpdateTagOptions {
-  name?: string;
-  description?: string;
-  color?: string;
-  parent?: string;
-  interactive?: boolean;
-}
-
-interface UpdateTagPromptResult {
-  name?: string;
-  description?: string;
-  color?: string;
-  parent?: string;
-}
-
-interface DeleteTagOptions {
-  force?: boolean;
-}
-
-interface ConfirmPromptResult {
-  confirm: boolean;
-}
+// Removed unused interfaces
 
 export function registerTagCommands(program: Command): void {
   const getComponents = (): CliComponents => global.cliComponents;

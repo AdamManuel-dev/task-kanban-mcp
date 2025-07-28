@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import { formatDuration, formatProgressBar, formatKeyValue } from '../utils/formatter';
+// Removed unused import: formatDuration, formatProgressBar, formatKeyValue
 import type { TaskSize } from '../prompts/validators';
 
 export interface TaskEstimate {
@@ -74,7 +74,7 @@ export class TaskSizeEstimator {
    * Estimate time for a single task
    */
   estimateTime(task: TaskForEstimation): TaskEstimate {
-    const suggestedSize = this.suggestTaskSize(task);
+    const suggestedSize: TaskSize = TaskSizeEstimator.suggestTaskSize(task);
     const baseEstimate = this.config.sizeHours[suggestedSize];
 
     // Calculate complexity multiplier
@@ -89,7 +89,7 @@ export class TaskSizeEstimator {
     const confidence = this.calculateConfidence(task, suggestedSize);
 
     // Generate reasoning
-    const reasoning = this.generateReasoning(task, suggestedSize, complexityMultiplier);
+    const reasoning = TaskSizeEstimator.generateReasoning(task, suggestedSize, complexityMultiplier);
 
     return {
       size: suggestedSize,

@@ -14,9 +14,9 @@ export interface KeyboardShortcut {
 export class KeyboardHandler {
   private readonly shortcuts: Map<string, KeyboardShortcut> = new Map();
 
-  private readonly isActive = false;
+  private isActive = false;
 
-  private readonly helpVisible = false;
+  private helpVisible = false;
 
   private readonly refreshCallback?: () => Promise<void> | void;
 
@@ -172,7 +172,7 @@ export class KeyboardHandler {
   /**
    * Set up default global shortcuts
    */
-  private static setupDefaultShortcuts(): void {
+  private setupDefaultShortcuts(): void {
     // Help shortcut
     this.register({
       key: '?',

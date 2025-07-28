@@ -4,6 +4,18 @@
  * official TypeScript definitions available.
  */
 
+// JSX namespace for React components
+declare namespace JSX {
+  interface IntrinsicElements {
+    [elemName: string]: any;
+  }
+  interface Element {
+    type: any;
+    props: any;
+    key: any;
+  }
+}
+
 // commander - CLI framework
 declare module 'commander' {
   export interface Command {

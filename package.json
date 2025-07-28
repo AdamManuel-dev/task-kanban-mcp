@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "nodemon",
-    "build": "tsc --project tsconfig.build.json && npm run copy-assets",
+    "build": "tsc --project tsconfig.build.json && tsc-alias -p tsconfig.build.json && npm run copy-assets",
     "build:production": "npm run clean && npm run build:security && npm run copy-assets && npm run build:optimize",
     "build:security": "webpack --config webpack.config.js",
     "build:optimize": "npm run bundle-size && npm run analyze",
@@ -163,6 +163,7 @@
     "ts-jest": "^29.1.1",
     "ts-loader": "^9.5.2",
     "ts-node": "^10.9.2",
+    "tsc-alias": "^1.8.16",
     "tsconfig-paths": "^4.2.0",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3",

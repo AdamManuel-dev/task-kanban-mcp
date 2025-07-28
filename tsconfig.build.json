@@ -46,25 +46,7 @@
     "resolveJsonModule": true
   },
   "include": [
-    "src/types/**/*",
-    "src/config/**/*",
-    "src/utils/logger.ts",
-    "src/utils/errors.ts",
-    "src/utils/typeGuards.ts",
-    "src/utils/validation.ts",
-    "src/services/BoardService.ts",
-    "src/services/TaskService.ts",
-    "src/services/NoteService.ts",
-    "src/services/TagService.ts",
-    "src/services/ContextService.ts",
-    "src/services/SchedulingService.ts",
-    "src/database/connection.ts",
-    "src/database/migrations/**/*",
-    "src/database/seeds/**/*",
-    "src/mcp/index.ts",
-    "src/mcp/server.ts",
-    "src/mcp/tools.ts",
-    "src/mcp/types.ts"
+    "src/**/*"
   ],
   "exclude": [
     "node_modules",
@@ -75,20 +57,6 @@
     "**/*.spec.ts",
     "**/__tests__/**/*",
     "tests/**/*",
-    "src/cli/commands/interactive-view.tsx",
-    "src/services/TagService.kysely-poc.ts",
-    "src/cli/services/dashboard-data.ts",
-    "src/cli/utils/dashboard-manager.ts",
-    "src/cli/commands/**/*",
-    "src/cli/api-client-wrapper.ts",
-    "src/cli/prompts/**/*",
-    "src/routes/boards.ts",
-    "src/routes/tags.ts", 
-    "src/routes/tasks.ts",
-    "src/services/ExportService.ts",
-    "src/database/kyselyConnection.ts",
-    "src/mcp/resources.ts",
-    "src/database/schema.ts",
-    "src/utils/externalDataValidation.ts"
+    "src/services/TagService.kysely-poc.ts"
   ]
 }

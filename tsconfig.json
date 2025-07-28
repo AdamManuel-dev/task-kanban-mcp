@@ -5,6 +5,7 @@
     "lib": ["ES2022"],
     "module": "commonjs",
     "jsx": "react-jsx",
+    "downlevelIteration": true,
     
     /* Modules */
     "rootDir": "./src",

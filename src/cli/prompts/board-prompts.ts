@@ -308,11 +308,16 @@ export async function addColumnPrompt(
     }
   }
 
-  return {
+  const result: any = {
     name: response.name,
     position: response.position,
-    afterColumn,
   };
+  
+  if (afterColumn !== undefined) {
+    result.afterColumn = afterColumn;
+  }
+  
+  return result;
 }
 
 /**

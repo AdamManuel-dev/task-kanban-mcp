@@ -41,16 +41,16 @@ export function registerRealtimeCommands(program: Command): void {
           // Subscribe to events based on options
           const subscriptions: Record<string, unknown> = {};
 
-          if (options.board) {
-            subscriptions.board = options.board;
+          if (options['board']) {
+            subscriptions['board'] = options['board'];
           }
 
-          if (options.task) {
-            subscriptions.task = options.task;
+          if (options['task']) {
+            subscriptions['task'] = options['task'];
           }
 
-          if (options.events) {
-            subscriptions.events = options.events.split(',').map((e: string) => e.trim());
+          if (options['events']) {
+            subscriptions['events'] = options['events'].split(',').map((e: string) => e.trim());
           }
 
           // Send subscription message
@@ -137,8 +137,8 @@ export function registerRealtimeCommands(program: Command): void {
           level: options.level,
         };
 
-        if (options.component) params.component = options.component;
-        if (options.since) params.since = options.since;
+        if (options['component']) params['component'] = options['component'];
+        if (options['since']) params['since'] = options['since'];
 
         if (options.follow) {
           // Stream logs in real-time
@@ -219,7 +219,7 @@ export function registerRealtimeCommands(program: Command): void {
       'subtask:completed': '✓',
       default: '📋',
     };
-    return icons[eventType] ?? (icons.default || '📋');
+    return icons[eventType] ?? (icons['default'] || '📋');
   }
 
   function getEventColor(_eventType: string): (text: string) => string {

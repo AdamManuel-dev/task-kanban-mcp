@@ -104,7 +104,7 @@ export class OutputFormatter {
    * Output JSON format
    */
   private static outputJson<T>(data: T): void {
-    logger.log(JSON.stringify(data, null, 2));
+    console.log(JSON.stringify(data, null, 2));
   }
 
   /**
@@ -395,7 +395,7 @@ export class OutputFormatter {
     const lines: string[] = [];
 
     // Header
-    lines.push(this.formatHeader(`Schedule: ${String(String(schedule.name))}`));
+    lines.push(OutputFormatter.formatHeader(`Schedule: ${String(String(schedule.name))}`));
     lines.push('');
 
     // Basic info
@@ -412,7 +412,7 @@ export class OutputFormatter {
 
     // Timing info
     lines.push('');
-    lines.push(this.formatHeader('Timing:'));
+    lines.push(OutputFormatter.formatHeader('Timing:'));
     lines.push(`Created: ${String(String(new Date(schedule.createdAt).toLocaleString()))}`);
     lines.push(`Updated: ${String(String(new Date(schedule.updatedAt).toLocaleString()))}`);
 
@@ -428,7 +428,7 @@ export class OutputFormatter {
 
     // Statistics
     lines.push('');
-    lines.push(this.formatHeader('Statistics:'));
+    lines.push(OutputFormatter.formatHeader('Statistics:'));
     lines.push(`Total Runs: ${String(String(schedule.runCount ?? 0))}`);
     lines.push(`Failures: ${String(String(schedule.failureCount ?? 0))}`);
 
@@ -442,7 +442,7 @@ export class OutputFormatter {
 
     // Configuration
     lines.push('');
-    lines.push(this.formatHeader('Configuration:'));
+    lines.push(OutputFormatter.formatHeader('Configuration:'));
     lines.push(`Retention: ${String(String(schedule.retentionDays ?? 30))} days`);
     lines.push(
       `Compression: ${String(String(schedule.compressionEnabled ? 'Enabled' : 'Disabled'))}`

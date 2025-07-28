@@ -31,7 +31,7 @@
 import type { Command } from 'commander';
 import inquirer from 'inquirer';
 
-import type { CliComponents, CreateTaskRequest } from '../types';
+import type { CliComponents, CreateTaskRequest, UpdateTaskRequest } from '../types';
 import type { Task } from '../../types';
 import { createTaskPrompt, PromptCancelledError } from '../prompts/task-prompts';
 import { buildSearchTasksParams } from '../utils/parameter-builder';
@@ -85,7 +85,7 @@ interface SelectTaskOptions {
   order?: string;
 }
 
-interface Task {
+interface TaskListItem {
   id: string;
   title: string;
   description?: string;
@@ -99,7 +99,7 @@ interface Task {
 }
 
 interface TaskListResponse {
-  data: Task[];
+  data: TaskListItem[];
   total?: number;
 }
 
@@ -107,16 +107,13 @@ interface UpdateTaskPromptResult {
   title?: string;
   description?: string;
   status?: string;
-  priority?: string;
+  priority?: number;
   assignee?: string;
   due_date?: string;
   tags?: string;
 }
 
-interface MoveTaskPromptResult {
-  column?: string;
-  position?: string;
-}
+// Removed unused interface
 
 interface ConfirmPromptResult {
   confirm: boolean;
@@ -346,7 +343,7 @@ export function registerTaskCommands(program: Command): void {
     .option('--template <id>', 'create from template')
     .option('-i, --interactive', 'interactive mode')
     .action(async (options: CreateTaskOptions) => {
-      const { config, apiClient, formatter } = getComponents();
+      const { config, apiClient } = getComponents();
       const spinner = new SpinnerManager();
 
       try {
@@ -355,12 +352,12 @@ export function registerTaskCommands(program: Command): void {
         let taskData: Record<string, unknown> = {};
 
         // Handle template creation
-        if (options.template) {
+        if (options['template']) {
           const templateService = TaskTemplateService.getInstance();
-          const template = await templateService.getTemplate(options.template);
+          const template = await templateService.getTemplate(options['template']);
 
           if (!template) {
-            spinner.fail(`Template not found: ${options.template}`);
+            spinner.fail(`Template not found: ${options['template']}`);
             process.exit(1);
           }
 
@@ -374,7 +371,8 @@ export function registerTaskCommands(program: Command): void {
           const descVariables = template.description_template
             ? extractTemplateVariables(template.description_template)
             : [];
-          const allVariables = [...new Set([...titleVariables, ...descVariables])];
+          const uniqueVariables = new Set([...titleVariables, ...descVariables]);
+          const allVariables = Array.from(uniqueVariables);
 
           let variables: Record<string, any> = {};
           if (allVariables.length > 0) {
@@ -450,20 +448,20 @@ export function registerTaskCommands(program: Command): void {
 
         // Use command line options or answers
         // eslint-disable-next-line dot-notation
-        taskData['title'] = options.title ?? taskData['title'];
+        taskData['title'] = options['title'] ?? taskData['title'];
         // eslint-disable-next-line dot-notation
-        taskData['description'] = options.description ?? taskData['description'];
+        taskData['description'] = options['description'] ?? taskData['description'];
         // eslint-disable-next-line dot-notation
-        taskData['boardId'] = options.board ?? taskData['board'] ?? config.getDefaultBoard();
+        taskData['boardId'] = options['board'] ?? taskData['board'] ?? config.getDefaultBoard();
         // eslint-disable-next-line dot-notation
-        taskData['columnId'] = options.column ?? taskData['column'];
+        taskData['columnId'] = options['column'] ?? taskData['column'];
         // eslint-disable-next-line dot-notation
-        taskData['priority'] = parseInt(options.priority ?? String(taskData['priority'] ?? ''), 10);
+        taskData['priority'] = parseInt(options['priority'] ?? String(taskData['priority'] ?? ''), 10);
 
         // eslint-disable-next-line dot-notation
-        if (options.due ?? taskData['dueDate']) {
+        if (options['due'] ?? taskData['dueDate']) {
           // eslint-disable-next-line dot-notation
-          taskData['dueDate'] = options.due ?? taskData['dueDate'];
+          taskData['dueDate'] = options['due'] ?? taskData['dueDate'];
         }
 
         // eslint-disable-next-line dot-notation
@@ -483,28 +481,29 @@ export function registerTaskCommands(program: Command): void {
         }
 
         const createTaskRequest: CreateTaskRequest = {
-          title: String(taskData.title),
-          description: taskData.description as string,
-          board_id: String(taskData.boardId),
-          column_id: taskData.columnId as string,
-          priority: taskData.priority as number,
+          title: String(taskData['title']),
+          description: taskData['description'] as string,
+          board_id: String(taskData['boardId']),
+          column_id: taskData['columnId'] as string,
+          priority: taskData['priority'] as number,
           status: 'todo',
-          assignee: taskData.assignee as string,
-          due_date: taskData.dueDate as string,
-          tags: taskData.tags as string[],
+          assignee: taskData['assignee'] as string,
+          due_date: taskData['dueDate'] as string,
+          tags: taskData['tags'] as string[],
         };
 
         spinner.start(`Creating task: ${createTaskRequest.title}`);
         const response = await apiClient.createTask(createTaskRequest);
 
         if (isSuccessResponse(response)) {
-          spinner.succeed(`Task created successfully: ${response.data.id}`);
+          const task = response.data as Task;
+          spinner.succeed(`Task created successfully: ${task.id}`);
           console.log('\n📋 Task Details:');
-          console.log(`   Title: ${response.data.title}`);
-          console.log(`   Status: ${response.data.status}`);
-          if (response.data.priority) console.log(`   Priority: ${response.data.priority}`);
-          if (response.data.assignee) console.log(`   Assignee: ${response.data.assignee}`);
-          if (response.data.due_date) console.log(`   Due: ${response.data.due_date}`);
+          console.log(`   Title: ${task.title}`);
+          console.log(`   Status: ${task.status}`);
+          if (task.priority) console.log(`   Priority: ${task.priority}`);
+          if (task.assignee) console.log(`   Assignee: ${task.assignee}`);
+          if (task.due_date) console.log(`   Due: ${task.due_date}`);
         } else {
           spinner.fail(`Failed to create task: ${response.error?.message ?? 'Unknown error'}`);
           process.exit(1);
@@ -558,7 +557,7 @@ export function registerTaskCommands(program: Command): void {
         // Get current task data
         const currentTaskResponse = await apiClient.getTask(id);
         if (
-          !currentTaskResponse ??
+          !currentTaskResponse ||
           (!('data' in currentTaskResponse) || !currentTaskResponse.data)
         ) {
           formatter.error(`Task ${String(id)} not found`);
@@ -567,7 +566,7 @@ export function registerTaskCommands(program: Command): void {
 
         const currentTask = currentTaskResponse.data as Task;
 
-        let updates: Record<string, unknown> = {};
+        let updates: UpdateTaskRequest = {};
 
         if (options.interactive) {
           const answers = await inquirer.prompt<UpdateTaskPromptResult>([
@@ -587,7 +586,7 @@ export function registerTaskCommands(program: Command): void {
               type: 'list',
               name: 'status',
               message: 'Status:',
-              choices: ['todo', 'in_progress', 'completed', 'blocked'],
+              choices: ['todo', 'in_progress', 'done', 'blocked'],
               default: currentTask.status,
             },
             {
@@ -599,19 +598,22 @@ export function registerTaskCommands(program: Command): void {
                 (input >= 1 && input <= 10) || 'Priority must be between 1 and 10',
             },
           ]);
-          updates = answers;
+          
+          // Convert prompt result to UpdateTaskRequest - filter out undefined values
+          updates = {};
+          if (answers.title !== undefined) updates.title = answers.title;
+          if (answers.description !== undefined) updates.description = answers.description;
+          if (answers.status !== undefined) updates.status = answers.status as 'todo' | 'in_progress' | 'done' | 'blocked' | 'archived';
+          if (answers.priority !== undefined) updates.priority = answers.priority;
+          if (answers.assignee !== undefined) updates.assignee = answers.assignee;
+          if (answers.due_date !== undefined) updates.due_date = answers.due_date;
         } else {
           // Use command line options
-          // eslint-disable-next-line dot-notation
-          if (options.title) updates['title'] = options.title;
-          // eslint-disable-next-line dot-notation
-          if (options.description) updates['description'] = options.description;
-          // eslint-disable-next-line dot-notation
-          if (options.status) updates['status'] = options.status;
-          // eslint-disable-next-line dot-notation
-          if (options.priority) updates['priority'] = parseInt(options.priority, 10);
-          // eslint-disable-next-line dot-notation
-          if (options.due) updates['dueDate'] = options.due;
+          if (options.title) updates.title = options.title;
+          if (options.description) updates.description = options.description;
+          if (options.status) updates.status = options.status as 'todo' | 'in_progress' | 'done' | 'blocked' | 'archived';
+          if (options.priority) updates.priority = parseInt(options.priority, 10);
+          if (options.due) updates.due_date = options.due;
         }
 
         if (Object.keys(updates).length === 0) {
@@ -780,6 +782,7 @@ export function registerTaskCommands(program: Command): void {
     .option('--order <direction>', 'sort order (asc/desc)', 'desc')
     .action(async (options: SelectTaskOptions) => {
       const { config, apiClient, formatter } = getComponents();
+      const spinner = new SpinnerManager();
 
       try {
         // Fetch tasks with spinner
@@ -809,7 +812,7 @@ export function registerTaskCommands(program: Command): void {
         });
 
         const taskResponse = tasks as TaskListResponse;
-        if (!taskResponse.data ?? taskResponse.data.length === 0) {
+        if (!taskResponse.data || taskResponse.data.length === 0) {
           formatter.info('No tasks found');
           return;
         }
@@ -819,15 +822,28 @@ export function registerTaskCommands(program: Command): void {
         const { render } = await import('ink');
         const TaskList = (await import('../ui/components/TaskList')).default;
 
-        // Transform API tasks to component format
-        const taskList: Task[] = taskResponse.data.map((task: Task) => ({
-          id: task.id,
-          title: task.title,
-          status: task.status,
-          priority: task.priority,
-          assignee: task.assignee,
-          tags: task.tags,
-          due_date: task.due_date,
+        // Transform API tasks to component format with required Task properties
+        const taskList: (Task & { tags?: string[] })[] = taskResponse.data.map((item: TaskListItem) => ({
+          id: item.id,
+          title: item.title,
+          description: item.description || '',
+          board_id: '', // Not available in TaskListItem, using empty string
+          column_id: '', // Not available in TaskListItem, using empty string
+          position: 0, // Not available in TaskListItem, using default
+          status: item.status as Task['status'],
+          priority: typeof item.priority === 'string' ? parseInt(item.priority, 10) : item.priority || 0,
+          assignee: item.assignee,
+          due_date: item.due_date ? new Date(item.due_date) : undefined,
+          estimated_hours: undefined,
+          actual_hours: undefined,
+          parent_task_id: undefined,
+          progress: undefined,
+          created_at: item.created_at ? new Date(item.created_at) : new Date(),
+          updated_at: item.updated_at ? new Date(item.updated_at) : new Date(),
+          completed_at: undefined,
+          archived: false,
+          metadata: undefined,
+          tags: item.tags || [], // Extended property for UI
         }));
 
         let shouldExit = false;
@@ -838,7 +854,7 @@ export function registerTaskCommands(program: Command): void {
           const [, setSearchMode] = React.useState(false);
           const [searchQuery, setSearchQuery] = React.useState('');
 
-          const handleTaskSelect = async (task: Task) => {
+          const handleTaskSelect = async (task: Task & { tags?: string[] }) => {
             formatter.info(
               `\n✅ Selected: ${String(String(task.title))} [${String(String(task.id))}]`
             );
@@ -897,10 +913,10 @@ export function registerTaskCommands(program: Command): void {
                     type: 'list',
                     name: 'newStatus',
                     message: 'Select new status:',
-                    choices: ['todo', 'in_progress', 'completed', 'blocked'],
+                    choices: ['todo', 'in_progress', 'done', 'blocked'],
                   },
                 ]);
-                await apiClient.updateTask(task.id, { status: newStatus });
+                await apiClient.updateTask(task.id, { status: newStatus as 'todo' | 'in_progress' | 'done' | 'blocked' | 'archived' });
                 formatter.success(`Task status updated to ${String(newStatus)}`);
                 break;
               case 'delete':
@@ -964,14 +980,27 @@ export function registerTaskCommands(program: Command): void {
                 try {
                   const refreshedTasks = await apiClient.getTasks(params);
                   const refreshedResponse = refreshedTasks as TaskListResponse;
-                  const refreshedTaskList: Task[] = refreshedResponse.data.map((task: Task) => ({
-                    id: task.id,
-                    title: task.title,
-                    status: task.status,
-                    priority: task.priority,
-                    assignee: task.assignee,
-                    tags: task.tags,
-                    due_date: task.due_date,
+                  const refreshedTaskList: (Task & { tags?: string[] })[] = refreshedResponse.data.map((item: TaskListItem) => ({
+                    id: item.id,
+                    title: item.title,
+                    description: item.description || '',
+                    board_id: '',
+                    column_id: '',
+                    position: 0,
+                    status: item.status as Task['status'],
+                    priority: typeof item.priority === 'string' ? parseInt(item.priority, 10) : item.priority || 0,
+                    assignee: item.assignee,
+                    due_date: item.due_date ? new Date(item.due_date) : undefined,
+                    estimated_hours: undefined,
+                    actual_hours: undefined,
+                    parent_task_id: undefined,
+                    progress: undefined,
+                    created_at: item.created_at ? new Date(item.created_at) : new Date(),
+                    updated_at: item.updated_at ? new Date(item.updated_at) : new Date(),
+                    completed_at: undefined,
+                    archived: false,
+                    metadata: undefined,
+                    tags: item.tags || [],
                   }));
                   setCurrentTasks(refreshedTaskList);
                   formatter.info('\n🔄 Tasks refreshed');
@@ -1064,10 +1093,10 @@ export function registerTaskCommands(program: Command): void {
         try {
           // Build query parameters
           const params: Record<string, string> = {};
-          if (options.board) params.board_id = options.board;
-          if (options.assignee) params.assignee = options.assignee;
-          if (options.skill) params.skill_context = options.skill;
-          if (options.includeBlocked) params.exclude_blocked = 'false';
+          if (options.board) params['board_id'] = options.board;
+          if (options.assignee) params['assignee'] = options.assignee;
+          if (options.skill) params['skill_context'] = options.skill;
+          if (options.includeBlocked) params['exclude_blocked'] = 'false';
 
           // Call the API endpoint for next task recommendation
           const response = await apiClient.request('GET', '/api/tasks/next', undefined, params);

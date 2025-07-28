@@ -32,8 +32,8 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import { logger } from '@/utils/logger';
-import type { DatabaseConnection, QueryParameters } from '@/database/connection';
+import { logger } from '../utils/logger';
+import type { DatabaseConnection, QueryParameters } from '../database/connection';
 import type {
   Task,
   TaskDependency,
@@ -42,7 +42,9 @@ import type {
   FilterOptions,
   CriticalPathResult,
   TaskImpactAnalysis,
-} from '@/types';
+  ProgressCalculationResult,
+  SubtaskHierarchy,
+} from '../types';
 import { TaskHistoryService } from './TaskHistoryService';
 
 /**
@@ -1621,7 +1623,7 @@ export class TaskService {
     // Find the task with maximum distance (end of critical path)
     let maxDistance = 0;
     let endTask = '';
-    for (const [taskId, distance] of distances) {
+    for (const [taskId, distance] of Array.from(distances.entries())) {
       if (distance > maxDistance) {
         maxDistance = distance;
         endTask = taskId;
@@ -2339,10 +2341,15 @@ export class TaskService {
    */
   async getParallelExecutableTasks(boardId: string): Promise<Task[][]> {
     try {
-      const tasks = await this.getTasks({
+      const todoTasks = await this.getTasks({
         board_id: boardId,
-        status: ['todo', 'in_progress'] as any,
+        status: 'todo',
       });
+      const inProgressTasks = await this.getTasks({
+        board_id: boardId,
+        status: 'in_progress',
+      });
+      const tasks = [...todoTasks, ...inProgressTasks];
 
       const parallelGroups: Task[][] = [];
       const processedTasks = new Set<string>();
@@ -2552,7 +2559,9 @@ export class TaskService {
       const task1Dependencies = await this.getUpstreamTasks(taskId1);
       const task2Dependencies = await this.getUpstreamTasks(taskId2);
 
-      return task1Dependencies.has(taskId2) || task2Dependencies.has(taskId1);
+      const task1DepIds = new Set(task1Dependencies.map(t => t.id));
+      const task2DepIds = new Set(task2Dependencies.map(t => t.id));
+      return task1DepIds.has(taskId2) || task2DepIds.has(taskId1);
     } catch (error) {
       logger.error('Failed to check dependency conflict', { taskId1, taskId2, error });
       return true; // Err on the side of caution

@@ -19,7 +19,7 @@ export async function createApiMiddleware(): Promise<Router> {
   router.use(responseFormattingMiddleware);
 
   // Authentication middleware (skip in test environment)
-  if (process.env.NODE_ENV !== 'test') {
+  if (process.env['NODE_ENV'] !== 'test') {
     router.use(authenticationMiddleware);
   }
 

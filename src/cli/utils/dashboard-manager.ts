@@ -46,11 +46,11 @@ export class DashboardManager {
 
   private currentLayout: 'overview' | 'velocity' | 'personal' = 'overview';
 
-  private readonly focusedWidget: string | null = null;
+  // private readonly focusedWidget: string | null = null;
 
-  private readonly isFullscreen = false;
+  // private readonly isFullscreen = false;
 
-  private readonly debugMode = false;
+  // private readonly debugMode = false;
 
   constructor(config: Partial<DashboardConfig> = {}, apiClient?: ApiClient) {
     this.config = {
@@ -99,7 +99,7 @@ export class DashboardManager {
     // Dashboard controls
     this.screen.key(['r', 'F5'], () => {
       void this.refreshData().catch(error =>
-        DashboardManager.showErrorNotification(`Failed to refresh data: ${String(error)}`)
+        this.showErrorNotification(`Failed to refresh data: ${String(error)}`)
       );
     });
 
@@ -131,35 +131,35 @@ export class DashboardManager {
 
     // Navigation within widgets
     this.screen.key(['tab'], () => {
-      DashboardManager.focusNextWidget();
+      this.focusNextWidget();
     });
 
     this.screen.key(['S-tab'], () => {
-      DashboardManager.focusPreviousWidget();
+      this.focusPreviousWidget();
     });
 
     // Zoom/fullscreen toggle
     this.screen.key(['f', 'F11'], () => {
-      DashboardManager.toggleFullscreen();
+      this.toggleFullscreen();
     });
 
     // Quick actions
     this.screen.key(['s'], () => {
-      DashboardManager.showQuickStats();
+      this.showQuickStats();
     });
 
     this.screen.key(['e'], () => {
-      DashboardManager.exportDashboard();
+      this.exportDashboard();
     });
 
     // Debug mode toggle
     this.screen.key(['d'], () => {
-      DashboardManager.toggleDebugMode();
+      this.toggleDebugMode();
     });
 
     // Reset view
     this.screen.key(['escape'], () => {
-      DashboardManager.resetView();
+      this.resetView();
     });
   }
 
@@ -177,10 +177,10 @@ export class DashboardManager {
       arcWidth: 4,
       remainColor: donutStyles.remainColor,
       yPadding: 2,
-      data: Object.entries(data.tasks.byStatus).map(([status, count], index) => ({
+      data: Object.entries(data.tasks['byStatus']).map(([status, count], index) => ({
         label: status,
-        percent: (count / data.tasks.total) * 100,
-        color: donutStyles.colors[index % donutStyles.colors.length],
+        percent: (count / data.tasks['total']) * 100,
+        color: donutStyles['colors'][index % donutStyles['colors'].length],
       })),
     });
 
@@ -194,8 +194,8 @@ export class DashboardManager {
       maxHeight: 9,
       style: { fg: barStyles.textColor },
       data: {
-        titles: Object.keys(data.tasks.byPriority),
-        data: Object.values(data.tasks.byPriority),
+        titles: Object.keys(data.tasks['byPriority']),
+        data: Object.values(data.tasks['byPriority']),
       },
     });
 
@@ -208,8 +208,8 @@ export class DashboardManager {
       label: 'Team Velocity (Last 8 Weeks)',
       data: {
         title: 'Completed Tasks',
-        x: data.velocity.map(v => v.period),
-        y: data.velocity.map(v => v.completed),
+        x: data['velocity'].map(v => v['period']),
+        y: data['velocity'].map(v => v['completed']),
       },
     });
 
@@ -221,9 +221,9 @@ export class DashboardManager {
     });
 
     // Populate activity log
-    data.activity.forEach(activity => {
+    data['activity'].forEach(activity => {
       activityLog.log(
-        `${String(String(activity.timestamp))}: ${String(String(activity.event))} (${String(String(activity.user))})`
+        `${String(String(activity['timestamp']))}: ${String(String(activity['event']))} (${String(String(activity['user']))})`
       );
     });
 
@@ -254,8 +254,8 @@ export class DashboardManager {
       label: 'Team Velocity Trend',
       data: {
         title: 'Completed Tasks',
-        x: data.velocity.map(v => v.period),
-        y: data.velocity.map(v => v.completed),
+        x: data['velocity'].map(v => v['period']),
+        y: data['velocity'].map(v => v['completed']),
       },
     });
 
@@ -272,14 +272,14 @@ export class DashboardManager {
       data: [
         {
           title: 'Actual',
-          x: data.burndown.map(b => b.day),
-          y: data.burndown.map(b => b.remaining),
+          x: data['burndown'].map(b => b['day']),
+          y: data['burndown'].map(b => b['remaining']),
           style: { line: 'red' },
         },
         {
           title: 'Ideal',
-          x: data.burndown.map(b => b.day),
-          y: data.burndown.map(b => b.ideal),
+          x: data['burndown'].map(b => b['day']),
+          y: data['burndown'].map(b => b['ideal']),
           style: { line: 'green' },
         },
       ],
@@ -302,10 +302,10 @@ export class DashboardManager {
 
     teamTable.setData({
       headers: ['Member', 'Tasks', 'Load %'],
-      data: data.teamMembers.map(member => [
-        member.name,
-        member.taskCount.toString(),
-        `${String(String(member.load))}%`,
+      data: data['teamMembers'].map(member => [
+        member['name'],
+        member['taskCount'].toString(),
+        `${String(String(member['load']))}%`,
       ]),
     });
 
@@ -330,7 +330,7 @@ export class DashboardManager {
       fill: 'white',
     });
 
-    const completionRate = (data.tasks.completed / data.tasks.total) * 100;
+    const completionRate = (data.tasks['completed'] / data.tasks['total']) * 100;
     progressGauge.setPercent(completionRate);
 
     // Task breakdown
@@ -407,7 +407,7 @@ export class DashboardManager {
   switchLayout(layout: 'overview' | 'velocity' | 'personal'): void {
     this.currentLayout = layout;
     void this.refreshData().catch(error =>
-      DashboardManager.showErrorNotification(
+      this.showErrorNotification(
         `Failed to refresh data after layout change: ${String(error)}`
       )
     );
@@ -439,7 +439,7 @@ export class DashboardManager {
       align: 'center',
     });
 
-    const currentTheme = this.themeHelper.getTheme().name;
+    const currentTheme = this.themeHelper.getTheme()['name'];
     footer.setContent(
       `1-3:Layouts | Tab:Navigate | r:Refresh | t:Theme(${String(currentTheme)}) | s:Stats | d:Debug | h:Help | q:Quit`
     );
@@ -449,7 +449,7 @@ export class DashboardManager {
   /**
    * Show error notification
    */
-  private static showErrorNotification(message: string): void {
+  private showErrorNotification(message: string): void {
     const errorBox = blessed.box({
       top: 1,
       right: 1,
@@ -610,7 +610,7 @@ Press any key to close this help...
     if (this.config.autoRefresh) {
       this.refreshTimer = setInterval(() => {
         void this.refreshData().catch(error =>
-          DashboardManager.showErrorNotification(`Failed to auto-refresh data: ${String(error)}`)
+          this.showErrorNotification(`Failed to auto-refresh data: ${String(error)}`)
         );
       }, this.config.refreshInterval);
     }
@@ -762,7 +762,7 @@ Press any key to close this help...
    */
   start(): void {
     void this.refreshData().catch(error =>
-      DashboardManager.showErrorNotification(`Failed to refresh data on start: ${String(error)}`)
+      this.showErrorNotification(`Failed to refresh data on start: ${String(error)}`)
     );
     this.startAutoRefresh();
     this.screen.render();
@@ -771,18 +771,18 @@ Press any key to close this help...
   /**
    * Focus next widget for navigation
    */
-  private static focusNextWidget(): void {
+  private focusNextWidget(): void {
     const widgetKeys = Array.from(this.widgets.keys());
     if (widgetKeys.length === 0) return;
 
-    const currentIndex = this.focusedWidget ? widgetKeys.indexOf(this.focusedWidget) : -1;
+    const currentIndex = (this as any)['focusedWidget'] ? widgetKeys.indexOf((this as any)['focusedWidget']) : -1;
     const nextIndex = (currentIndex + 1) % widgetKeys.length;
 
-    this.focusedWidget = widgetKeys[nextIndex];
-    const widget = this.widgets.get(this.focusedWidget);
+    (this as any)['focusedWidget'] = widgetKeys[nextIndex];
+    const widget = this.widgets.get((this as any)['focusedWidget']);
 
-    if (widget?.focus) {
-      widget.focus();
+    if (widget?.['focus']) {
+      widget['focus']();
       this.screen.render();
     }
   }
@@ -790,18 +790,18 @@ Press any key to close this help...
   /**
    * Focus previous widget for navigation
    */
-  private static focusPreviousWidget(): void {
+  private focusPreviousWidget(): void {
     const widgetKeys = Array.from(this.widgets.keys());
     if (widgetKeys.length === 0) return;
 
-    const currentIndex = this.focusedWidget ? widgetKeys.indexOf(this.focusedWidget) : -1;
+    const currentIndex = (this as any)['focusedWidget'] ? widgetKeys.indexOf((this as any)['focusedWidget']) : -1;
     const prevIndex = currentIndex <= 0 ? widgetKeys.length - 1 : currentIndex - 1;
 
-    this.focusedWidget = widgetKeys[prevIndex];
-    const widget = this.widgets.get(this.focusedWidget);
+    (this as any)['focusedWidget'] = widgetKeys[prevIndex];
+    const widget = this.widgets.get((this as any)['focusedWidget']);
 
-    if (widget?.focus) {
-      widget.focus();
+    if (widget?.['focus']) {
+      widget['focus']();
       this.screen.render();
     }
   }
@@ -809,17 +809,17 @@ Press any key to close this help...
   /**
    * Toggle fullscreen mode for focused widget
    */
-  private static toggleFullscreen(): void {
-    if (!this.focusedWidget) {
+  private toggleFullscreen(): void {
+    if (!(this as any)['focusedWidget']) {
       this.showNotification('No widget focused. Use Tab to focus a widget first.');
       return;
     }
 
-    this.isFullscreen = !this.isFullscreen;
+    (this as any)['isFullscreen'] = !(this as any)['isFullscreen'];
 
-    if (this.isFullscreen) {
+    if ((this as any)['isFullscreen']) {
       this.showNotification(
-        `Fullscreen mode: ${String(String(this.focusedWidget))} (press F or F11 to exit)`
+        `Fullscreen mode: ${String(String((this as any)['focusedWidget']))} (press F or F11 to exit)`
       );
       // In a real implementation, this would resize the focused widget to full screen
     } else {
@@ -831,7 +831,7 @@ Press any key to close this help...
   /**
    * Show quick statistics overlay
    */
-  private static showQuickStats(): void {
+  private showQuickStats(): void {
     const statsBox = blessed.box({
       top: 'center',
       left: 'center',
@@ -845,10 +845,10 @@ Press any key to close this help...
       label: '📊 Quick Statistics',
       content: `
 📈 Performance Metrics:
-  • Dashboard Refresh Rate: ${String(String(this.config.refreshInterval / 1000))}s
+  • Dashboard Refresh Rate: ${String(String(this.config['refreshInterval'] / 1000))}s
   • Active Widgets: ${String(String(this.widgets.size))}
-  • Current Theme: ${String(String(this.themeHelper.getTheme().name))}
-  • Auto-refresh: ${String(String(this.config.autoRefresh ? 'Enabled' : 'Disabled'))}
+  • Current Theme: ${String(String(this.themeHelper.getTheme()['name']))}
+  • Auto-refresh: ${String(String(this.config['autoRefresh'] ? 'Enabled' : 'Disabled'))}
 
 🎮 Navigation Tips:
   • Tab/Shift+Tab: Navigate between widgets
@@ -878,17 +878,17 @@ Press any key to close...
   /**
    * Export dashboard (placeholder)
    */
-  private static exportDashboard(): void {
+  private exportDashboard(): void {
     this.showNotification('Export functionality coming soon! (PNG/SVG export)');
   }
 
   /**
    * Toggle debug mode
    */
-  private static toggleDebugMode(): void {
-    this.debugMode = !this.debugMode;
+  private toggleDebugMode(): void {
+    (this as any)['debugMode'] = !(this as any)['debugMode'];
 
-    if (this.debugMode) {
+    if ((this as any)['debugMode']) {
       this.showNotification('Debug mode enabled - showing widget info');
       this.showDebugOverlay();
     } else {
@@ -915,10 +915,10 @@ Press any key to close...
       label: '🐛 Debug Info',
       content: `
 Widgets: ${String(String(this.widgets.size))}
-Focused: ${String(String(this.focusedWidget ?? 'none'))}
+Focused: ${String(String((this as any)['focusedWidget'] ?? 'none'))}
 Layout: ${String(String(this.currentLayout))}
-Fullscreen: ${String(String(this.isFullscreen))}
-Theme: ${String(String(this.themeHelper.getTheme().name))}
+Fullscreen: ${String(String((this as any)['isFullscreen']))}
+Theme: ${String(String(this.themeHelper.getTheme()['name']))}
 
 Active Widgets:
 ${String(debugInfo)}
@@ -946,10 +946,10 @@ ${String(debugInfo)}
   /**
    * Reset view to default state
    */
-  private static resetView(): void {
-    this.isFullscreen = false;
-    this.focusedWidget = null;
-    this.debugMode = false;
+  private resetView(): void {
+    (this as any)['isFullscreen'] = false;
+    (this as any)['focusedWidget'] = null;
+    (this as any)['debugMode'] = false;
     this.hideDebugOverlay();
     void this.refreshData();
     this.showNotification('View reset to default state');
@@ -958,7 +958,7 @@ ${String(debugInfo)}
   /**
    * Show general notification
    */
-  private static showNotification(message: string): void {
+  private showNotification(message: string): void {
     const notificationBox = blessed.box({
       top: 1,
       left: 'center',

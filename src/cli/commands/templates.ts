@@ -8,13 +8,15 @@ import chalk from 'chalk';
 import inquirer from 'inquirer';
 import { TaskTemplateService } from '@/services/TaskTemplateService';
 import { BoardService } from '@/services/BoardService';
-import { formatter } from '@/cli/formatter';
+import { dbConnection } from '@/database/connection';
+// Removed unused import: formatter
 import { logger } from '@/utils/logger';
 import type {
   TaskTemplate,
   TaskTemplateCreateRequest,
   TaskFromTemplateRequest,
 } from '@/types/templates';
+import type { Board } from '@/types';
 
 export function createTemplatesCommand(): Command {
   const templates = new Command('templates')
@@ -52,10 +54,11 @@ export function createTemplatesCommand(): Command {
         const categories = templateService.getCategories();
         const groupedTemplates = templates.reduce(
           (acc, template) => {
-            if (!acc[template.category]) {
-              acc[template.category] = [];
+            const category = template.category || 'general';
+            if (!acc[category]) {
+              acc[category] = [];
             }
-            acc[template.category].push(template);
+            acc[category].push(template);
             return acc;
           },
           {} as Record<string, TaskTemplate[]>
@@ -261,7 +264,7 @@ export function createTemplatesCommand(): Command {
       try {
         logger.debug('Using template to create task', { templateId, options });
         const templateService = TaskTemplateService.getInstance();
-        const boardService = BoardService.getInstance();
+        const boardService = new BoardService(dbConnection);
 
         // Get template
         const template = await templateService.getTemplate(templateId);
@@ -286,7 +289,7 @@ export function createTemplatesCommand(): Command {
               type: 'list',
               name: 'boardId',
               message: 'Select target board:',
-              choices: boards.map(board => ({
+              choices: boards.map((board: Board) => ({
                 name: `${board.name} (${board.id})`,
                 value: board.id,
               })),

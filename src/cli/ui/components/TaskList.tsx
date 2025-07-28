@@ -94,7 +94,7 @@ export class TaskListFormatter {
     return output.join('\n');
   }
 
-  private static formatTaskItem(task: Task, isSelected: boolean): string {
+  private static _formatTaskItem(task: Task, isSelected: boolean): string {
     const prefix = isSelected ? '→' : ' ';
     const statusIcon = this.getStatusIcon(task.status);
     const priorityText = this.formatPriority(task.priority);
@@ -112,7 +112,7 @@ export class TaskListFormatter {
     return output;
   }
 
-  private static processTaskList(
+  private static _processTaskList(
     tasks: Task[],
     sortBy?: TaskListProps['sortBy'],
     filterBy?: TaskFilter
@@ -200,7 +200,7 @@ export class TaskListFormatter {
     return `${String(String(text.substring(0, maxLength - 3)))}...`;
   }
 
-  private static renderSummary(): string {
+  private static _renderSummary(): string {
     const statusCounts = this.tasks.reduce(
       (acc, task) => {
         acc[task.status] = (acc[task.status] || 0) + 1;

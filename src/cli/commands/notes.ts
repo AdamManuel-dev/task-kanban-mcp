@@ -102,7 +102,7 @@ export function registerNoteCommands(program: Command): void {
       }) => {
         const { apiClient, formatter } = getComponents();
 
-        let noteData: Record<string, unknown> = {};
+        let noteData: Partial<CreateNoteRequest> = {};
 
         if ((options as any).interactive ?? !options.title) {
           const questions: Array<{
@@ -111,7 +111,7 @@ export function registerNoteCommands(program: Command): void {
             message: string;
             validate?: (input: string) => boolean | string;
             choices?: string[];
-            default?: string;
+            default?: string | boolean;
           }> = [];
 
           if (!options.title) {
@@ -163,15 +163,14 @@ export function registerNoteCommands(program: Command): void {
         }
 
         // Use command line options or answers
-        noteData.title = options.title ?? noteData.title;
-        noteData.content = options.content ?? noteData.content;
-        noteData.category = options.category ?? noteData.category ?? 'general';
-        noteData.taskId = options.task ?? noteData.taskId;
+        noteData.content = options.content ?? noteData.content ?? '';
+        noteData.category = (options.category ?? noteData.category ?? 'general') as NonNullable<CreateNoteRequest['category']>;
+        noteData.task_id = options.task ?? (noteData as any).taskId;
         noteData.pinned = options.pin ?? noteData.pinned ?? false;
 
         try {
-          const note = (await apiClient.createNote(noteData as CreateNoteRequest)) as any;
-          formatter.success(`Note created successfully: ${String(String(note.id))}`);
+          const note = await apiClient.createNote(noteData as CreateNoteRequest);
+          formatter.success(`Note created successfully: ${String(String(note.data?.id))}`);
           formatter.output(note);
         } catch (error) {
           formatter.error(
@@ -312,8 +311,8 @@ export function registerNoteCommands(program: Command): void {
 
       try {
         const searchParams: Record<string, string> = {};
-        if (options.category) searchParams.category = options.category;
-        if (options.limit) searchParams.limit = options.limit;
+        if (options['category']) searchParams['category'] = options['category'];
+        if (options['limit']) searchParams['limit'] = options['limit'];
 
         const notes = (await apiClient.searchNotes(query)) as any;
 

@@ -323,7 +323,7 @@ export function csvToJson(csvData: string, options: FormatConverterOptions = {})
           break;
         case 'metadata':
           if (!data.metadata) data.metadata = {} as any;
-          (data.metadata as any)[item.key as string] = item.value;
+          (data.metadata as any)[item['key'] as string] = item['value'];
           break;
         default:
           result.warnings.push(`Unknown section: ${currentSection}`);

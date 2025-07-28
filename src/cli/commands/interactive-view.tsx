@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { render, useApp, useInput } from 'ink';
 import { Command } from 'commander';
 import chalk from 'chalk';
-import { type Task, type Board, type Column } from '@/types';
+import { type Task, type BoardWithColumns } from '@/types';
 import BoardView from '../ui/components/BoardView';
 import { createTaskList } from '../ui/components/TaskList';
 import { StatusIndicatorFormatter } from '../ui/components/StatusIndicator';
@@ -54,20 +54,8 @@ const InteractiveView: React.FC<InteractiveViewProps> = ({ mode, data }) => {
     }
   );
 
-  const handleTaskSelect = (task: Task): void => {
-    setStatusMessage(`Selected task: ${String(String(task.title))}`);
-    setStatusType('success');
-  };
 
-  const handleBoardTaskSelect = (task: Task, columnId: string): void => {
-    setStatusMessage(`Selected task: ${String(String(task.title))} in column ${String(columnId)}`);
-    setStatusType('success');
-  };
 
-  const handleColumnSelect = (column: Column): void => {
-    setStatusMessage(`Selected column: ${String(String(column.name))}`);
-    setStatusType('info');
-  };
 
   const renderHelp = (): JSX.Element => (
     <div>
@@ -176,84 +164,127 @@ const InteractiveView: React.FC<InteractiveViewProps> = ({ mode, data }) => {
 
 // Sample data generator
 const generateSampleData = (): { tasks: Task[]; boards: any[]; columns: any[] } => {
+  const now = new Date();
   const sampleTasks: Task[] = [
     {
       id: 'TASK-001',
       title: 'Implement user authentication',
+      board_id: 'board-1',
+      column_id: 'col-2',
+      position: 0,
       status: 'in_progress',
-      priority: 'P1',
+      priority: 5,
       assignee: 'alice',
-      tags: ['backend', 'security'],
       due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      created_at: now,
+      updated_at: now,
+      archived: false,
     },
     {
       id: 'TASK-002',
       title: 'Design landing page',
+      board_id: 'board-1',
+      column_id: 'col-1',
+      position: 0,
       status: 'todo',
-      priority: 'P2',
+      priority: 3,
       assignee: 'bob',
-      tags: ['frontend', 'design'],
+      created_at: now,
+      updated_at: now,
+      archived: false,
     },
     {
       id: 'TASK-003',
       title: 'Set up CI/CD pipeline',
+      board_id: 'board-1',
+      column_id: 'col-4',
+      position: 0,
       status: 'done',
-      priority: 'P1',
+      priority: 5,
       assignee: 'charlie',
-      tags: ['devops', 'automation'],
+      created_at: now,
+      updated_at: now,
+      archived: false,
     },
     {
       id: 'TASK-004',
       title: 'Write API documentation',
+      board_id: 'board-1',
+      column_id: 'col-3',
+      position: 0,
       status: 'blocked',
-      priority: 'P3',
+      priority: 1,
       assignee: 'diana',
-      tags: ['documentation', 'api'],
+      created_at: now,
+      updated_at: now,
+      archived: false,
     },
     {
       id: 'TASK-005',
       title: 'Optimize database queries',
+      board_id: 'board-1',
+      column_id: 'col-1',
+      position: 1,
       status: 'todo',
-      priority: 'P2',
+      priority: 3,
       assignee: 'eve',
-      tags: ['backend', 'performance'],
+      created_at: now,
+      updated_at: now,
+      archived: false,
     },
   ];
 
-  const sampleBoard: Board = {
+  const sampleBoard: BoardWithColumns = {
     id: 'board-1',
     name: 'Development Sprint',
     description: 'Current sprint board for the development team',
+    color: '#2196F3',
+    created_at: new Date(),
+    updated_at: new Date(),
+    archived: false,
     columns: [
       {
         id: 'col-1',
+        board_id: 'board-1',
         name: 'Backlog',
-        tasks: sampleTasks.filter(t => t.status === 'todo'),
-        limit: 5,
+        position: 0,
+        wip_limit: 5,
+        created_at: new Date(),
+        updated_at: new Date(),
       },
       {
         id: 'col-2',
+        board_id: 'board-1',
         name: 'In Progress',
-        tasks: sampleTasks.filter(t => t.status === 'in_progress'),
-        limit: 3,
+        position: 1,
+        wip_limit: 3,
+        created_at: new Date(),
+        updated_at: new Date(),
       },
       {
         id: 'col-3',
+        board_id: 'board-1',
         name: 'Blocked',
-        tasks: sampleTasks.filter(t => t.status === 'blocked'),
-        limit: 2,
+        position: 2,
+        wip_limit: 2,
+        created_at: new Date(),
+        updated_at: new Date(),
       },
       {
         id: 'col-4',
+        board_id: 'board-1',
         name: 'Done',
-        tasks: sampleTasks.filter(t => t.status === 'done'),
+        position: 3,
+        created_at: new Date(),
+        updated_at: new Date(),
       },
     ],
   };
 
   return {
     tasks: sampleTasks,
-    board: sampleBoard,
+    boards: [sampleBoard],
+    columns: sampleBoard.columns,
   };
 };
 

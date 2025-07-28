@@ -43,8 +43,8 @@ const analyticsService = AnalyticsService.getInstance();
 router.get(
   '/completion',
   asyncHandler(async (req, res) => {
-    const boardId = req.query.boardId as string | undefined;
-    const timeframe = req.query.timeframe ? Number(req.query.timeframe) : undefined;
+    const boardId = req.query['boardId'] as string | undefined;
+    const timeframe = req.query['timeframe'] ? Number(req.query['timeframe']) : undefined;
 
     logger.info('Fetching completion analytics', { boardId, timeframe });
 

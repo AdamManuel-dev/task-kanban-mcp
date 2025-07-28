@@ -280,11 +280,11 @@ export class TagServiceKysely {
       // Build hierarchy
 
       await Promise.all(
-        allTags.map(async _tag => {
+        allTags.map(async tag => {
           await this.db
             .selectFrom('tags')
             .select(['parent_id'])
-            .where('id', '=', currentParentId)
+            .where('id', '=', tag.id)
             .executeTakeFirst();
         })
       );

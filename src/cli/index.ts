@@ -22,11 +22,9 @@ import { registerNextCommands } from './commands/next';
 import { addEnvironmentCommands } from './commands/environment';
 import { CLIServiceContainer } from './services/ServiceContainer';
 import { ApiClientWrapper } from './api-client-wrapper';
-import { SpinnerManager } from './utils/spinner';
 import { logger } from '../utils/logger';
-import { BoardFormatter } from './utils/board-formatter';
-import { TaskListFormatter } from './utils/task-list-formatter';
 import { OutputFormatter } from './formatter';
+import { SpinnerManager } from './utils/spinner';
 import { ConfigManager } from './config';
 import type { CliComponents } from './types';
 
@@ -41,13 +39,10 @@ program.name('kanban').description('MCP Kanban CLI').version('1.0.0');
 
 // Initialize CLI components
 const initializeComponents = async (): Promise<CliComponents> => {
-  const spinner = new SpinnerManager();
   const configManager = new ConfigManager();
   const apiClient = new ApiClientWrapper(configManager, {
     spinner: { defaultTimeout: 30000, showByDefault: true },
   });
-  const boardFormatter = new BoardFormatter();
-  const taskListFormatter = new TaskListFormatter();
   const formatter = new OutputFormatter();
 
   // Initialize database connection

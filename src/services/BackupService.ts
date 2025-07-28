@@ -22,9 +22,9 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import { logger } from '@/utils/logger';
-import type { DatabaseConnection } from '@/database/connection';
-import { BaseServiceError } from '@/utils/errors';
+import { logger } from '../utils/logger';
+import type { DatabaseConnection, QueryParameters } from '../database/connection';
+import { BaseServiceError } from '../utils/errors';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as crypto from 'crypto';
@@ -36,8 +36,7 @@ const gunzipAsync = promisify(gunzip);
 
 export class BackupError extends BaseServiceError {
   constructor(message: string, code: string, statusCode: number = 400) {
-    super(message, code, statusCode);
-    this.name = 'BackupError';
+    super(code, message, statusCode);
   }
 }
 
@@ -120,8 +119,6 @@ export class BackupService {
 
   private readonly algorithm = 'aes-256-gcm';
 
-  private readonly keyLength = 32; // 256 bits
-
   private readonly ivLength = 16; // 128 bits
 
   constructor(private readonly db: DatabaseConnection) {
@@ -131,12 +128,12 @@ export class BackupService {
   /**
    * Generate or retrieve encryption key
    */
-  private getEncryptionKey(providedKey?: string): Buffer {
+  private _getEncryptionKey(providedKey?: string): Buffer {
     if (providedKey) {
       return Buffer.from(providedKey, 'hex');
     }
 
-    const envKey = process.env.BACKUP_ENCRYPTION_KEY;
+    const envKey = process.env['BACKUP_ENCRYPTION_KEY'];
     if (envKey) {
       return Buffer.from(envKey, 'hex');
     }
@@ -150,7 +147,7 @@ export class BackupService {
   /**
    * Encrypt data using AES-256-GCM
    */
-  private encryptData(data: Buffer, key: Buffer): Buffer {
+  private _encryptData(data: Buffer, key: Buffer): Buffer {
     const iv = crypto.randomBytes(this.ivLength);
     const cipher = crypto.createCipher(this.algorithm, key);
     cipher.setAutoPadding(true);
@@ -165,7 +162,7 @@ export class BackupService {
   /**
    * Decrypt data using AES-256-GCM
    */
-  private decryptData(encryptedData: Buffer, key: Buffer): Buffer {
+  private _decryptData(encryptedData: Buffer, key: Buffer): Buffer {
     const iv = encryptedData.subarray(0, this.ivLength);
     const authTag = encryptedData.subarray(this.ivLength, this.ivLength + 16);
     const encrypted = encryptedData.subarray(this.ivLength + 16);
@@ -366,18 +363,18 @@ export class BackupService {
 
     const metadata = await this.getBackupMetadata(backupId);
     if (!metadata) {
-      throw new BaseServiceError('BACKUP_NOT_FOUND', 'Backup not found');
+      throw new BackupError('Backup not found', 'BACKUP_NOT_FOUND', 404);
     }
 
     if (metadata.status !== 'completed') {
-      throw new BaseServiceError('INVALID_BACKUP', 'Cannot restore from incomplete backup');
+      throw new BackupError('Cannot restore from incomplete backup', 'INVALID_BACKUP');
     }
 
     // Verify backup if requested
     if (options.verify) {
       const isValid = await this.verifyBackup(backupId);
       if (!isValid) {
-        throw new BaseServiceError('VERIFICATION_FAILED', 'Backup verification failed');
+        throw new BackupError('Backup verification failed', 'VERIFICATION_FAILED');
       }
     }
 
@@ -386,7 +383,7 @@ export class BackupService {
       logger.info('Restore completed successfully', { backupId });
     } catch (error) {
       logger.error('Restore failed', { backupId, error });
-      throw new BaseServiceError('RESTORE_FAILED', 'Failed to restore from backup');
+      throw new BackupError('Failed to restore from backup', 'RESTORE_FAILED');
     }
   }
 
@@ -398,19 +395,19 @@ export class BackupService {
 
     const metadata = await this.getBackupMetadata(backupId);
     if (!metadata) {
-      throw new BaseServiceError('BACKUP_NOT_FOUND', 'Backup not found');
+      throw new BackupError('Backup not found', 'BACKUP_NOT_FOUND', 404);
     }
 
     if (metadata.status !== 'completed') {
-      throw new BaseServiceError('INVALID_BACKUP', 'Cannot restore from incomplete backup');
+      throw new BackupError('Cannot restore from incomplete backup', 'INVALID_BACKUP');
     }
 
     // Validate restore options
     const validation = await this.validateRestoreOptions(backupId, options);
     if (!validation.isValid) {
-      throw new BaseServiceError(
-        'VALIDATION_FAILED',
-        `Restore validation failed: ${validation.errors.join(', ')}`
+      throw new BackupError(
+        `Restore validation failed: ${validation.errors.join(', ')}`,
+        'VALIDATION_FAILED'
       );
     }
 
@@ -440,7 +437,7 @@ export class BackupService {
       logger.info('Partial restore completed successfully', { backupId, tables: options.tables });
     } catch (error) {
       logger.error('Partial restore failed', { backupId, error });
-      throw new BaseServiceError('RESTORE_FAILED', 'Failed to perform partial restore');
+      throw new BackupError('Failed to perform partial restore', 'RESTORE_FAILED');
     }
   }
 
@@ -496,9 +493,9 @@ export class BackupService {
         logger.info(`Successfully restored table: ${tableName}`);
       } catch (error) {
         logger.error(`Failed to restore table: ${tableName}`, error);
-        throw new BaseServiceError(
-          'TABLE_RESTORE_FAILED',
-          `Failed to restore table ${tableName}: ${error instanceof Error ? error.message : 'Unknown error'}`
+        throw new BackupError(
+          `Failed to restore table ${tableName}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          'TABLE_RESTORE_FAILED'
         );
       }
     }
@@ -519,7 +516,7 @@ export class BackupService {
 
       // Check if this is a CREATE TABLE statement
       const createMatch = trimmed.match(/CREATE TABLE\s+(\w+)/i);
-      if (createMatch) {
+      if (createMatch && createMatch[1]) {
         currentTable = createMatch[1];
         if (!tableStatements.has(currentTable)) {
           tableStatements.set(currentTable, { schema: [], data: [] });
@@ -530,7 +527,7 @@ export class BackupService {
 
       // Check if this is an INSERT statement
       const insertMatch = trimmed.match(/INSERT INTO\s+(\w+)/i);
-      if (insertMatch) {
+      if (insertMatch && insertMatch[1]) {
         const tableName = insertMatch[1];
         if (!tableStatements.has(tableName)) {
           tableStatements.set(tableName, { schema: [], data: [] });
@@ -554,7 +551,7 @@ export class BackupService {
   async extractTableData(backupId: string, tableName: string): Promise<string> {
     const metadata = await this.getBackupMetadata(backupId);
     if (!metadata) {
-      throw new BaseServiceError('BACKUP_NOT_FOUND', 'Backup not found');
+      throw new BackupError('Backup not found', 'BACKUP_NOT_FOUND', 404);
     }
 
     try {
@@ -573,7 +570,7 @@ export class BackupService {
 
       const tableData = tableStatements.get(tableName);
       if (!tableData) {
-        throw new BaseServiceError('TABLE_NOT_FOUND', `Table ${tableName} not found in backup`);
+        throw new BackupError(`Table ${tableName} not found in backup`, 'TABLE_NOT_FOUND', 404);
       }
 
       // Combine schema and data statements
@@ -581,9 +578,9 @@ export class BackupService {
       return `${allStatements.join(';\n')};`;
     } catch (error) {
       logger.error(`Failed to extract table data for ${tableName}`, error);
-      throw new BaseServiceError(
-        'EXTRACTION_FAILED',
-        `Failed to extract table data: ${error instanceof Error ? error.message : 'Unknown error'}`
+      throw new BackupError(
+        `Failed to extract table data: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'EXTRACTION_FAILED'
       );
     }
   }
@@ -626,7 +623,7 @@ export class BackupService {
       params.push(options.offset);
     }
 
-    const rows = await this.db.query<any>(query, params);
+    const rows = await this.db.query<any>(query, params as QueryParameters);
     return rows.map(row => BackupService.deserializeBackupMetadata(row));
   }
 
@@ -666,7 +663,7 @@ export class BackupService {
       });
     } catch (error) {
       logger.error('Failed to cleanup old backups', error);
-      throw new BaseServiceError('CLEANUP_FAILED', 'Failed to cleanup old backups');
+      throw new BackupError('Failed to cleanup old backups', 'CLEANUP_FAILED');
     }
   }
 
@@ -687,6 +684,7 @@ export class BackupService {
             status: string;
             size: number;
             compressed: number;
+            encrypted: number;
             verified: number;
             checksum: string;
             file_path: string;
@@ -708,7 +706,7 @@ export class BackupService {
 
     const metadata = await this.getBackupMetadata(backupId);
     if (!metadata) {
-      throw new BaseServiceError('BACKUP_NOT_FOUND', 'Backup not found');
+      throw new BackupError('Backup not found', 'BACKUP_NOT_FOUND', 404);
     }
 
     try {
@@ -729,7 +727,7 @@ export class BackupService {
       logger.info('Backup deleted successfully', { backupId });
     } catch (error) {
       logger.error('Failed to delete backup', { backupId, error });
-      throw new BaseServiceError('DELETE_FAILED', 'Failed to delete backup');
+      throw new BackupError('Failed to delete backup', 'DELETE_FAILED');
     }
   }
 
@@ -1460,25 +1458,26 @@ export class BackupService {
 
     await this.db.execute(
       `INSERT INTO backup_metadata (
-        id, name, description, type, status, size, compressed, verified, checksum, 
+        id, name, description, type, status, size, compressed, encrypted, verified, checksum, 
         file_path, created_at, completed_at, parent_backup_id, retention_policy, error
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         metadata.id,
         metadata.name,
-        metadata.description,
+        metadata.description ?? null,
         metadata.type,
         metadata.status,
         metadata.size,
         metadata.compressed ? 1 : 0,
+        metadata.encrypted ? 1 : 0,
         metadata.verified ? 1 : 0,
         metadata.checksum,
         metadata.filePath,
         metadata.createdAt,
-        metadata.completedAt,
-        metadata.parentBackupId,
-        metadata.retentionPolicy,
-        metadata.error,
+        metadata.completedAt ?? null,
+        metadata.parentBackupId ?? null,
+        metadata.retentionPolicy ?? null,
+        metadata.error ?? null,
       ]
     );
   }
@@ -1489,23 +1488,24 @@ export class BackupService {
     await this.db.execute(
       `UPDATE backup_metadata SET 
         name = ?, description = ?, type = ?, status = ?, size = ?, compressed = ?, 
-        verified = ?, checksum = ?, file_path = ?, completed_at = ?, parent_backup_id = ?, 
+        encrypted = ?, verified = ?, checksum = ?, file_path = ?, completed_at = ?, parent_backup_id = ?, 
         retention_policy = ?, error = ?
       WHERE id = ?`,
       [
         metadata.name,
-        metadata.description,
+        metadata.description ?? null,
         metadata.type,
         metadata.status,
         metadata.size,
         metadata.compressed ? 1 : 0,
+        metadata.encrypted ? 1 : 0,
         metadata.verified ? 1 : 0,
         metadata.checksum,
         metadata.filePath,
-        metadata.completedAt,
-        metadata.parentBackupId,
-        metadata.retentionPolicy,
-        metadata.error,
+        metadata.completedAt ?? null,
+        metadata.parentBackupId ?? null,
+        metadata.retentionPolicy ?? null,
+        metadata.error ?? null,
         metadata.id,
       ]
     );
@@ -1521,6 +1521,7 @@ export class BackupService {
         status TEXT NOT NULL,
         size INTEGER NOT NULL,
         compressed INTEGER NOT NULL,
+        encrypted INTEGER NOT NULL,
         verified INTEGER NOT NULL,
         checksum TEXT NOT NULL,
         file_path TEXT NOT NULL,
@@ -1648,21 +1649,21 @@ export class BackupService {
 
     const targetDate = new Date(pointInTime);
     if (isNaN(targetDate.getTime())) {
-      throw new BaseServiceError('INVALID_TIMESTAMP', 'Invalid point-in-time timestamp');
+      throw new BackupError('Invalid point-in-time timestamp', 'INVALID_TIMESTAMP');
     }
 
     // Find the most appropriate backup for the target time
     const backup = await this.findBestBackupForTime(targetDate);
     if (!backup) {
-      throw new BaseServiceError('NO_SUITABLE_BACKUP', 'No backup found for the specified time');
+      throw new BackupError('No backup found for the specified time', 'NO_SUITABLE_BACKUP', 404);
     }
 
     // Validate that the backup is suitable for point-in-time restoration
     const backupTime = new Date(backup.createdAt);
     if (backupTime > targetDate) {
-      throw new BaseServiceError(
-        'BACKUP_TOO_NEW',
-        'Selected backup was created after the requested point in time'
+      throw new BackupError(
+        'Selected backup was created after the requested point in time',
+        'BACKUP_TOO_NEW'
       );
     }
 
@@ -1721,9 +1722,9 @@ export class BackupService {
       const validation = await this.validateRestoreOptions(backupId, options);
       if (!validation.isValid) {
         await this.updateRestoreProgress(progressId, totalSteps, 'Validation failed', totalSteps);
-        throw new BaseServiceError(
-          'VALIDATION_FAILED',
-          `Restore validation failed: ${validation.errors.join(', ')}`
+        throw new BackupError(
+          `Restore validation failed: ${validation.errors.join(', ')}`,
+          'VALIDATION_FAILED'
         );
       }
 
@@ -1732,7 +1733,7 @@ export class BackupService {
       const metadata = await this.getBackupMetadata(backupId);
       if (!metadata) {
         await this.updateRestoreProgress(progressId, totalSteps, 'Backup not found', totalSteps);
-        throw new BaseServiceError('BACKUP_NOT_FOUND', 'Backup not found');
+        throw new BackupError('Backup not found', 'BACKUP_NOT_FOUND', 404);
       }
 
       let content: Buffer;
@@ -1764,9 +1765,9 @@ export class BackupService {
             'Verification failed',
             totalSteps
           );
-          throw new BaseServiceError(
-            'VERIFICATION_FAILED',
-            'Backup verification failed after restore'
+          throw new BackupError(
+            'Backup verification failed after restore',
+            'VERIFICATION_FAILED'
           );
         }
       }
@@ -1800,6 +1801,7 @@ export class BackupService {
     status: string;
     size: number;
     compressed: number;
+    encrypted: number;
     verified: number;
     checksum: string;
     file_path: string;
@@ -1817,6 +1819,7 @@ export class BackupService {
       status: row.status as BackupMetadata['status'],
       size: row.size,
       compressed: Boolean(row.compressed),
+      encrypted: Boolean(row.encrypted),
       verified: Boolean(row.verified),
       checksum: row.checksum,
       filePath: row.file_path,
