@@ -144,17 +144,19 @@ export function registerSelectCommand(taskCmd: Command): void {
             ]);
 
             switch (action) {
-              case 'view':
+              case 'view': {
                 const taskDetails = await apiClient.getTask(task.id);
                 formatter.output(taskDetails);
                 break;
-              case 'edit':
+              }
+              case 'edit': {
                 // Launch edit command
                 formatter.info(
                   `\n💡 Run: kanban task update ${String(String(task.id))} --interactive`
                 );
                 break;
-              case 'move':
+              }
+              case 'move': {
                 // Launch move command
                 const { columnId } = await inquirer.prompt<ColumnPromptResult>([
                   {
@@ -167,7 +169,8 @@ export function registerSelectCommand(taskCmd: Command): void {
                 await apiClient.moveTask(task.id, columnId);
                 formatter.success(`Task moved to column ${String(columnId)}`);
                 break;
-              case 'status':
+              }
+              case 'status': {
                 const { newStatus } = await inquirer.prompt<StatusPromptResult>([
                   {
                     type: 'list',
@@ -181,7 +184,8 @@ export function registerSelectCommand(taskCmd: Command): void {
                 });
                 formatter.success(`Task status updated to ${String(newStatus)}`);
                 break;
-              case 'delete':
+              }
+              case 'delete': {
                 const { confirmed } = await inquirer.prompt<ConfirmPromptResult>([
                   {
                     type: 'confirm',
@@ -195,14 +199,18 @@ export function registerSelectCommand(taskCmd: Command): void {
                   formatter.success('Task deleted successfully');
                 }
                 break;
-              case 'continue':
+              }
+              case 'continue': {
                 return;
-              case 'exit':
+              }
+              case 'exit': {
                 shouldExit = true;
                 break;
-              default:
+              }
+              default: {
                 formatter.warn(`Unknown action: ${String(action)}`);
                 break;
+              }
             }
 
             if (action !== 'continue') {
@@ -212,7 +220,7 @@ export function registerSelectCommand(taskCmd: Command): void {
 
           const handleKeyPress = async (key: string, _selectedTask: Task | null) => {
             switch (key) {
-              case 'search':
+              case 'search': {
                 setSearchMode(true);
                 const { query } = await inquirer.prompt<QueryPromptResult>([
                   {
@@ -238,7 +246,8 @@ export function registerSelectCommand(taskCmd: Command): void {
                 }
                 setSearchMode(false);
                 break;
-              case 'refresh':
+              }
+              case 'refresh': {
                 try {
                   const refreshedTasks = await apiClient.getTasks(params);
                   const refreshedResponse = refreshedTasks as TaskListResponse;
@@ -274,7 +283,8 @@ export function registerSelectCommand(taskCmd: Command): void {
                   formatter.error('\n❌ Failed to refresh tasks');
                 }
                 break;
-              case 'help':
+              }
+              case 'help': {
                 formatter.info('\n📖 Task Selection Help:');
                 formatter.info('  ↑/↓ or j/k: Navigate tasks');
                 formatter.info('  Enter: Select task');
@@ -284,7 +294,8 @@ export function registerSelectCommand(taskCmd: Command): void {
                 formatter.info('  ?: Show this help');
                 formatter.info('  q: Exit');
                 break;
-              default:
+              }
+              default: {
                 // Handle status filter changes
                 if (key.startsWith('filter:')) {
                   const status = key.replace('filter:', '');
@@ -294,6 +305,7 @@ export function registerSelectCommand(taskCmd: Command): void {
                   formatter.info(`\n🔍 Filtered by status: ${String(status)}`);
                 }
                 break;
+              }
             }
           };
 

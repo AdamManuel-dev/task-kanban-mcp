@@ -324,26 +324,26 @@ export class TaskServiceResult {
     );
   }
 
-  private mapRowToTask(row: any): Task {
+  private mapRowToTask(row: Record<string, unknown>): Task {
     return {
-      id: row.id,
-      title: row.title,
-      description: row.description || '',
-      board_id: row.board_id,
-      column_id: row.column_id,
-      position: row.position,
-      priority: row.priority,
-      status: row.status,
-      assignee: row.assignee,
-      due_date: row.due_date,
-      estimated_hours: row.estimated_hours,
-      actual_hours: row.actual_hours,
-      parent_task_id: row.parent_task_id,
-      created_at: new Date(row.created_at),
-      updated_at: new Date(row.updated_at),
-      completed_at: row.completed_at ? new Date(row.completed_at) : undefined,
+      id: String(row.id),
+      title: String(row.title),
+      description: String(row.description || ''),
+      board_id: String(row.board_id),
+      column_id: String(row.column_id),
+      position: Number(row.position),
+      priority: Number(row.priority),
+      status: String(row.status) as Task['status'],
+      assignee: row.assignee ? String(row.assignee) : undefined,
+      due_date: row.due_date ? new Date(String(row.due_date)) : undefined,
+      estimated_hours: row.estimated_hours ? Number(row.estimated_hours) : undefined,
+      actual_hours: row.actual_hours ? Number(row.actual_hours) : undefined,
+      parent_task_id: row.parent_task_id ? String(row.parent_task_id) : undefined,
+      created_at: new Date(String(row.created_at)),
+      updated_at: new Date(String(row.updated_at)),
+      completed_at: row.completed_at ? new Date(String(row.completed_at)) : undefined,
       archived: Boolean(row.archived),
-      metadata: row.metadata ? JSON.parse(row.metadata) : {},
+      metadata: row.metadata ? JSON.parse(String(row.metadata)) : {},
     };
   }
 }

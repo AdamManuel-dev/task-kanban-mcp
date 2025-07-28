@@ -185,7 +185,7 @@ export class ResourceMonitor extends EventEmitter {
     return {
       user: cpuUsage.user,
       system: cpuUsage.system,
-      utilization: isNaN(utilization) ? 0 : utilization,
+      utilization: Number.isNaN(utilization) ? 0 : utilization,
       timestamp: new Date(),
     };
   }

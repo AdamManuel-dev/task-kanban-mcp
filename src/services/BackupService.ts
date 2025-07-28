@@ -1270,7 +1270,7 @@ export class BackupService {
           UNION ALL
           SELECT td.task_id, td.depends_on_id, d.depth + 1
           FROM task_dependencies td
-          JOIN deps d ON td['task_id'] = d.depends_on_id
+          JOIN deps d ON td.task_id = d.depends_on_id
           WHERE d.depth < 10  -- Prevent infinite recursion
         )
         SELECT COUNT(*) as count

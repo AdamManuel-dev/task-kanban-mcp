@@ -526,7 +526,7 @@ export class ContextService {
         t.created_at as timestamp,
         'Task created: ' || t.title as description
       FROM tasks t
-      INNER JOIN boards b ON t['board_id'] = b.id
+      INNER JOIN boards b ON t.board_id = b.id
       WHERE t.created_at >= ?
       
       UNION ALL
@@ -647,7 +647,7 @@ export class ContextService {
     const dependencies = await this.db.query<Task>(
       `
       SELECT t.* FROM tasks t
-      INNER JOIN task_dependencies td ON t['id'] = td.depends_on_task_id
+      INNER JOIN task_dependencies td ON t.id = td.depends_on_task_id
       WHERE td.task_id = ?
       LIMIT ?
     `,
@@ -861,7 +861,7 @@ export class ContextService {
       ),
       this.db.queryOne<{ count: number }>(`
         SELECT COUNT(DISTINCT t.id) as count FROM tasks t
-        INNER JOIN task_dependencies td ON t['id'] = td.task_id
+        INNER JOIN task_dependencies td ON t.id = td.task_id
         INNER JOIN tasks blocking ON td.depends_on_task_id = blocking.id
         WHERE blocking.status != 'done' AND t.archived = FALSE
       `),

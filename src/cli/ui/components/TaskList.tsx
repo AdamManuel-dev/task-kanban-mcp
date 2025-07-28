@@ -93,19 +93,52 @@ export class TaskListFormatter {
   }
 
   /**
-   * Format a single task item
+   * Format a single task item with accessibility enhancements
    */
-  private formatTaskItem(task: TaskListProps['tasks'][0], isSelected: boolean): string {
+  private formatTaskItem(task: TaskListProps['tasks'][0], isSelected: boolean, index: number): string {
     const prefix = isSelected ? '▶ ' : '  ';
     const priorityText = task.priority ? `P${task.priority}` : 'P0';
-
-    let line = `${prefix}${task.title}`;
+    const statusIcon = TaskListFormatter.getStatusIcon(task.status);
+    
+    // Create accessible description
+    const accessibleTitle = this.formatTaskForAccessibility(task);
+    
+    let line = `${prefix}${statusIcon} ${task.title}`;
     if (task.assignee) {
       line += ` [@${task.assignee}]`;
     }
     line += ` [${task.status}] [${priorityText}]`;
 
-    return isSelected ? chalk.inverse(line) : line;
+    // Add focus indicator and accessibility attributes
+    if (isSelected) {
+      line = chalk.inverse.bold(line);
+      // Add screen reader context
+      line += ` [SELECTED - ${accessibleTitle}]`;
+    }
+
+    return line;
+  }
+
+  /**
+   * Format task information for screen readers
+   */
+  private formatTaskForAccessibility(task: TaskListProps['tasks'][0]): string {
+    const parts = [
+      `Task: ${task.title}`,
+      `Status: ${task.status}`,
+      `Priority: ${task.priority ? `P${task.priority}` : 'No priority'}`,
+    ];
+
+    if (task.assignee) {
+      parts.push(`Assigned to: ${task.assignee}`);
+    }
+
+    if (task.due_date) {
+      const dueText = TaskListFormatter.formatDueDate(task.due_date);
+      parts.push(`Due: ${dueText}`);
+    }
+
+    return parts.join(', ');
   }
 
   /**
@@ -146,11 +179,11 @@ export class TaskListFormatter {
       output.push('');
     }
 
-    // Render tasks
+    // Render tasks with accessibility
     visibleTasks.forEach((task, index) => {
       const actualIndex = startIndex + index;
       const isSelected = actualIndex === this.selectedIndex;
-      output.push(this.formatTaskItem(task, isSelected));
+      output.push(this.formatTaskItem(task, isSelected, actualIndex));
     });
 
     // Show scroll indicator if there are more tasks below
@@ -164,9 +197,10 @@ export class TaskListFormatter {
     output.push('─'.repeat(50));
     output.push(this.renderSummary());
 
-    // Navigation help
+    // Navigation help with accessibility
     output.push('');
-    output.push('Controls: ↑↓ Navigate | Enter: Select | Q: Quit');
+    output.push('Controls: ↑↓ Navigate | Tab: Focus | Enter: Select | Space: Toggle | Q: Quit | A: Accessibility');
+    output.push('Screen Reader: Use arrow keys in browse mode, Enter to interact');
 
     return output.join('\n');
   }

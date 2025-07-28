@@ -1,0 +1,111 @@
+name: CLI E2E Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'src/cli/**'
+      - 'tests/e2e/cli-*.test.ts'
+      - 'package.json'
+      - '.github/workflows/cli-e2e.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'src/cli/**'
+      - 'tests/e2e/cli-*.test.ts'
+      - 'package.json'
+      - '.github/workflows/cli-e2e.yml'
+
+jobs:
+  cli-e2e-tests:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node-version: [18.x, 20.x]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Build CLI
+      run: npm run build
+    
+    - name: Run CLI Basic E2E Tests
+      run: npm run test:cli
+      env:
+        NODE_ENV: test
+        CI: true
+    
+    - name: Run CLI Advanced Features E2E Tests
+      run: npm run test:cli:advanced
+      env:
+        NODE_ENV: test
+        CI: true
+    
+    - name: Run CLI Error Scenarios E2E Tests
+      run: npm run test:cli:errors
+      env:
+        NODE_ENV: test
+        CI: true
+    
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: cli-e2e-results-${{ matrix.os }}-${{ matrix.node-version }}
+        path: |
+          coverage/e2e/
+          jest-junit.xml
+    
+    - name: Upload CLI logs on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: cli-logs-${{ matrix.os }}-${{ matrix.node-version }}
+        path: |
+          /tmp/kanban-cli-e2e-*/
+          logs/
+  
+  cli-security-scan:
+    runs-on: ubuntu-latest
+    needs: cli-e2e-tests
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Build CLI
+      run: npm run build
+    
+    - name: Run security tests
+      run: npm run test:security
+      env:
+        NODE_ENV: test
+        CI: true
+    
+    - name: CLI Security Analysis
+      run: |
+        # Check for potential security issues in CLI code
+        npm audit --audit-level moderate
+        
+        # Static analysis for CLI security patterns
+        npx eslint src/cli/ --ext .ts --config .eslintrc.security.js || true

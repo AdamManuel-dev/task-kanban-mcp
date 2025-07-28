@@ -277,7 +277,7 @@ export const parseLimit = (
   if (!limitStr) return defaultLimit;
 
   const limit = parseInt(limitStr, 10);
-  if (isNaN(limit) || limit < 1) {
+  if (Number.isNaN(limit) || limit < 1) {
     return defaultLimit;
   }
 

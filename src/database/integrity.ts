@@ -399,8 +399,8 @@ export class DatabaseIntegrityChecker {
         AND t.id NOT IN (
           SELECT DISTINCT tag_id 
           FROM task_tags tt 
-          JOIN tasks task ON tt['task_id'] = task['id'] 
-          WHERE task['archived'] = FALSE
+          JOIN tasks task ON tt.task_id = task.id 
+          WHERE task.archived = FALSE
         )
       `);
 
@@ -419,8 +419,8 @@ export class DatabaseIntegrityChecker {
       }>(`
         SELECT c.id, c.name, c.board_id, COUNT(t.id) as task_count
         FROM columns c
-        LEFT JOIN tasks t ON c['id'] = t['column_id'] AND t['archived'] = FALSE
-        GROUP BY c['id'], c['name'], c['board_id']
+        LEFT JOIN tasks t ON c.id = t.column_id AND t.archived = FALSE
+        GROUP BY c.id, c.name, c.board_id
         HAVING task_count = 0
       `);
 
@@ -496,7 +496,7 @@ export class DatabaseIntegrityChecker {
             dc.depth + 1,
             dc.path ?? ' -> ' || td.depends_on_task_id
           FROM dependency_cycle_check dc
-          JOIN task_dependencies td ON dc['depends_on_task_id'] = td['task_id']
+          JOIN task_dependencies td ON dc.depends_on_task_id = td.task_id
           WHERE dc.depth < ? -- Prevent infinite recursion
         )
         -- Find cycles where a task depends on itself through the chain
@@ -508,9 +508,9 @@ export class DatabaseIntegrityChecker {
           t1.title as task_title,
           t2.title as dependency_title
         FROM dependency_cycle_check dc
-        JOIN tasks t1 ON dc['task_id'] = t1['id']
-        JOIN tasks t2 ON dc['depends_on_task_id'] = t2['id']
-        WHERE dc['task_id'] = dc['depends_on_task_id'] -- Circular dependency detected
+        JOIN tasks t1 ON dc.task_id = t1.id
+        JOIN tasks t2 ON dc.depends_on_task_id = t2.id
+        WHERE dc.task_id = dc.depends_on_task_id -- Circular dependency detected
         ORDER BY task_id, depth
       `,
         [this.config.maxDependencyDepth]
@@ -570,8 +570,8 @@ export class DatabaseIntegrityChecker {
             pc.depth + 1,
             pc.path ?? ' -> ' || t.parent_task_id
           FROM parent_cycle_check pc
-          JOIN tasks t ON pc['parent_id'] = t['id']
-          WHERE t['parent_task_id'] IS NOT NULL
+          JOIN tasks t ON pc.parent_id = t.id
+          WHERE t.parent_task_id IS NOT NULL
           AND pc.depth < ? -- Prevent infinite recursion
         )
         -- Find cycles where a child is its own ancestor
@@ -583,9 +583,9 @@ export class DatabaseIntegrityChecker {
           t1.title as child_title,
           t2.title as parent_title
         FROM parent_cycle_check pc
-        JOIN tasks t1 ON pc['child_id'] = t1['id']
-        JOIN tasks t2 ON pc['parent_id'] = t2['id']
-        WHERE pc['child_id'] = pc['parent_id'] -- Parent-child cycle detected
+        JOIN tasks t1 ON pc.child_id = t1.id
+        JOIN tasks t2 ON pc.parent_id = t2.id
+        WHERE pc.child_id = pc.parent_id -- Parent-child cycle detected
         ORDER BY child_id, depth
       `,
         [this.config.maxDependencyDepth]
@@ -731,7 +731,7 @@ export class DatabaseIntegrityChecker {
       const inconsistentSubtaskCounts = await this.db.query(`
         SELECT COUNT(*) as count
         FROM task_progress tp
-        WHERE tp['subtasks_completed'] > tp['subtasks_total']
+        WHERE tp.subtasks_completed > tp.subtasks_total
       `);
 
       if (inconsistentSubtaskCounts[0]?.count > 0) {
@@ -964,7 +964,7 @@ export class DatabaseIntegrityChecker {
             sm.tbl_name as tbl,
             CASE WHEN s1.stat IS NOT NULL THEN 'has_stats' ELSE 'no_stats' END as stats_status
           FROM sqlite_master sm
-          LEFT JOIN sqlite_stat1 s1 ON sm['name'] = s1['idx']
+          LEFT JOIN sqlite_stat1 s1 ON sm.name = s1.idx
           WHERE sm.type = 'index' AND sm.name NOT LIKE 'sqlite_%'
         `);
 

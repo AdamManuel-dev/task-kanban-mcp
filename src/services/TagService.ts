@@ -803,7 +803,7 @@ export class TagService {
       const tags = await this.db.query<Tag>(
         `
         SELECT t.* FROM tags t
-        INNER JOIN task_tags tt ON t['id'] = tt.tag_id
+        INNER JOIN task_tags tt ON t.id = tt.tag_id
         WHERE tt.task_id = ?
         ORDER BY t.name ASC
       `,
@@ -912,7 +912,7 @@ export class TagService {
           MIN(tt.created_at) as first_used,
           MAX(tt.created_at) as last_used
         FROM tags t
-        LEFT JOIN task_tags tt ON t['id'] = tt.tag_id
+        LEFT JOIN task_tags tt ON t.id = tt.tag_id
         WHERE tt.created_at >= ? OR tt.created_at IS NULL
         GROUP BY t.id, t.name
         ORDER BY usage_count DESC
@@ -1084,7 +1084,7 @@ export class TagService {
           MAX(tt.created_at) as last_used,
           (SELECT COUNT(*) FROM tags WHERE parent_tag_id = t.id) as child_count
         FROM tags t
-        LEFT JOIN task_tags tt ON t['id'] = tt.tag_id
+        LEFT JOIN task_tags tt ON t.id = tt.tag_id
       `;
 
       const params: QueryParameters = [];

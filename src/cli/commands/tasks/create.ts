@@ -64,7 +64,7 @@ function processTemplate(template: string, variables: Record<string, unknown>): 
  * Register the create command
  */
 export function registerCreateCommand(taskCmd: Command): void {
-  const getComponents = (): CliComponents => global.cliComponents;
+  const getCliComponents = (): CliComponents => global.cliComponents;
 
   taskCmd
     .command('create')
@@ -81,7 +81,7 @@ export function registerCreateCommand(taskCmd: Command): void {
     .option('-i, --interactive', 'interactive mode')
     .action(
       withErrorHandling('create task', async (options: CreateTaskOptions) => {
-        const { config, apiClient, formatter } = getComponents();
+        const { config, apiClient, formatter } = getCliComponents();
         const spinner = new SpinnerManager();
 
         let taskData: Record<string, unknown> = {};
@@ -202,8 +202,8 @@ export function registerCreateCommand(taskCmd: Command): void {
         });
 
         if (validationErrors.length > 0) {
-          const { formatter } = getComponents();
-          handleValidationError(formatter, 'create task', validationErrors);
+          const components = getCliComponents();
+          handleValidationError(components.formatter, 'create task', validationErrors);
           return;
         }
 

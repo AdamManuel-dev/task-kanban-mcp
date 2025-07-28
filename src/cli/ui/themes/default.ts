@@ -119,21 +119,42 @@ export const highContrastTheme: Theme = {
   ...defaultTheme,
   name: 'high-contrast',
   colors: {
-    primary: chalk.white,
+    primary: chalk.white.bold,
     secondary: chalk.white,
-    success: chalk.green,
-    error: chalk.red,
-    warning: chalk.yellow,
-    info: chalk.white,
-    muted: chalk.gray,
-    highlight: chalk.bgWhite.black,
-    accent: chalk.white,
+    success: chalk.green.bold,
+    error: chalk.red.bold,
+    warning: chalk.yellow.bold,
+    info: chalk.cyan.bold,
+    muted: chalk.white,
+    highlight: chalk.bgWhite.black.bold,
+    accent: chalk.yellow.bold,
   },
   status: {
-    todo: { icon: '[ ]', color: chalk.white },
-    in_progress: { icon: '[~]', color: chalk.yellow },
-    done: { icon: '[X]', color: chalk.green },
-    blocked: { icon: '[!]', color: chalk.red },
+    todo: { icon: '[ ]', color: chalk.white.bold },
+    in_progress: { icon: '[~]', color: chalk.yellow.bold },
+    done: { icon: '[X]', color: chalk.green.bold },
+    blocked: { icon: '[!]', color: chalk.red.bold },
+  },
+  priority: {
+    P1: chalk.bgRed.white.bold,      // Critical: White text on red background
+    P2: chalk.bgYellow.black.bold,   // High: Black text on yellow background  
+    P3: chalk.bgBlue.white.bold,     // Medium: White text on blue background
+    P4: chalk.bgGreen.black.bold,    // Low: Black text on green background
+    P5: chalk.bgGray.white.bold,     // Lowest: White text on gray background
+  },
+  icons: {
+    ...defaultTheme.icons,
+    task: '[T]',    // Text-based icons for better accessibility
+    board: '[B]',
+    user: '[U]',
+    tag: '[#]',
+    calendar: '[C]',
+    clock: '[!]',
+    arrow: '->',
+    check: '[✓]',
+    cross: '[X]',
+    warning: '[!]',
+    info: '[i]',
   },
 };
 

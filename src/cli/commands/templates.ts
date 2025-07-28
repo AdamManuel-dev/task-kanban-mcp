@@ -22,8 +22,9 @@ import type { Board } from '@/types';
 function extractTemplateVariables(template: string): string[] {
   const variableRegex = /\{\{(\w+)\}\}/g;
   const variables = new Set<string>();
-  let match;
+  let match: RegExpExecArray | null;
 
+  // eslint-disable-next-line no-cond-assign
   while ((match = variableRegex.exec(template)) !== null) {
     if (match[1]) {
       variables.add(match[1]);
@@ -50,24 +51,24 @@ export function createTemplatesCommand(): Command {
       try {
         logger.debug('Listing templates with options', { options });
         const templateService = TaskTemplateService.getInstance();
-        const templates = await templateService.getTemplates({
+        const templateList = await templateService.getTemplates({
           category: options.category,
           includeInactive: options.all,
           onlySystem: options.system,
         });
 
-        if (templates.length === 0) {
+        if (templateList.length === 0) {
           logger.info('No templates found for listing', { options });
           console.log(chalk.yellow('No templates found.'));
           return;
         }
 
-        logger.info('Successfully retrieved templates for listing', { count: templates.length });
+        logger.info('Successfully retrieved templates for listing', { count: templateList.length });
 
         console.log(chalk.blue.bold('\n📋 Task Templates\n'));
 
         const categories = templateService.getCategories();
-        const groupedTemplates = templates.reduce(
+        const groupedTemplates = templateList.reduce(
           (acc, template) => {
             const category = template.category || 'general';
             if (!acc[category]) {

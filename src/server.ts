@@ -275,6 +275,10 @@ export async function startServer(): Promise<{
       });
     });
 
+    // Apply HTTP server timeouts
+    server.setTimeout(config.performance.requestTimeout);
+    server.keepAliveTimeout = config.performance.keepAliveTimeout;
+
     // Handle server errors
     server.on('error', (error: any) => {
       logger.error('Server error:', {

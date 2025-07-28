@@ -173,6 +173,7 @@ export class TransactionManager {
    *
    * @param {DatabaseConnection} db - Database connection to manage transactions for
    */
+  // eslint-disable-next-line no-useless-constructor, no-empty-function
   constructor(private readonly db: DatabaseConnection) {}
 
   /**

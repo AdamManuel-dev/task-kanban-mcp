@@ -198,6 +198,12 @@ describe('ResourceMonitor', () => {
         enableAlerts: true,
       });
 
+      // Set a timeout to prevent hanging
+      const timeout = setTimeout(() => {
+        leakMonitor.destroy();
+        done(new Error('Test timeout: Memory leak detection did not trigger within expected time'));
+      }, 5000);
+
       // Simulate increasing memory usage
       let callCount = 0;
       const originalGetMemoryStats = leakMonitor.getMemoryStats;
@@ -210,6 +216,7 @@ describe('ResourceMonitor', () => {
       };
 
       leakMonitor.on('memory-leak-detected', trend => {
+        clearTimeout(timeout);
         expect(trend).toBeDefined();
         expect(trend.length).toBeGreaterThan(0);
         leakMonitor.destroy();
@@ -217,7 +224,7 @@ describe('ResourceMonitor', () => {
       });
 
       leakMonitor.start();
-    });
+    }, 15000);
   });
 
   describe('Resource Summary', () => {

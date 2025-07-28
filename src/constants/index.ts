@@ -42,6 +42,46 @@ export const PRIORITY_ORDER = {
   P5: 5,
 } as const;
 
+/**
+ * Priority scoring thresholds for task classification
+ */
+export const PRIORITY_THRESHOLDS = {
+  CRITICAL: 8,    // Tasks with priority >= 8 are critical
+  HIGH: 6,        // Tasks with priority >= 6 are high priority
+  MEDIUM: 4,      // Tasks with priority >= 4 are medium priority
+  LOW: 1,         // Tasks with priority >= 1 are low priority
+} as const;
+
+/**
+ * Priority scoring bonuses for various conditions
+ */
+export const PRIORITY_SCORING = {
+  BASE_MULTIPLIER: 10,        // Base priority * 10 for initial score
+  OVERDUE_BONUS: 50,          // Bonus for overdue tasks 
+  DUE_SOON_BONUS: 30,         // Bonus for tasks due within 24 hours
+  DUE_THIS_WEEK_BONUS: 15,    // Bonus for tasks due within 7 days
+  IN_PROGRESS_BONUS: 20,      // Bonus for tasks already in progress
+  SKILL_MATCH_BONUS: 10,      // Bonus for skill context matches
+  AGE_MULTIPLIER: 0.5,        // Task age multiplier for older tasks
+  MAX_AGE_BONUS: 10,          // Maximum bonus for task age
+} as const;
+
+/**
+ * Time thresholds for priority calculations
+ */
+export const TIME_THRESHOLDS = {
+  OVERDUE_DAYS: 0,         // Tasks overdue (negative due date)
+  DUE_SOON_DAYS: 1,        // Due within 24 hours
+  DUE_THIS_WEEK_DAYS: 7,   // Due within a week
+  OLD_TASK_DAYS: 7,        // Tasks older than 7 days get age bonus
+  STALE_TASK_DAYS: 14,     // Tasks older than 14 days get priority boost
+} as const;
+
+/**
+ * Milliseconds per day for date calculations
+ */
+export const MILLISECONDS_PER_DAY = 1000 * 60 * 60 * 24;
+
 // ============================================================================
 // TIMING CONSTANTS
 // ============================================================================

@@ -564,7 +564,7 @@ export const CommonValidations = {
   nonNegativeInteger: z.number().int().min(0, 'Must be non-negative'),
 
   /** Date string validation schema */
-  dateString: z.string().refine(date => !isNaN(Date.parse(date)), 'Invalid date format'),
+  dateString: z.string().refine(date => !Number.isNaN(Date.parse(date)), 'Invalid date format'),
 
   /** Email validation schema */
   email: z.string().email('Invalid email format'),

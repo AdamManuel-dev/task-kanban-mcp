@@ -542,7 +542,7 @@ export class NoteService {
             ELSE 1 
           END as relevance_score
         FROM notes n
-        INNER JOIN tasks t ON n['task_id'] = t.id
+        INNER JOIN tasks t ON n.task_id = t.id
         INNER JOIN boards b ON t.board_id = b.id
         WHERE n.content LIKE ?
       `;

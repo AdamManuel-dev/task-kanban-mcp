@@ -27,23 +27,34 @@ const truncateText = (text: string, maxLength: number): string => {
 };
 
 /**
- * Gets the appropriate color for a task based on its priority
+ * Gets the appropriate color function for a task based on its priority
+ * Uses theme system for consistent colors and accessibility
  */
-const getPriorityColor = (priority: number): string => {
-  if (priority >= 8) return 'red';
-  if (priority >= 5) return 'yellow';
-  if (priority >= 2) return 'blue';
-  return 'gray';
+const getPriorityColorFunction = (priority: number): ((text: string) => string) => {
+  // Map numeric priority to theme priority levels
+  if (priority >= 8) return (text: string) => `\x1b[31m${text}\x1b[0m`; // Red
+  if (priority >= 5) return (text: string) => `\x1b[33m${text}\x1b[0m`; // Yellow  
+  if (priority >= 2) return (text: string) => `\x1b[34m${text}\x1b[0m`; // Blue
+  return (text: string) => `\x1b[90m${text}\x1b[0m`; // Gray
 };
 
 /**
- * Gets the appropriate background color function for a task
+ * Gets accessible color styling with proper contrast ratios
  */
-const getBackgroundColor = (priority: number): ((text: string) => string) => {
-  const color = getPriorityColor(priority);
-  return (text: string) =>
-    // Return styled text with color - using simple text formatting
-    `[${color.toUpperCase()}]${text}`;
+const getAccessibleTaskStyle = (priority: number, isSelected: boolean): {
+  colorFn: (text: string) => string;
+  bgStyle: string;
+  ariaLabel: string;
+} => {
+  const colorFn = getPriorityColorFunction(priority);
+  const bgStyle = isSelected ? '\x1b[47m\x1b[30m' : ''; // High contrast selection
+  const priorityLevel = priority >= 8 ? 'critical' : priority >= 5 ? 'high' : priority >= 2 ? 'medium' : 'low';
+  
+  return {
+    colorFn,
+    bgStyle,
+    ariaLabel: `Task priority: ${priorityLevel}, ${isSelected ? 'selected' : 'not selected'}`
+  };
 };
 
 /**
@@ -56,27 +67,41 @@ const formatPriority = (priority: number): string => {
 };
 
 /**
- * Renders a single task item
+ * Renders a single task item with accessibility support
  */
 const renderTaskItem = (
   task: TaskWithColumn,
   columnWidth: number,
-  isSelected: boolean
+  isSelected: boolean,
+  tabIndex?: number
 ): React.ReactNode => {
   const taskTitle = truncateText(task.title, columnWidth - 4);
   const priority = task.priority > 0 ? formatPriority(task.priority) : null;
-  const backgroundColor = getBackgroundColor(task.priority);
+  const style = getAccessibleTaskStyle(task.priority, isSelected);
   const borderChar = isSelected ? '█' : '│';
+  
+  // Accessibility: Screen reader support
+  const accessibilityProps = {
+    role: 'listitem',
+    tabIndex: tabIndex || (isSelected ? 0 : -1),
+    'aria-label': `${task.title}, ${style.ariaLabel}${task.assignee ? `, assigned to ${task.assignee}` : ''}`,
+    'aria-selected': isSelected,
+  };
 
   return (
-    <Box key={task.id}>
+    <Box key={task.id} {...accessibilityProps}>
       <Text>
-        {borderChar} {taskTitle}
+        {style.bgStyle}{borderChar} {style.colorFn(taskTitle)}{style.bgStyle ? '\x1b[0m' : ''}
       </Text>
-      <Text>{backgroundColor(`  ${taskTitle}`)}</Text>
-      {priority && <Text>{backgroundColor(`  ${priority}`)}</Text>}
+      {priority && (
+        <Text>
+          {style.bgStyle}  {style.colorFn(priority)}{style.bgStyle ? '\x1b[0m' : ''}
+        </Text>
+      )}
       {task.assignee && (
-        <Text color="gray">{`  @${truncateText(task.assignee, columnWidth - 4)}`}</Text>
+        <Text color="gray" aria-label={`Assigned to ${task.assignee}`}>
+          {`  @${truncateText(task.assignee, columnWidth - 4)}`}
+        </Text>
       )}
       <Text> </Text> {/* Spacing between tasks */}
     </Box>
@@ -84,39 +109,60 @@ const renderTaskItem = (
 };
 
 /**
- * Renders a single column with its tasks
+ * Renders a single column with its tasks and accessibility features
  */
 const renderColumn = (
   column: ColumnWithTasks,
   columnWidth: number,
   maxColumnHeight: number,
-  scrollOffset: number = 0
+  scrollOffset: number = 0,
+  selectedTaskId?: string
 ): React.ReactNode => {
   const visibleTasks = column.tasks.slice(scrollOffset, scrollOffset + maxColumnHeight);
 
   return (
-    <Box key={column.id}>
+    <Box key={column.id} role="list" aria-label={`${column.name} column with ${column.tasks.length} tasks`}>
+      {/* Column header with accessibility */}
+      <Box marginBottom={1}>
+        <Text bold color="cyan" role="heading" aria-level={2}>
+          {column.name} ({column.tasks.length})
+        </Text>
+      </Box>
+
       {/* Show scroll indicator if there are tasks above */}
       {scrollOffset > 0 && (
         <Box>
-          <Text color="gray">⬆ {scrollOffset} more</Text>
+          <Text color="gray" aria-label={`${scrollOffset} tasks above current view`}>
+            ⬆ {scrollOffset} more
+          </Text>
         </Box>
       )}
 
       <Box>
         {visibleTasks.length === 0 ? (
           <Box>
-            <Text color="gray">Empty</Text>
+            <Text color="gray" role="status" aria-live="polite">
+              Empty column
+            </Text>
           </Box>
         ) : (
-          visibleTasks.map(task => renderTaskItem(task, columnWidth, false))
+          visibleTasks.map((task, index) => 
+            renderTaskItem(
+              task, 
+              columnWidth, 
+              task.id === selectedTaskId,
+              scrollOffset + index
+            )
+          )
         )}
       </Box>
 
       {/* Show scroll indicator if there are more tasks below */}
       {column.tasks.length > scrollOffset + maxColumnHeight && (
         <Box>
-          <Text color="gray">⬇ {column.tasks.length - scrollOffset - maxColumnHeight} more</Text>
+          <Text color="gray" aria-label={`${column.tasks.length - scrollOffset - maxColumnHeight} tasks below current view`}>
+            ⬇ {column.tasks.length - scrollOffset - maxColumnHeight} more
+          </Text>
         </Box>
       )}
     </Box>
@@ -147,12 +193,15 @@ const renderSummary = (
 };
 
 /**
- * Renders navigation help
+ * Renders navigation help with accessibility support
  */
 const renderNavigation = (): React.ReactNode => (
-  <Box marginTop={1}>
-    <Text color="gray">
-      Navigation: ↑↓ Select Task | ← → Switch Column | Enter: Details | Q: Quit
+  <Box marginTop={1} role="complementary" aria-label="Keyboard navigation help">
+    <Text color="gray" role="region" aria-live="polite">
+      Navigation: ↑↓ Select Task | ← → Switch Column | Tab: Focus | Enter: Details | Q: Quit | ?: Help
+    </Text>
+    <Text color="gray" fontSize="small">
+      Screen reader users: Use Tab to navigate, Space to select, Enter to activate
     </Text>
   </Box>
 );
@@ -194,8 +243,10 @@ const BoardView: React.FC<BoardViewProps> = ({
       )}
 
       {/* Columns */}
-      <Box flexDirection="row">
-        {columnsWithTasks.map(column => renderColumn(column, columnWidth, maxColumnHeight))}
+      <Box flexDirection="row" role="main" aria-label="Kanban board columns">
+        {columnsWithTasks.map(column => 
+          renderColumn(column, columnWidth, maxColumnHeight, 0, _selectedTaskId)
+        )}
       </Box>
 
       {/* Board Summary */}

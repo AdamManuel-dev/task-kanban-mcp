@@ -68,7 +68,7 @@ export const isNonEmptyString = (value: unknown): value is string =>
  * Type guard to check if value is a valid number within range
  */
 export const isValidNumber = (value: unknown, min?: number, max?: number): value is number => {
-  if (typeof value !== 'number' || isNaN(value)) {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
     return false;
   }
 
@@ -121,7 +121,7 @@ export const isValidDateString = (value: unknown): value is string => {
   }
 
   const date = new Date(value);
-  return !isNaN(date.getTime());
+  return !Number.isNaN(date.getTime());
 };
 
 /**

@@ -1,8 +1,11 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+interface DatabaseLike {
+  exec(sql: string): Promise<void>;
+}
+
 export class Savepoint {
   constructor(
     private readonly name: string,
-    private readonly db: any
+    private readonly db: DatabaseLike
   ) {}
 
   async create(): Promise<void> {
