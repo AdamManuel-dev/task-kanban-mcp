@@ -128,13 +128,13 @@ export function isApiResponse<T>(
   dataValidator?: (data: unknown) => data is T
 ): value is ApiResponse<T> {
   if (!isRecord(value)) return false;
-  if (!isBoolean(value['success'])) return false;
+  if (!isBoolean(value.success)) return false;
 
-  if (hasProperty(value, 'data') && dataValidator && !dataValidator(value['data'])) {
+  if (hasProperty(value, 'data') && dataValidator && !dataValidator(value.data)) {
     return false;
   }
 
-  if (hasProperty(value, 'error') && !isString(value['error'])) {
+  if (hasProperty(value, 'error') && !isString(value.error)) {
     return false;
   }
 
@@ -154,10 +154,10 @@ export interface PaginationParams {
 export function isPaginationParams(value: unknown): value is PaginationParams {
   if (!isRecord(value)) return false;
 
-  if (hasProperty(value, 'page') && !isNumber(value['page'])) return false;
-  if (hasProperty(value, 'limit') && !isNumber(value['limit'])) return false;
-  if (hasProperty(value, 'sort') && !isString(value['sort'])) return false;
-  if (hasProperty(value, 'order') && value['order'] !== 'asc' && value['order'] !== 'desc') {
+  if (hasProperty(value, 'page') && !isNumber(value.page)) return false;
+  if (hasProperty(value, 'limit') && !isNumber(value.limit)) return false;
+  if (hasProperty(value, 'sort') && !isString(value.sort)) return false;
+  if (hasProperty(value, 'order') && value.order !== 'asc' && value.order !== 'desc') {
     return false;
   }
 
@@ -176,8 +176,8 @@ export function getErrorMessage(error: unknown): string {
     return error;
   }
 
-  if (isRecord(error) && isString(error['message'])) {
-    return error['message'];
+  if (isRecord(error) && isString(error.message)) {
+    return error.message;
   }
 
   return 'An unknown error occurred';
@@ -197,13 +197,13 @@ export function isWebSocketMessage<T>(
   payloadValidator?: (payload: unknown) => payload is T
 ): value is WebSocketMessage<T> {
   if (!isRecord(value)) return false;
-  if (!isString(value['type'])) return false;
+  if (!isString(value.type)) return false;
 
-  if (hasProperty(value, 'payload') && payloadValidator && !payloadValidator(value['payload'])) {
+  if (hasProperty(value, 'payload') && payloadValidator && !payloadValidator(value.payload)) {
     return false;
   }
 
-  if (hasProperty(value, 'id') && !isString(value['id'])) {
+  if (hasProperty(value, 'id') && !isString(value.id)) {
     return false;
   }
 

@@ -89,7 +89,11 @@ export class TaskSizeEstimator {
     const confidence = this.calculateConfidence(task, suggestedSize);
 
     // Generate reasoning
-    const reasoning = TaskSizeEstimator.generateReasoning(task, suggestedSize, complexityMultiplier);
+    const reasoning = TaskSizeEstimator.generateReasoning(
+      task,
+      suggestedSize,
+      complexityMultiplier
+    );
 
     return {
       size: suggestedSize,

@@ -14,10 +14,14 @@
     "build:security": "webpack --config webpack.config.js",
     "build:optimize": "npm run bundle-size && npm run analyze",
     "build:dev": "tsc",
+    "build:optimize-dev": "npm run build:dev:nocheck && npm run build:security:force && npm run build:optimize",
+    "build:optimize build:dev": "npm run build:dev:nocheck && npm run build:security:force",
+    "build:dev:nocheck": "tsc --noEmitOnError false --skipLibCheck",
+    "build:security:force": "webpack --config webpack.config.js --stats-error-details",
     "clean": "rm -rf dist && rm -f tsconfig.tsbuildinfo",
     "optimize": "npm run build:security && npm run copy-assets",
     "bundle-cli": "webpack --config webpack.config.js",
-    "bundle-size": "webpack --config webpack.config.js --profile --json > webpack-stats.json && webpack-bundle-analyzer webpack-stats.json",
+    "bundle-size": "webpack --config webpack.config.js --profile --json > webpack-stats.json && webpack-bundle-analyzer webpack-stats.json dist/security --port 8889",
     "analyze": "npm run bundle-size",
     "copy-assets": "cp -r src/cli/ui/themes dist/cli/ui/ 2>/dev/null || true && cp src/database/schema.sql dist/database/ 2>/dev/null || true",
     "start": "node dist/index.js",
@@ -169,6 +173,7 @@
     "tsx": "^4.7.0",
     "typescript": "^5.3.3",
     "webpack": "^5.100.2",
+    "webpack-bundle-analyzer": "^4.10.2",
     "webpack-cli": "^6.0.1"
   },
   "engines": {

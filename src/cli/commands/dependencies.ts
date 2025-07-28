@@ -329,15 +329,19 @@ export function createDependenciesCommand(): Command {
         );
 
         // Call the API to add dependency relationship
+        const apiClient = global.cliComponents?.apiClient;
+        if (!apiClient) {
+          logger.error(chalk.red('❌ API client not available'));
+          return;
+        }
+
         await apiClient.request('POST', '/api/tasks/dependencies', {
-          task_id: targetTaskId,
-          depends_on: dependencyTaskId,
+          task_id: taskId,
+          depends_on: dependsOnId,
           dependency_type: 'blocks', // Default to blocking dependency
         });
 
-        logger.success(
-          chalk.green(`✅ Added dependency: ${dependencyTaskId} blocks ${targetTaskId}`)
-        );
+        logger.info(chalk.green(`✅ Added dependency: ${dependsOnId} blocks ${taskId}`));
       } catch (error) {
         logger.error('Failed to add dependency:', error);
         logger.error(chalk.red('❌ Failed to add dependency'));
@@ -350,7 +354,7 @@ export function createDependenciesCommand(): Command {
     .description('List dependencies for a task')
     .option('--incoming', 'Show tasks that depend on this task')
     .option('--outgoing', 'Show tasks this task depends on')
-    .action(async (taskId: string, options) => {
+    .action(async (taskId: string, options: { incoming?: boolean; outgoing?: boolean }) => {
       try {
         const taskService = await getCLIService('taskService');
         const depService = await getCLIService('dependencyVisualizationService');
@@ -372,7 +376,7 @@ export function createDependenciesCommand(): Command {
           return;
         }
 
-        const displayOptions = { ...options };
+        const displayOptions: { incoming?: boolean; outgoing?: boolean } = { ...options };
         if (!options.incoming && !options.outgoing) {
           displayOptions.incoming = true;
           displayOptions.outgoing = true;

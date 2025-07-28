@@ -619,7 +619,7 @@ Security Configuration:
 export const secureCliWrapper = SecureCliWrapper.getInstance({
   enableInputSanitization: true,
   enableCommandValidation: true,
-  logSecurityEvents: process.env['NODE_ENV'] !== 'production',
+  logSecurityEvents: process.env.NODE_ENV !== 'production',
   strictMode: false,
   maxArgumentLength: 1000,
   allowedCommands: [

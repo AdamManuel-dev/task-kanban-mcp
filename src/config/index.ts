@@ -20,9 +20,11 @@
 import * as dotenv from 'dotenv';
 import { z } from 'zod';
 import { configureCloudEnvironment, getCloudEnvironmentConfig } from './cloud-env';
-import { envManager, ENV_VALIDATION } from './env-manager';
 
-// Load environment variables
+// Import env-manager after dotenv is loaded
+import { envManager, getEnvValidation } from './env-manager';
+
+// Load environment variables first
 dotenv.config();
 
 // Configure cloud environment
@@ -212,8 +214,8 @@ const cloudConfig = getCloudEnvironmentConfig(cloudEnv);
 // Build configuration from environment variables with cloud overrides
 const rawConfig = {
   server: {
-    port: envManager.get('PORT', cloudConfig['server']?.port ?? 3000),
-    host: envManager.get('HOST', cloudConfig['server']?.host ?? 'localhost'),
+    port: envManager.get('PORT', cloudConfig.server?.port ?? 3000),
+    host: envManager.get('HOST', cloudConfig.server?.host ?? 'localhost'),
     nodeEnv: envManager.get('NODE_ENV', 'development'),
   },
   database: {
@@ -236,10 +238,10 @@ const rawConfig = {
     skipSuccessfulRequests: parseEnvVar(getEnv('RATE_LIMIT_SKIP_SUCCESSFUL_REQUESTS'), false),
   },
   websocket: {
-    port: envManager.get('WEBSOCKET_PORT', cloudConfig['websocket']?.port ?? 3001),
-    host: envManager.get('WEBSOCKET_HOST', cloudConfig['websocket']?.host ?? 'localhost'),
-    path: envManager.get('WEBSOCKET_PATH', cloudConfig['websocket']?.path ?? '/socket.io'),
-    corsOrigin: envManager.get('WEBSOCKET_CORS_ORIGIN', cloudConfig['websocket']?.corsOrigin ?? '*'),
+    port: envManager.get('WEBSOCKET_PORT', cloudConfig.websocket?.port ?? 3001),
+    host: envManager.get('WEBSOCKET_HOST', cloudConfig.websocket?.host ?? 'localhost'),
+    path: envManager.get('WEBSOCKET_PATH', cloudConfig.websocket?.path ?? '/socket.io'),
+    corsOrigin: envManager.get('WEBSOCKET_CORS_ORIGIN', cloudConfig.websocket?.corsOrigin ?? '*'),
     heartbeatInterval: parseEnvVar(getEnv('WEBSOCKET_HEARTBEAT_INTERVAL'), 25000),
     heartbeatTimeout: parseEnvVar(getEnv('WEBSOCKET_HEARTBEAT_TIMEOUT'), 60000),
     authRequired: parseEnvVar(getEnv('WEBSOCKET_AUTH_REQUIRED'), false),
@@ -305,11 +307,11 @@ const rawConfig = {
     }),
   },
   development: {
-    seedDatabase: parseEnvVar(process.env['DEV_SEED_DATABASE'], false),
-    resetOnStart: parseEnvVar(process.env['DEV_RESET_ON_START'], false),
-    mockGitIntegration: parseEnvVar(process.env['DEV_MOCK_GIT_INTEGRATION'], false),
-    enableDebugRoutes: parseEnvVar(process.env['DEV_ENABLE_DEBUG_ROUTES'], false),
-    watchFiles: parseEnvVar(process.env['DEV_WATCH_FILES'], true),
+    seedDatabase: parseEnvVar(process.env.DEV_SEED_DATABASE, false),
+    resetOnStart: parseEnvVar(process.env.DEV_RESET_ON_START, false),
+    mockGitIntegration: parseEnvVar(process.env.DEV_MOCK_GIT_INTEGRATION, false),
+    enableDebugRoutes: parseEnvVar(process.env.DEV_ENABLE_DEBUG_ROUTES, false),
+    watchFiles: parseEnvVar(process.env.DEV_WATCH_FILES, true),
   },
 };
 
@@ -343,7 +345,7 @@ export const config = configSchema.parse(rawConfig);
  */
 export const cloudEnvironment = {
   info: cloudEnv,
-  validation: ENV_VALIDATION,
+  validation: getEnvValidation(),
   urls: cloudEnv.urls,
   features: cloudEnv.features,
   limits: cloudEnv.limits,

@@ -68,6 +68,12 @@
     "arrow-spacing": "error",
     "generator-star-spacing": "error",
     
+    // Function complexity rules
+    "max-lines-per-function": ["warn", { "max": 50, "skipComments": true, "skipBlankLines": true }],
+    "complexity": ["warn", 10],
+    "max-params": ["warn", 4],
+    "max-depth": ["warn", 4],
+    
     // Disable non-valuable style rules
     "no-underscore-dangle": "off",
     "no-continue": "off",

@@ -3,6 +3,62 @@ import type { Command } from 'commander';
 import * as WebSocket from 'ws';
 import type { CliComponents } from '../types';
 
+// Utility functions for event formatting (declared first to avoid hoisting issues)
+function getEventIcon(eventType: string): string {
+  const icons: Record<string, string> = {
+    'task:created': '✨',
+    'task:updated': '📝',
+    'task:moved': '🔄',
+    'task:deleted': '🗑️',
+    'task:completed': '✅',
+    'note:added': '📄',
+    'note:updated': '📝',
+    'priority:changed': '⚡',
+    'dependency:blocked': '🚫',
+    'subtask:completed': '✓',
+    default: '📋',
+  };
+  return icons[eventType] ?? icons.default ?? '📋';
+}
+
+function getEventColor(_eventType: string): (text: string) => string {
+  // This would typically use chalk, but keeping it simple for now
+  return (text: string) => text; // In real implementation, apply colors based on event type
+}
+
+function formatEventMessage(event: {
+  type: string;
+  data?: unknown;
+  timestamp?: string;
+  [key: string]: unknown;
+}): string {
+  const eventData = event.data as any;
+  switch (event.type) {
+    case 'task:created':
+      return `Task "${String(eventData?.title || 'Unknown')}" created`;
+    case 'task:updated':
+      return `Task "${String(eventData?.title || 'Unknown')}" updated`;
+    case 'task:moved':
+      return `Task "${String(eventData?.title || 'Unknown')}" moved to ${String(eventData?.columnName || 'Unknown')}`;
+    case 'task:deleted':
+      return `Task "${String(eventData?.title || 'Unknown')}" deleted`;
+    case 'task:completed':
+      return `Task "${String(eventData?.title || 'Unknown')}" completed`;
+    case 'note:added':
+      return `Note "${String(eventData?.title || 'Unknown')}" added to task ${String(eventData?.taskId || 'Unknown')}`;
+    case 'note:updated':
+      return `Note "${String(eventData?.title || 'Unknown')}" updated`;
+    case 'priority:changed':
+      return `Task "${String(eventData?.title || 'Unknown')}" priority changed to ${String(eventData?.newPriority || 'Unknown')}`;
+    case 'dependency:blocked':
+      return `Task "${String(eventData?.title || 'Unknown')}" blocked by dependency`;
+    case 'subtask:completed':
+      return `Subtask "${String(eventData?.title || 'Unknown')}" completed`;
+    default:
+      return eventData ? JSON.stringify(eventData) : 'Unknown event';
+  }
+}
+
 export function registerRealtimeCommands(program: Command): void {
   // Get global components with proper typing
   const getComponents = (): CliComponents => global.cliComponents;
@@ -41,16 +97,16 @@ export function registerRealtimeCommands(program: Command): void {
           // Subscribe to events based on options
           const subscriptions: Record<string, unknown> = {};
 
-          if (options['board']) {
-            subscriptions['board'] = options['board'];
+          if (options.board) {
+            subscriptions.board = options.board;
           }
 
-          if (options['task']) {
-            subscriptions['task'] = options['task'];
+          if (options.task) {
+            subscriptions.task = options.task;
           }
 
-          if (options['events']) {
-            subscriptions['events'] = options['events'].split(',').map((e: string) => e.trim());
+          if (options.events) {
+            subscriptions.events = options.events.split(',').map((e: string) => e.trim());
           }
 
           // Send subscription message
@@ -66,7 +122,7 @@ export function registerRealtimeCommands(program: Command): void {
 
         ws.on('message', (data: WebSocket.Data) => {
           try {
-            const message = JSON.parse(data.toString());
+            const message = JSON.parse(String(data));
 
             if (message.type === 'event') {
               const event = message.data;
@@ -78,14 +134,22 @@ export function registerRealtimeCommands(program: Command): void {
                 formatter.output([{ timestamp, ...event }]);
               } else {
                 // Compact format
-                const icon = getEventIcon(event.type);
-                const color = getEventColor(event.type);
+                const icon = getEventIcon(String(event?.type || 'unknown'));
+                const color = getEventColor(String(event?.type || 'unknown'));
+                const eventMessage =
+                  event?.message ||
+                  formatEventMessage({
+                    type: String(event?.type || 'unknown'),
+                    data: event,
+                    timestamp,
+                  });
                 logger.info(
-                  `${String(timestamp)} ${String(icon)} ${String(color(event.type))}: ${String(event.message ?? formatEventMessage(event))}`
+                  `${timestamp} ${icon} ${color(String(event?.type || 'unknown'))}: ${String(eventMessage)}`
                 );
               }
             } else if (message.type === 'error') {
-              formatter.error(`WebSocket error: ${String(message.data.message)}`);
+              const errorData = message.data;
+              formatter.error(`WebSocket error: ${String(errorData?.message || 'Unknown error')}`);
             }
           } catch (error) {
             formatter.warn(`Failed to parse message: ${String(data)}`);
@@ -137,8 +201,8 @@ export function registerRealtimeCommands(program: Command): void {
           level: options.level,
         };
 
-        if (options['component']) params['component'] = options['component'];
-        if (options['since']) params['since'] = options['since'];
+        if (options.component) params.component = options.component;
+        if (options.since) params.since = options.since;
 
         if (options.follow) {
           // Stream logs in real-time
@@ -154,14 +218,21 @@ export function registerRealtimeCommands(program: Command): void {
               )) as any;
 
               if (logs && logs.length > 0) {
-                logs.forEach((log: { timestamp: string; level: string; message: string; [key: string]: unknown }) => {
-                  const timestamp = new Date(log.timestamp).toLocaleTimeString();
-                  const level = log.level.toUpperCase().padEnd(5);
-                  const component = log.component ? `[${String(String(log.component))}]` : '';
-                  logger.info(
-                    `${String(timestamp)} ${String(level)} ${String(component)} ${String(String(log.message))}`
-                  );
-                });
+                logs.forEach(
+                  (log: {
+                    timestamp: string;
+                    level: string;
+                    message: string;
+                    [key: string]: unknown;
+                  }) => {
+                    const timestamp = new Date(log.timestamp).toLocaleTimeString();
+                    const level = log.level.toUpperCase().padEnd(5);
+                    const component = log.component ? `[${String(String(log.component))}]` : '';
+                    logger.info(
+                      `${String(timestamp)} ${String(level)} ${String(component)} ${String(String(log.message))}`
+                    );
+                  }
+                );
               }
             } catch (error) {
               // Ignore errors in streaming mode, will retry
@@ -203,54 +274,4 @@ export function registerRealtimeCommands(program: Command): void {
         process.exit(1);
       }
     });
-
-  // Utility functions for event formatting
-  function getEventIcon(eventType: string): string {
-    const icons: Record<string, string> = {
-      'task:created': '✨',
-      'task:updated': '📝',
-      'task:moved': '🔄',
-      'task:deleted': '🗑️',
-      'task:completed': '✅',
-      'note:added': '📄',
-      'note:updated': '📝',
-      'priority:changed': '⚡',
-      'dependency:blocked': '🚫',
-      'subtask:completed': '✓',
-      default: '📋',
-    };
-    return icons[eventType] ?? (icons['default'] || '📋');
-  }
-
-  function getEventColor(_eventType: string): (text: string) => string {
-    // This would typically use chalk, but keeping it simple for now
-    return (text: string) => text; // In real implementation, apply colors based on event type
-  }
-
-  function formatEventMessage(event: { type: string; data?: unknown; timestamp?: string; [key: string]: unknown }): string {
-    switch (event.type) {
-      case 'task:created':
-        return `Task "${String(String(event.data.title))}" created`;
-      case 'task:updated':
-        return `Task "${String(String(event.data.title))}" updated`;
-      case 'task:moved':
-        return `Task "${String(String(event.data.title))}" moved to ${String(String(event.data.columnName))}`;
-      case 'task:deleted':
-        return `Task "${String(String(event.data.title))}" deleted`;
-      case 'task:completed':
-        return `Task "${String(String(event.data.title))}" completed`;
-      case 'note:added':
-        return `Note "${String(String(event.data.title))}" added to task ${String(String(event.data.taskId))}`;
-      case 'note:updated':
-        return `Note "${String(String(event.data.title))}" updated`;
-      case 'priority:changed':
-        return `Task "${String(String(event.data.title))}" priority changed to ${String(String(event.data.newPriority))}`;
-      case 'dependency:blocked':
-        return `Task "${String(String(event.data.title))}" blocked by dependency`;
-      case 'subtask:completed':
-        return `Subtask "${String(String(event.data.title))}" completed`;
-      default:
-        return event.data ? JSON.stringify(event.data) : 'Unknown event';
-    }
-  }
 }

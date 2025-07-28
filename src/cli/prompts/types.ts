@@ -1,7 +1,7 @@
 /**
  * @fileoverview Shared types and interfaces for CLI prompt system
  * @lastmodified 2025-07-28T10:30:00Z
- * 
+ *
  * Features: Prompt configuration interfaces, input/output types, error classes
  * Main APIs: PromptConfig, TaskInput, BulkActionInput, PromptCancelledError
  * Constraints: Compatible with enquirer and prompts libraries
@@ -57,8 +57,8 @@ export interface TaskInput {
   priority?: Priority;
   size?: TaskSize;
   assignee?: string;
-  due_date?: string;
-  estimated_hours?: number;
+  dueDate?: string;
+  estimatedHours?: number;
   tags?: string[];
 }
 

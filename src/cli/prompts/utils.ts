@@ -1,7 +1,7 @@
 /**
  * @fileoverview Utility functions and shared components for CLI prompts
  * @lastmodified 2025-07-28T10:30:00Z
- * 
+ *
  * Features: Safe prompt wrapper, formatters, error handling utilities
  * Main APIs: safePrompt(), createFormatter(), handlePromptError()
  * Constraints: Requires enquirer library, logger configured
@@ -20,12 +20,12 @@ import { CancellationError, SystemError, handleCliError } from './errors';
 export async function safePrompt<T>(promptConfig: PromptConfig | PromptConfig[]): Promise<T> {
   try {
     const result = await prompt(promptConfig);
-    
+
     // Check for cancellation (empty result)
     if (result === undefined || result === null) {
       throw new CancellationError('Prompt operation');
     }
-    
+
     return result;
   } catch (error) {
     // Check if it's a cancellation (Ctrl+C, ESC, etc.)
@@ -40,12 +40,15 @@ export async function safePrompt<T>(promptConfig: PromptConfig | PromptConfig[])
         throw new CancellationError('Prompt operation', { originalError: error.message });
       }
     }
-    
+
     // Wrap other errors in SystemError
     if (!(error instanceof CancellationError)) {
-      throw new SystemError('Prompt execution', error instanceof Error ? error : new Error(String(error)));
+      throw new SystemError(
+        'Prompt execution',
+        error instanceof Error ? error : new Error(String(error))
+      );
     }
-    
+
     throw error;
   }
 }
@@ -55,7 +58,7 @@ export async function safePrompt<T>(promptConfig: PromptConfig | PromptConfig[])
  */
 export function createFormatter(context?: string): FormatterInterface {
   const logContext = context ? { context } : {};
-  
+
   return {
     info: (message: string): void => {
       logger.info('Prompt info', { message, ...logContext });
@@ -80,8 +83,8 @@ export function createFormatter(context?: string): FormatterInterface {
  * Handle prompt errors consistently
  */
 export function handlePromptError(
-  error: unknown, 
-  operation: string, 
+  error: unknown,
+  operation: string,
   _context?: Record<string, unknown>
 ): never {
   return handleCliError(error, operation);
@@ -91,9 +94,9 @@ export function handlePromptError(
  * Check if error is a cancellation
  */
 export function isPromptCancelled(error: unknown): boolean {
-  return error instanceof CancellationError || 
-         (error instanceof Error && (
-           error.name === 'PromptCancelledError' ||
-           error.message.toLowerCase().includes('cancel')
-         ));
+  return (
+    error instanceof CancellationError ||
+    (error instanceof Error &&
+      (error.name === 'PromptCancelledError' || error.message.toLowerCase().includes('cancel')))
+  );
 }

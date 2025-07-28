@@ -1,6 +1,8 @@
 /**
  * @fileoverview Cloud environment information and configuration management CLI command
  *
+ * Note: This file uses dynamic imports and requires unsafe type assertions
+ *
  * Key Dependencies:
  * - ../config/cloud-env: Cloud environment detection and configuration
  * - ../config/env-manager: Environment variable validation and management
@@ -23,6 +25,7 @@
  * - Validates all required environment variables
  */
 
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/require-await */
 import type { Command } from 'commander';
 import { cloudEnvironment } from '../../config';
 import { envManager } from '../../config/env-manager';
@@ -42,14 +45,19 @@ interface EnvironmentOptions {
  */
 function getComponents(): CliComponents {
   // Import dynamically to avoid circular dependencies
-  // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
+  // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require, @typescript-eslint/no-unsafe-assignment
   const { ServiceContainer } = require('../services/ServiceContainer');
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-call
   const serviceContainer = new ServiceContainer();
 
   return {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     apiClient: serviceContainer.getApiClient(),
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     formatter: serviceContainer.getFormatter(),
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     config: serviceContainer.getConfig(),
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     services: serviceContainer.getServices(),
   };
 }
@@ -117,15 +125,15 @@ function showEnvironmentInfo(formatter: OutputFormatter, options: EnvironmentOpt
     const validationTable = [
       {
         Check: 'Environment Variables',
-        Status: validation.env.valid ? '✅ Valid' : '❌ Invalid',
-        Details: validation.env.valid
+        Status: validation.valid ? '✅ Valid' : '❌ Invalid',
+        Details: validation.valid
           ? 'All required variables present'
-          : `Missing: ${validation.env.missing.join(', ')}`,
+          : `Missing: ${validation.missing.join(', ')}`,
       },
       {
         Check: 'Cloud Configuration',
-        Status: validation.cloud.valid ? '✅ Valid' : '❌ Invalid',
-        Details: validation.cloud.message,
+        Status: isCloud ? '✅ Valid' : '❌ Not Cloud',
+        Details: isCloud ? `Platform: ${platform}` : 'Running in local mode',
       },
     ];
 
@@ -154,7 +162,10 @@ function showEnvironmentInfo(formatter: OutputFormatter, options: EnvironmentOpt
 /**
  * Validates environment configuration
  */
-function validateEnvironment(formatter: OutputFormatter, _options: Pick<EnvironmentOptions, 'format'>): void {
+function validateEnvironment(
+  formatter: OutputFormatter,
+  _options: Pick<EnvironmentOptions, 'format'>
+): void {
   formatter.info('🔍 **Running Environment Validation**...\n');
 
   // Re-run validation
@@ -192,9 +203,9 @@ function validateEnvironment(formatter: OutputFormatter, _options: Pick<Environm
   // Cloud environment validation
   formatter.info('\n**Cloud Configuration**:');
   const cloudResults = [
-    { Check: 'Platform Detection', Status: cloudValidation.platform ? '✅ Valid' : '❌ Invalid' },
-    { Check: 'Service URLs', Status: cloudValidation.urls ? '✅ Valid' : '❌ Invalid' },
-    { Check: 'Resource Limits', Status: cloudValidation.limits ? '✅ Valid' : '❌ Invalid' },
+    { Check: 'Platform Detection', Status: cloudValidation.valid ? '✅ Valid' : '❌ Invalid' },
+    { Check: 'Service URLs', Status: cloudValidation.valid ? '✅ Valid' : '❌ Invalid' },
+    { Check: 'Resource Limits', Status: cloudValidation.valid ? '✅ Valid' : '❌ Invalid' },
   ];
 
   formatter.output(cloudResults, {
@@ -220,10 +231,22 @@ function showPlatformInfo(formatter: OutputFormatter): void {
 
   if (isCloud) {
     formatter.info('**Cloud Features**:');
-    formatter.info(`- Auto-scaling: ${info.features?.autoScaling ? '✅ Enabled' : '❌ Disabled'}`);
-    formatter.info(`- Load balancing: ${info.features?.loadBalancing ? '✅ Enabled' : '❌ Disabled'}`);
-    formatter.info(`- High availability: ${info.features?.highAvailability ? '✅ Enabled' : '❌ Disabled'}`);
-    formatter.info(`- Backup service: ${info.features?.backupService ? '✅ Enabled' : '❌ Disabled'}`);
+    formatter.info(`- File Watching: ${info.features.fileWatching ? '✅ Enabled' : '❌ Disabled'}`);
+    formatter.info(
+      `- Process Restart: ${info.features.processRestart ? '✅ Enabled' : '❌ Disabled'}`
+    );
+    formatter.info(
+      `- Port Forwarding: ${info.features.portForwarding ? '✅ Enabled' : '❌ Disabled'}`
+    );
+    formatter.info(
+      `- Terminal Access: ${info.features.terminalAccess ? '✅ Enabled' : '❌ Disabled'}`
+    );
+    formatter.info(
+      `- Git Integration: ${info.features.gitIntegration ? '✅ Enabled' : '❌ Disabled'}`
+    );
+    formatter.info(
+      `- Environment Secrets: ${info.features.environmentSecrets ? '✅ Enabled' : '❌ Disabled'}`
+    );
   } else {
     formatter.info('**Local Development Features**:');
     formatter.info('- File watching: ✅ Enabled');
@@ -233,17 +256,17 @@ function showPlatformInfo(formatter: OutputFormatter): void {
 
   formatter.info('\n**Configuration Recommendations**:');
 
-  if (platform === 'vercel') {
+  if (platform === 'replit') {
     formatter.info('- Use environment variables for configuration');
-    formatter.info('- Enable preview deployments for testing');
+    formatter.info('- Enable always-on for production deployments');
     formatter.info('- Configure custom domains for production');
-  } else if (platform === 'netlify') {
-    formatter.info('- Configure build commands in netlify.toml');
-    formatter.info('- Use Netlify Functions for API endpoints');
-    formatter.info('- Enable form handling for user input');
-  } else if (platform === 'heroku') {
-    formatter.info('- Use Heroku Config Vars for environment variables');
-    formatter.info('- Configure dyno scaling for traffic');
+  } else if (platform === 'codespaces') {
+    formatter.info('- Configure devcontainer.json for consistent setup');
+    formatter.info('- Use GitHub Secrets for environment variables');
+    formatter.info('- Enable port forwarding for external access');
+  } else if (platform === 'gitpod') {
+    formatter.info('- Use .gitpod.yml for workspace configuration');
+    formatter.info('- Configure environment variables in settings');
     formatter.info('- Enable Heroku Postgres for database');
   } else {
     formatter.info('- Ensure proper environment variable configuration');
@@ -358,5 +381,4 @@ export function addEnvironmentCommands(program: Command): void {
         process.exit(1);
       }
     });
-
 }

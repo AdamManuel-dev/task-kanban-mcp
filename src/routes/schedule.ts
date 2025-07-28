@@ -313,7 +313,7 @@ router.put('/:id', validateRequest(UpdateScheduleSchema), async (req, res) => {
       return res.status(404).json(formatErrorResponse('Schedule not found'));
     }
 
-    logger.error(`Schedule update failed for ${String(String(req.params['id']))}:`, error);
+    logger.error(`Schedule update failed for ${String(String(req.params.id))}:`, error);
     return res
       .status(500)
       .json(

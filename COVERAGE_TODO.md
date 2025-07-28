@@ -1,4 +1,4 @@
-/**
+`/**
  * @fileoverview Test coverage improvement tracking for MCP Kanban
  * @lastmodified 2025-07-27T23:45:19Z
  * 

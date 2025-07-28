@@ -42,12 +42,7 @@ export function tagRoutes(): Router {
       const totalTags = await tagService.getTags(countOptions);
       const total = totalTags.length;
 
-      res.apiPagination(
-        tags,
-        Math.floor(options.offset / options.limit) + 1,
-        options.limit,
-        total
-      );
+      res.apiPagination(tags, Math.floor(options.offset / options.limit) + 1, options.limit, total);
     } catch (error) {
       next(error);
     }

@@ -78,7 +78,30 @@ module.exports = {
     'blessed-contrib': 'commonjs blessed-contrib',
   },
   optimization: {
-    minimize: true,
+    minimize: false,
+    minimizer: [
+      new (require('terser-webpack-plugin'))({
+        terserOptions: {
+          parse: {
+            ecma: 2020,
+          },
+          compress: {
+            ecma: 2020,
+            drop_console: false,
+            drop_debugger: false,
+          },
+          mangle: {
+            safari10: true,
+          },
+          format: {
+            ecma: 2020,
+            comments: false,
+            safari10: true,
+          },
+        },
+        extractComments: false,
+      }),
+    ],
     sideEffects: false,
     splitChunks: {
       chunks: 'all',

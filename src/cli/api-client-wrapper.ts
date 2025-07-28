@@ -710,6 +710,105 @@ export class ApiClientWrapper {
     });
   }
 
+  // Backup API methods
+  async createBackup(options: {
+    name: string;
+    compress?: boolean;
+    verify?: boolean;
+    encrypt?: boolean;
+    encryptionKey?: string;
+    description?: string;
+  }): Promise<AnyApiResponse> {
+    return this.executeWithEnhancements(() => this.apiClient.createBackup(options), {
+      operationName: 'Create Backup',
+      showSpinner: true,
+      spinnerText: `Creating backup: ${options.name}`,
+      successText: 'Backup created successfully',
+      errorText: 'Failed to create backup',
+      timeout: this.options.timeout!.slow,
+    });
+  }
+
+  async getBackups(params?: {
+    sort?: string;
+    order?: string;
+    limit?: string;
+  }): Promise<AnyApiResponse> {
+    return this.executeWithEnhancements(() => this.apiClient.getBackups(params), {
+      operationName: 'Get Backups',
+      showSpinner: true,
+      spinnerText: 'Loading backups...',
+    });
+  }
+
+  async getBackup(id: string): Promise<AnyApiResponse> {
+    return this.executeWithEnhancements(() => this.apiClient.getBackup(id), {
+      operationName: 'Get Backup',
+      showSpinner: true,
+      spinnerText: `Loading backup ${id}...`,
+    });
+  }
+
+  async deleteBackup(id: string): Promise<AnyApiResponse> {
+    return this.executeWithEnhancements(() => this.apiClient.deleteBackup(id), {
+      operationName: 'Delete Backup',
+      showSpinner: true,
+      spinnerText: `Deleting backup ${id}...`,
+      successText: 'Backup deleted successfully',
+      errorText: 'Failed to delete backup',
+    });
+  }
+
+  async restoreBackup(
+    id: string,
+    options?: {
+      verify?: boolean;
+      decryptionKey?: string;
+    }
+  ): Promise<AnyApiResponse> {
+    return this.executeWithEnhancements(() => this.apiClient.restoreBackup(id, options), {
+      operationName: 'Restore Backup',
+      showSpinner: true,
+      spinnerText: `Restoring backup ${id}...`,
+      successText: 'Backup restored successfully',
+      errorText: 'Failed to restore backup',
+      timeout: this.options.timeout!.slow,
+    });
+  }
+
+  async exportBackup(id: string, format?: string): Promise<AnyApiResponse> {
+    return this.executeWithEnhancements(() => this.apiClient.exportBackup(id, format), {
+      operationName: 'Export Backup',
+      showSpinner: true,
+      spinnerText: `Exporting backup ${id}...`,
+      successText: 'Backup exported successfully',
+      errorText: 'Failed to export backup',
+    });
+  }
+
+  async getBackupSchedules(params?: Record<string, string>): Promise<AnyApiResponse> {
+    return this.executeWithEnhancements(() => this.apiClient.getBackupSchedules(params), {
+      operationName: 'Get Backup Schedules',
+      showSpinner: true,
+      spinnerText: 'Loading backup schedules...',
+    });
+  }
+
+  async createBackupSchedule(schedule: {
+    name: string;
+    cron: string;
+    enabled?: boolean;
+    options?: Record<string, unknown>;
+  }): Promise<AnyApiResponse> {
+    return this.executeWithEnhancements(() => this.apiClient.createBackupSchedule(schedule), {
+      operationName: 'Create Backup Schedule',
+      showSpinner: true,
+      spinnerText: `Creating backup schedule: ${schedule.name}`,
+      successText: 'Backup schedule created successfully',
+      errorText: 'Failed to create backup schedule',
+    });
+  }
+
   /**
    * Get online status
    */

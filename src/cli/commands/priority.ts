@@ -6,6 +6,107 @@ import { dbConnection } from '@/database/connection';
 import chalk from 'chalk';
 import type { CliComponents } from '../types';
 
+// Helper functions (declared first to avoid hoisting issues)
+function getTimeAgo(date: Date): string {
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const minutes = Math.floor(diff / (1000 * 60));
+
+  if (days > 0) {
+    return `${days} day${days === 1 ? '' : 's'} ago`;
+  }
+  if (hours > 0) {
+    return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  }
+  if (minutes > 0) {
+    return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+  }
+  return 'just now';
+}
+
+function getPriorityChangeIcon(oldPriority: string, newPriority: string): string {
+  const oldNum = parseInt(oldPriority, 10) || 0;
+  const newNum = parseInt(newPriority, 10) || 0;
+
+  if (newNum > oldNum) {
+    return '📈'; // Increasing priority
+  }
+  if (newNum < oldNum) {
+    return '📉'; // Decreasing priority
+  }
+  return '➡️'; // Same priority
+}
+
+function getPriorityChangeColor(oldPriority: string, newPriority: string): typeof chalk.red {
+  const oldNum = parseInt(oldPriority, 10) || 0;
+  const newNum = parseInt(newPriority, 10) || 0;
+
+  if (newNum > oldNum) {
+    return chalk.red; // Increasing priority (red = urgent)
+  }
+  if (newNum < oldNum) {
+    return chalk.green; // Decreasing priority (green = less urgent)
+  }
+  return chalk.blue; // Same priority
+}
+
+function getTrendIcon(trend: string): string {
+  switch (trend) {
+    case 'increasing':
+      return '📈';
+    case 'decreasing':
+      return '📉';
+    case 'stable':
+      return '➡️';
+    default:
+      return '❓';
+  }
+}
+
+function getTrendColor(trend: string): typeof chalk.red {
+  switch (trend) {
+    case 'increasing':
+      return chalk.red;
+    case 'decreasing':
+      return chalk.green;
+    case 'stable':
+      return chalk.blue;
+    default:
+      return chalk.gray;
+  }
+}
+
+function getChangeFrequencyIcon(changeCount: number): string {
+  if (changeCount >= 10) return '🔥';
+  if (changeCount >= 5) return '⚡';
+  if (changeCount >= 3) return '📈';
+  return '📊';
+}
+
+function getPatternIcon(patternType: string): string {
+  switch (patternType) {
+    case 'frequent_changes':
+      return '🔄';
+    case 'priority_drift':
+      return '📈';
+    case 'emergency_bump':
+      return '🚨';
+    case 'gradual_decline':
+      return '📉';
+    default:
+      return '🔍';
+  }
+}
+
+function getScoreColor(score: number): typeof chalk.red {
+  if (score >= 0.8) return chalk.red.bold;
+  if (score >= 0.6) return chalk.yellow.bold;
+  if (score >= 0.4) return chalk.blue.bold;
+  return chalk.gray;
+}
+
 export function registerPriorityCommands(program: Command): void {
   const priorityCmd = program.command('priority').alias('p').description('Manage task priorities');
 
@@ -81,7 +182,9 @@ export function registerPriorityCommands(program: Command): void {
 
         let filteredTasks = priorities;
         if (options.status) {
-          filteredTasks = priorities.filter((task: { status: string }) => task.status === options.status);
+          filteredTasks = priorities.filter(
+            (task: { status: string }) => task.status === options.status
+          );
         }
 
         const limitedTasks = filteredTasks.slice(0, parseInt(String(options.limit || '20'), 10));
@@ -142,7 +245,7 @@ export function registerPriorityCommands(program: Command): void {
 
         const updateData: { priority: number; reason?: string } = { priority: priorityNum };
         if (options.reason) {
-          updateData.priorityReason = options.reason;
+          updateData.reason = options.reason;
         }
 
         await apiClient.updateTaskPriority(taskId, priorityNum);
@@ -172,7 +275,7 @@ export function registerPriorityCommands(program: Command): void {
           process.exit(1);
         }
 
-        const currentPriority = task.priority ?? 5;
+        const currentPriority = Number(task.priority) || 5;
         const newPriority = Math.min(currentPriority + 1, 10);
 
         await apiClient.updateTaskPriority(taskId, newPriority);
@@ -236,7 +339,7 @@ export function registerPriorityCommands(program: Command): void {
         }
 
         const priorityHistory = await historyService.getPriorityHistory(taskId);
-        const limitNum = parseInt(options.limit) || 10;
+        const limitNum = parseInt(String(options.limit || '10'), 10);
         const limitedHistory = priorityHistory.slice(0, limitNum);
 
         if (options.json) {
@@ -378,7 +481,9 @@ export function registerPriorityCommands(program: Command): void {
 
       try {
         const historyService = TaskHistoryService.getInstance();
-        const patterns = await historyService.getPriorityChangePatterns(options.board);
+        const patterns = await historyService.getPriorityChangePatterns(
+          String(options.board || '')
+        );
 
         if (options.json) {
           formatter.output(patterns);
@@ -453,11 +558,11 @@ export function registerPriorityCommands(program: Command): void {
 
       try {
         const priorityHistoryService = PriorityHistoryService.getInstance();
-        const days = parseInt(options.days) || 30;
+        const days = parseInt(String(options.days || '30'), 10);
         const endDate = new Date();
         const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
 
-        const stats = await priorityHistoryService.getPriorityStats(options.board, {
+        const stats = await priorityHistoryService.getPriorityStats(String(options.board || ''), {
           start: startDate,
           end: endDate,
         });
@@ -540,8 +645,8 @@ export function registerPriorityCommands(program: Command): void {
       try {
         const priorityHistoryService = PriorityHistoryService.getInstance();
         const patterns = await priorityHistoryService.analyzePriorityPatterns(
-          options.task,
-          options.board
+          String(options.task || ''),
+          String(options.board || '')
         );
 
         if (options.json) {
@@ -595,13 +700,13 @@ export function registerPriorityCommands(program: Command): void {
 
       try {
         const priorityHistoryService = PriorityHistoryService.getInstance();
-        const days = parseInt(options.days) || 7;
+        const days = parseInt(String(options.days || '7'), 10);
         const endDate = new Date();
         const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
 
         const summary = await priorityHistoryService.getPriorityChangeSummary(
           { start: startDate, end: endDate },
-          options.board
+          String(options.board || '')
         );
 
         if (options.json) {
@@ -641,105 +746,4 @@ export function registerPriorityCommands(program: Command): void {
         process.exit(1);
       }
     });
-}
-
-// Helper functions
-function getTimeAgo(date: Date): string {
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  const hours = Math.floor(diff / (1000 * 60 * 60));
-  const minutes = Math.floor(diff / (1000 * 60));
-
-  if (days > 0) {
-    return `${days} day${days === 1 ? '' : 's'} ago`;
-  }
-  if (hours > 0) {
-    return `${hours} hour${hours === 1 ? '' : 's'} ago`;
-  }
-  if (minutes > 0) {
-    return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
-  }
-  return 'just now';
-}
-
-function getPriorityChangeIcon(oldPriority: string, newPriority: string): string {
-  const oldNum = parseInt(oldPriority) || 0;
-  const newNum = parseInt(newPriority) || 0;
-
-  if (newNum > oldNum) {
-    return '📈'; // Increasing priority
-  }
-  if (newNum < oldNum) {
-    return '📉'; // Decreasing priority
-  }
-  return '➡️'; // Same priority
-}
-
-function getPriorityChangeColor(oldPriority: string, newPriority: string): typeof chalk.red {
-  const oldNum = parseInt(oldPriority) || 0;
-  const newNum = parseInt(newPriority) || 0;
-
-  if (newNum > oldNum) {
-    return chalk.red; // Increasing priority (red = urgent)
-  }
-  if (newNum < oldNum) {
-    return chalk.green; // Decreasing priority (green = less urgent)
-  }
-  return chalk.blue; // Same priority
-}
-
-function getTrendIcon(trend: string): string {
-  switch (trend) {
-    case 'increasing':
-      return '📈';
-    case 'decreasing':
-      return '📉';
-    case 'stable':
-      return '➡️';
-    default:
-      return '❓';
-  }
-}
-
-function getTrendColor(trend: string): typeof chalk.red {
-  switch (trend) {
-    case 'increasing':
-      return chalk.red;
-    case 'decreasing':
-      return chalk.green;
-    case 'stable':
-      return chalk.blue;
-    default:
-      return chalk.gray;
-  }
-}
-
-function getChangeFrequencyIcon(changeCount: number): string {
-  if (changeCount >= 10) return '🔥';
-  if (changeCount >= 5) return '⚡';
-  if (changeCount >= 3) return '📈';
-  return '📊';
-}
-
-function getPatternIcon(patternType: string): string {
-  switch (patternType) {
-    case 'frequent_changes':
-      return '🔄';
-    case 'priority_drift':
-      return '📈';
-    case 'emergency_bump':
-      return '🚨';
-    case 'gradual_decline':
-      return '📉';
-    default:
-      return '🔍';
-  }
-}
-
-function getScoreColor(score: number): typeof chalk.red {
-  if (score >= 0.8) return chalk.red.bold;
-  if (score >= 0.6) return chalk.yellow.bold;
-  if (score >= 0.4) return chalk.blue.bold;
-  return chalk.gray;
 }

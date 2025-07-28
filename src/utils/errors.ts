@@ -616,7 +616,7 @@ class GlobalErrorHandler {
       const zodError = error as { errors?: Array<{ path: string[]; message: string }> };
       const messages = zodError.errors?.map(
         err => `${String(err.path.join('.'))}: ${String(err.message)}`
-      ) || [getErrorMessage(error)];
+      ) ?? [getErrorMessage(error)];
       return new ValidationError(
         `Validation failed: ${String(messages.join(', '))}`,
         zodError.errors,
@@ -693,8 +693,8 @@ class GlobalErrorHandler {
         }
         if (error instanceof NotFoundError) {
           return new NotFoundError(
-            ((error.details as Record<string, unknown>)?.['resource'] as string) || 'Resource',
-            ((error.details as Record<string, unknown>)?.['identifier'] as string | number) ||
+            ((error.details as Record<string, unknown>)?.resource as string) || 'Resource',
+            ((error.details as Record<string, unknown>)?.identifier as string | number) ||
               'unknown',
             context
           );
@@ -771,7 +771,13 @@ export const globalErrorHandler = new GlobalErrorHandler();
  * }
  * ```
  */
-export function createServiceErrorHandler(serviceName: string): <T extends Record<string, unknown>>(target: T, propertyKey: string, descriptor: PropertyDescriptor) => PropertyDescriptor {
+export function createServiceErrorHandler(
+  serviceName: string
+): <T extends Record<string, unknown>>(
+  target: T,
+  propertyKey: string,
+  descriptor: PropertyDescriptor
+) => PropertyDescriptor {
   return function handleServiceError<T extends Record<string, unknown>>(
     _target: T,
     propertyKey: string,
@@ -872,7 +878,9 @@ export function withErrorContext<TFn extends (...args: unknown[]) => unknown>(
  * }
  * ```
  */
-export function createErrorBoundary(serviceName: string): <T extends new (...args: any[]) => object>(constructor: T) => T {
+export function createErrorBoundary(
+  serviceName: string
+): <T extends new (...args: any[]) => object>(constructor: T) => T {
   return function <T extends new (...args: any[]) => object>(constructor: T): T {
     return class extends constructor {
       constructor(...args: any[]) {

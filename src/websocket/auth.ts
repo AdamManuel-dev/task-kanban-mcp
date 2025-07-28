@@ -12,7 +12,7 @@ export class WebSocketAuth {
 
   private initializeApiKeys(): void {
     // Initialize with default API keys from environment or hardcoded defaults
-    const defaultApiKeys = process.env['DEFAULT_API_KEYS']?.split(',') ?? [];
+    const defaultApiKeys = process.env.DEFAULT_API_KEYS?.split(',') ?? [];
     defaultApiKeys.forEach((key, index) => {
       this.apiKeys.set(key, {
         id: `api_user_${String(index)}`,
@@ -22,7 +22,7 @@ export class WebSocketAuth {
     });
 
     // Add a default dev key if in development
-    if (process.env['NODE_ENV'] === 'development') {
+    if (process.env.NODE_ENV === 'development') {
       this.apiKeys.set('dev-key-1', {
         id: 'dev_user',
         name: 'Development User',
@@ -74,7 +74,7 @@ export class WebSocketAuth {
   private static authenticateWithJWT(token: string): Promise<AuthenticationResult> {
     return new Promise(resolve => {
       try {
-        const jwtSecret = process.env['JWT_SECRET'] ?? 'dev-secret-key-change-in-production';
+        const jwtSecret = process.env.JWT_SECRET ?? 'dev-secret-key-change-in-production';
         if (!jwtSecret || jwtSecret === 'dev-secret-key-change-in-production') {
           logger.warn(
             'JWT authentication using default secret - configure JWT_SECRET in production'
@@ -294,7 +294,7 @@ export class WebSocketAuth {
     permissions: string[],
     expiresIn: string = '24h'
   ): string {
-    const jwtSecret = process.env['JWT_SECRET'] ?? 'dev-secret-key-change-in-production';
+    const jwtSecret = process.env.JWT_SECRET ?? 'dev-secret-key-change-in-production';
     if (!jwtSecret || jwtSecret === 'dev-secret-key-change-in-production') {
       logger.warn('JWT generation using default secret - configure JWT_SECRET in production');
     }

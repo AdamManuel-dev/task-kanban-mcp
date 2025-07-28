@@ -47,12 +47,12 @@ export interface HealthApiResponse extends ApiResponse<HealthResponse> {
 export interface CreateTaskRequest {
   title: string;
   description?: string;
-  board_id: string;
-  column_id?: string;
+  boardId: string;
+  columnId?: string;
   priority?: number;
   status?: 'todo' | 'in_progress' | 'done' | 'blocked' | 'archived';
   assignee?: string;
-  due_date?: string;
+  dueDate?: string;
   tags?: string[];
 }
 
@@ -62,7 +62,7 @@ export interface UpdateTaskRequest {
   priority?: number;
   status?: 'todo' | 'in_progress' | 'done' | 'blocked' | 'archived';
   assignee?: string;
-  due_date?: string;
+  dueDate?: string;
   progress?: number;
 }
 
@@ -86,8 +86,8 @@ export interface UpdateBoardRequest {
 export interface CreateNoteRequest {
   content: string;
   category?: 'general' | 'meeting' | 'idea' | 'todo' | 'reminder';
-  task_id?: string;
-  board_id?: string;
+  taskId?: string;
+  boardId?: string;
   pinned?: boolean;
 }
 
@@ -102,14 +102,14 @@ export interface CreateTagRequest {
   name: string;
   color?: string;
   description?: string;
-  parent_id?: string;
+  parentId?: string;
 }
 
 export interface UpdateTagRequest {
   name?: string;
   color?: string;
   description?: string;
-  parent_id?: string;
+  parentId?: string;
 }
 
 // API response wrappers
@@ -469,7 +469,7 @@ export type AnyApiResponse =
   | ApiResponse;
 
 // API Parameter interfaces - replaces Record<string, string> usage
-export interface SearchTasksParams extends Record<string, string> {
+export interface SearchTasksParams {
   board?: string;
   status?: string;
   tags?: string;

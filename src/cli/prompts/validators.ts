@@ -10,6 +10,9 @@ import {
   detectSuspicious,
 } from '../utils/input-sanitizer';
 
+// Priority options
+import { PRIORITY_LABELS } from '../../constants';
+
 /**
  * Input validation functions for CLI prompts with comprehensive sanitization
  * Enhanced for TASK-119: Input sanitization for all prompts
@@ -19,8 +22,7 @@ import {
 export const TASK_SIZES = ['XS', 'S', 'M', 'L', 'XL'] as const;
 export type TaskSize = (typeof TASK_SIZES)[number];
 
-// Priority options
-export const PRIORITIES = ['P1', 'P2', 'P3', 'P4', 'P5'] as const;
+export const PRIORITIES = PRIORITY_LABELS;
 export type Priority = (typeof PRIORITIES)[number];
 
 // Status options

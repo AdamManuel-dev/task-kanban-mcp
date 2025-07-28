@@ -1,17 +1,35 @@
 import { Command } from 'commander';
-import chalk from 'chalk';
 import { DashboardManager } from '../utils/dashboard-manager';
 import { getThemeNames } from '../ui/themes/dashboard-themes';
 import { logger } from '../../utils/logger';
+import { TIMING, UI_DEFAULTS } from '../../constants';
+import { handleCommandError } from '../../utils/error-handler';
+import type { CliComponents } from '../types';
+
+function getComponents(): CliComponents {
+  return global.cliComponents;
+}
 
 /**
  * Dashboard command for launching terminal dashboards
  */
 export const dashboardCommand = new Command('dashboard')
   .description('Launch interactive terminal dashboard')
-  .option('-l, --layout <layout>', 'Initial layout: overview, velocity, or personal', 'overview')
-  .option('-r, --refresh <seconds>', 'Auto-refresh interval in seconds', '30')
-  .option('-t, --theme <theme>', `Dashboard theme: ${getThemeNames().join(', ')}`, 'dark')
+  .option(
+    '-l, --layout <layout>',
+    'Initial layout: overview, velocity, or personal',
+    UI_DEFAULTS.DEFAULT_LAYOUT
+  )
+  .option(
+    '-r, --refresh <seconds>',
+    'Auto-refresh interval in seconds',
+    String(TIMING.DEFAULT_REFRESH_INTERVAL / 1000)
+  )
+  .option(
+    '-t, --theme <theme>',
+    `Dashboard theme: ${getThemeNames().join(', ')}`,
+    UI_DEFAULTS.DEFAULT_THEME
+  )
   .option('--no-auto-refresh', 'Disable auto-refresh')
   .option('--list-themes', 'List available themes')
   .action(
@@ -25,9 +43,9 @@ export const dashboardCommand = new Command('dashboard')
       try {
         // Handle list themes option
         if (options.listThemes) {
-          console.log(chalk.cyan('🎨 Available Dashboard Themes:'));
+          logger.info('🎨 Available Dashboard Themes:');
           getThemeNames().forEach(theme => {
-            console.log(`  ${chalk.yellow('•')} ${theme}`);
+            logger.info(`  • ${theme}`);
           });
           return;
         }
@@ -39,15 +57,16 @@ export const dashboardCommand = new Command('dashboard')
             theme: options.theme,
             availableThemes,
           });
-          console.error(chalk.red(`Invalid theme: ${options.theme}`));
-          console.log(chalk.yellow('Available themes:'), availableThemes.join(', '));
+          logger.error(`Invalid theme: ${options.theme}`);
+          logger.info('Available themes:', { themes: availableThemes });
           return;
         }
 
-        console.log(chalk.cyan('🚀 Launching Kanban Dashboard...'));
+        logger.info('🚀 Launching Kanban Dashboard...');
 
         const config = {
-          refreshInterval: parseInt(options.refresh ?? '30', 10) * 1000,
+          refreshInterval:
+            parseInt(options.refresh ?? String(TIMING.DEFAULT_REFRESH_INTERVAL / 1000), 10) * 1000,
           theme: options.theme ?? 'dark',
           autoRefresh: options.autoRefresh !== false,
           showHelp: true,
@@ -69,21 +88,25 @@ export const dashboardCommand = new Command('dashboard')
             break;
           default:
             logger.warn('Unknown dashboard layout, using overview', { layout: options.layout });
-            console.warn(chalk.yellow(`Unknown layout: ${options.layout}. Using overview.`));
+            // Warning already logged above
             dashboard.switchLayout('overview');
         }
 
         // Start the dashboard
         dashboard.start();
 
-        console.log(chalk.green('Dashboard started! Press "h" for help, "q" to quit.'));
+        logger.info('Dashboard started! Press "h" for help, "q" to quit.');
       } catch (error) {
-        logger.error('Failed to start dashboard', { error });
-        console.error(
-          chalk.red('Failed to start dashboard:'),
-          error instanceof Error ? error.message : 'Unknown error'
+        const { formatter } = getComponents();
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        handleCommandError(
+          formatter as any,
+          {
+            operation: 'start dashboard',
+            details: { layout: options.layout, theme: options.theme },
+          },
+          error
         );
-        process.exit(1);
       }
     }
   );

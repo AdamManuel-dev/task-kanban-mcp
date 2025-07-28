@@ -1,7 +1,7 @@
 /**
  * @fileoverview Task command type definitions
  * @lastmodified 2025-07-28T10:30:00Z
- * 
+ *
  * Features: Shared interfaces for task CLI commands
  * Main APIs: Command option interfaces, response types
  * Constraints: Must align with API schema types
@@ -24,7 +24,6 @@ export interface CreateTaskOptions {
   board?: string;
   column?: string;
   position?: string;
-  interactive?: boolean;
 }
 
 export interface UpdateTaskOptions {

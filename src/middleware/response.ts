@@ -21,18 +21,27 @@ export interface ApiResponse<T = any> {
   };
 }
 
+export interface ApiErrorConfig {
+  code: string;
+  message: string;
+  statusCode?: number;
+  details?: any;
+}
+
+export interface ApiPaginationConfig<T> {
+  data: T[];
+  page: number;
+  limit: number;
+  total: number;
+  meta?: Partial<ApiResponse['meta']>;
+}
+
 declare global {
   namespace Express {
     interface Response {
       apiSuccess<T>(data: T, meta?: Partial<ApiResponse['meta']>): void;
-      apiError(code: string, message: string, statusCode?: number, details?: any): void;
-      apiPagination<T>(
-        data: T[],
-        page: number,
-        limit: number,
-        total: number,
-        meta?: Partial<ApiResponse['meta']>
-      ): void;
+      apiError(config: ApiErrorConfig): void;
+      apiPagination<T>(config: ApiPaginationConfig<T>): void;
     }
   }
 }
@@ -58,12 +67,8 @@ export function responseFormattingMiddleware(
   };
 
   // Add error response helper
-  res.apiError = function sendApiError(
-    code: string,
-    message: string,
-    statusCode = 500,
-    details?: any
-  ): void {
+  res.apiError = function sendApiError(config: ApiErrorConfig): void {
+    const { code, message, statusCode = 500, details } = config;
     const response: ApiResponse = {
       success: false,
       error: {
@@ -81,13 +86,8 @@ export function responseFormattingMiddleware(
   };
 
   // Add pagination response helper
-  res.apiPagination = function <T>(
-    data: T[],
-    page: number,
-    limit: number,
-    total: number,
-    meta?: Partial<ApiResponse['meta']>
-  ): void {
+  res.apiPagination = function <T>(config: ApiPaginationConfig<T>): void {
+    const { data, page, limit, total, meta } = config;
     const totalPages = Math.ceil(total / limit);
     const hasNext = page < totalPages;
     const hasPrev = page > 1;

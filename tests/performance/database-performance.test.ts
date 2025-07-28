@@ -16,8 +16,8 @@ import type { Task, Board } from '../../src/types';
 describe('Database Performance Tests', () => {
   let taskService: TaskService;
   let boardService: BoardService;
-  let noteService: NoteService;
-  let tagService: TagService;
+  let _noteService: NoteService;
+  let _tagService: TagService;
   let testBoard: Board;
   let testColumnId: string;
 
@@ -31,8 +31,8 @@ describe('Database Performance Tests', () => {
     // Initialize services
     taskService = new TaskService(dbConnection);
     boardService = new BoardService(dbConnection);
-    noteService = new NoteService(dbConnection);
-    tagService = new TagService(dbConnection);
+    _noteService = new NoteService(dbConnection);
+    _tagService = new TagService(dbConnection);
 
     // Create test board and column
     testBoard = await boardService.createBoard({
@@ -45,11 +45,13 @@ describe('Database Performance Tests', () => {
       'SELECT id FROM columns WHERE board_id = ? ORDER BY position LIMIT 1',
       [testBoard.id]
     );
-    
+
     if (!columns || columns.length === 0) {
-      throw new Error(`No columns found for board ${testBoard.id}. Board creation may have failed.`);
+      throw new Error(
+        `No columns found for board ${testBoard.id}. Board creation may have failed.`
+      );
     }
-    
+
     testColumnId = columns[0].id;
   }, 30000);
 
@@ -78,7 +80,7 @@ describe('Database Performance Tests', () => {
       }
 
       // Use database transaction for batch insert
-      await dbConnection.transaction(async db => {
+      await dbConnection.transaction(async _db => {
         await Promise.all(
           batch.map(async taskData => {
             await taskService.createTask(taskData);
@@ -241,7 +243,9 @@ describe('Database Performance Tests', () => {
       const duration = endTime - startTime;
 
       expect(duration).toBeLessThan(5000); // Should complete within 5 seconds
-      console.log(`✓ ${String(iterations)} complex JOIN queries completed in ${String(duration)}ms`);
+      console.log(
+        `✓ ${String(iterations)} complex JOIN queries completed in ${String(duration)}ms`
+      );
       console.log(
         `✓ Average complex query time: ${String(String(Math.round(duration / iterations)))}ms`
       );
@@ -303,7 +307,7 @@ describe('Database Performance Tests', () => {
           const whereClause =
             Object.keys(filters).length > 0
               ? `WHERE ${Object.entries(filters)
-                  .map(([key, value]) => `${key} = ?`)
+                  .map(([key, _value]) => `${key} = ?`)
                   .join(' AND ')}`
               : '';
           const params = Object.values(filters);

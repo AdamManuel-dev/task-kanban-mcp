@@ -106,7 +106,7 @@ export class PriorityHistoryService {
       const id = `ph_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const timestamp = new Date();
 
-      await dbConnection.run(
+      await dbConnection.execute(
         `INSERT INTO priority_history 
          (id, task_id, old_priority, new_priority, reason, changed_by, context, timestamp)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -115,8 +115,8 @@ export class PriorityHistoryService {
           taskId,
           oldPriority,
           newPriority,
-          reason,
-          changedBy,
+          reason || null,
+          changedBy || null,
           context ? JSON.stringify(context) : null,
           timestamp.toISOString(),
         ]
@@ -308,7 +308,7 @@ export class PriorityHistoryService {
 
       query += ' ORDER BY ph.task_id, ph.timestamp ASC';
 
-      const changes = await dbConnection.all(query, params);
+      const changes = await dbConnection.query(query, params);
       const patterns: PriorityPattern[] = [];
 
       // Group changes by task
@@ -433,7 +433,7 @@ export class PriorityHistoryService {
         params.push(boardId);
       }
 
-      const changes = await dbConnection.all(query, params);
+      const changes = await dbConnection.query(query, params);
 
       const changesCount = changes.length;
       const affectedTasks = new Set(changes.map(c => c.task_id)).size;

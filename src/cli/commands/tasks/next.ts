@@ -1,7 +1,7 @@
 /**
  * @fileoverview Task next recommendation command implementation
  * @lastmodified 2025-07-28T10:30:00Z
- * 
+ *
  * Features: AI-powered next task recommendation with context
  * Main APIs: registerNextCommand() - registers next subcommand
  * Constraints: Requires API endpoint for recommendations
@@ -46,7 +46,7 @@ export function registerNextCommand(taskCmd: Command): void {
           // Call the API endpoint for next task recommendation
           const response = await apiClient.request('GET', '/api/tasks/next', undefined, params);
 
-          if (!response || !(response as unknown).next_task) {
+          if (!response || !(response as any).next_task) {
             formatter.info('No tasks available matching your criteria');
             if (options.json) {
               formatter.output({ next_task: null, reasoning: 'No available tasks found' });
@@ -54,7 +54,7 @@ export function registerNextCommand(taskCmd: Command): void {
             return;
           }
 
-          const { next_task: nextTask, reasoning } = response as unknown;
+          const { next_task: nextTask, reasoning } = response as any;
 
           if (options.json) {
             formatter.output({ next_task: nextTask, reasoning });
@@ -94,7 +94,9 @@ export function registerNextCommand(taskCmd: Command): void {
 
           // Provide action suggestions
           formatter.info('\n🚀 Quick Actions:');
-          formatter.output(`   kanban task update ${String((nextTask as any).id)} --status in_progress`);
+          formatter.output(
+            `   kanban task update ${String((nextTask as any).id)} --status in_progress`
+          );
           formatter.output(`   kanban task show ${String((nextTask as any).id)} --context`);
         } catch (error) {
           formatter.error(

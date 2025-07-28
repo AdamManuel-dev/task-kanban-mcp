@@ -136,7 +136,9 @@ export function authenticationMiddleware(
  * router.delete('/boards/:id', requirePermission('admin'), deleteBoard);
  * ```
  */
-export function requirePermission(permission: string): (req: AuthenticatedRequest, res: Response, next: NextFunction) => void {
+export function requirePermission(
+  permission: string
+): (req: AuthenticatedRequest, res: Response, next: NextFunction) => void {
   return (req: AuthenticatedRequest, _res: Response, next: NextFunction): void => {
     if (!req.user) {
       next(new UnauthorizedError('Authentication required'));
@@ -168,7 +170,10 @@ export function requirePermission(permission: string): (req: AuthenticatedReques
  * router.get('/tasks', requirePermissions(['read', 'write'], false), getTasks);
  * ```
  */
-export function requirePermissions(permissions: string[], requireAll: boolean = false): (req: AuthenticatedRequest, res: Response, next: NextFunction) => void {
+export function requirePermissions(
+  permissions: string[],
+  requireAll: boolean = false
+): (req: AuthenticatedRequest, res: Response, next: NextFunction) => void {
   return (req: AuthenticatedRequest, _res: Response, next: NextFunction): void => {
     if (!req.user) {
       next(new UnauthorizedError('Authentication required'));

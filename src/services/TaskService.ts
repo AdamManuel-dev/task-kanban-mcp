@@ -1071,36 +1071,49 @@ export class TaskService {
     taskId: string,
     dependsOnTaskId: string
   ): Promise<boolean> {
-    const visited = new Set<string>();
-    const stack = [dependsOnTaskId];
-
-    while (stack.length > 0) {
-      const currentTaskId = stack.pop()!;
-
-      if (currentTaskId === taskId) {
-        return true;
-      }
-
-      if (visited.has(currentTaskId)) {
-        continue;
-      }
-
-      visited.add(currentTaskId);
-
-      // eslint-disable-next-line no-await-in-loop
-      const dependencies = await this.db.query<{ depends_on_task_id: string }>(
+    try {
+      // Use a single recursive CTE query to detect circular dependencies
+      const result = await this.db.query<{ path_exists: number }>(
         `
-        SELECT depends_on_task_id FROM task_dependencies WHERE task_id = ?
-      `,
-        [currentTaskId]
+        WITH RECURSIVE dependency_path AS (
+          -- Start from the task we want to add as a dependency
+          SELECT 
+            depends_on_task_id, 
+            task_id, 
+            1 as level,
+            depends_on_task_id as path
+          FROM task_dependencies 
+          WHERE task_id = ?
+          
+          UNION ALL
+          
+          -- Follow the dependency chain
+          SELECT 
+            td.depends_on_task_id, 
+            td.task_id, 
+            dp.level + 1,
+            dp.path || ' -> ' || td.depends_on_task_id
+          FROM task_dependencies td
+          JOIN dependency_path dp ON td.task_id = dp.depends_on_task_id
+          WHERE dp.level < 50  -- Prevent infinite recursion in malformed data
+        )
+        SELECT COUNT(*) as path_exists 
+        FROM dependency_path 
+        WHERE depends_on_task_id = ?
+        `,
+        [dependsOnTaskId, taskId]
       );
 
-      // Add all dependencies to the stack for processing
-      for (const dep of dependencies) {
-        stack.push(dep.depends_on_task_id);
-      }
+      return (result[0]?.path_exists ?? 0) > 0;
+    } catch (error) {
+      // Log error and fall back to safe behavior (prevent dependency)
+      logger.error('Error checking circular dependency', {
+        taskId,
+        dependsOnTaskId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return true; // Err on the side of caution
     }
-    return false;
   }
 
   /**
@@ -1151,59 +1164,92 @@ export class TaskService {
    * await taskService.addTaskDependency('task-b-id', 'task-a-id');
    * ```
    */
-  async addTaskDependency(taskId: string, dependsOnTaskId: string): Promise<void> {
+  async addTaskDependency(
+    taskId: string,
+    dependsOnTaskId: string,
+    options: {
+      dependencyType?: TaskDependency['dependency_type'];
+      skipValidation?: boolean;
+    } = {}
+  ): Promise<TaskDependency> {
+    const { dependencyType = 'blocks', skipValidation = false } = options;
+
+    const id = uuidv4();
+    const now = new Date();
+
     try {
-      // Prevent self-dependency
-      if (taskId === dependsOnTaskId) {
-        throw TaskService.createError('SELF_DEPENDENCY', 'A task cannot depend on itself');
-      }
+      return await this.db.transaction(async () => {
+        // Prevent self-dependency
+        if (taskId === dependsOnTaskId) {
+          throw TaskService.createError('SELF_DEPENDENCY', 'A task cannot depend on itself');
+        }
 
-      // Verify both tasks exist
-      const [task, dependsOnTask] = await Promise.all([
-        this.getTaskById(taskId),
-        this.getTaskById(dependsOnTaskId),
-      ]);
+        if (!skipValidation) {
+          // Verify both tasks exist
+          const [task, dependsOnTask] = await Promise.all([
+            this.getTaskById(taskId),
+            this.getTaskById(dependsOnTaskId),
+          ]);
 
-      if (!task) {
-        throw TaskService.createError('TASK_NOT_FOUND', 'Task not found', { taskId });
-      }
+          if (!task) {
+            throw TaskService.createError('TASK_NOT_FOUND', 'Task not found', { taskId });
+          }
 
-      if (!dependsOnTask) {
-        throw TaskService.createError('TASK_NOT_FOUND', 'Dependency task not found', {
-          dependsOnTaskId,
-        });
-      }
+          if (!dependsOnTask) {
+            throw TaskService.createError('TASK_NOT_FOUND', 'Dependency task not found', {
+              dependsOnTaskId,
+            });
+          }
 
-      // Check for circular dependencies
-      if (await this.wouldCreateCircularDependency(taskId, dependsOnTaskId)) {
-        throw TaskService.createError(
-          'CIRCULAR_DEPENDENCY',
-          'Adding this dependency would create a circular dependency'
+          // Check for circular dependencies
+          if (await this.wouldCreateCircularDependency(taskId, dependsOnTaskId)) {
+            throw TaskService.createError(
+              'CIRCULAR_DEPENDENCY',
+              'Adding this dependency would create a circular dependency'
+            );
+          }
+
+          // Check if dependency already exists
+          const existing = await this.db.query<{ id: string }>(
+            `SELECT id FROM task_dependencies 
+             WHERE task_id = ? AND depends_on_task_id = ? AND dependency_type = ?`,
+            [taskId, dependsOnTaskId, dependencyType]
+          );
+
+          if (existing.length > 0) {
+            // Return existing dependency instead of creating duplicate
+            const existingDep = await this.db.query<TaskDependency>(
+              `SELECT * FROM task_dependencies WHERE id = ?`,
+              [existing[0].id]
+            );
+            return existingDep[0];
+          }
+        }
+
+        // Insert the new dependency
+        await this.db.execute(
+          `INSERT INTO task_dependencies (id, task_id, depends_on_task_id, dependency_type, created_at)
+           VALUES (?, ?, ?, ?, ?)`,
+          [id, taskId, dependsOnTaskId, dependencyType, now]
         );
-      }
 
-      // Check if dependency already exists
-      const existing = await this.db.query<{ id: string }>(
-        `
-        SELECT id FROM task_dependencies 
-        WHERE task_id = ? AND depends_on_task_id = ?
-      `,
-        [taskId, dependsOnTaskId]
-      );
+        const dependency: TaskDependency = {
+          id,
+          task_id: taskId,
+          depends_on_task_id: dependsOnTaskId,
+          dependency_type: dependencyType,
+          created_at: now,
+        };
 
-      if (existing.length > 0) {
-        return; // Dependency already exists, no need to add
-      }
+        logger.info('Task dependency added successfully', {
+          taskId,
+          dependsOnTaskId,
+          dependencyType,
+          dependencyId: id,
+        });
 
-      await this.db.execute(
-        `
-        INSERT INTO task_dependencies (id, task_id, depends_on_task_id, created_at)
-        VALUES (?, ?, ?, ?)
-      `,
-        [uuidv4(), taskId, dependsOnTaskId, new Date()]
-      );
-
-      logger.info('Task dependency added successfully', { taskId, dependsOnTaskId });
+        return dependency;
+      });
     } catch (error) {
       if (
         error instanceof Error &&
@@ -1213,7 +1259,13 @@ export class TaskService {
       ) {
         throw error;
       }
-      logger.error('Failed to add task dependency', { error, taskId, dependsOnTaskId });
+
+      logger.error('Failed to add task dependency', {
+        taskId,
+        dependsOnTaskId,
+        dependencyType,
+        error: error instanceof Error ? error.message : String(error),
+      });
       throw TaskService.createError(
         'DEPENDENCY_ADD_FAILED',
         'Failed to add task dependency',
@@ -1611,13 +1663,23 @@ export class TaskService {
     // Calculate longest distances (critical path)
     for (const taskId of sortedTasks) {
       const dependencies = dependencyMap.get(taskId) ?? [];
+      const currentTaskDuration = taskDurations.get(taskId) ?? 0;
+
       for (const depId of dependencies) {
-        const newDistance = (distances.get(depId) ?? 0) + (taskDurations.get(taskId) ?? 0);
+        // The distance to current task = distance to dependency + dependency's duration
+        const depDistance = distances.get(depId) ?? 0;
+        const depDuration = taskDurations.get(depId) ?? 0;
+        const newDistance = depDistance + depDuration;
+
         if (newDistance > (distances.get(taskId) ?? 0)) {
           distances.set(taskId, newDistance);
           predecessors.set(taskId, depId);
         }
       }
+
+      // Add current task's duration to its own distance for final calculation
+      const currentDistance = distances.get(taskId) ?? 0;
+      distances.set(taskId, currentDistance + currentTaskDuration);
     }
 
     // Find the task with maximum distance (end of critical path)
@@ -2524,7 +2586,7 @@ export class TaskService {
       // Execute all operations
       for (const op of operations) {
         if (op.operation === 'add') {
-          await this.addDependency(op.taskId, op.dependsOnTaskId, 'blocks');
+          await this.addTaskDependency(op.taskId, op.dependsOnTaskId, { dependencyType: 'blocks' });
         } else {
           await this.removeDependency(op.taskId, op.dependsOnTaskId);
         }

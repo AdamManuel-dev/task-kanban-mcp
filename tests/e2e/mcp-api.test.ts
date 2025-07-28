@@ -82,7 +82,7 @@ describe('MCP API E2E Tests', () => {
 
       const onData = (data: Buffer) => {
         responseData += data.toString();
-        
+
         // Check if we have a complete JSON message
         const lines = responseData.split('\n');
         for (const line of lines) {
@@ -103,7 +103,7 @@ describe('MCP API E2E Tests', () => {
       };
 
       process.stdout?.on('data', onData);
-      
+
       process.stdin?.write(messageStr);
     });
   }

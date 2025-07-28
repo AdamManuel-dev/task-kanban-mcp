@@ -11,6 +11,7 @@ import {
   formatDivider,
   formatHeader,
 } from './formatter';
+import { PRIORITY_ORDER } from '../../constants';
 
 export interface TaskDetails {
   id: string;
@@ -310,9 +311,8 @@ export class TaskListFormatter {
     return [...tasks].sort((a, b) => {
       switch (sortBy) {
         case 'priority':
-          const priorityOrder = { P1: 1, P2: 2, P3: 3, P4: 4, P5: 5 };
-          const aPriority = priorityOrder[a.priority as keyof typeof priorityOrder] || 99;
-          const bPriority = priorityOrder[b.priority as keyof typeof priorityOrder] || 99;
+          const aPriority = PRIORITY_ORDER[a.priority as keyof typeof PRIORITY_ORDER] || 99;
+          const bPriority = PRIORITY_ORDER[b.priority as keyof typeof PRIORITY_ORDER] || 99;
           return aPriority - bPriority;
 
         case 'due_date':

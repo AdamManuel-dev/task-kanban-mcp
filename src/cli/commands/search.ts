@@ -1,6 +1,7 @@
 import { logger } from '@/utils/logger';
 import type { Command } from 'commander';
 import type { CliComponents } from '../types';
+import { extractErrorMessage } from '../../utils/type-guards';
 
 export function registerSearchCommands(program: Command): void {
   const searchCmd = program.command('search').alias('s').description('Search tasks and content');
@@ -34,18 +35,18 @@ export function registerSearchCommands(program: Command): void {
         try {
           const params: Record<string, string> = {
             q: query,
-            limit: options['limit'] || '20',
-            sort: options['sort'] || 'relevance',
-            order: options['order'] || 'desc',
+            limit: options.limit || '20',
+            sort: options.sort || 'relevance',
+            order: options.order || 'desc',
           };
 
-          if (options['board']) params['board'] = options['board'];
-          if (options['status']) params['status'] = options['status'];
-          if (options['tags']) params['tags'] = options['tags'];
+          if (options.board) params.board = options.board;
+          if (options.status) params.status = options.status;
+          if (options.tags) params.tags = options.tags;
 
           // Use default board if no board specified
-          if (!options['board'] && config.getDefaultBoard()) {
-            params['board'] = config.getDefaultBoard()!;
+          if (!options.board && config.getDefaultBoard()) {
+            params.board = config.getDefaultBoard()!;
           }
 
           const results = await apiClient.searchTasks(query, params);
@@ -61,9 +62,7 @@ export function registerSearchCommands(program: Command): void {
             headers: ['ID', 'Title', 'Status', 'Priority', 'Relevance', 'Board'],
           });
         } catch (error) {
-          formatter.error(
-            `Failed to search tasks: ${String(error instanceof Error ? error.message : 'Unknown error')}`
-          );
+          formatter.error(`Failed to search tasks: ${extractErrorMessage(error)}`);
           process.exit(1);
         }
       }
@@ -86,12 +85,12 @@ export function registerSearchCommands(program: Command): void {
         try {
           const params: Record<string, string> = {
             q: query,
-            limit: options['limit'] || '20',
-            sort: options['sort'] || 'relevance',
-            order: options['order'] || 'desc',
+            limit: options.limit || '20',
+            sort: options.sort || 'relevance',
+            order: options.order || 'desc',
           };
 
-          if (options['category']) params['category'] = options['category'];
+          if (options.category) params.category = options.category;
 
           const results = await apiClient.searchNotes(query);
 
@@ -106,9 +105,7 @@ export function registerSearchCommands(program: Command): void {
             headers: ['ID', 'Title', 'Category', 'Relevance', 'Created'],
           });
         } catch (error) {
-          formatter.error(
-            `Failed to search notes: ${String(error instanceof Error ? error.message : 'Unknown error')}`
-          );
+          formatter.error(`Failed to search notes: ${extractErrorMessage(error)}`);
           process.exit(1);
         }
       }
@@ -135,9 +132,7 @@ export function registerSearchCommands(program: Command): void {
           headers: ['ID', 'Name', 'Description', 'Tasks', 'Parent'],
         });
       } catch (error) {
-        formatter.error(
-          `Failed to search tags: ${String(error instanceof Error ? error.message : 'Unknown error')}`
-        );
+        formatter.error(`Failed to search tags: ${extractErrorMessage(error)}`);
         process.exit(1);
       }
     });
@@ -156,17 +151,17 @@ export function registerSearchCommands(program: Command): void {
         const searchPromises: Promise<any>[] = [];
         const searchTypes: string[] = [];
 
-        if (!options['notesOnly'] && !options['tagsOnly']) {
-          searchPromises.push(apiClient.searchTasks(query, { limit: options['limit'] }));
+        if (!options.notesOnly && !options.tagsOnly) {
+          searchPromises.push(apiClient.searchTasks(query, { limit: options.limit }));
           searchTypes.push('tasks');
         }
 
-        if (!options['tasksOnly'] && !options['tagsOnly']) {
+        if (!options.tasksOnly && !options.tagsOnly) {
           searchPromises.push(apiClient.searchNotes(query));
           searchTypes.push('notes');
         }
 
-        if (!options['tasksOnly'] && !options['notesOnly']) {
+        if (!options.tasksOnly && !options.notesOnly) {
           searchPromises.push(apiClient.searchTags(query));
           searchTypes.push('tags');
         }
@@ -236,19 +231,19 @@ export function registerSearchCommands(program: Command): void {
 
       try {
         const params: Record<string, string> = {
-          limit: options['limit'],
+          limit: options.limit,
         };
 
-        if (options['title']) params['title'] = options['title'];
-        if (options['description']) params['description'] = options['description'];
-        if (options['tags']) params['tags'] = options['tags'];
-        if (options['status']) params['status'] = options['status'];
-        if (options['priorityMin']) params['priorityMin'] = options['priorityMin'];
-        if (options['priorityMax']) params['priorityMax'] = options['priorityMax'];
-        if (options['createdAfter']) params['createdAfter'] = options['createdAfter'];
-        if (options['createdBefore']) params['createdBefore'] = options['createdBefore'];
-        if (options['dueAfter']) params['dueAfter'] = options['dueAfter'];
-        if (options['dueBefore']) params['dueBefore'] = options['dueBefore'];
+        if (options.title) params.title = options.title;
+        if (options.description) params.description = options.description;
+        if (options.tags) params.tags = options.tags;
+        if (options.status) params.status = options.status;
+        if (options.priorityMin) params.priorityMin = options.priorityMin;
+        if (options.priorityMax) params.priorityMax = options.priorityMax;
+        if (options.createdAfter) params.createdAfter = options.createdAfter;
+        if (options.createdBefore) params.createdBefore = options.createdBefore;
+        if (options.dueAfter) params.dueAfter = options.dueAfter;
+        if (options.dueBefore) params.dueBefore = options.dueBefore;
 
         const results = (await apiClient.request(
           'GET',

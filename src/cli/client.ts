@@ -340,6 +340,72 @@ export class ApiClient {
     });
   }
 
+  // Backup API methods
+  async createBackup(options: {
+    name: string;
+    compress?: boolean;
+    verify?: boolean;
+    encrypt?: boolean;
+    encryptionKey?: string;
+    description?: string;
+  }): Promise<AnyApiResponse> {
+    return this.request('/api/backups', {
+      method: 'POST',
+      body: options,
+    });
+  }
+
+  async getBackups(params?: {
+    sort?: string;
+    order?: string;
+    limit?: string;
+  }): Promise<AnyApiResponse> {
+    return this.request('/api/backups', { params });
+  }
+
+  async getBackup(id: string): Promise<AnyApiResponse> {
+    return this.request(`/api/backups/${String(id)}`);
+  }
+
+  async deleteBackup(id: string): Promise<AnyApiResponse> {
+    return this.request(`/api/backups/${String(id)}`, { method: 'DELETE' });
+  }
+
+  async restoreBackup(
+    id: string,
+    options?: {
+      verify?: boolean;
+      decryptionKey?: string;
+    }
+  ): Promise<AnyApiResponse> {
+    return this.request(`/api/backups/${String(id)}/restore`, {
+      method: 'POST',
+      body: options,
+    });
+  }
+
+  async exportBackup(id: string, format?: string): Promise<AnyApiResponse> {
+    return this.request(`/api/backups/${String(id)}/export`, {
+      params: format ? { format } : undefined,
+    });
+  }
+
+  async getBackupSchedules(params?: Record<string, string>): Promise<AnyApiResponse> {
+    return this.request('/api/backups/schedules', { params });
+  }
+
+  async createBackupSchedule(schedule: {
+    name: string;
+    cron: string;
+    enabled?: boolean;
+    options?: Record<string, unknown>;
+  }): Promise<AnyApiResponse> {
+    return this.request('/api/backups/schedules', {
+      method: 'POST',
+      body: schedule,
+    });
+  }
+
   /**
    * Convenience method for GET requests
    */

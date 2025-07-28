@@ -36,6 +36,7 @@ import { isSuccessResponse } from '../api-client-wrapper';
 import BoardView from '../ui/components/BoardView';
 import { SpinnerManager } from '../utils/spinner';
 import { logger } from '../../utils/logger';
+import { hasValidBoardData, extractErrorMessage } from '../../utils/type-guards';
 
 interface ListBoardOptions {
   active?: boolean;
@@ -205,19 +206,20 @@ export function registerBoardCommands(program: Command): void {
 
       try {
         const response = await apiClient.getBoards();
-        const boards = 'data' in response ? (response.data as BoardData[]) : [];
 
-        if (!boards || boards.length === 0) {
+        if (!hasValidBoardData(response)) {
           formatter.info('No boards found');
           return;
         }
 
+        const boards = response.data;
+
         // Filter based on options
         let filteredBoards = boards;
         if (options.active) {
-          filteredBoards = boards.filter((board: BoardData) => !board.archived);
+          filteredBoards = boards.filter(board => !board.archived);
         } else if (options.archived) {
-          filteredBoards = boards.filter((board: BoardData) => board.archived);
+          filteredBoards = boards.filter(board => board.archived);
         }
 
         formatter.output(filteredBoards, {
@@ -225,9 +227,7 @@ export function registerBoardCommands(program: Command): void {
           headers: ['ID', 'Name', 'Description', 'Archived', 'Created'],
         });
       } catch (error) {
-        formatter.error(
-          `Failed to list boards: ${String(error instanceof Error ? error.message : 'Unknown error')}`
-        );
+        formatter.error(`Failed to list boards: ${extractErrorMessage(error)}`);
         process.exit(1);
       }
     });
@@ -301,9 +301,7 @@ export function registerBoardCommands(program: Command): void {
           }
         }
       } catch (error) {
-        formatter.error(
-          `Failed to get board: ${String(error instanceof Error ? error.message : 'Unknown error')}`
-        );
+        formatter.error(`Failed to get board: ${extractErrorMessage(error)}`);
         process.exit(1);
       }
     });
@@ -412,12 +410,12 @@ export function registerBoardCommands(program: Command): void {
           const [currentBoard, setCurrentBoard] = React.useState<BoardData>({
             id: board.id,
             name: board.name,
-            description: board.description || undefined,
+            description: board.description ?? undefined,
             archived: board.archived,
             createdAt: board.created_at.toISOString(),
             updatedAt: board.updated_at.toISOString(),
             columns: [],
-            tasks: []
+            tasks: [],
           });
 
           // Auto-refresh functionality
@@ -446,11 +444,11 @@ export function registerBoardCommands(program: Command): void {
                       const boardWithContent: BoardData = {
                         id: refreshedBoard.id,
                         name: refreshedBoard.name,
-                        description: refreshedBoard.description || undefined,
+                        description: refreshedBoard.description ?? undefined,
                         archived: refreshedBoard.archived,
                         createdAt: refreshedBoard.created_at.toISOString(),
                         updatedAt: refreshedBoard.updated_at.toISOString(),
-                        columns: (refreshedApiResponse.columns || []) as Column[],
+                        columns: (refreshedApiResponse.columns ?? []) as Column[],
                         tasks: [],
                       };
                       setCurrentBoard(boardWithContent);
@@ -482,14 +480,14 @@ export function registerBoardCommands(program: Command): void {
             description: currentBoard.description,
             color: '#2196F3',
             created_at: new Date(currentBoard.createdAt),
-            updated_at: new Date(currentBoard.updatedAt || currentBoard.createdAt),
-            archived: currentBoard.archived
+            updated_at: new Date(currentBoard.updatedAt ?? currentBoard.createdAt),
+            archived: currentBoard.archived,
           };
 
           return React.createElement(BoardView, {
             board: boardForView,
-            columns: currentBoard.columns || [],
-            tasks: currentBoard.tasks || [],
+            columns: currentBoard.columns ?? [],
+            tasks: currentBoard.tasks ?? [],
             showDetails: false,
           });
         };
@@ -501,9 +499,7 @@ export function registerBoardCommands(program: Command): void {
         // Render the interactive board view
         render(React.createElement(InteractiveBoardView));
       } catch (error) {
-        formatter.error(
-          `Failed to start board view: ${String(error instanceof Error ? error.message : 'Unknown error')}`
-        );
+        formatter.error(`Failed to start board view: ${extractErrorMessage(error)}`);
         process.exit(1);
       }
     });
@@ -587,14 +583,14 @@ export function registerBoardCommands(program: Command): void {
       if (options.description !== undefined) boardData.description = options.description;
 
       try {
-        const { useAsDefault: _useAsDefault, ...createData } = boardData;
+        const { useAsDefault, ...createData } = boardData;
         const board = await apiClient.createBoard(createData as CreateBoardRequest);
         if (isSuccessResponse(board)) {
           formatter.success(`Board created successfully: ${String(board.data.id)}`);
           formatter.output(board.data);
 
           // Set as default if requested from interactive prompt
-          if (boardData.useAsDefault) {
+          if (useAsDefault) {
             config.setDefaultBoard(board.data.id);
             formatter.info(`Set as default board`);
           }
@@ -603,9 +599,7 @@ export function registerBoardCommands(program: Command): void {
           process.exit(1);
         }
       } catch (error) {
-        formatter.error(
-          `Failed to create board: ${String(error instanceof Error ? error.message : 'Unknown error')}`
-        );
+        formatter.error(`Failed to create board: ${extractErrorMessage(error)}`);
         process.exit(1);
       }
     });
@@ -660,9 +654,7 @@ export function registerBoardCommands(program: Command): void {
         formatter.success('Board updated successfully');
         formatter.output(updatedBoard);
       } catch (error) {
-        formatter.error(
-          `Failed to update board: ${String(error instanceof Error ? error.message : 'Unknown error')}`
-        );
+        formatter.error(`Failed to update board: ${extractErrorMessage(error)}`);
         process.exit(1);
       }
     });

@@ -1,8 +1,30 @@
 import type { Command } from 'commander';
 import inquirer from 'inquirer';
-import type { CliComponents } from '../types';
+import type { CliComponents, CreateTagRequest } from '../types';
 import type { OutputFormatter } from '../formatter';
 import { logger } from '../../utils/logger';
+
+// Helper function to display tag tree (declared first to avoid hoisting issues)
+function displayTagTree(
+  tags: Array<{ id: string; name: string; parentId?: string; color?: string }>,
+  allTags: Array<{ id: string; name: string; parentId?: string; color?: string }>,
+  formatter: OutputFormatter,
+  depth: number
+): void {
+  tags.forEach(tag => {
+    const indent = '  '.repeat(depth);
+    const name = tag.color ? `${String(tag.name)} (${String(tag.color)})` : tag.name;
+    logger.info(
+      `${String(indent)}${String(depth > 0 ? '└─ ' : '')}${String(name)} (${String(tag.id)})`
+    );
+
+    // Find and display children
+    const children = allTags.filter(t => t.parentId === tag.id);
+    if (children.length > 0) {
+      displayTagTree(children, allTags, formatter, depth + 1);
+    }
+  });
+}
 
 interface ListTagOptions {
   usage?: boolean;
@@ -135,7 +157,7 @@ export function registerTagCommands(program: Command): void {
             formatter.info(`\n📋 Tasks with tag "${tag.name}":`);
             formatter.output(tasksResponse, {
               fields: ['id', 'title', 'status', 'priority'],
-              headers: ['ID', 'Title', 'Status', 'Priority']
+              headers: ['ID', 'Title', 'Status', 'Priority'],
             });
           } else {
             formatter.info(`No tasks found with tag "${tag.name}"`);
@@ -198,8 +220,14 @@ export function registerTagCommands(program: Command): void {
         };
       }
 
+      // Ensure name is present (required field)
+      if (!tagData.name) {
+        formatter.error('Tag name is required');
+        process.exit(1);
+      }
+
       try {
-        const tag = (await apiClient.createTag(tagData)) as any;
+        const tag = (await apiClient.createTag(tagData as CreateTagRequest)) as any;
         formatter.success(`Tag created successfully: ${String(tag.id)}`);
         formatter.output(tag);
       } catch (error) {
@@ -229,7 +257,12 @@ export function registerTagCommands(program: Command): void {
           process.exit(1);
         }
 
-        let updates: Partial<{ name: string; description: string; color: string; parentId: string }> = {};
+        let updates: Partial<{
+          name: string;
+          description: string;
+          color: string;
+          parentId: string;
+        }> = {};
 
         if (options.interactive) {
           const answers = await inquirer.prompt([
@@ -338,7 +371,7 @@ export function registerTagCommands(program: Command): void {
           return;
         }
 
-        formatter.output(tags.slice(0, parseInt(options.limit, 10)), {
+        formatter.output(tags.slice(0, parseInt(String(options.limit || '20'), 10)), {
           fields: ['id', 'name', 'color', 'description'],
           headers: ['ID', 'Name', 'Color', 'Description'],
         });
@@ -391,26 +424,4 @@ export function registerTagCommands(program: Command): void {
         process.exit(1);
       }
     });
-}
-
-// Helper function to display tag tree
-function displayTagTree(
-  tags: Array<{ id: string; name: string; parentId?: string }>,
-  allTags: Array<{ id: string; name: string; parentId?: string }>,
-  formatter: OutputFormatter,
-  depth: number
-): void {
-  tags.forEach(tag => {
-    const indent = '  '.repeat(depth);
-    const name = tag.color ? `${String(tag.name)} (${String(tag.color)})` : tag.name;
-    logger.info(
-      `${String(indent)}${String(depth > 0 ? '└─ ' : '')}${String(name)} (${String(tag.id)})`
-    );
-
-    // Find and display children
-    const children = allTags.filter((t) => t.parentId === tag.id);
-    if (children.length > 0) {
-      displayTagTree(children, allTags, formatter, depth + 1);
-    }
-  });
 }

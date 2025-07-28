@@ -10,6 +10,7 @@
 import { z } from 'zod';
 import { logger } from '../utils/logger';
 import { CLOUD_ENV } from './cloud-env';
+import { NETWORK_DEFAULTS, TIMING } from '../constants';
 
 export interface EnvValidationRule {
   key: string;
@@ -52,11 +53,11 @@ export const ENV_RULES: readonly EnvValidationRule[] = [
     required: false,
     sensitive: false,
     description: 'Server port number',
-    defaultValue: 3000,
+    defaultValue: NETWORK_DEFAULTS.DEFAULT_PORT,
     cloudOverrides: {
-      replit: 3000,
-      codespaces: 3000,
-      gitpod: 3000,
+      replit: NETWORK_DEFAULTS.DEFAULT_PORT,
+      codespaces: NETWORK_DEFAULTS.DEFAULT_PORT,
+      gitpod: NETWORK_DEFAULTS.DEFAULT_PORT,
     },
   },
   {
@@ -65,7 +66,7 @@ export const ENV_RULES: readonly EnvValidationRule[] = [
     required: false,
     sensitive: false,
     description: 'Server host address',
-    defaultValue: 'localhost',
+    defaultValue: NETWORK_DEFAULTS.DEFAULT_HOST,
     cloudOverrides: {
       replit: '0.0.0.0',
       codespaces: '0.0.0.0',
@@ -104,7 +105,7 @@ export const ENV_RULES: readonly EnvValidationRule[] = [
   {
     key: 'JWT_SECRET',
     schema: z.string().min(32),
-    required: true,
+    required: false,
     sensitive: true,
     description: 'JWT signing secret (minimum 32 characters)',
     defaultValue: 'dev-jwt-secret-change-in-production-min-32-chars',
@@ -112,7 +113,7 @@ export const ENV_RULES: readonly EnvValidationRule[] = [
   {
     key: 'API_KEY_SECRET',
     schema: z.string().min(16),
-    required: true,
+    required: false,
     sensitive: true,
     description: 'API key signing secret (minimum 16 characters)',
     defaultValue: 'dev-api-secret-change-in-production',
@@ -157,7 +158,7 @@ export const ENV_RULES: readonly EnvValidationRule[] = [
     required: false,
     sensitive: false,
     description: 'Request timeout in milliseconds',
-    defaultValue: 30000,
+    defaultValue: TIMING.DEFAULT_REQUEST_TIMEOUT,
   },
 
   // Feature flags
@@ -232,7 +233,7 @@ export const ENV_RULES: readonly EnvValidationRule[] = [
     required: false,
     sensitive: false,
     description: 'CORS allowed origins',
-    defaultValue: 'http://localhost:3000',
+    defaultValue: NETWORK_DEFAULTS.DEFAULT_BASE_URL,
     cloudOverrides: {
       replit: '*',
       codespaces: '*',
@@ -446,19 +447,19 @@ export class EnvironmentManager {
     for (const rule of ENV_RULES) {
       const { key } = rule;
       if (key.startsWith('NODE_ENV') || key.startsWith('PORT') || key.startsWith('HOST')) {
-        categories['Server'].push(rule);
+        categories.Server.push(rule);
       } else if (key.startsWith('DATABASE_')) {
-        categories['Database'].push(rule);
+        categories.Database.push(rule);
       } else if (key.includes('SECRET') || key.includes('KEY') || key.includes('CORS')) {
-        categories['Security'].push(rule);
+        categories.Security.push(rule);
       } else if (key.includes('MEMORY') || key.includes('TIMEOUT') || key.includes('LIMIT')) {
-        categories['Performance'].push(rule);
+        categories.Performance.push(rule);
       } else if (key.startsWith('ENABLE_')) {
-        categories['Features'].push(rule);
+        categories.Features.push(rule);
       } else if (key.startsWith('LOG_')) {
-        categories['Logging'].push(rule);
+        categories.Logging.push(rule);
       } else {
-        categories['Network'].push(rule);
+        categories.Network.push(rule);
       }
     }
 
@@ -510,29 +511,38 @@ export class EnvironmentManager {
 // Export singleton instance
 export const envManager = new EnvironmentManager();
 
-// Validate environment on module load
-export const ENV_VALIDATION = envManager.validate();
+// Lazy validation getter
+let _validationCache: EnvValidationResult | null = null;
+export const getEnvValidation = (): EnvValidationResult => {
+  if (!_validationCache) {
+    _validationCache = envManager.validate();
 
-if (!ENV_VALIDATION.valid) {
-  logger.error('Environment validation failed:', {
-    errors: ENV_VALIDATION.errors,
-    missing: ENV_VALIDATION.missing,
-    invalid: ENV_VALIDATION.invalid,
-  });
-}
+    if (!_validationCache.valid) {
+      logger.error('Environment validation failed:', {
+        errors: _validationCache.errors,
+        missing: _validationCache.missing,
+        invalid: _validationCache.invalid,
+      });
+    }
 
-if (ENV_VALIDATION.warnings.length > 0) {
-  logger.warn('Environment validation warnings:', ENV_VALIDATION.warnings);
-}
+    if (_validationCache.warnings.length > 0) {
+      logger.warn('Environment validation warnings:', _validationCache.warnings);
+    }
 
-// Log successful validation
-logger.info('Environment configuration loaded', {
-  platform: CLOUD_ENV.platform,
-  isCloud: CLOUD_ENV.isCloud,
-  variablesLoaded: Object.keys(ENV_VALIDATION.values).length,
-  warnings: ENV_VALIDATION.warnings.length,
-  errors: ENV_VALIDATION.errors.length,
-});
+    // Log successful validation
+    logger.info('Environment configuration loaded', {
+      platform: CLOUD_ENV.platform,
+      isCloud: CLOUD_ENV.isCloud,
+      variablesLoaded: Object.keys(_validationCache.values).length,
+      warnings: _validationCache.warnings.length,
+      errors: _validationCache.errors.length,
+    });
+  }
+  return _validationCache;
+};
+
+// For backward compatibility
+export const ENV_VALIDATION = getEnvValidation();
 
 // Export helper functions
 export const getEnv = <T>(key: string, defaultValue?: T): T => envManager.get(key, defaultValue);

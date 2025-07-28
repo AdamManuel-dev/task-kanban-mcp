@@ -643,7 +643,14 @@ export class ExportService {
         // eslint-disable-next-line no-await-in-loop
         await this.db.execute(
           'INSERT OR REPLACE INTO tags (id, name, color, description, parent_tag_id, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-          [tag.id, tag.name, tag.color || null, tag.description || null, tag.parent_tag_id || null, tag.created_at]
+          [
+            tag.id,
+            tag.name,
+            tag.color || null,
+            tag.description || null,
+            tag.parent_tag_id || null,
+            tag.created_at,
+          ]
         );
         result.imported++;
       } catch (error: unknown) {

@@ -1847,7 +1847,9 @@ export class MCPToolRegistry {
 
     // Get the enhanced result for the top task
     const nextTask = availableTasks[0] || null;
-    const enhancedResult = nextTask ? enhancedResults.find(result => result.task.id === nextTask.id) : undefined;
+    const enhancedResult = nextTask
+      ? enhancedResults.find(result => result.task.id === nextTask.id)
+      : undefined;
 
     let reasoning = enhancedResult
       ? enhancedResult.reasoning.join('; ')
@@ -1960,6 +1962,7 @@ export class MCPToolRegistry {
     }
 
     // Dependency and subtask analysis
+    // eslint-disable-next-line camelcase
     if (include_dependencies) {
       const dependencies = await this.services.taskService.getTaskDependencies(task_id);
       factors.dependency_count = dependencies.length;

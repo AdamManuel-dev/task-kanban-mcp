@@ -69,11 +69,20 @@ export function healthRoutes(): Router {
       if (health.connected && health.responsive) {
         res.apiSuccess({ ready: true });
       } else {
-        res.status(503).apiError('SERVICE_NOT_READY', 'Service not ready');
+        res.status(503).apiError({
+          code: 'SERVICE_NOT_READY',
+          message: 'Service not ready',
+          statusCode: 503,
+        });
       }
     } catch (error) {
-      res.status(503).apiError('SERVICE_NOT_READY', 'Service not ready', 503, {
-        error: (error as Error).message,
+      res.status(503).apiError({
+        code: 'SERVICE_NOT_READY',
+        message: 'Service not ready',
+        statusCode: 503,
+        details: {
+          error: (error as Error).message,
+        },
       });
     }
   });

@@ -718,10 +718,9 @@ export class BoardService {
   ): Promise<Column> {
     try {
       // Verify column exists
-      const existingColumn = await this.db.query<Column>(
-        'SELECT * FROM columns WHERE id = ?',
-        [id]
-      );
+      const existingColumn = await this.db.query<Column>('SELECT * FROM columns WHERE id = ?', [
+        id,
+      ]);
 
       if (!existingColumn) {
         throw BoardService.createError('COLUMN_NOT_FOUND', 'Column not found', { id });
@@ -759,9 +758,7 @@ export class BoardService {
         updateValues as any[]
       );
 
-      const updatedColumn = await this.db.query<Column>('SELECT * FROM columns WHERE id = ?', [
-        id,
-      ]);
+      const updatedColumn = await this.db.query<Column>('SELECT * FROM columns WHERE id = ?', [id]);
 
       if (!updatedColumn) {
         throw BoardService.createError('COLUMN_UPDATE_FAILED', 'Failed to retrieve updated column');

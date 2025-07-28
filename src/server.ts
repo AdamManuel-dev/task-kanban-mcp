@@ -11,7 +11,8 @@ import { logger } from '@/utils/logger';
 import { dbConnection } from '@/database/connection';
 import { globalErrorHandler } from '@/utils/errors';
 import { createApiMiddleware } from '@/middleware';
-import { webSocketManager } from '@/websocket';
+// Check if WebSockets should be enabled
+const enableWebSockets = process.env['ENABLE_WEBSOCKETS'] !== 'false';
 
 export async function createServer(): Promise<express.Application> {
   const app = express();
@@ -243,11 +244,23 @@ export async function startServer(): Promise<{
     logger.info('Creating Express server...');
     const app = await createServer();
 
-    // Start WebSocket server
-    logger.info('Starting WebSocket server...');
-    await webSocketManager.start();
+    // Start WebSocket server conditionally
+    let webSocketManager: any = null;
+    if (enableWebSockets) {
+      logger.info('Starting WebSocket server...');
+      const { webSocketManager: wsManager } = await import('@/websocket');
+      webSocketManager = wsManager;
+      await webSocketManager.start();
+    } else {
+      logger.info('WebSocket server disabled via environment configuration');
+    }
 
     // Start server
+    logger.info('Starting HTTP server...', {
+      host: config.server.host,
+      port: config.server.port,
+    });
+    
     const server = app.listen(config.server.port, config.server.host, () => {
       logger.info('Server started successfully', {
         host: config.server.host,
@@ -262,6 +275,12 @@ export async function startServer(): Promise<{
       });
     });
 
+    // Handle server errors
+    server.on('error', (error: any) => {
+      logger.error('Server error:', { error: error.message, code: error.code, port: config.server.port });
+      throw error;
+    });
+
     // Graceful shutdown
     const gracefulShutdown = (signal: string): void => {
       logger.info(`Received ${String(signal)}, starting graceful shutdown...`);
@@ -270,9 +289,11 @@ export async function startServer(): Promise<{
         logger.info('HTTP server closed');
 
         try {
-          // Stop WebSocket server
-          await webSocketManager.stop();
-          logger.info('WebSocket server closed');
+          // Stop WebSocket server conditionally
+          if (enableWebSockets && webSocketManager) {
+            await webSocketManager.stop();
+            logger.info('WebSocket server closed');
+          }
 
           await dbConnection.close();
           logger.info('Database connection closed');
@@ -313,7 +334,7 @@ export async function startServer(): Promise<{
       process.exit(1);
     });
 
-    return { app, server, webSocketManager };
+    return { app, server, webSocketManager: webSocketManager || null };
   } catch (error) {
     logger.error('Failed to start server', { error });
     process.exit(1);

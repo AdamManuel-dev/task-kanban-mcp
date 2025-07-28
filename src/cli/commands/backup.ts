@@ -648,9 +648,9 @@ export function registerBackupCommands(program: Command): void {
       try {
         const params: Record<string, string> = {};
 
-        if (options.enabled) params['enabled'] = 'true';
-        if (options.disabled) params['enabled'] = 'false';
-        if (options.limit) params['limit'] = options.limit;
+        if (options.enabled) params.enabled = 'true';
+        if (options.disabled) params.enabled = 'false';
+        if (options.limit) params.limit = options.limit;
 
         const response = await apiClient.request<AnyApiResponse>(
           'GET',

@@ -343,3 +343,26 @@ export interface SubtaskHierarchy {
   children: SubtaskHierarchy[];
   total_descendants: number;
 }
+
+// Task request types for API operations
+export interface CreateTaskRequest {
+  title: string;
+  description?: string;
+  boardId: string;
+  columnId?: string;
+  priority?: number;
+  status?: 'todo' | 'in_progress' | 'done' | 'blocked' | 'archived';
+  assignee?: string;
+  dueDate?: string;
+  tags?: string[];
+}
+
+export interface UpdateTaskRequest {
+  title?: string;
+  description?: string;
+  priority?: number;
+  status?: 'todo' | 'in_progress' | 'done' | 'blocked' | 'archived';
+  assignee?: string;
+  dueDate?: string;
+  progress?: number;
+}

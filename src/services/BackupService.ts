@@ -22,14 +22,14 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import { logger } from '../utils/logger';
-import type { DatabaseConnection, QueryParameters } from '../database/connection';
-import { BaseServiceError } from '../utils/errors';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { gunzip, gzip } from 'zlib';
 import { promisify } from 'util';
+import { BaseServiceError } from '../utils/errors';
+import type { DatabaseConnection, QueryParameters } from '../database/connection';
+import { logger } from '../utils/logger';
 
 const gzipAsync = promisify(gzip);
 const gunzipAsync = promisify(gunzip);
@@ -133,7 +133,7 @@ export class BackupService {
       return Buffer.from(providedKey, 'hex');
     }
 
-    const envKey = process.env['BACKUP_ENCRYPTION_KEY'];
+    const envKey = process.env.BACKUP_ENCRYPTION_KEY;
     if (envKey) {
       return Buffer.from(envKey, 'hex');
     }
@@ -516,7 +516,7 @@ export class BackupService {
 
       // Check if this is a CREATE TABLE statement
       const createMatch = trimmed.match(/CREATE TABLE\s+(\w+)/i);
-      if (createMatch && createMatch[1]) {
+      if (createMatch?.[1]) {
         currentTable = createMatch[1];
         if (!tableStatements.has(currentTable)) {
           tableStatements.set(currentTable, { schema: [], data: [] });
@@ -527,7 +527,7 @@ export class BackupService {
 
       // Check if this is an INSERT statement
       const insertMatch = trimmed.match(/INSERT INTO\s+(\w+)/i);
-      if (insertMatch && insertMatch[1]) {
+      if (insertMatch?.[1]) {
         const tableName = insertMatch[1];
         if (!tableStatements.has(tableName)) {
           tableStatements.set(tableName, { schema: [], data: [] });
@@ -780,14 +780,14 @@ export class BackupService {
       const metadata = await this.getBackupMetadata(backupId);
       if (!metadata) {
         result.isValid = false;
-        (result.errors as string[]).push('Backup not found');
+        result.errors.push('Backup not found');
         return result;
       }
 
       // Check backup status
       if (metadata.status !== 'completed') {
         result.isValid = false;
-        (result.errors as string[]).push('Cannot restore from incomplete backup');
+        result.errors.push('Cannot restore from incomplete backup');
         return result;
       }
 
@@ -798,10 +798,10 @@ export class BackupService {
 
         if (isNaN(pointInTime.getTime())) {
           result.isValid = false;
-          (result.errors as string[]).push('Invalid point-in-time format');
+          result.errors.push('Invalid point-in-time format');
         } else if (pointInTime > backupTime) {
           result.isValid = false;
-          (result.errors as string[]).push('Point-in-time cannot be after backup creation time');
+          result.errors.push('Point-in-time cannot be after backup creation time');
         }
       }
 
@@ -810,7 +810,7 @@ export class BackupService {
         const targetValidation = await this.validateRestoreTarget(options.targetFile);
         if (!targetValidation.isValid) {
           result.isValid = false;
-          (result.errors as string[]).push(...targetValidation.errors);
+          result.errors.push(...targetValidation.errors);
         }
       }
 
@@ -818,7 +818,7 @@ export class BackupService {
       const compatibilityCheck = await this.validateBackupCompatibility(metadata);
       if (!compatibilityCheck.isValid) {
         result.isValid = false;
-        (result.errors as string[]).push(...compatibilityCheck.errors);
+        result.errors.push(...compatibilityCheck.errors);
       }
 
       // Validate backup content structure
@@ -826,11 +826,11 @@ export class BackupService {
       result.tableChecks = contentValidation.tableChecks;
       if (!contentValidation.isValid) {
         result.isValid = false;
-        (result.errors as string[]).push(...contentValidation.errors);
+        result.errors.push(...contentValidation.errors);
       }
     } catch (error) {
       result.isValid = false;
-      (result.errors as string[]).push(
+      result.errors.push(
         `Validation error: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
@@ -880,7 +880,9 @@ export class BackupService {
       // Check schema version compatibility (if schema versioning is implemented)
       const schemaVersion = this.extractSchemaVersion(sqlContent);
       if (schemaVersion && !this.isSchemaVersionCompatible(schemaVersion)) {
-        (result.errors as string[]).push(`Schema version ${schemaVersion} is not compatible with current system`);
+        (result.errors as string[]).push(
+          `Schema version ${schemaVersion} is not compatible with current system`
+        );
       }
 
       if (result.errors.length > 0) {
@@ -1765,10 +1767,7 @@ export class BackupService {
             'Verification failed',
             totalSteps
           );
-          throw new BackupError(
-            'Backup verification failed after restore',
-            'VERIFICATION_FAILED'
-          );
+          throw new BackupError('Backup verification failed after restore', 'VERIFICATION_FAILED');
         }
       }
 

@@ -1,23 +1,73 @@
 /**
  * @fileoverview Standardized error handling and formatting for CLI prompts
  * @lastmodified 2025-07-28T10:30:00Z
- * 
+ *
  * Features: Error message formatting, error types, standardized responses
  * Main APIs: StandardError classes, formatError(), createErrorResponse()
  * Constraints: Must integrate with logger and chalk for consistent output
  * Patterns: Error hierarchy, consistent messaging, structured error data
  */
 
+/* eslint-disable max-classes-per-file */
 import chalk from 'chalk';
 import { logger } from '../../utils/logger';
 
+// Configuration interfaces for error constructors
+export interface ValidationErrorConfig {
+  field: string;
+  value: unknown;
+  reason: string;
+  context?: Record<string, unknown>;
+}
+
+export interface InputErrorConfig {
+  input: unknown;
+  expected: string;
+  context?: Record<string, unknown>;
+}
+
+export interface SystemErrorConfig {
+  operation: string;
+  cause: Error;
+  context?: Record<string, unknown>;
+}
+
+// Utility functions (declared first to avoid hoisting issues)
+/**
+ * Get styled prefix for error category
+ */
+function getErrorPrefix(category: string): string {
+  switch (category) {
+    case 'validation':
+      return chalk.red('❌ Validation Error:');
+    case 'cancellation':
+      return chalk.yellow('⚠️  Cancelled:');
+    case 'system':
+      return chalk.red('🚨 System Error:');
+    case 'input':
+      return chalk.red('📝 Input Error:');
+    default:
+      return chalk.red('❌ Error:');
+  }
+}
+
+/**
+ * Format error message with consistent styling
+ */
+export function formatErrorMessage(category: string, message: string): string {
+  const prefix = getErrorPrefix(category);
+  return `${prefix} ${message}`;
+}
+
+// Error class definitions
 /**
  * Base error class for all prompt-related errors
  */
 export abstract class PromptError extends Error {
   abstract readonly code: string;
+
   abstract readonly category: 'validation' | 'cancellation' | 'system' | 'input';
-  
+
   constructor(
     message: string,
     public readonly context?: Record<string, unknown>
@@ -42,33 +92,42 @@ export abstract class PromptError extends Error {
       category: this.category,
       message: this.message,
       context: this.context,
-      stack: this.stack
+      stack: this.stack,
     };
   }
 }
 
-/**
- * Input validation error
- */
+// Validation and input errors
 export class ValidationError extends PromptError {
   readonly code = 'VALIDATION_FAILED';
+
   readonly category = 'validation' as const;
 
-  constructor(
-    field: string,
-    value: unknown,
-    reason: string,
-    context?: Record<string, unknown>
-  ) {
+  constructor(config: ValidationErrorConfig) {
+    const { field, value, reason, context } = config;
     super(`${field}: ${reason}`, { field, value, reason, ...context });
   }
 }
 
-/**
- * User cancellation error
- */
+export class InputError extends PromptError {
+  readonly code = 'INVALID_INPUT';
+
+  readonly category = 'input' as const;
+
+  constructor(config: InputErrorConfig) {
+    const { input, expected, context } = config;
+    super(`Invalid input: expected ${expected}, got ${typeof input}`, {
+      input,
+      expected,
+      ...context,
+    });
+  }
+}
+
+// Operation errors
 export class CancellationError extends PromptError {
   readonly code = 'USER_CANCELLED';
+
   readonly category = 'cancellation' as const;
 
   constructor(operation: string, context?: Record<string, unknown>) {
@@ -76,19 +135,17 @@ export class CancellationError extends PromptError {
   }
 }
 
-/**
- * System/infrastructure error
- */
 export class SystemError extends PromptError {
   readonly code = 'SYSTEM_ERROR';
+
   readonly category = 'system' as const;
 
-  constructor(
-    operation: string,
-    cause: Error,
-    context?: Record<string, unknown>
-  ) {
-    super(`${operation} failed: ${cause.message}`, { cause: cause.message, ...context });
+  constructor(config: SystemErrorConfig) {
+    const { operation, cause, context } = config;
+    super(`${operation} failed: ${cause.message}`, {
+      cause: cause.message,
+      ...context,
+    });
     if (cause.stack) {
       this.stack = cause.stack;
     }
@@ -96,51 +153,12 @@ export class SystemError extends PromptError {
 }
 
 /**
- * Invalid input error
- */
-export class InputError extends PromptError {
-  readonly code = 'INVALID_INPUT';
-  readonly category = 'input' as const;
-
-  constructor(
-    input: unknown,
-    expected: string,
-    context?: Record<string, unknown>
-  ) {
-    super(`Invalid input: expected ${expected}, got ${typeof input}`, { input, expected, ...context });
-  }
-}
-
-/**
- * Format error message with consistent styling
- */
-export function formatErrorMessage(category: string, message: string): string {
-  const prefix = getErrorPrefix(category);
-  return `${prefix} ${message}`;
-}
-
-/**
- * Get styled prefix for error category
- */
-function getErrorPrefix(category: string): string {
-  switch (category) {
-    case 'validation':
-      return chalk.red('❌ Validation Error:');
-    case 'cancellation':
-      return chalk.yellow('⚠️  Cancelled:');
-    case 'system':
-      return chalk.red('🚨 System Error:');
-    case 'input':
-      return chalk.red('📝 Input Error:');
-    default:
-      return chalk.red('❌ Error:');
-  }
-}
-
-/**
  * Create standardized error response
  */
-export function createErrorResponse(error: unknown, operation: string): {
+export function createErrorResponse(
+  error: unknown,
+  operation: string
+): {
   success: false;
   error: string;
   code: string;
@@ -152,21 +170,24 @@ export function createErrorResponse(error: unknown, operation: string): {
       success: false,
       error: error.message,
       code: error.code,
-      category: error.category
+      category: error.category,
     };
   }
 
   // Handle standard errors
   const message = error instanceof Error ? error.message : String(error);
-  const systemError = new SystemError(operation, error instanceof Error ? error : new Error(message));
-  
+  const systemError = new SystemError(
+    operation,
+    error instanceof Error ? error : new Error(message)
+  );
+
   logger.error(`${operation} failed`, systemError.getLogData());
-  
+
   return {
     success: false,
     error: systemError.message,
     code: systemError.code,
-    category: systemError.category
+    category: systemError.category,
   };
 }
 
@@ -175,12 +196,12 @@ export function createErrorResponse(error: unknown, operation: string): {
  */
 export function handleCliError(error: unknown, operation: string): never {
   const response = createErrorResponse(error, operation);
-  
+
   // Display formatted error to user
-  console.log('');
-  console.log(formatErrorMessage(response.category, response.error));
-  console.log('');
-  
+  logger.info('');
+  logger.info(formatErrorMessage(response.category, response.error));
+  logger.info('');
+
   // Re-throw the original error to maintain stack trace
   throw error;
 }
@@ -203,9 +224,13 @@ export async function withErrorHandling<T>(
       // Already properly formatted, just re-throw
       throw error;
     }
-    
+
     // Wrap in system error
-    throw new SystemError(operation, error instanceof Error ? error : new Error(String(error)), context);
+    throw new SystemError(
+      operation,
+      error instanceof Error ? error : new Error(String(error)),
+      context
+    );
   }
 }
 
@@ -219,11 +244,11 @@ export function validateInput<T>(
   context?: Record<string, unknown>
 ): T {
   const result = validator(value);
-  
+
   if (result === true) {
     return value;
   }
-  
+
   const reason = typeof result === 'string' ? result : 'validation failed';
   throw new ValidationError(field, value, reason, context);
 }
@@ -232,7 +257,7 @@ export function validateInput<T>(
  * Check for user cancellation and throw appropriate error
  */
 export function checkCancellation(
-  result: any,
+  result: unknown,
   operation: string,
   context?: Record<string, unknown>
 ): void {
@@ -250,26 +275,26 @@ export function getErrorSuggestions(error: PromptError): string[] {
       return [
         'Check your input format and try again',
         'Refer to the help text for valid options',
-        'Use the --help flag for more information'
+        'Use the --help flag for more information',
       ];
     case 'cancellation':
       return [
         'Use Ctrl+C to exit completely',
         'Press Enter to continue with default values',
-        'Type "help" for available commands'
+        'Type "help" for available commands',
       ];
     case 'system':
       return [
         'Check your internet connection',
         'Verify file permissions',
         'Try running the command again',
-        'Contact support if the problem persists'
+        'Contact support if the problem persists',
       ];
     case 'input':
       return [
         'Verify the input format is correct',
         'Check for typos in your input',
-        'Use quotes for strings with spaces'
+        'Use quotes for strings with spaces',
       ];
     default:
       return ['Try running the command again'];

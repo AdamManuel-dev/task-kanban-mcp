@@ -18,6 +18,21 @@ import type {
 } from '@/types/templates';
 import type { Board } from '@/types';
 
+// Helper function to extract template variables (declared first to avoid hoisting issues)
+function extractTemplateVariables(template: string): string[] {
+  const variableRegex = /\{\{(\w+)\}\}/g;
+  const variables = new Set<string>();
+  let match;
+
+  while ((match = variableRegex.exec(template)) !== null) {
+    if (match[1]) {
+      variables.add(match[1]);
+    }
+  }
+
+  return Array.from(variables).sort();
+}
+
 export function createTemplatesCommand(): Command {
   const templates = new Command('templates')
     .alias('tpl')
@@ -464,19 +479,4 @@ export function createTemplatesCommand(): Command {
     });
 
   return templates;
-}
-
-// Helper function to extract template variables
-function extractTemplateVariables(template: string): string[] {
-  const variableRegex = /\{\{(\w+)\}\}/g;
-  const variables = new Set<string>();
-  let match;
-
-  while ((match = variableRegex.exec(template)) !== null) {
-    if (match[1]) {
-      variables.add(match[1]);
-    }
-  }
-
-  return Array.from(variables).sort();
 }

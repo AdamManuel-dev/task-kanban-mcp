@@ -1,7 +1,7 @@
 /**
  * @fileoverview Task move command implementation
  * @lastmodified 2025-07-28T10:30:00Z
- * 
+ *
  * Features: Move tasks between columns with position control
  * Main APIs: registerMoveCommand() - registers move subcommand
  * Constraints: Requires valid column ID, optional position

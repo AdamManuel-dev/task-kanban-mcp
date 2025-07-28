@@ -61,9 +61,6 @@ const InteractiveView: React.FC<InteractiveViewProps> = ({ mode, data }) => {
     }
   );
 
-
-
-
   const renderHelp = (): JSX.Element => (
     <div>
       <h2>{chalk.cyan('🎮 Interactive View Help')}</h2>
@@ -114,19 +111,28 @@ const InteractiveView: React.FC<InteractiveViewProps> = ({ mode, data }) => {
 
   const renderCurrentView = (): JSX.Element => {
     switch (currentView) {
-      case 'tasks':
+      case 'tasks': {
         const taskListOutput = createTaskList({
           tasks: data.tasks || [],
           maxHeight: 15,
           showDetails: true,
         });
         return <div>{taskListOutput}</div>;
+      }
 
-      case 'board':
-        const board = data.board || { id: '1', name: 'Sample Board' };
+      case 'board': {
+        const board = data.board || {
+          id: '1',
+          name: 'Sample Board',
+          color: '#2196F3',
+          created_at: new Date(),
+          updated_at: new Date(),
+          archived: false,
+        };
         const columns = data.columns || [];
         const tasks = data.tasks || [];
         return <BoardView board={board} columns={columns} tasks={tasks} showDetails={true} />;
+      }
 
       case 'help':
         return renderHelp();
@@ -295,16 +301,23 @@ const generateSampleData = (): InteractiveViewData => {
   };
 };
 
+// Placeholder for real data fetching
+function fetchRealData(): InteractiveViewData {
+  // This would connect to the actual API
+  // For now, return sample data
+  return generateSampleData();
+}
+
 // CLI command implementation
 export const interactiveViewCommand = new Command('interactive')
   .alias('ui')
   .description('Launch interactive UI for tasks and boards')
   .option('-m, --mode <mode>', 'Initial view mode: tasks or board', 'tasks')
   .option('--sample-data', 'Use sample data for demo', false)
-  .action(async options => {
+  .action(options => {
     try {
       // In a real implementation, this would fetch data from the API
-      const data = options.sampleData ? generateSampleData() : await fetchRealData();
+      const data = options.sampleData ? generateSampleData() : fetchRealData();
 
       if (options.mode !== 'tasks' && options.mode !== 'board') {
         console.error(chalk.red('Error: Mode must be either "tasks" or "board"'));
@@ -320,12 +333,5 @@ export const interactiveViewCommand = new Command('interactive')
       process.exit(1);
     }
   });
-
-// Placeholder for real data fetching
-function fetchRealData(): InteractiveViewData {
-  // This would connect to the actual API
-  // For now, return sample data
-  return generateSampleData();
-}
 
 export default interactiveViewCommand;

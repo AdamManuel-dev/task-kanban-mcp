@@ -54,7 +54,7 @@ export class TaskListFormatter {
     filterBy?: TaskFilter
   ): TaskListProps['tasks'] {
     let processed = [...tasks];
-    
+
     // Apply filters
     if (filterBy) {
       if (filterBy.status) {
@@ -67,7 +67,7 @@ export class TaskListFormatter {
         processed = processed.filter(task => task.assignee === filterBy.assignee);
       }
     }
-    
+
     // Apply sorting
     if (sortBy) {
       processed.sort((a, b) => {
@@ -88,7 +88,7 @@ export class TaskListFormatter {
         }
       });
     }
-    
+
     return processed;
   }
 
@@ -98,13 +98,13 @@ export class TaskListFormatter {
   private formatTaskItem(task: TaskListProps['tasks'][0], isSelected: boolean): string {
     const prefix = isSelected ? '▶ ' : '  ';
     const priorityText = task.priority ? `P${task.priority}` : 'P0';
-    
+
     let line = `${prefix}${task.title}`;
     if (task.assignee) {
       line += ` [@${task.assignee}]`;
     }
     line += ` [${task.status}] [${priorityText}]`;
-    
+
     return isSelected ? chalk.inverse(line) : line;
   }
 
@@ -116,7 +116,7 @@ export class TaskListFormatter {
     const completed = this.tasks.filter(task => task.status === 'done').length;
     const inProgress = this.tasks.filter(task => task.status === 'in_progress').length;
     const todo = this.tasks.filter(task => task.status === 'todo').length;
-    
+
     return `Total: ${total} | Done: ${completed} | In Progress: ${inProgress} | Todo: ${todo}`;
   }
 
@@ -171,7 +171,6 @@ export class TaskListFormatter {
     return output.join('\n');
   }
 
-
   private static getStatusIcon(status: Task['status']): string {
     const statusMap = {
       todo: '○',
@@ -210,7 +209,6 @@ export class TaskListFormatter {
     if (text.length <= maxLength) return text;
     return `${String(String(text.substring(0, maxLength - 3)))}...`;
   }
-
 }
 
 /**

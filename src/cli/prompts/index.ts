@@ -1,7 +1,7 @@
 /**
  * @fileoverview Barrel export for CLI prompts module
  * @lastmodified 2025-07-28T10:30:00Z
- * 
+ *
  * Features: Clean imports for all prompt functionality
  * Main APIs: Re-exports from board, task, validation modules
  * Constraints: None
@@ -15,7 +15,7 @@ export {
   selectFromList,
   addColumnPrompt,
   boardSettingsPrompt,
-  confirmDelete
+  confirmDelete,
 } from './board-prompts';
 
 // Task prompt functions
@@ -23,7 +23,7 @@ export {
   createTaskPrompt,
   moveTaskPrompt,
   bulkTaskActionPrompt,
-  taskFilterPrompt
+  taskFilterPrompt,
 } from './task-prompts';
 
 // Validation functions
@@ -52,7 +52,7 @@ export {
   SafeBoardSchema,
   TASK_SIZES,
   PRIORITIES,
-  STATUSES
+  STATUSES,
 } from './validators';
 
 // Types and interfaces
@@ -62,20 +62,13 @@ export type {
   FormatterInterface,
   TaskInput,
   MoveTaskInput,
-  BulkActionInput
+  BulkActionInput,
 } from './types';
 
-export {
-  PromptCancelledError
-} from './types';
+export { PromptCancelledError } from './types';
 
 // Utility functions
-export {
-  safePrompt,
-  createFormatter,
-  handlePromptError,
-  isPromptCancelled
-} from './utils';
+export { safePrompt, createFormatter, handlePromptError, isPromptCancelled } from './utils';
 
 // Re-export types from validators
 export type {
@@ -85,5 +78,5 @@ export type {
   TaskInput as ValidatorTaskInput,
   BoardInput,
   SafeTaskInput,
-  SafeBoardInput
+  SafeBoardInput,
 } from './validators';

@@ -1,7 +1,7 @@
 /**
  * @fileoverview Task commands module - main entry point
  * @lastmodified 2025-07-28T10:30:00Z
- * 
+ *
  * Features: Central registration for all task-related CLI commands
  * Main APIs: registerTaskCommands() - registers all task subcommands
  * Constraints: Requires global.cliComponents to be initialized

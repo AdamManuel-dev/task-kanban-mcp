@@ -102,7 +102,7 @@ export function registerNextCommands(program: Command): void {
         // Show reasoning if requested
         if (options.explain && reasoning) {
           formatter.info('\n--- 🤔 Why this task? ---');
-          formatter.info(reasoning);
+          formatter.info(String(reasoning));
         }
 
         // Show quick actions

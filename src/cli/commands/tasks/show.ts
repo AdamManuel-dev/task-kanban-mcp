@@ -1,7 +1,7 @@
 /**
  * @fileoverview Task show command implementation
  * @lastmodified 2025-07-28T10:30:00Z
- * 
+ *
  * Features: Display detailed task information with optional AI context
  * Main APIs: registerShowCommand() - registers show subcommand
  * Constraints: Requires apiClient for task retrieval

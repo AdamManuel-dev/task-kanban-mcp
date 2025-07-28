@@ -224,12 +224,12 @@ export function taskRoutes(): Router {
         const totalTasks = await taskService.getTasks(countOptions);
         const total = totalTasks.length;
 
-        res.apiPagination(
-          tasks,
-          Math.floor(options.offset / options.limit) + 1,
-          options.limit,
-          total
-        );
+        res.apiPagination({
+          data: tasks,
+          page: Math.floor(options.offset / options.limit) + 1,
+          limit: options.limit,
+          total,
+        });
       } catch (error) {
         next(error);
       }

@@ -337,10 +337,10 @@ export function registerConfigCommands(program: Command): void {
         if (config.mappings && config.mappings.length > 0) {
           formatter.output('\n🗺️ Mapping Rules:');
           config.mappings
-            .sort((a, b) => (b.priority || 0) - (a.priority || 0))
+            .sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0))
             .forEach((mapping, index) => {
               formatter.output(
-                `  ${index + 1}. ${mapping.type}:${mapping.pattern} → ${mapping.boardId} (priority: ${mapping.priority || 0})`
+                `  ${index + 1}. ${mapping.type}:${mapping.pattern} → ${mapping.boardId} (priority: ${mapping.priority ?? 0})`
               );
             });
         }
@@ -371,7 +371,7 @@ export function registerConfigCommands(program: Command): void {
         const existingConfig = await BoardMappingService.loadConfig(configPath);
 
         if (existingConfig && !options.force) {
-          const { overwrite } = await inquirer.prompt([
+          const { overwrite } = await inquirer.prompt<{ overwrite: boolean }>([
             {
               type: 'confirm',
               name: 'overwrite',
@@ -415,7 +415,7 @@ export function registerConfigCommands(program: Command): void {
         formatter.info('📍 Current Repository Info\n');
         formatter.output(`Repository: ${repo.name}`);
         formatter.output(`Path: ${repo.path}`);
-        formatter.output(`Branch: ${repo.currentBranch || 'unknown'}`);
+        formatter.output(`Branch: ${repo.currentBranch ?? 'unknown'}`);
         if (repo.remoteUrl) {
           formatter.output(`Remote: ${repo.remoteUrl}`);
         }
@@ -443,7 +443,7 @@ export function registerConfigCommands(program: Command): void {
       const { formatter } = getComponents();
 
       try {
-        const repoPath = repositoryPath || process.cwd();
+        const repoPath = repositoryPath ?? process.cwd();
         const repo = await GitService.detectRepository(repoPath);
 
         if (!repo) {
@@ -454,7 +454,7 @@ export function registerConfigCommands(program: Command): void {
         formatter.info('🧪 Testing Board Mapping\n');
         formatter.output(`Repository: ${repo.name}`);
         formatter.output(`Path: ${repo.path}`);
-        formatter.output(`Branch: ${repo.currentBranch || 'unknown'}`);
+        formatter.output(`Branch: ${repo.currentBranch ?? 'unknown'}`);
         if (repo.remoteUrl) {
           formatter.output(`Remote: ${repo.remoteUrl}`);
         }
@@ -508,8 +508,8 @@ export function registerConfigCommands(program: Command): void {
             process.exit(1);
           }
 
-          const mappingType = options.type || 'repo';
-          const priority = parseInt(options.priority || '10', 10);
+          const mappingType = options.type ?? 'repo';
+          const priority = parseInt(options.priority ?? '10', 10);
 
           if (!['repo', 'branch', 'path'].includes(mappingType)) {
             formatter.error('Invalid mapping type. Use: repo, branch, or path');

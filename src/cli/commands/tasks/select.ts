@@ -1,7 +1,7 @@
 /**
  * @fileoverview Task interactive selection command implementation
  * @lastmodified 2025-07-28T10:30:00Z
- * 
+ *
  * Features: Interactive task selection with keyboard navigation and actions
  * Main APIs: registerSelectCommand() - registers select subcommand
  * Constraints: Requires React/Ink components, complex state management
@@ -12,17 +12,18 @@ import type { Command } from 'commander';
 import inquirer from 'inquirer';
 import type { CliComponents } from '../../types';
 import type { Task } from '../../../types';
-import type { 
-  SelectTaskOptions, 
-  TaskListItem, 
+import type {
+  SelectTaskOptions,
+  TaskListItem,
   TaskListResponse,
   ActionPromptResult,
   ColumnPromptResult,
   StatusPromptResult,
   ConfirmPromptResult,
-  QueryPromptResult
+  QueryPromptResult,
 } from './types';
 import { SpinnerManager } from '../../utils/spinner';
+import { hasValidTaskData } from '../../../utils/type-guards';
 
 /**
  * Register the select command
@@ -66,11 +67,12 @@ export function registerSelectCommand(taskCmd: Command): void {
           failText: 'Failed to load tasks',
         });
 
-        const taskResponse = tasks as TaskListResponse;
-        if (!taskResponse.data || taskResponse.data.length === 0) {
+        if (!hasValidTaskData(tasks)) {
           formatter.info('No tasks found');
           return;
         }
+
+        const taskResponse = tasks as unknown as TaskListResponse;
 
         // Start interactive task selection
         const React = await import('react');
@@ -78,28 +80,31 @@ export function registerSelectCommand(taskCmd: Command): void {
         const TaskList = (await import('../../ui/components/TaskList')).default;
 
         // Transform API tasks to component format with required Task properties
-        const taskList: (Task & { tags?: string[] })[] = taskResponse.data.map((item: TaskListItem) => ({
-          id: item.id,
-          title: item.title,
-          description: item.description || '',
-          board_id: '', // Not available in TaskListItem, using empty string
-          column_id: '', // Not available in TaskListItem, using empty string
-          position: 0, // Not available in TaskListItem, using default
-          status: item.status as Task['status'],
-          priority: typeof item.priority === 'string' ? parseInt(item.priority, 10) : item.priority || 0,
-          assignee: item.assignee,
-          due_date: item.due_date ? new Date(item.due_date) : undefined,
-          estimated_hours: undefined,
-          actual_hours: undefined,
-          parent_task_id: undefined,
-          progress: undefined,
-          created_at: item.created_at ? new Date(item.created_at) : new Date(),
-          updated_at: item.updated_at ? new Date(item.updated_at) : new Date(),
-          completed_at: undefined,
-          archived: false,
-          metadata: undefined,
-          tags: item.tags || [], // Extended property for UI
-        }));
+        const taskList: (Task & { tags?: string[] })[] = taskResponse.data.map(
+          (item: TaskListItem) => ({
+            id: item.id,
+            title: item.title,
+            description: item.description || '',
+            board_id: '', // Not available in TaskListItem, using empty string
+            column_id: '', // Not available in TaskListItem, using empty string
+            position: 0, // Not available in TaskListItem, using default
+            status: item.status as Task['status'],
+            priority:
+              typeof item.priority === 'string' ? parseInt(item.priority, 10) : item.priority || 0,
+            assignee: item.assignee,
+            due_date: item.due_date ? new Date(item.due_date) : undefined,
+            estimated_hours: undefined,
+            actual_hours: undefined,
+            parent_task_id: undefined,
+            progress: undefined,
+            created_at: item.created_at ? new Date(item.created_at) : new Date(),
+            updated_at: item.updated_at ? new Date(item.updated_at) : new Date(),
+            completed_at: undefined,
+            archived: false,
+            metadata: undefined,
+            tags: item.tags || [], // Extended property for UI
+          })
+        );
 
         let shouldExit = false;
 
@@ -171,7 +176,9 @@ export function registerSelectCommand(taskCmd: Command): void {
                     choices: ['todo', 'in_progress', 'done', 'blocked'],
                   },
                 ]);
-                await apiClient.updateTask(task.id, { status: newStatus as 'todo' | 'in_progress' | 'done' | 'blocked' | 'archived' });
+                await apiClient.updateTask(task.id, {
+                  status: newStatus as 'todo' | 'in_progress' | 'done' | 'blocked' | 'archived',
+                });
                 formatter.success(`Task status updated to ${String(newStatus)}`);
                 break;
               case 'delete':
@@ -235,28 +242,32 @@ export function registerSelectCommand(taskCmd: Command): void {
                 try {
                   const refreshedTasks = await apiClient.getTasks(params);
                   const refreshedResponse = refreshedTasks as TaskListResponse;
-                  const refreshedTaskList: (Task & { tags?: string[] })[] = refreshedResponse.data.map((item: TaskListItem) => ({
-                    id: item.id,
-                    title: item.title,
-                    description: item.description || '',
-                    board_id: '',
-                    column_id: '',
-                    position: 0,
-                    status: item.status as Task['status'],
-                    priority: typeof item.priority === 'string' ? parseInt(item.priority, 10) : item.priority || 0,
-                    assignee: item.assignee,
-                    due_date: item.due_date ? new Date(item.due_date) : undefined,
-                    estimated_hours: undefined,
-                    actual_hours: undefined,
-                    parent_task_id: undefined,
-                    progress: undefined,
-                    created_at: item.created_at ? new Date(item.created_at) : new Date(),
-                    updated_at: item.updated_at ? new Date(item.updated_at) : new Date(),
-                    completed_at: undefined,
-                    archived: false,
-                    metadata: undefined,
-                    tags: item.tags || [],
-                  }));
+                  const refreshedTaskList: (Task & { tags?: string[] })[] =
+                    refreshedResponse.data.map((item: TaskListItem) => ({
+                      id: item.id,
+                      title: item.title,
+                      description: item.description || '',
+                      board_id: '',
+                      column_id: '',
+                      position: 0,
+                      status: item.status as Task['status'],
+                      priority:
+                        typeof item.priority === 'string'
+                          ? parseInt(item.priority, 10)
+                          : item.priority || 0,
+                      assignee: item.assignee,
+                      due_date: item.due_date ? new Date(item.due_date) : undefined,
+                      estimated_hours: undefined,
+                      actual_hours: undefined,
+                      parent_task_id: undefined,
+                      progress: undefined,
+                      created_at: item.created_at ? new Date(item.created_at) : new Date(),
+                      updated_at: item.updated_at ? new Date(item.updated_at) : new Date(),
+                      completed_at: undefined,
+                      archived: false,
+                      metadata: undefined,
+                      tags: item.tags || [],
+                    }));
                   setCurrentTasks(refreshedTaskList);
                   formatter.info('\n🔄 Tasks refreshed');
                 } catch (error) {
@@ -294,14 +305,7 @@ export function registerSelectCommand(taskCmd: Command): void {
 
           return React.createElement(TaskList, {
             tasks: currentTasks,
-            title: `Task Selection ${statusFilter.length ? `(${statusFilter.join(', ')})` : ''}${searchQuery ? ` - Search: "${searchQuery}"` : ''}`,
-            onTaskSelect: handleTaskSelect,
-            onKeyPress: (key: string, selectedTask: Task | null) => {
-              void handleKeyPress(key, selectedTask);
-            },
-            showSelection: true,
             maxHeight: 15,
-            showStats: true,
           });
         };
 

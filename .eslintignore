@@ -26,3 +26,15 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+
+# Legacy JavaScript files (replaced by TypeScript)
+src/cli/api-client-wrapper.js
+src/cli/client.js
+src/cli/config.js
+src/cli/formatter.js
+src/cli/types.js
+src/cli/services/ServiceContainer.js
+src/cli/utils/command-helpers.js
+src/cli/utils/parameter-builder.js
+src/cli/utils/spinner.js
+src/cli/commands/tasks/list.js

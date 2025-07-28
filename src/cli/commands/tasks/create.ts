@@ -1,7 +1,7 @@
 /**
  * @fileoverview Task create command implementation
  * @lastmodified 2025-07-28T10:30:00Z
- * 
+ *
  * Features: Task creation with templates, interactive mode, AI estimation
  * Main APIs: registerCreateCommand() - registers create subcommand
  * Constraints: Requires board ID, validates priority range
@@ -18,6 +18,47 @@ import { PromptCancelledError } from '../../prompts/types';
 import { SpinnerManager } from '../../utils/spinner';
 import { isSuccessResponse } from '../../api-client-wrapper';
 import { TaskTemplateService } from '../../../services/TaskTemplateService';
+import { getComponents } from '../../utils/command-helpers';
+import { PRIORITY_MAPPING } from '../../../constants';
+import { handleValidationError } from '../../../utils/error-handler';
+import { logger } from '../../../utils/logger';
+import {
+  withErrorHandling,
+  withSpinner,
+  validateRequiredFields,
+  showSuccess,
+  ensureBoardId,
+} from '../../utils/command-helpers';
+
+// Helper functions for template processing (declared first to avoid hoisting issues)
+function extractTemplateVariables(template: string): string[] {
+  const variableRegex = /\{\{(\w+)\}\}/g;
+  const variables = new Set<string>();
+  let match;
+
+  let tempMatch = variableRegex.exec(template);
+  while (tempMatch !== null) {
+    match = tempMatch;
+    if (match[1]) {
+      variables.add(match[1]);
+    }
+    tempMatch = variableRegex.exec(template);
+  }
+
+  return Array.from(variables).sort();
+}
+
+function processTemplate(template: string, variables: Record<string, unknown>): string {
+  let result = template;
+
+  // Replace variables in format {{variable_name}}
+  for (const [key, value] of Object.entries(variables)) {
+    const pattern = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+    result = result.replace(pattern, String(value));
+  }
+
+  return result;
+}
 
 /**
  * Register the create command
@@ -38,12 +79,10 @@ export function registerCreateCommand(taskCmd: Command): void {
     .option('--tags <tags>', 'tags (comma-separated)')
     .option('--template <id>', 'create from template')
     .option('-i, --interactive', 'interactive mode')
-    .action(async (options: CreateTaskOptions) => {
-      const { config, apiClient } = getComponents();
-      const spinner = new SpinnerManager();
-
-      try {
-        spinner.start('Initializing...');
+    .action(
+      withErrorHandling('create task', async (options: CreateTaskOptions) => {
+        const { config, apiClient, formatter } = getComponents();
+        const spinner = new SpinnerManager();
 
         let taskData: Record<string, unknown> = {};
 
@@ -72,7 +111,7 @@ export function registerCreateCommand(taskCmd: Command): void {
 
           let variables: Record<string, unknown> = {};
           if (allVariables.length > 0) {
-            console.log(`\n📝 Template: ${template.name}\n`);
+            logger.info('Using task template', { templateName: template.name });
 
             const variableAnswers = await inquirer.prompt(
               allVariables.map(variable => ({
@@ -109,7 +148,7 @@ export function registerCreateCommand(taskCmd: Command): void {
             const defaults = {
               title: options.title ?? '',
               description: options.description ?? '',
-              due_date: options.due ?? '',
+              dueDate: options.due ?? '',
               tags: options.tags ? options.tags.split(',').map((t: string) => t.trim()) : [],
             };
 
@@ -122,15 +161,14 @@ export function registerCreateCommand(taskCmd: Command): void {
               priority: promptResult.priority,
               size: promptResult.size,
               assignee: promptResult.assignee,
-              dueDate: promptResult.due_date,
-              estimatedHours: promptResult.estimated_hours,
+              dueDate: promptResult.dueDate,
+              estimatedHours: promptResult.estimatedHours,
               tags: promptResult.tags,
             };
 
             // Convert priority from P1-P5 to 1-10 scale
             if (promptResult.priority) {
-              const priorityMap = { P1: 10, P2: 8, P3: 5, P4: 3, P5: 1 };
-              taskData.priority = priorityMap[promptResult.priority] ?? 5;
+              taskData.priority = PRIORITY_MAPPING[promptResult.priority] ?? 5;
             }
           } catch (error) {
             if (error instanceof PromptCancelledError) {
@@ -144,7 +182,7 @@ export function registerCreateCommand(taskCmd: Command): void {
         // Use command line options or answers
         taskData.title = options.title ?? taskData.title;
         taskData.description = options.description ?? taskData.description;
-        taskData.boardId = options.board ?? taskData.board ?? config.getDefaultBoard();
+        taskData.boardId = ensureBoardId(options.board ?? (taskData.board as string));
         taskData.columnId = options.column ?? taskData.column;
         taskData.priority = parseInt(options.priority ?? String(taskData.priority ?? ''), 10);
 
@@ -157,73 +195,54 @@ export function registerCreateCommand(taskCmd: Command): void {
           taskData.tags = tagsStr.split(',').map((tag: string) => tag.trim());
         }
 
-        if (!taskData.boardId) {
-          spinner.fail(
-            'Board ID is required. Set default board with "kanban config set defaults.board <id>"'
-          );
-          process.exit(1);
+        // Validate required fields
+        const validationErrors = validateRequiredFields({
+          title: taskData.title,
+          boardId: taskData.boardId,
+        });
+
+        if (validationErrors.length > 0) {
+          const { formatter } = getComponents();
+          handleValidationError(formatter, 'create task', validationErrors);
+          return;
         }
 
         const createTaskRequest: CreateTaskRequest = {
           title: String(taskData.title),
           description: taskData.description as string,
-          board_id: String(taskData.boardId),
-          column_id: taskData.columnId as string,
+          boardId: String(taskData.boardId),
+          columnId: taskData.columnId as string,
           priority: taskData.priority as number,
           status: 'todo',
           assignee: taskData.assignee as string,
-          due_date: taskData.dueDate as string,
+          dueDate: taskData.dueDate as string,
           tags: taskData.tags as string[],
         };
 
-        spinner.start(`Creating task: ${createTaskRequest.title}`);
-        const response = await apiClient.createTask(createTaskRequest);
+        const createTaskWithSpinner = withSpinner(
+          `Creating task: ${createTaskRequest.title}`,
+          'Task created successfully',
+          async () => {
+            const response = await apiClient.createTask(createTaskRequest);
 
-        if (isSuccessResponse(response)) {
-          const task = response.data as Task;
-          spinner.succeed(`Task created successfully: ${task.id}`);
-          console.log('\n📋 Task Details:');
-          console.log(`   Title: ${task.title}`);
-          console.log(`   Status: ${task.status}`);
-          if (task.priority) console.log(`   Priority: ${task.priority}`);
-          if (task.assignee) console.log(`   Assignee: ${task.assignee}`);
-          if (task.due_date) console.log(`   Due: ${task.due_date}`);
-        } else {
-          spinner.fail(`Failed to create task: ${response.error?.message ?? 'Unknown error'}`);
-          process.exit(1);
-        }
-      } catch (error) {
-        spinner.fail(
-          `Failed to create task: ${error instanceof Error ? error.message : 'Unknown error'}`
+            if (isSuccessResponse(response)) {
+              const task = response.data as Task;
+              logger.info('Task created successfully', {
+                taskId: task.id,
+                title: task.title,
+                status: task.status,
+                priority: task.priority,
+                assignee: task.assignee,
+                dueDate: task.due_date,
+              });
+              return task;
+            }
+            throw new Error(response.error?.message ?? 'Unknown error');
+          }
         );
-        process.exit(1);
-      }
-    });
-}
 
-// Helper functions for template processing
-function extractTemplateVariables(template: string): string[] {
-  const variableRegex = /\{\{(\w+)\}\}/g;
-  const variables = new Set<string>();
-  let match;
-
-  while ((match = variableRegex.exec(template)) !== null) {
-    if (match[1]) {
-      variables.add(match[1]);
-    }
-  }
-
-  return Array.from(variables).sort();
-}
-
-function processTemplate(template: string, variables: Record<string, unknown>): string {
-  let result = template;
-
-  // Replace variables in format {{variable_name}}
-  for (const [key, value] of Object.entries(variables)) {
-    const pattern = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
-    result = result.replace(pattern, String(value));
-  }
-
-  return result;
+        const task = await createTaskWithSpinner();
+        showSuccess(`Task created: ${task.id}`, task);
+      })
+    );
 }

@@ -1,7 +1,7 @@
 import { logger } from '@/utils/logger';
 import type { Command } from 'commander';
 import inquirer from 'inquirer';
-import type { CliComponents, AnyApiResponse } from '../types';
+import type { CliComponents, AnyApiResponse, CreateTaskRequest } from '../types';
 
 interface DependencyNode {
   id: string;
@@ -54,7 +54,7 @@ export function registerSubtaskCommands(program: Command): void {
             columnId: (parentTask as any).columnId,
           };
 
-          if ((options as any)['interactive'] ?? !options['title']) {
+          if ((options as any).interactive ?? !options.title) {
             const questions: Array<
               | {
                   type: string;
@@ -72,7 +72,7 @@ export function registerSubtaskCommands(program: Command): void {
                 }
             > = [];
 
-            if (!options['title']) {
+            if (!options.title) {
               questions.push({
                 type: 'input',
                 name: 'title',
@@ -81,7 +81,7 @@ export function registerSubtaskCommands(program: Command): void {
               });
             }
 
-            if (!options['description']) {
+            if (!options.description) {
               questions.push({
                 type: 'input',
                 name: 'description',
@@ -89,7 +89,7 @@ export function registerSubtaskCommands(program: Command): void {
               });
             }
 
-            if (!options['priority']) {
+            if (!options.priority) {
               questions.push({
                 type: 'number',
                 name: 'priority',
@@ -100,7 +100,7 @@ export function registerSubtaskCommands(program: Command): void {
               });
             }
 
-            if (!options['due']) {
+            if (!options.due) {
               questions.push({
                 type: 'input',
                 name: 'dueDate',
@@ -118,15 +118,15 @@ export function registerSubtaskCommands(program: Command): void {
           }
 
           // Use command line options or answers
-          subtaskData['title'] = options['title'] ?? subtaskData['title'];
-          subtaskData['description'] = options['description'] ?? subtaskData['description'];
-          subtaskData['priority'] = parseInt(options['priority'] ?? String(subtaskData['priority']), 10);
+          subtaskData.title = options.title ?? subtaskData.title;
+          subtaskData.description = options.description ?? subtaskData.description;
+          subtaskData.priority = parseInt(options.priority ?? String(subtaskData.priority), 10);
 
-          if (options['due'] ?? subtaskData['dueDate']) {
-            subtaskData['dueDate'] = options['due'] ?? subtaskData['dueDate'];
+          if (options.due ?? subtaskData.dueDate) {
+            subtaskData.dueDate = options.due ?? subtaskData.dueDate;
           }
 
-          const subtask = await apiClient.createTask(subtaskData as any);
+          const subtask = await apiClient.createTask(subtaskData as unknown as CreateTaskRequest);
           formatter.success(`Subtask created successfully: ${String((subtask as any).id)}`);
           formatter.output(subtask);
         } catch (error) {
@@ -149,11 +149,11 @@ export function registerSubtaskCommands(program: Command): void {
       try {
         const params: Record<string, string> = {
           parent: parentId,
-          limit: options['limit'],
+          limit: options.limit,
         };
 
-        if (options['status']) {
-          params['status'] = options['status'];
+        if (options.status) {
+          params.status = options.status;
         }
 
         const subtasks = (await apiClient.getTasks(params)) as any;
@@ -232,7 +232,7 @@ export function registerSubtaskCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        if (options['blocked']) {
+        if (options.blocked) {
           // Show tasks that are blocked by this task
           const blockedTasks = (await apiClient.request<AnyApiResponse>(
             'GET',
@@ -283,7 +283,7 @@ export function registerSubtaskCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const depth = parseInt(options['depth'], 10);
+        const depth = parseInt(String(options.depth || '3'), 10);
         const graph = (await apiClient.request<AnyApiResponse>(
           'GET',
           `/api/tasks/${String(taskId)}/dependency-graph`,
@@ -318,7 +318,7 @@ export function registerSubtaskCommands(program: Command): void {
           }
         };
 
-        printNode(graph);
+        printNode(graph as DependencyNode);
       } catch (error) {
         formatter.error(
           `Failed to visualize dependencies: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`

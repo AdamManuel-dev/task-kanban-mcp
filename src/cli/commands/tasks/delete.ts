@@ -1,7 +1,7 @@
 /**
  * @fileoverview Task delete command implementation
  * @lastmodified 2025-07-28T10:30:00Z
- * 
+ *
  * Features: Task deletion with confirmation prompt
  * Main APIs: registerDeleteCommand() - registers delete subcommand
  * Constraints: Irreversible operation, requires confirmation

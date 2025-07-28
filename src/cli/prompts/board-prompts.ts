@@ -54,155 +54,155 @@ export async function quickBoardSetup(
       throw new Error('Board setup cancelled');
     }
 
-  // Column setup
-  const { useTemplate } = await prompts({
-    type: 'select',
-    name: 'useTemplate',
-    message: 'Column setup:',
-    choices: [
-      { title: 'Use template', value: 'template' },
-      { title: 'Custom columns', value: 'custom' },
-    ],
-    initial: 0,
-  });
-
-  let columns: Array<{ name: string; order: number }> = [];
-
-  if (useTemplate === 'template') {
-    const { template } = await prompts({
+    // Column setup
+    const { useTemplate } = await prompts({
       type: 'select',
-      name: 'template',
-      message: 'Choose template:',
+      name: 'useTemplate',
+      message: 'Column setup:',
       choices: [
-        {
-          title: 'Basic Kanban (To Do, In Progress, Done)',
-          value: 'basic',
-          description: 'Simple 3-column board',
-        },
-        {
-          title: 'Scrum Board (Backlog, To Do, In Progress, Review, Done)',
-          value: 'scrum',
-          description: 'Standard Scrum workflow',
-        },
-        {
-          title: 'Bug Tracking (New, Confirmed, In Progress, Testing, Resolved)',
-          value: 'bugs',
-          description: 'Bug tracking workflow',
-        },
-        {
-          title: 'Content Pipeline (Ideas, Writing, Editing, Review, Published)',
-          value: 'content',
-          description: 'Content creation workflow',
-        },
+        { title: 'Use template', value: 'template' },
+        { title: 'Custom columns', value: 'custom' },
       ],
       initial: 0,
     });
 
-    // Set columns based on template
-    switch (template) {
-      case 'basic':
-        columns = [
-          { name: 'To Do', order: 0 },
-          { name: 'In Progress', order: 1 },
-          { name: 'Done', order: 2 },
-        ];
-        break;
-      case 'scrum':
-        columns = [
-          { name: 'Backlog', order: 0 },
-          { name: 'To Do', order: 1 },
-          { name: 'In Progress', order: 2 },
-          { name: 'Review', order: 3 },
-          { name: 'Done', order: 4 },
-        ];
-        break;
-      case 'bugs':
-        columns = [
-          { name: 'New', order: 0 },
-          { name: 'Confirmed', order: 1 },
-          { name: 'In Progress', order: 2 },
-          { name: 'Testing', order: 3 },
-          { name: 'Resolved', order: 4 },
-        ];
-        break;
-      case 'content':
-        columns = [
-          { name: 'Ideas', order: 0 },
-          { name: 'Writing', order: 1 },
-          { name: 'Editing', order: 2 },
-          { name: 'Review', order: 3 },
-          { name: 'Published', order: 4 },
-        ];
-        break;
-      default:
-        // Default to basic template
-        columns = [
-          { name: 'To Do', order: 0 },
-          { name: 'In Progress', order: 1 },
-          { name: 'Done', order: 2 },
-        ];
-        break;
-    }
-  } else {
-    // Custom columns - sequential prompting is necessary for dynamic column creation
-    let addingColumns = true;
-    let order = 0;
+    let columns: Array<{ name: string; order: number }> = [];
 
-    // Note: Sequential await in loop is intentional here - we need to collect
-    // column names one by one until user decides to stop
-    while (addingColumns) {
-      const { columnName } = await prompts({
-        type: 'text',
-        name: 'columnName',
-        message: `Column ${order + 1} name (leave empty to finish):`,
-        validate: value => {
-          if (!value) return true; // Allow empty to finish
-          const result = validateColumnName(value);
-          return result === true ? true : result;
-        },
+    if (useTemplate === 'template') {
+      const { template } = await prompts({
+        type: 'select',
+        name: 'template',
+        message: 'Choose template:',
+        choices: [
+          {
+            title: 'Basic Kanban (To Do, In Progress, Done)',
+            value: 'basic',
+            description: 'Simple 3-column board',
+          },
+          {
+            title: 'Scrum Board (Backlog, To Do, In Progress, Review, Done)',
+            value: 'scrum',
+            description: 'Standard Scrum workflow',
+          },
+          {
+            title: 'Bug Tracking (New, Confirmed, In Progress, Testing, Resolved)',
+            value: 'bugs',
+            description: 'Bug tracking workflow',
+          },
+          {
+            title: 'Content Pipeline (Ideas, Writing, Editing, Review, Published)',
+            value: 'content',
+            description: 'Content creation workflow',
+          },
+        ],
+        initial: 0,
       });
 
-      if (!columnName) {
-        addingColumns = false;
-      } else {
-        columns.push({ name: columnName, order });
-        order++;
+      // Set columns based on template
+      switch (template) {
+        case 'basic':
+          columns = [
+            { name: 'To Do', order: 0 },
+            { name: 'In Progress', order: 1 },
+            { name: 'Done', order: 2 },
+          ];
+          break;
+        case 'scrum':
+          columns = [
+            { name: 'Backlog', order: 0 },
+            { name: 'To Do', order: 1 },
+            { name: 'In Progress', order: 2 },
+            { name: 'Review', order: 3 },
+            { name: 'Done', order: 4 },
+          ];
+          break;
+        case 'bugs':
+          columns = [
+            { name: 'New', order: 0 },
+            { name: 'Confirmed', order: 1 },
+            { name: 'In Progress', order: 2 },
+            { name: 'Testing', order: 3 },
+            { name: 'Resolved', order: 4 },
+          ];
+          break;
+        case 'content':
+          columns = [
+            { name: 'Ideas', order: 0 },
+            { name: 'Writing', order: 1 },
+            { name: 'Editing', order: 2 },
+            { name: 'Review', order: 3 },
+            { name: 'Published', order: 4 },
+          ];
+          break;
+        default:
+          // Default to basic template
+          columns = [
+            { name: 'To Do', order: 0 },
+            { name: 'In Progress', order: 1 },
+            { name: 'Done', order: 2 },
+          ];
+          break;
+      }
+    } else {
+      // Custom columns - sequential prompting is necessary for dynamic column creation
+      let addingColumns = true;
+      let order = 0;
+
+      // Note: Sequential await in loop is intentional here - we need to collect
+      // column names one by one until user decides to stop
+      while (addingColumns) {
+        const { columnName } = await prompts({
+          type: 'text',
+          name: 'columnName',
+          message: `Column ${order + 1} name (leave empty to finish):`,
+          validate: value => {
+            if (!value) return true; // Allow empty to finish
+            const result = validateColumnName(value);
+            return result === true ? true : result;
+          },
+        });
+
+        if (!columnName) {
+          addingColumns = false;
+        } else {
+          columns.push({ name: columnName, order });
+          order++;
+        }
+      }
+
+      if (columns.length === 0) {
+        logger.error('Board setup failed - no columns configured');
+        throw new Error('Board must have at least one column');
       }
     }
 
-    if (columns.length === 0) {
-      logger.error('Board setup failed - no columns configured');
-      throw new Error('Board must have at least one column');
+    // Public/Private setting
+    const { isPublic } = await prompts({
+      type: 'toggle',
+      name: 'isPublic',
+      message: 'Make board public?',
+      initial: defaults?.isPublic ?? false,
+      active: 'yes',
+      inactive: 'no',
+    });
+
+    // Show summary
+    logger.info('Board configuration completed', {
+      name: boardInfo.name,
+      description: boardInfo.description,
+      isPublic,
+      columnCount: columns.length,
+      columns: columns.map(c => c.name),
+    });
+    console.log(chalk.green('\n✅ Board Configuration:'));
+    console.log(chalk.gray('─'.repeat(40)));
+    console.log(`Name: ${chalk.bold(boardInfo.name)}`);
+    if (boardInfo.description) {
+      console.log(`Description: ${boardInfo.description}`);
     }
-  }
-
-  // Public/Private setting
-  const { isPublic } = await prompts({
-    type: 'toggle',
-    name: 'isPublic',
-    message: 'Make board public?',
-    initial: defaults?.isPublic ?? false,
-    active: 'yes',
-    inactive: 'no',
-  });
-
-  // Show summary
-  logger.info('Board configuration completed', {
-    name: boardInfo.name,
-    description: boardInfo.description,
-    isPublic,
-    columnCount: columns.length,
-    columns: columns.map(c => c.name)
-  });
-  console.log(chalk.green('\n✅ Board Configuration:'));
-  console.log(chalk.gray('─'.repeat(40)));
-  console.log(`Name: ${chalk.bold(boardInfo.name)}`);
-  if (boardInfo.description) {
-    console.log(`Description: ${boardInfo.description}`);
-  }
-  console.log(`Visibility: ${isPublic ? 'Public' : 'Private'}`);
-  console.log(`Columns: ${columns.map(c => c.name).join(' → ')}`);
-  console.log(chalk.gray('─'.repeat(40)));
+    console.log(`Visibility: ${isPublic ? 'Public' : 'Private'}`);
+    console.log(`Columns: ${columns.map(c => c.name).join(' → ')}`);
+    console.log(chalk.gray('─'.repeat(40)));
 
     return {
       name: boardInfo.name,
@@ -213,7 +213,7 @@ export async function quickBoardSetup(
   } catch (error) {
     logger.error('Quick board setup failed', {
       error: error instanceof Error ? error.message : String(error),
-      hasDefaults: !!defaults
+      hasDefaults: !!defaults,
     });
     throw error;
   }
@@ -238,7 +238,7 @@ export async function confirmAction(message: string, defaultAnswer = false): Pro
   } catch (error) {
     logger.error('Confirmation prompt failed', {
       error: error instanceof Error ? error.message : String(error),
-      message
+      message,
     });
     throw error;
   }
@@ -334,28 +334,28 @@ export async function addColumnPrompt(
       return null;
     }
 
-  let afterColumn: string | undefined;
+    let afterColumn: string | undefined;
 
-  if (response.position === 'after' && existingColumns.length > 0) {
-    const selected = await selectFromList('Insert after which column?', existingColumns);
+    if (response.position === 'after' && existingColumns.length > 0) {
+      const selected = await selectFromList('Insert after which column?', existingColumns);
 
-    if (selected && !Array.isArray(selected)) {
-      afterColumn = selected.id;
+      if (selected && !Array.isArray(selected)) {
+        afterColumn = selected.id;
+      }
     }
-  }
 
     const result: ColumnInput = {
       name: response.name,
       position: response.position,
       ...(afterColumn !== undefined && { afterColumn }),
     };
-    
+
     logger.info('Add column completed', { columnName: response.name, position: response.position });
     return result;
   } catch (error) {
     logger.error('Add column prompt failed', {
       error: error instanceof Error ? error.message : String(error),
-      existingColumnCount: existingColumns.length
+      existingColumnCount: existingColumns.length,
     });
     throw error;
   }
@@ -416,34 +416,34 @@ export async function boardSettingsPrompt(currentSettings: {
       },
     ]);
 
-  // Filter out unchanged values
-  const changes: Partial<typeof currentSettings> = {};
+    // Filter out unchanged values
+    const changes: Partial<typeof currentSettings> = {};
 
-  if (response.name !== currentSettings.name) {
-    changes.name = response.name;
-  }
-  if (response.description !== currentSettings.description) {
-    changes.description = response.description ?? undefined;
-  }
-  if (response.isPublic !== currentSettings.isPublic) {
-    changes.isPublic = response.isPublic;
-  }
-  if (response.defaultAssignee !== currentSettings.defaultAssignee) {
-    changes.defaultAssignee = response.defaultAssignee ?? undefined;
-  }
-  if (response.autoArchiveDays !== currentSettings.autoArchiveDays) {
-    changes.autoArchiveDays = response.autoArchiveDays ?? undefined;
-  }
+    if (response.name !== currentSettings.name) {
+      changes.name = response.name;
+    }
+    if (response.description !== currentSettings.description) {
+      changes.description = response.description ?? undefined;
+    }
+    if (response.isPublic !== currentSettings.isPublic) {
+      changes.isPublic = response.isPublic;
+    }
+    if (response.defaultAssignee !== currentSettings.defaultAssignee) {
+      changes.defaultAssignee = response.defaultAssignee ?? undefined;
+    }
+    if (response.autoArchiveDays !== currentSettings.autoArchiveDays) {
+      changes.autoArchiveDays = response.autoArchiveDays ?? undefined;
+    }
 
     logger.info('Board settings updated', {
       changeCount: Object.keys(changes).length,
-      changes: Object.keys(changes)
+      changes: Object.keys(changes),
     });
     return changes;
   } catch (error) {
     logger.error('Board settings prompt failed', {
       error: error instanceof Error ? error.message : String(error),
-      boardName: currentSettings.name
+      boardName: currentSettings.name,
     });
     throw error;
   }
@@ -465,7 +465,7 @@ export async function confirmDelete(
       itemType,
       itemName,
       hasWarning: !!options?.showWarning,
-      requireTyping: !!options?.requireTyping
+      requireTyping: !!options?.requireTyping,
     });
     console.log(chalk.red(`\n⚠️  Delete ${itemType}\n`));
 
@@ -491,14 +491,17 @@ export async function confirmDelete(
       }
     }
 
-    const confirmed = await confirmAction(`Are you sure you want to delete this ${itemType}?`, false);
+    const confirmed = await confirmAction(
+      `Are you sure you want to delete this ${itemType}?`,
+      false
+    );
     logger.warn('Delete confirmation result', { itemType, itemName, confirmed });
     return confirmed;
   } catch (error) {
     logger.error('Delete confirmation failed', {
       error: error instanceof Error ? error.message : String(error),
       itemType,
-      itemName
+      itemName,
     });
     throw error;
   }

@@ -1,7 +1,7 @@
 /**
  * @fileoverview Task update command implementation
  * @lastmodified 2025-07-28T10:30:00Z
- * 
+ *
  * Features: Task property updates with interactive mode
  * Main APIs: registerUpdateCommand() - registers update subcommand
  * Constraints: Requires valid task ID, validates field values
@@ -35,10 +35,7 @@ export function registerUpdateCommand(taskCmd: Command): void {
       try {
         // Get current task data
         const currentTaskResponse = await apiClient.getTask(id);
-        if (
-          !currentTaskResponse ||
-          (!('data' in currentTaskResponse) || !currentTaskResponse.data)
-        ) {
+        if (!currentTaskResponse || !('data' in currentTaskResponse) || !currentTaskResponse.data) {
           formatter.error(`Task ${String(id)} not found`);
           process.exit(1);
         }
@@ -77,22 +74,34 @@ export function registerUpdateCommand(taskCmd: Command): void {
                 (input >= 1 && input <= 10) || 'Priority must be between 1 and 10',
             },
           ]);
-          
+
           // Convert prompt result to UpdateTaskRequest - filter out undefined values
           updates = {};
           if (answers.title !== undefined) updates.title = answers.title;
           if (answers.description !== undefined) updates.description = answers.description;
-          if (answers.status !== undefined) updates.status = answers.status as 'todo' | 'in_progress' | 'done' | 'blocked' | 'archived';
+          if (answers.status !== undefined)
+            updates.status = answers.status as
+              | 'todo'
+              | 'in_progress'
+              | 'done'
+              | 'blocked'
+              | 'archived';
           if (answers.priority !== undefined) updates.priority = answers.priority;
           if (answers.assignee !== undefined) updates.assignee = answers.assignee;
-          if (answers.due_date !== undefined) updates.due_date = answers.due_date;
+          if (answers.due_date !== undefined) updates.dueDate = answers.due_date;
         } else {
           // Use command line options
           if (options.title) updates.title = options.title;
           if (options.description) updates.description = options.description;
-          if (options.status) updates.status = options.status as 'todo' | 'in_progress' | 'done' | 'blocked' | 'archived';
+          if (options.status)
+            updates.status = options.status as
+              | 'todo'
+              | 'in_progress'
+              | 'done'
+              | 'blocked'
+              | 'archived';
           if (options.priority) updates.priority = parseInt(options.priority, 10);
-          if (options.due) updates.due_date = options.due;
+          if (options.due) updates.dueDate = options.due;
         }
 
         if (Object.keys(updates).length === 0) {

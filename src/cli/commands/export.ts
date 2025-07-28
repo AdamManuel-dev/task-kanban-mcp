@@ -24,6 +24,7 @@ interface AnonymizeExportOptions {
   anonymizeNotes?: boolean;
   preserveStructure?: boolean;
   hashSeed?: string;
+  pretty?: boolean;
 }
 
 interface ConvertOptions {
@@ -90,13 +91,13 @@ export function registerExportCommands(program: Command): void {
           };
 
           if (options.boardIds) {
-            params['boardIds'] = options.boardIds;
+            params.boardIds = options.boardIds;
           }
 
           // Add anonymization options
           if (options.anonymize) {
-            params['anonymize'] = 'true';
-            params['anonymizationOptions'] = JSON.stringify({
+            params.anonymize = 'true';
+            params.anonymizationOptions = JSON.stringify({
               anonymizeUserData: options.anonymizeUserData ?? true,
               anonymizeTaskTitles: options.anonymizeTaskTitles ?? true,
               anonymizeDescriptions: options.anonymizeDescriptions ?? true,
@@ -111,13 +112,13 @@ export function registerExportCommands(program: Command): void {
           if (file) {
             const outputPath = path.resolve(file);
             const jsonData = options.pretty
-              ? JSON.stringify((response as any).data, null, 2)
-              : JSON.stringify((response as any).data);
+              ? JSON.stringify((response as ExportResponse).data, null, 2)
+              : JSON.stringify((response as ExportResponse).data);
 
             await fs.writeFile(outputPath, jsonData);
             formatter.success(`Data exported to ${String(outputPath)}`);
           } else {
-            formatter.output(JSON.stringify((response as any).data, null, 2));
+            formatter.output(JSON.stringify((response as ExportResponse).data, null, 2));
           }
         } catch (error) {
           const { formatter } = getComponents();
@@ -176,8 +177,8 @@ export function registerExportCommands(program: Command): void {
 
           // Add anonymization options
           if (options.anonymize) {
-            params['anonymize'] = 'true';
-            params['anonymizationOptions'] = JSON.stringify({
+            params.anonymize = 'true';
+            params.anonymizationOptions = JSON.stringify({
               anonymizeUserData: options.anonymizeUserData ?? true,
               anonymizeTaskTitles: options.anonymizeTaskTitles ?? true,
               anonymizeDescriptions: options.anonymizeDescriptions ?? true,
@@ -190,8 +191,8 @@ export function registerExportCommands(program: Command): void {
           const response = await apiClient.request('GET', '/export', undefined, params);
 
           formatter.success('CSV export completed');
-          formatter.info(`Files: ${String((response as any).filePath)}`);
-          formatter.info(`Items: ${String((response as any).itemCount)}`);
+          formatter.info(`Files: ${String((response as ExportResponse).filePath)}`);
+          formatter.info(`Items: ${String((response as ExportResponse).itemCount)}`);
         } catch (error) {
           const { formatter } = getComponents();
           formatter.error(
@@ -226,11 +227,11 @@ export function registerExportCommands(program: Command): void {
         formatter.info(`Exporting anonymized data to ${String(options.format).toUpperCase()}...`);
 
         const params: Record<string, string> = {
-          format: options.format,
-          includeBoards: String(options.boards),
-          includeTasks: String(options.tasks),
-          includeTags: String(options.tags),
-          includeNotes: String(options.notes),
+          format: options.format ?? 'json',
+          includeBoards: String(options.boards ?? true),
+          includeTasks: String(options.tasks ?? true),
+          includeTags: String(options.tags ?? true),
+          includeNotes: String(options.notes ?? true),
           anonymize: 'true',
           anonymizationOptions: JSON.stringify({
             anonymizeUserData: options.anonymizeUserData ?? true,
@@ -243,7 +244,7 @@ export function registerExportCommands(program: Command): void {
         };
 
         if (options.boardIds) {
-          params['boardIds'] = options.boardIds;
+          params.boardIds = options.boardIds;
         }
 
         const response = await apiClient.request<AnyApiResponse>(
@@ -256,9 +257,10 @@ export function registerExportCommands(program: Command): void {
         const exportResponse = response as ExportResponse;
         if (file && options.format === 'json') {
           const outputPath = path.resolve(file);
-          const jsonData = options.pretty
-            ? JSON.stringify(exportResponse.data, null, 2)
-            : JSON.stringify(exportResponse.data);
+          const jsonData =
+            (options.pretty ?? false)
+              ? JSON.stringify(exportResponse.data, null, 2)
+              : JSON.stringify(exportResponse.data);
 
           await fs.writeFile(outputPath, jsonData);
           formatter.success(`Anonymized data exported to ${String(outputPath)}`);
@@ -293,10 +295,10 @@ export function registerExportCommands(program: Command): void {
     .action(async (input: string, output: string, options: ConvertOptions) => {
       const { formatter } = getComponents();
       try {
-        const fromFormat = (options.from || 'json').toLowerCase();
-        const toFormat = (options.to || 'csv').toLowerCase();
+        const fromFormat = (options.from ?? 'json').toLowerCase();
+        const toFormat = (options.to ?? 'csv').toLowerCase();
         const supported = getSupportedConversions();
-        if (!supported['from']?.includes(fromFormat) || !supported['to']?.includes(toFormat)) {
+        if (!supported.from?.includes(fromFormat) || !supported.to?.includes(toFormat)) {
           formatter.error(`Unsupported conversion: ${fromFormat} → ${toFormat}`);
           process.exit(1);
         }
@@ -307,12 +309,12 @@ export function registerExportCommands(program: Command): void {
         let result;
 
         if (fromFormat === 'json' && toFormat === 'csv') {
-          const json = JSON.parse(inputData);
-          result = jsonToCsv(json, { delimiter: options.delimiter });
+          const json = JSON.parse(inputData) as Record<string, unknown>;
+          result = jsonToCsv(json, { delimiter: options.delimiter ?? ',' });
         } else if (fromFormat === 'csv' && toFormat === 'json') {
-          result = csvToJson(inputData, { delimiter: options.delimiter });
+          result = csvToJson(inputData, { delimiter: options.delimiter ?? ',' });
         } else if (fromFormat === 'json' && toFormat === 'xml') {
-          const json = JSON.parse(inputData);
+          const json = JSON.parse(inputData) as Record<string, unknown>;
           result = jsonToXml(json);
         } else {
           formatter.error(`Conversion from ${fromFormat} to ${toFormat} is not supported.`);
@@ -349,7 +351,7 @@ export function registerExportCommands(program: Command): void {
     .description('Import data from JSON file')
     .option('--validate-only', 'Only validate without importing')
     .option('--conflict <resolution>', 'Conflict resolution (skip/overwrite/rename)', 'skip')
-    .action(async (file, options) => {
+    .action(async (file: string, options: { validateOnly?: boolean; conflict?: string }) => {
       try {
         const { apiClient, formatter } = getComponents();
 
@@ -366,7 +368,7 @@ export function registerExportCommands(program: Command): void {
         const formData = new FormData();
         formData.append('file', new Blob([fileContent]), path.basename(filePath));
         formData.append('format', 'json');
-        formData.append('conflictResolution', options.conflict);
+        formData.append('conflictResolution', options.conflict ?? 'skip');
 
         if (options.validateOnly) {
           formData.append('validateOnly', 'true');
