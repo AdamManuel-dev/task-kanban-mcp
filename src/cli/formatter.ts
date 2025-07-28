@@ -45,10 +45,10 @@ export class OutputFormatter {
 
     switch (this.options.format) {
       case 'json':
-        this.outputJson(data);
+        OutputFormatter.outputJson(data);
         break;
       case 'csv':
-        this.outputCsv(data, options);
+        OutputFormatter.outputCsv(data, options);
         break;
       case 'table':
       default:
@@ -103,14 +103,14 @@ export class OutputFormatter {
   /**
    * Output JSON format
    */
-  private outputJson<T>(data: T): void {
+  private static outputJson<T>(data: T): void {
     logger.log(JSON.stringify(data, null, 2));
   }
 
   /**
    * Output CSV format
    */
-  private outputCsv<T>(data: T, options?: { headers?: string[]; fields?: string[] }): void {
+  private static outputCsv<T>(data: T, options?: { headers?: string[]; fields?: string[] }): void {
     let items: T[];
     if (!Array.isArray(data)) {
       items = [data];
@@ -360,7 +360,7 @@ export class OutputFormatter {
   /**
    * Format file size
    */
-  formatSize(bytes: number): string {
+  static formatSize(bytes: number): string {
     const units = ['B', 'KB', 'MB', 'GB'];
     let size = bytes;
     let unitIndex = 0;
@@ -376,7 +376,7 @@ export class OutputFormatter {
   /**
    * Format duration
    */
-  formatDuration(ms: number): string {
+  static formatDuration(ms: number): string {
     const seconds = Math.floor(ms / 1000);
     const minutes = Math.floor(seconds / 60);
     const hours = Math.floor(minutes / 60);

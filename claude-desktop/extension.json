@@ -1,0 +1,180 @@
+{
+  "name": "MCP Kanban Task Manager",
+  "description": "AI-powered task management system with advanced features for project planning, analytics, and team collaboration",
+  "version": "1.0.0",
+  "author": "MCP Kanban Team",
+  "license": "MIT",
+  "homepage": "https://github.com/yourusername/mcp-kanban",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/mcp-kanban.git"
+  },
+  "keywords": [
+    "task-management",
+    "kanban",
+    "project-management",
+    "ai-assistant",
+    "mcp",
+    "productivity",
+    "analytics",
+    "collaboration"
+  ],
+  "mcp": {
+    "server": {
+      "command": "node",
+      "args": ["dist/mcp/index.js"],
+      "env": {
+        "NODE_ENV": "production"
+      }
+    },
+    "capabilities": {
+      "tools": [
+        "create_task",
+        "update_task",
+        "list_tasks",
+        "delete_task",
+        "create_board",
+        "list_boards",
+        "create_subtask",
+        "add_dependency",
+        "get_analytics",
+        "get_critical_path",
+        "create_template",
+        "backup_data",
+        "search_tasks",
+        "get_context"
+      ],
+      "resources": [
+        "tasks",
+        "boards",
+        "analytics",
+        "templates",
+        "dependencies"
+      ],
+      "prompts": [
+        "project_status",
+        "task_prioritization",
+        "team_analytics",
+        "dependency_analysis"
+      ]
+    }
+  },
+  "configuration": {
+    "properties": {
+      "serverUrl": {
+        "type": "string",
+        "title": "Server URL",
+        "description": "MCP Kanban server URL (e.g., http://localhost:3000)",
+        "default": "http://localhost:3000"
+      },
+      "apiKey": {
+        "type": "string",
+        "title": "API Key",
+        "description": "Your MCP Kanban API key for authentication",
+        "secret": true
+      },
+      "defaultBoard": {
+        "type": "string",
+        "title": "Default Board",
+        "description": "Default board ID to use when none specified"
+      },
+      "enableAnalytics": {
+        "type": "boolean",
+        "title": "Enable Analytics",
+        "description": "Enable analytics and performance monitoring",
+        "default": true
+      },
+      "enableRealtime": {
+        "type": "boolean",
+        "title": "Enable Real-time Updates",
+        "description": "Enable WebSocket for real-time collaboration",
+        "default": true
+      },
+      "gitIntegration": {
+        "type": "boolean",
+        "title": "Git Integration",
+        "description": "Enable automatic Git branch to board mapping",
+        "default": false
+      }
+    },
+    "required": ["serverUrl", "apiKey"]
+  },
+  "activation": {
+    "events": [
+      "onStartupFinished"
+    ]
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "mcp-kanban.createTask",
+        "title": "Create Task",
+        "category": "MCP Kanban"
+      },
+      {
+        "command": "mcp-kanban.viewAnalytics",
+        "title": "View Analytics",
+        "category": "MCP Kanban"
+      },
+      {
+        "command": "mcp-kanban.showCriticalPath",
+        "title": "Show Critical Path",
+        "category": "MCP Kanban"
+      },
+      {
+        "command": "mcp-kanban.openDashboard",
+        "title": "Open Dashboard",
+        "category": "MCP Kanban"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "mcp-kanban.createTask",
+        "key": "ctrl+shift+t",
+        "mac": "cmd+shift+t"
+      }
+    ]
+  },
+  "engines": {
+    "claude": ">=1.0.0",
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.1.0"
+  },
+  "files": [
+    "dist/",
+    "docs/",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "start": "node dist/mcp/index.js",
+    "install": "npm install && npm run build",
+    "build": "npm run build:mcp",
+    "test": "npm test"
+  },
+  "systemRequirements": {
+    "memory": "512MB",
+    "disk": "100MB",
+    "network": "Required for server communication"
+  },
+  "permissions": [
+    "network",
+    "filesystem.read",
+    "filesystem.write"
+  ],
+  "categories": [
+    "Productivity",
+    "Project Management",
+    "Collaboration",
+    "Analytics"
+  ],
+  "tags": [
+    "task-management",
+    "productivity",
+    "ai-assistant",
+    "analytics",
+    "collaboration"
+  ]
+} 

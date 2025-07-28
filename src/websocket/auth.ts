@@ -263,7 +263,11 @@ export class WebSocketAuth {
     return false;
   }
 
-  static canAccessBoard(permissions: Set<string>, boardId: string, action: string = 'read'): boolean {
+  static canAccessBoard(
+    permissions: Set<string>,
+    boardId: string,
+    action: string = 'read'
+  ): boolean {
     return (
       WebSocketAuth.hasPermission(permissions, `${String(action)}:all`) ||
       WebSocketAuth.hasPermission(permissions, `${String(action)}:board:${String(boardId)}`)
@@ -285,7 +289,11 @@ export class WebSocketAuth {
   }
 
   // Generate JWT tokens (for testing or client integration)
-  static generateJWT(user: WebSocketUser, permissions: string[], expiresIn: string = '24h'): string {
+  static generateJWT(
+    user: WebSocketUser,
+    permissions: string[],
+    expiresIn: string = '24h'
+  ): string {
     const jwtSecret = process.env.JWT_SECRET ?? 'dev-secret-key-change-in-production';
     if (!jwtSecret || jwtSecret === 'dev-secret-key-change-in-production') {
       logger.warn('JWT generation using default secret - configure JWT_SECRET in production');

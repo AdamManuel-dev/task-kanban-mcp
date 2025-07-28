@@ -2,7 +2,7 @@ import { createServer } from 'http';
 import type { WebSocket } from 'ws';
 import { WebSocketServer } from 'ws';
 import { v4 as uuidv4 } from 'uuid';
-import type { Task } from '@/types';
+import type { Task, TaskDependency } from '@/types';
 import { config } from '../config';
 import { logger } from '../utils/logger';
 import type { WebSocketMessage, WebSocketClient } from './types';
@@ -13,13 +13,20 @@ import { SubscriptionManager } from './subscriptions';
 import { RateLimiter } from './rateLimit';
 
 export class WebSocketManager {
-  static broadcastToChannel(_channel: string, _message: { type: string; payload: { task: Task } }): void {
+  sendSuccess(_clientId: string, _dependency: TaskDependency, _id: string): void {
     throw new Error('Method not implemented.');
   }
 
-  private readonly wss: WebSocketServer | null = null;
+  static broadcastToChannel(
+    _channel: string,
+    _message: { type: string; payload: { task: Task } }
+  ): void {
+    throw new Error('Method not implemented.');
+  }
 
-  private readonly httpServer: ReturnType<typeof createServer> | null = null;
+  private wss: WebSocketServer | null = null;
+
+  private httpServer: ReturnType<typeof createServer> | null = null;
 
   private readonly clients = new Map<string, WebSocketClient>();
 
@@ -31,7 +38,7 @@ export class WebSocketManager {
 
   private readonly rateLimiter: RateLimiter;
 
-  private readonly heartbeatInterval: NodeJS.Timeout | null = null;
+  private heartbeatInterval: NodeJS.Timeout | null = null;
 
   constructor() {
     this.auth = new WebSocketAuth();
@@ -63,9 +70,7 @@ export class WebSocketManager {
 
       // Set up WebSocket event handlers
       this.wss.on('connection', (ws: WebSocket, request: RequestInfo) => {
-        this.handleConnection(ws, request).catch((err: Error) => {
-          logger.error('WebSocket connection handling failed:', err);
-        });
+        this.handleConnection(ws, request);
       });
       this.wss.on('error', WebSocketManager.handleServerError.bind(this));
 
@@ -257,7 +262,7 @@ export class WebSocketManager {
     });
 
     // Remove from subscriptions
-    this.subscriptionManager.removeClientSubscriptions(clientId);
+    this.subscriptionManager.unsubscribeAll(clientId);
 
     // Remove from clients map
     this.clients.delete(clientId);

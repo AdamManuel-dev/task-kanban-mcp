@@ -164,6 +164,28 @@ export async function up(db: Database): Promise<void> {
   `);
 
   await run(`
+    CREATE TABLE IF NOT EXISTS task_templates (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      category TEXT DEFAULT 'custom' CHECK (category IN ('bug', 'feature', 'meeting', 'maintenance', 'research', 'review', 'custom')),
+      title_template TEXT NOT NULL,
+      description_template TEXT,
+      priority INTEGER DEFAULT 0,
+      estimated_hours REAL,
+      tags TEXT, -- JSON array of tag names
+      checklist_items TEXT, -- JSON array of checklist items
+      custom_fields TEXT, -- JSON object for additional fields
+      created_by TEXT,
+      is_system BOOLEAN DEFAULT FALSE,
+      is_active BOOLEAN DEFAULT TRUE,
+      usage_count INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await run(`
     CREATE TABLE IF NOT EXISTS schema_info (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL,
@@ -200,6 +222,9 @@ export async function up(db: Database): Promise<void> {
   await run(
     `CREATE INDEX IF NOT EXISTS idx_time_entries_start_time ON task_time_entries(start_time)`
   );
+  await run(`CREATE INDEX IF NOT EXISTS idx_task_templates_category ON task_templates(category)`);
+  await run(`CREATE INDEX IF NOT EXISTS idx_task_templates_is_active ON task_templates(is_active)`);
+  await run(`CREATE INDEX IF NOT EXISTS idx_task_templates_is_system ON task_templates(is_system)`);
 
   // Create full-text search virtual tables
   await run(`
@@ -229,7 +254,7 @@ export async function up(db: Database): Promise<void> {
       c.name as column_name,
       b.name as board_name,
       COUNT(st.id) as subtask_count,
-      COUNT(CASE WHEN st['status'] = 'done' THEN 1 END) as completed_subtasks
+      COUNT(CASE WHEN st.status = 'done' THEN 1 END) as completed_subtasks
     FROM tasks t
     JOIN columns c ON t.column_id = c.id
     JOIN boards b ON t.board_id = b.id
@@ -249,7 +274,7 @@ export async function up(db: Database): Promise<void> {
       t1.status as task_status,
       t2.status as depends_on_status
     FROM task_dependencies td
-    JOIN tasks t1 ON td['task_id'] = t1.id
+    JOIN tasks t1 ON td.task_id = t1.id
     JOIN tasks t2 ON td.depends_on_task_id = t2.id
     WHERE t1.archived = FALSE AND t2.archived = FALSE
   `);
@@ -260,7 +285,7 @@ export async function up(db: Database): Promise<void> {
       b.id as board_id,
       b.name as board_name,
       COUNT(t.id) as total_tasks,
-      COUNT(CASE WHEN t['status'] = 'todo' THEN 1 END) as todo_tasks,
+      COUNT(CASE WHEN t.status = 'todo' THEN 1 END) as todo_tasks,
       COUNT(CASE WHEN t.status = 'in_progress' THEN 1 END) as in_progress_tasks,
       COUNT(CASE WHEN t.status = 'done' THEN 1 END) as done_tasks,
       COUNT(CASE WHEN t.status = 'blocked' THEN 1 END) as blocked_tasks,
@@ -351,6 +376,13 @@ export async function up(db: Database): Promise<void> {
     CREATE TRIGGER IF NOT EXISTS repository_mappings_updated_at AFTER UPDATE ON repository_mappings
     BEGIN
       UPDATE repository_mappings SET updated_at = CURRENT_TIMESTAMP WHERE id = new.id;
+    END
+  `);
+
+  await run(`
+    CREATE TRIGGER IF NOT EXISTS task_templates_updated_at AFTER UPDATE ON task_templates
+    BEGIN
+      UPDATE task_templates SET updated_at = CURRENT_TIMESTAMP WHERE id = new.id;
     END
   `);
 

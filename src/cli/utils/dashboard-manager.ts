@@ -98,8 +98,8 @@ export class DashboardManager {
 
     // Dashboard controls
     this.screen.key(['r', 'F5'], () => {
-      this.refreshData().catch(error => 
-        this.showError('Failed to refresh data', error)
+      void this.refreshData().catch(error =>
+        DashboardManager.showErrorNotification(`Failed to refresh data: ${String(error)}`)
       );
     });
 
@@ -406,8 +406,10 @@ export class DashboardManager {
    */
   switchLayout(layout: 'overview' | 'velocity' | 'personal'): void {
     this.currentLayout = layout;
-    this.refreshData().catch(error => 
-      this.showError('Failed to refresh data after layout change', error)
+    void this.refreshData().catch(error =>
+      DashboardManager.showErrorNotification(
+        `Failed to refresh data after layout change: ${String(error)}`
+      )
     );
   }
 
@@ -583,7 +585,7 @@ Press any key to close this help...
     this.showThemeNotification(`Theme changed to: ${String(String(this.config.theme))}`);
 
     // Refresh dashboard with new theme
-    this.refreshData();
+    void this.refreshData();
   }
 
   /**
@@ -607,8 +609,8 @@ Press any key to close this help...
 
     if (this.config.autoRefresh) {
       this.refreshTimer = setInterval(() => {
-        this.refreshData().catch(error => 
-          this.showError('Failed to auto-refresh data', error)
+        void this.refreshData().catch(error =>
+          DashboardManager.showErrorNotification(`Failed to auto-refresh data: ${String(error)}`)
         );
       }, this.config.refreshInterval);
     }
@@ -642,6 +644,9 @@ Press any key to close this help...
         case 'personal':
           this.createPersonalDashboard(data);
           break;
+        default:
+          this.createOverviewDashboard(data);
+          break;
       }
 
       this.screen.render();
@@ -659,6 +664,9 @@ Press any key to close this help...
           break;
         case 'personal':
           this.createPersonalDashboard(fallbackData);
+          break;
+        default:
+          this.createOverviewDashboard(fallbackData);
           break;
       }
 
@@ -753,8 +761,8 @@ Press any key to close this help...
    * Start the dashboard
    */
   start(): void {
-    this.refreshData().catch(error => 
-      this.showError('Failed to refresh data on start', error)
+    void this.refreshData().catch(error =>
+      DashboardManager.showErrorNotification(`Failed to refresh data on start: ${String(error)}`)
     );
     this.startAutoRefresh();
     this.screen.render();
@@ -816,7 +824,7 @@ Press any key to close this help...
       // In a real implementation, this would resize the focused widget to full screen
     } else {
       this.showNotification('Exited fullscreen mode');
-      this.refreshData(); // Restore normal layout
+      void this.refreshData(); // Restore normal layout
     }
   }
 
@@ -943,7 +951,7 @@ ${String(debugInfo)}
     this.focusedWidget = null;
     this.debugMode = false;
     this.hideDebugOverlay();
-    this.refreshData();
+    void this.refreshData();
     this.showNotification('View reset to default state');
   }
 

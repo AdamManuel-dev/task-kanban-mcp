@@ -3,9 +3,9 @@ import { render, useApp, useInput } from 'ink';
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { type Task, type Board, type Column } from '@/types';
-import TaskList from '../ui/components/TaskList';
 import BoardView from '../ui/components/BoardView';
-import StatusIndicator from '../ui/components/StatusIndicator';
+import { createTaskList } from '../ui/components/TaskList';
+import { StatusIndicatorFormatter } from '../ui/components/StatusIndicator';
 
 interface InteractiveViewProps {
   mode: 'tasks' | 'board';
@@ -54,22 +54,22 @@ const InteractiveView: React.FC<InteractiveViewProps> = ({ mode, data }) => {
     }
   );
 
-  const handleTaskSelect = (task: Task) => {
+  const handleTaskSelect = (task: Task): void => {
     setStatusMessage(`Selected task: ${String(String(task.title))}`);
     setStatusType('success');
   };
 
-  const handleBoardTaskSelect = (task: Task, columnId: string) => {
+  const handleBoardTaskSelect = (task: Task, columnId: string): void => {
     setStatusMessage(`Selected task: ${String(String(task.title))} in column ${String(columnId)}`);
     setStatusType('success');
   };
 
-  const handleColumnSelect = (column: Column) => {
+  const handleColumnSelect = (column: Column): void => {
     setStatusMessage(`Selected column: ${String(String(column.name))}`);
     setStatusType('info');
   };
 
-  const renderHelp = () => (
+  const renderHelp = (): JSX.Element => (
     <div>
       <h2>{chalk.cyan('🎮 Interactive View Help')}</h2>
       <br />
@@ -117,31 +117,21 @@ const InteractiveView: React.FC<InteractiveViewProps> = ({ mode, data }) => {
     </div>
   );
 
-  const renderCurrentView = () => {
+  const renderCurrentView = (): JSX.Element => {
     switch (currentView) {
       case 'tasks':
-        return (
-          <TaskList
-            tasks={data.tasks || []}
-            title="Interactive Task List"
-            onTaskSelect={handleTaskSelect}
-            showSelection={true}
-            maxHeight={15}
-            showStats={true}
-          />
-        );
+        const taskListOutput = createTaskList({
+          tasks: data.tasks || [],
+          maxHeight: 15,
+          showDetails: true,
+        });
+        return <div>{taskListOutput}</div>;
 
       case 'board':
-        return (
-          <BoardView
-            board={data.board || { id: '1', name: 'Sample Board', columns: [] }}
-            onTaskSelect={handleBoardTaskSelect}
-            onColumnSelect={handleColumnSelect}
-            showWIPLimits={true}
-            maxColumnHeight={10}
-            columnWidth={25}
-          />
-        );
+        const board = data.board || { id: '1', name: 'Sample Board' };
+        const columns = data.columns || [];
+        const tasks = data.tasks || [];
+        return <BoardView board={board} columns={columns} tasks={tasks} showDetails={true} />;
 
       case 'help':
         return renderHelp();
@@ -154,7 +144,7 @@ const InteractiveView: React.FC<InteractiveViewProps> = ({ mode, data }) => {
   return (
     <div>
       {/* Header */}
-      <div style={{ marginBottom: 1 }}>
+      <div>
         <h1>{chalk.bold.cyan('🚀 Kanban CLI Interactive Mode')}</h1>
         <p>
           {chalk.gray(
@@ -165,8 +155,10 @@ const InteractiveView: React.FC<InteractiveViewProps> = ({ mode, data }) => {
 
       {/* Status message */}
       {statusMessage && (
-        <div style={{ marginBottom: 1 }}>
-          <StatusIndicator status={statusType} message={statusMessage} />
+        <div>
+          <div>
+            {StatusIndicatorFormatter.renderStatus({ status: statusType, message: statusMessage })}
+          </div>
         </div>
       )}
 
@@ -174,7 +166,7 @@ const InteractiveView: React.FC<InteractiveViewProps> = ({ mode, data }) => {
       {renderCurrentView()}
 
       {/* Footer */}
-      <div style={{ marginTop: 1 }}>
+      <div>
         <p>{chalk.gray('─'.repeat(80))}</p>
         <p>{chalk.gray('Interactive Kanban CLI - Press h for help, q to quit')}</p>
       </div>
@@ -183,7 +175,7 @@ const InteractiveView: React.FC<InteractiveViewProps> = ({ mode, data }) => {
 };
 
 // Sample data generator
-const generateSampleData = () => {
+const generateSampleData = (): { tasks: Task[]; boards: any[]; columns: any[] } => {
   const sampleTasks: Task[] = [
     {
       id: 'TASK-001',
@@ -292,7 +284,7 @@ export const interactiveViewCommand = new Command('interactive')
   });
 
 // Placeholder for real data fetching
-async function fetchRealData() {
+function fetchRealData(): { tasks: Task[]; boards: any[]; columns: any[] } {
   // This would connect to the actual API
   // For now, return sample data
   return generateSampleData();

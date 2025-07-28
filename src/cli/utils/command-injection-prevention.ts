@@ -172,7 +172,7 @@ export class CommandInjectionPrevention {
       // Redirection attempts
       /[<>]+/,
       // Null bytes
-      /\x00/,
+      /\u0000/,
       // Path traversal
       /\.\.[/\\]/,
       // Variable expansion
@@ -384,15 +384,16 @@ export class CommandInjectionPrevention {
     }
 
     // Additional security checks for the complete command
-    const fullCommand = `${String(sanitizedCommand)} ${String(String(sanitizedArgs.join(' ')))}`;
-    const suspiciousCheck = inputSanitizer.detectSuspiciousPatterns(fullCommand);
+    const fullCommand = `${sanitizedCommand} ${sanitizedArgs.join(' ')}`;
+    const suspiciousCheck = inputSanitizer.detectSuspiciousPatterns(fullCommand) as {
+      suspicious: boolean;
+      patterns: string[];
+    };
     if (suspiciousCheck.suspicious) {
-      warnings.push(
-        `Suspicious patterns detected: ${String(String(suspiciousCheck.patterns.join(', ')))}`
-      );
+      warnings.push(`Suspicious patterns detected: ${suspiciousCheck.patterns.join(', ')}`);
       // Mark as unsafe if critical patterns are detected
       const criticalPatterns = ['Script tag', 'JavaScript protocol', 'Remote script execution'];
-      if (suspiciousCheck.patterns.some(p => criticalPatterns.includes(p))) {
+      if (suspiciousCheck.patterns.some((p: string) => criticalPatterns.includes(p))) {
         safe = false;
         blockedPatterns.push(...suspiciousCheck.patterns);
       }
@@ -469,11 +470,11 @@ export class CommandInjectionPrevention {
       let stdout = '';
       let stderr = '';
 
-      child.stdout?.on('data', data => {
+      child.stdout?.on('data', (data: Buffer) => {
         stdout += data.toString();
       });
 
-      child.stderr?.on('data', data => {
+      child.stderr?.on('data', (data: Buffer) => {
         stderr += data.toString();
       });
 
@@ -526,9 +527,15 @@ export class CommandInjectionPrevention {
    * const result = await gitCommand.execute(['status']);
    * ```
    */
-  createSafeCommand(baseCommand: string, allowedFlags: string[] = []) {
+  createSafeCommand(
+    baseCommand: string,
+    allowedFlags: string[] = []
+  ): {
+    validate: (args: string[], options?: CommandExecutionOptions) => string;
+    execute: (args: string[], options?: CommandExecutionOptions) => Promise<ExecutionResult>;
+  } {
     return {
-      validate: (args: string[], options: CommandExecutionOptions = {}) => {
+      validate: (args: string[], options: CommandExecutionOptions = {}): string => {
         const validation = this.validateCommand(baseCommand, args, {
           ...options,
           allowedFlags,
@@ -540,7 +547,7 @@ export class CommandInjectionPrevention {
         return validation.sanitizedArgs[0];
       },
 
-      execute: (args: string[], options: CommandExecutionOptions = {}) =>
+      execute: (args: string[], options: CommandExecutionOptions = {}): Promise<ExecutionResult> =>
         this.safeExecute(baseCommand, args, {
           ...options,
           allowedFlags,
@@ -645,7 +652,7 @@ export class CommandInjectionPrevention {
    * }
    * ```
    */
-  validateFilePath(
+  static validateFilePath(
     filePath: string,
     allowedDirectories: string[] = []
   ): {
@@ -723,7 +730,7 @@ export const safeExecute = (
   command: string,
   args: string[] = [],
   options: CommandExecutionOptions = {}
-) => commandInjectionPrevention.safeExecute(command, args, options);
+): Promise<ExecutionResult> => commandInjectionPrevention.safeExecute(command, args, options);
 
 /**
  * Convenience function for command validation
@@ -743,7 +750,7 @@ export const validateCommand = (
   command: string,
   args: string[] = [],
   options: CommandExecutionOptions = {}
-) => commandInjectionPrevention.validateCommand(command, args, options);
+): CommandValidationResult => commandInjectionPrevention.validateCommand(command, args, options);
 
 /**
  * Convenience function for creating safe command wrappers
@@ -758,8 +765,13 @@ export const validateCommand = (
  * const git = createSafeCommand('git', ['status', 'log']);
  * ```
  */
-export const createSafeCommand = (baseCommand: string, allowedFlags: string[] = []) =>
-  commandInjectionPrevention.createSafeCommand(baseCommand, allowedFlags);
+export const createSafeCommand = (
+  baseCommand: string,
+  allowedFlags: string[] = []
+): {
+  validate: (args: string[], options?: CommandExecutionOptions) => string;
+  execute: (args: string[], options?: CommandExecutionOptions) => Promise<ExecutionResult>;
+} => commandInjectionPrevention.createSafeCommand(baseCommand, allowedFlags);
 
 /**
  * Convenience function for file path validation
@@ -774,197 +786,11 @@ export const createSafeCommand = (baseCommand: string, allowedFlags: string[] = 
  * const validation = validateFilePath('/etc/passwd');
  * ```
  */
-export const validateFilePath = (filePath: string, allowedDirectories: string[] = []) =>
-  commandInjectionPrevention.validateFilePath(filePath, allowedDirectories);
+export const validateFilePath = (
+  filePath: string,
+  allowedDirectories: string[] = []
+): { safe: boolean; normalizedPath: string; warnings: string[] } =>
+  CommandInjectionPrevention.validateFilePath(filePath, allowedDirectories);
 
-/**
- * Safe wrapper for common CLI operations
- *
- * @class SafeCliOperations
- * @description Provides pre-configured safe wrappers for common CLI operations
- * like file reading, directory listing, and version control commands.
- *
- * @example
- * ```typescript
- * // Read a file safely
- * const content = await SafeCliOperations.safeFileRead('./config.json');
- *
- * // List directory contents
- * const files = await SafeCliOperations.safeDirectoryList('./src');
- *
- * // Execute git command
- * const result = await SafeCliOperations.safeGitCommand(['status']);
- * ```
- */
-export class SafeCliOperations {
-  /**
-   * Safely reads a file with path validation
-   *
-   * @static
-   * @param {string} filePath - Path to the file to read
-   * @param {string[]} [allowedDirectories=[]] - Allowed base directories
-   * @returns {Promise<string>} File contents
-   *
-   * @throws {Error} If the file path is unsafe or reading fails
-   *
-   * @example
-   * ```typescript
-   * try {
-   *   const content = await SafeCliOperations.safeFileRead('./data.json', ['./']);
-   *   const data = JSON.parse(content);
-   * } catch (error) {
-   *   console.error('Failed to read file:', error.message);
-   * }
-   * ```
-   */
-  static async safeFileRead(filePath: string, allowedDirectories: string[] = []): Promise<string> {
-    const pathValidation = validateFilePath(filePath, allowedDirectories);
-    if (!pathValidation.safe) {
-      throw new Error(`Unsafe file path: ${String(String(pathValidation.warnings.join(', ')))}`);
-    }
-
-    const result = await safeExecute('cat', [pathValidation.normalizedPath], {
-      timeout: 5000,
-      restrictToWorkingDir: allowedDirectories.length === 0,
-    });
-
-    if (!result.success) {
-      throw new Error(`Failed to read file: ${String(String(result.stderr))}`);
-    }
-
-    return result.stdout;
-  }
-
-  /**
-   * Safely lists directory contents
-   *
-   * @static
-   * @param {string} [dirPath='.'] - Directory path to list
-   * @param {string[]} [allowedDirectories=[]] - Allowed base directories
-   * @returns {Promise<string[]>} Array of directory entries
-   *
-   * @throws {Error} If the directory path is unsafe or listing fails
-   *
-   * @example
-   * ```typescript
-   * const files = await SafeCliOperations.safeDirectoryList('./src');
-   * files.forEach(file => console.log(file));
-   * ```
-   */
-  static async safeDirectoryList(
-    dirPath: string = '.',
-    allowedDirectories: string[] = []
-  ): Promise<string[]> {
-    const pathValidation = validateFilePath(dirPath, allowedDirectories);
-    if (!pathValidation.safe) {
-      throw new Error(
-        `Unsafe directory path: ${String(String(pathValidation.warnings.join(', ')))}`
-      );
-    }
-
-    const result = await safeExecute('ls', ['-la', pathValidation.normalizedPath], {
-      timeout: 10000,
-      restrictToWorkingDir: allowedDirectories.length === 0,
-    });
-
-    if (!result.success) {
-      throw new Error(`Failed to list directory: ${String(String(result.stderr))}`);
-    }
-
-    return result.stdout.split('\n').filter(line => line.trim().length > 0);
-  }
-
-  /**
-   * Safely executes Git commands
-   *
-   * @static
-   * @param {string[]} args - Git command arguments
-   * @returns {Promise<ExecutionResult>} Command execution result
-   *
-   * @description Executes Git commands with a whitelist of safe operations
-   * including status, log, diff, branch, and other read/write operations.
-   *
-   * @example
-   * ```typescript
-   * // Get git status
-   * const status = await SafeCliOperations.safeGitCommand(['status', '--short']);
-   *
-   * // View recent commits
-   * const log = await SafeCliOperations.safeGitCommand(['log', '--oneline', '-10']);
-   * ```
-   */
-  static async safeGitCommand(args: string[]): Promise<ExecutionResult> {
-    const allowedGitArgs = [
-      'status',
-      'log',
-      'diff',
-      'branch',
-      'remote',
-      'config',
-      'add',
-      'commit',
-      'push',
-      'pull',
-      'fetch',
-      'checkout',
-      'merge',
-      'rebase',
-      'stash',
-      'tag',
-      'show',
-      'blame',
-    ];
-
-    return safeExecute('git', args, {
-      allowedFlags: allowedGitArgs,
-      timeout: 30000,
-      restrictToWorkingDir: true,
-      logExecution: true,
-    });
-  }
-
-  /**
-   * Safely executes NPM commands
-   *
-   * @static
-   * @param {string[]} args - NPM command arguments
-   * @returns {Promise<ExecutionResult>} Command execution result
-   *
-   * @description Executes NPM commands with a whitelist of safe operations
-   * including install, update, list, audit, and script execution.
-   *
-   * @example
-   * ```typescript
-   * // Install dependencies
-   * await SafeCliOperations.safeNpmCommand(['install']);
-   *
-   * // Run a script
-   * const result = await SafeCliOperations.safeNpmCommand(['run', 'test']);
-   * ```
-   */
-  static async safeNpmCommand(args: string[]): Promise<ExecutionResult> {
-    const allowedNpmArgs = [
-      'install',
-      'update',
-      'list',
-      'outdated',
-      'audit',
-      'run',
-      'start',
-      'test',
-      'build',
-      'version',
-      'info',
-      'search',
-      'view',
-      'help',
-    ];
-
-    return safeExecute('npm', args, {
-      allowedFlags: allowedNpmArgs,
-      timeout: 120000, // NPM operations can take longer
-      restrictToWorkingDir: true,
-      logExecution: true,
-    });
-  }
-}
+// Re-export SafeCliOperations from separate file
+export { SafeCliOperations } from './safe-cli-operations';

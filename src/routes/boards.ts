@@ -22,12 +22,58 @@
  */
 
 import { Router } from 'express';
+import { z } from 'zod';
 import { BoardService } from '@/services/BoardService';
 import { TaskService } from '@/services/TaskService';
 import { dbConnection } from '@/database/connection';
 import { requirePermission } from '@/middleware/auth';
+import { validateRequest } from '@/middleware/validation';
 import { BoardValidation, validateInput } from '@/utils/validation';
 import { NotFoundError } from '@/utils/errors';
+
+// Validation schemas
+const CreateBoardSchema = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().optional(),
+  color: z
+    .string()
+    .regex(/^#[0-9A-F]{6}$/i)
+    .optional(),
+  columns: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(50),
+        order: z.number().int().min(0),
+        wip_limit: z.number().int().min(0).optional(),
+      })
+    )
+    .optional(),
+});
+
+const UpdateBoardSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  description: z.string().optional(),
+  color: z
+    .string()
+    .regex(/^#[0-9A-F]{6}$/i)
+    .optional(),
+  archived: z.boolean().optional(),
+});
+
+const ListBoardsSchema = z.object({
+  archived: z.enum(['true', 'false', 'all']).optional(),
+  search: z.string().optional(),
+  sort: z.enum(['name', 'created_at', 'updated_at']).optional(),
+  order: z.enum(['asc', 'desc']).optional(),
+  limit: z
+    .union([z.string().transform(Number), z.number()])
+    .pipe(z.number().int().min(1).max(100))
+    .optional(),
+  offset: z
+    .union([z.string().transform(Number), z.number()])
+    .pipe(z.number().int().min(0))
+    .optional(),
+});
 
 /**
  * Create and configure board routes.
@@ -80,50 +126,55 @@ export function boardRoutes(): Router {
    * @response 403 - Insufficient permissions
    */
   // GET /api/v1/boards - List boards
-  router.get('/', requirePermission('read'), async (req, res, next): Promise<void> => {
-    try {
-      const {
-        limit = 50,
-        offset = 0,
-        sortBy = 'updated_at',
-        sortOrder = 'desc',
-        archived,
-        search,
-      } = req.query;
+  router.get(
+    '/',
+    requirePermission('read'),
+    validateRequest(ListBoardsSchema),
+    async (req, res, next): Promise<void> => {
+      try {
+        const {
+          limit = 50,
+          offset = 0,
+          sortBy = 'updated_at',
+          sortOrder = 'desc',
+          archived,
+          search,
+        } = req.query;
 
-      const options: any = {
-        limit: parseInt(limit as string, 10),
-        offset: parseInt(offset as string, 10),
-        sortBy: sortBy as string,
-        sortOrder: sortOrder as 'asc' | 'desc',
-        search: search as string,
-      };
+        const options: any = {
+          limit: parseInt(limit as string, 10),
+          offset: parseInt(offset as string, 10),
+          sortBy: sortBy as string,
+          sortOrder: sortOrder as 'asc' | 'desc',
+          search: search as string,
+        };
 
-      if (archived === 'true') {
-        options.archived = true;
-      } else if (archived === 'false') {
-        options.archived = false;
+        if (archived === 'true') {
+          options.archived = true;
+        } else if (archived === 'false') {
+          options.archived = false;
+        }
+
+        const boards = await boardService.getBoards(options);
+
+        // Get total count for pagination
+        const countOptions = { ...options };
+        delete countOptions.limit;
+        delete countOptions.offset;
+        const totalBoards = await boardService.getBoards(countOptions);
+        const total = totalBoards.length;
+
+        return res.apiPagination(
+          boards,
+          Math.floor(options.offset / options.limit) + 1,
+          options.limit,
+          total
+        );
+      } catch (error) {
+        return next(error);
       }
-
-      const boards = await boardService.getBoards(options);
-
-      // Get total count for pagination
-      const countOptions = { ...options };
-      delete countOptions.limit;
-      delete countOptions.offset;
-      const totalBoards = await boardService.getBoards(countOptions);
-      const total = totalBoards.length;
-
-      return res.apiPagination(
-        boards,
-        Math.floor(options.offset / options.limit) + 1,
-        options.limit,
-        total
-      );
-    } catch (error) {
-      return next(error);
     }
-  });
+  );
 
   /**
    * Create a new board.
@@ -166,15 +217,20 @@ export function boardRoutes(): Router {
    * @response 403 - Insufficient permissions
    */
   // POST /api/v1/boards - Create board
-  router.post('/', requirePermission('write'), async (req, res, next): Promise<void> => {
-    try {
-      const boardData = validateInput(BoardValidation.create, req.body);
-      const board = await boardService.createBoard(boardData);
-      return res.status(201).apiSuccess(board);
-    } catch (error) {
-      return next(error);
+  router.post(
+    '/',
+    requirePermission('write'),
+    validateRequest(CreateBoardSchema),
+    async (req, res, next): Promise<void> => {
+      try {
+        const boardData = validateInput(BoardValidation.create, req.body);
+        const board = await boardService.createBoard(boardData);
+        return res.status(201).apiSuccess(board);
+      } catch (error) {
+        return next(error);
+      }
     }
-  });
+  );
 
   /**
    * Get detailed information about a specific board.
@@ -269,24 +325,29 @@ export function boardRoutes(): Router {
    * @response 404 - Board not found
    */
   // PATCH /api/v1/boards/:id - Update board
-  router.patch('/:id', requirePermission('write'), async (req, res, next): Promise<void> => {
-    try {
-      const { id } = req.params;
+  router.patch(
+    '/:id',
+    requirePermission('write'),
+    validateRequest(UpdateBoardSchema),
+    async (req, res, next): Promise<void> => {
+      try {
+        const { id } = req.params;
 
-      if (!id) {
-        return res.status(400).json({ error: 'Board ID is required' });
+        if (!id) {
+          return res.status(400).json({ error: 'Board ID is required' });
+        }
+
+        const rawUpdateData = validateInput(BoardValidation.update, req.body);
+        const updateData = Object.fromEntries(
+          Object.entries(rawUpdateData).filter(([, value]) => value !== undefined)
+        );
+        const board = await boardService.updateBoard(id, updateData);
+        return res.apiSuccess(board);
+      } catch (error) {
+        return next(error);
       }
-
-      const rawUpdateData = validateInput(BoardValidation.update, req.body);
-      const updateData = Object.fromEntries(
-        Object.entries(rawUpdateData).filter(([, value]) => value !== undefined)
-      );
-      const board = await boardService.updateBoard(id, updateData);
-      return res.apiSuccess(board);
-    } catch (error) {
-      return next(error);
     }
-  });
+  );
 
   /**
    * Delete a board permanently.
@@ -418,22 +479,26 @@ export function boardRoutes(): Router {
    * @note Tasks are not duplicated, only the board structure
    */
   // POST /api/v1/boards/:id/duplicate - Duplicate board
-  router.post('/:id/duplicate', requirePermission('write'), async (req, res, next): Promise<void> => {
-    try {
-      const { id } = req.params;
+  router.post(
+    '/:id/duplicate',
+    requirePermission('write'),
+    async (req, res, next): Promise<void> => {
+      try {
+        const { id } = req.params;
 
-      if (!id) {
-        return res.status(400).json({ error: 'Board ID is required' });
+        if (!id) {
+          return res.status(400).json({ error: 'Board ID is required' });
+        }
+
+        const { name } = req.body;
+
+        const newBoard = await boardService.duplicateBoard(id, name);
+        return res.status(201).apiSuccess(newBoard);
+      } catch (error) {
+        return next(error);
       }
-
-      const { name } = req.body;
-
-      const newBoard = await boardService.duplicateBoard(id, name);
-      return res.status(201).apiSuccess(newBoard);
-    } catch (error) {
-      return next(error);
     }
-  });
+  );
 
   // GET /api/v1/boards/:id/columns - Get board columns
   router.get('/:id/columns', requirePermission('read'), async (req, res, next): Promise<void> => {
@@ -456,10 +521,37 @@ export function boardRoutes(): Router {
     }
   });
 
-  // TODO: Column routes should be implemented in a separate column service
-  // These are commented out as BoardService doesn't have column management methods
-  /*
-  // POST /api/v1/boards/:id/columns - Create column
+  /**
+   * Create a new column in a board
+   *
+   * @route POST /api/v1/boards/:id/columns
+   * @auth Required - Write permission
+   *
+   * @param {string} id - Board ID
+   * @bodyparam {string} name - Column name
+   * @bodyparam {number} position - Column position
+   * @bodyparam {number} [wip_limit] - Optional WIP limit
+   *
+   * @returns {Column} Created column with metadata
+   *
+   * @example
+   * ```bash
+   * curl -X POST "http://localhost:3000/api/v1/boards/board-123/columns" \
+   *   -H "Authorization: Bearer YOUR_API_KEY" \
+   *   -H "Content-Type: application/json" \
+   *   -d '{
+   *     "name": "In Review",
+   *     "position": 2,
+   *     "wip_limit": 3
+   *   }'
+   * ```
+   *
+   * @response 201 - Column created successfully
+   * @response 400 - Invalid input data
+   * @response 401 - Missing or invalid API key
+   * @response 403 - Insufficient permissions
+   * @response 404 - Board not found
+   */
   router.post('/:id/columns', requirePermission('write'), async (req, res, next): Promise<void> => {
     try {
       const { id } = req.params;
@@ -467,37 +559,106 @@ export function boardRoutes(): Router {
         ...req.body,
         board_id: id,
       });
-      
+
       const column = await boardService.createColumn(columnData);
-      res.status(201).apiSuccess(column);
+      res.status(201).json({
+        success: true,
+        data: column,
+        message: 'Column created successfully',
+      });
     } catch (error) {
       return next(error);
     }
   });
 
-  // PATCH /api/v1/boards/:id/columns/:columnId - Update column
-  router.patch('/:id/columns/:columnId', requirePermission('write'), async (req, res, next): Promise<void> => {
-    try {
-      const { columnId } = req.params;
-      const updateData = validateInput(BoardValidation.column.update, req.body);
-      const column = await boardService.updateColumn(columnId, updateData);
-      res.apiSuccess(column);
-    } catch (error) {
-      return next(error);
+  /**
+   * Update an existing column
+   *
+   * @route PATCH /api/v1/boards/:id/columns/:columnId
+   * @auth Required - Write permission
+   *
+   * @param {string} id - Board ID
+   * @param {string} columnId - Column ID to update
+   * @bodyparam {string} [name] - New column name
+   * @bodyparam {number} [position] - New column position
+   * @bodyparam {number} [wip_limit] - New WIP limit
+   *
+   * @returns {Column} Updated column
+   *
+   * @example
+   * ```bash
+   * curl -X PATCH "http://localhost:3000/api/v1/boards/board-123/columns/col-456" \
+   *   -H "Authorization: Bearer YOUR_API_KEY" \
+   *   -H "Content-Type: application/json" \
+   *   -d '{
+   *     "name": "Ready for Review",
+   *     "wip_limit": 5
+   *   }'
+   * ```
+   *
+   * @response 200 - Column updated successfully
+   * @response 400 - Invalid input data
+   * @response 401 - Missing or invalid API key
+   * @response 403 - Insufficient permissions
+   * @response 404 - Column not found
+   */
+  router.patch(
+    '/:id/columns/:columnId',
+    requirePermission('write'),
+    async (req, res, next): Promise<void> => {
+      try {
+        const { columnId } = req.params;
+        const updateData = validateInput(BoardValidation.column.update, req.body);
+        const column = await boardService.updateColumn(columnId, updateData);
+        res.json({
+          success: true,
+          data: column,
+          message: 'Column updated successfully',
+        });
+      } catch (error) {
+        return next(error);
+      }
     }
-  });
+  );
 
-  // DELETE /api/v1/boards/:id/columns/:columnId - Delete column
-  router.delete('/:id/columns/:columnId', requirePermission('write'), async (req, res, next): Promise<void> => {
-    try {
-      const { columnId } = req.params;
-      await boardService.deleteColumn(columnId);
-      res.status(204).send();
-    } catch (error) {
-      return next(error);
+  /**
+   * Delete a column from a board
+   *
+   * @route DELETE /api/v1/boards/:id/columns/:columnId
+   * @auth Required - Write permission
+   *
+   * @param {string} id - Board ID
+   * @param {string} columnId - Column ID to delete
+   *
+   * @returns {void} No content on successful deletion
+   *
+   * @example
+   * ```bash
+   * curl -X DELETE "http://localhost:3000/api/v1/boards/board-123/columns/col-456" \
+   *   -H "Authorization: Bearer YOUR_API_KEY"
+   * ```
+   *
+   * @response 204 - Column deleted successfully
+   * @response 400 - Column has tasks (cannot delete)
+   * @response 401 - Missing or invalid API key
+   * @response 403 - Insufficient permissions
+   * @response 404 - Column not found
+   *
+   * @note Cannot delete columns that contain tasks. Move tasks to another column first.
+   */
+  router.delete(
+    '/:id/columns/:columnId',
+    requirePermission('write'),
+    async (req, res, next): Promise<void> => {
+      try {
+        const { columnId } = req.params;
+        await boardService.deleteColumn(columnId);
+        res.status(204).send();
+      } catch (error) {
+        return next(error);
+      }
     }
-  });
-  */
+  );
 
   /**
    * Get all tasks in a board with filtering and sorting.

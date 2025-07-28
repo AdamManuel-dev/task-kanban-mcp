@@ -56,6 +56,23 @@ export const BoardValidation = {
     color: optionalWithUndefined(z.string().regex(/^#[0-9A-F]{6}$/i, 'Invalid color format')),
     archived: optionalWithUndefined(z.boolean()),
   }),
+
+  column: {
+    create: z.object({
+      board_id: z.string().uuid('Invalid board ID'),
+      name: z.string().min(1, 'Column name is required').max(50, 'Column name too long'),
+      position: z.number().int().min(0, 'Position must be non-negative'),
+      wip_limit: optionalWithUndefined(z.number().int().min(1, 'WIP limit must be positive')),
+    }),
+
+    update: z.object({
+      name: optionalWithUndefined(
+        z.string().min(1, 'Column name is required').max(50, 'Column name too long')
+      ),
+      position: optionalWithUndefined(z.number().int().min(0, 'Position must be non-negative')),
+      wip_limit: optionalWithUndefined(z.number().int().min(1, 'WIP limit must be positive')),
+    }),
+  },
 };
 
 /**
@@ -115,7 +132,7 @@ export const NoteValidation = {
     task_id: z.string().uuid('Invalid task ID'),
     content: z.string().min(1, 'Note content is required').max(5000, 'Content too long'),
     category: optionalWithUndefined(
-      z.enum(['general', 'progress', 'blocker', 'decision', 'question'])
+      z.enum(['general', 'implementation', 'research', 'blocker', 'idea'])
     ),
     pinned: optionalWithUndefined(z.boolean()),
   }),
@@ -125,7 +142,7 @@ export const NoteValidation = {
       z.string().min(1, 'Note content is required').max(5000, 'Content too long')
     ),
     category: optionalWithUndefined(
-      z.enum(['general', 'progress', 'blocker', 'decision', 'question'])
+      z.enum(['general', 'implementation', 'research', 'blocker', 'idea'])
     ),
     pinned: optionalWithUndefined(z.boolean()),
   }),
@@ -134,7 +151,7 @@ export const NoteValidation = {
     query: z.string().min(1, 'Search query is required').max(200, 'Query too long'),
     task_id: z.string().uuid('Invalid task ID').optional(),
     board_id: z.string().uuid('Invalid board ID').optional(),
-    category: z.enum(['general', 'progress', 'blocker', 'decision', 'question']).optional(),
+    category: z.enum(['general', 'implementation', 'research', 'blocker', 'idea']).optional(),
     pinned_only: z.boolean().optional(),
     highlight: z.boolean().optional(),
     limit: z.number().int().min(1).max(100).optional(),
@@ -450,7 +467,7 @@ export const BusinessRules = {
      * @throws {ValidationError} If category is invalid
      */
     validateCategory: (category: string): void => {
-      const validCategories = ['general', 'progress', 'blocker', 'decision', 'question'];
+      const validCategories = ['general', 'implementation', 'research', 'blocker', 'idea'];
       if (!validCategories.includes(category)) {
         throw new ValidationError(`Invalid note category: ${String(category)}`);
       }
@@ -611,7 +628,7 @@ export function createValidatedService<T extends object>(
         return originalMethod;
       }
 
-      return function (this: any, ...args: any[]) {
+      return function validatedMethod(this: any, ...args: any[]) {
         // Validate the first argument (usually the data)
         if (args.length > 0 && args[0] !== undefined) {
           validateInput(validationSchema, args[0]);

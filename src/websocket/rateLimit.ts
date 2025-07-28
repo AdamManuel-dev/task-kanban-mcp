@@ -20,7 +20,7 @@ export class RateLimiter {
 
   private readonly messageLimits = new Map<string, RateLimitEntry>();
 
-  private readonly cleanupInterval: NodeJS.Timeout | null = null;
+  private cleanupInterval: NodeJS.Timeout | null = null;
 
   private config: RateLimitConfig;
 

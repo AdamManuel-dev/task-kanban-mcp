@@ -485,7 +485,11 @@ Also provide:
   }
 
   private async generateSprintPlanningPrompt(args: any): Promise<PromptContent> {
-    const { board_id: boardId, sprint_duration: sprintDuration, team_capacity: teamCapacity } = args;
+    const {
+      board_id: boardId,
+      sprint_duration: sprintDuration,
+      team_capacity: teamCapacity,
+    } = args;
 
     if (!boardId) {
       throw new Error('board_id is required');

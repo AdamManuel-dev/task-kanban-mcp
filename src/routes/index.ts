@@ -1,36 +1,37 @@
 import { Router } from 'express';
-import { taskRoutes } from './tasks';
+import { healthRoutes } from './health';
 import { boardRoutes } from './boards';
+import { taskRoutes } from './tasks';
 import { noteRoutes } from './notes';
 import { tagRoutes } from './tags';
-import { contextRoutes } from './context';
-import { healthRoutes } from './health';
 import backupRoutes from './backup';
-import scheduleRoutes from './schedule';
 import exportRoutes from './export';
+import scheduleRoutes from './schedule';
+import { contextRoutes } from './context';
 
-export async function apiRoutes(): Promise<Router> {
-  const router = Router();
+// Import new route modules
+import analyticsRoutes from './analytics';
+import performanceRoutes from './performance';
+import prioritiesRoutes from './priorities';
 
-  // Health and status routes
-  router.use('/', await healthRoutes());
+const router = Router();
 
-  // Core API routes
-  router.use('/tasks', await taskRoutes());
-  router.use('/boards', await boardRoutes());
-  router.use('/notes', await noteRoutes());
-  router.use('/tags', await tagRoutes());
-  router.use('/context', await contextRoutes());
-  router.use('/backup', backupRoutes);
-  router.use('/schedule', scheduleRoutes);
-  router.use('/', exportRoutes); // Export/import routes at root level
+// Health check (no versioning needed)
+router.use('/health', healthRoutes());
 
-  return router;
-}
+// API v1 routes
+router.use('/v1/boards', boardRoutes());
+router.use('/v1/tasks', taskRoutes());
+router.use('/v1/notes', noteRoutes());
+router.use('/v1/tags', tagRoutes());
+router.use('/v1/backup', backupRoutes);
+router.use('/v1/export', exportRoutes);
+router.use('/v1/schedule', scheduleRoutes);
+router.use('/v1/context', contextRoutes());
 
-export * from './tasks';
-export * from './boards';
-export * from './notes';
-export * from './tags';
-export * from './context';
-export * from './health';
+// New feature routes
+router.use('/v1/analytics', analyticsRoutes);
+router.use('/v1/performance', performanceRoutes);
+router.use('/v1/priorities', prioritiesRoutes);
+
+export default router;

@@ -18,6 +18,9 @@ import { registerDatabaseCommands } from './commands/database';
 import { registerConfigCommands } from './commands/config';
 import { createTemplatesCommand } from './commands/templates';
 import { createDependenciesCommand } from './commands/dependencies';
+import { registerNextCommands } from './commands/next';
+import { addEnvironmentCommands } from './commands/environment';
+import { CLIServiceContainer } from './services/ServiceContainer';
 import { ApiClientWrapper } from './api-client-wrapper';
 import { SpinnerManager } from './utils/spinner';
 import { logger } from '../utils/logger';
@@ -50,10 +53,15 @@ const initializeComponents = async (): Promise<CliComponents> => {
   // Initialize database connection
   await dbConnection.initialize({ skipSchema: false });
 
+  // Initialize service container
+  const serviceContainer = CLIServiceContainer.getInstance();
+  const services = await serviceContainer.getServices();
+
   return {
     config: configManager,
     apiClient,
     formatter,
+    services,
   };
 };
 
@@ -145,6 +153,8 @@ const main = async (): Promise<void> => {
     registerSubtaskCommands(program);
     registerDatabaseCommands(program);
     registerConfigCommands(program);
+    registerNextCommands(program);
+    addEnvironmentCommands(program);
     program.addCommand(createTemplatesCommand());
     program.addCommand(createDependenciesCommand());
 

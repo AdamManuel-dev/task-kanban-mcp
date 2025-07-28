@@ -34,6 +34,13 @@ import { promisify } from 'util';
 const gzipAsync = promisify(gzip);
 const gunzipAsync = promisify(gunzip);
 
+export class BackupError extends BaseServiceError {
+  constructor(message: string, code: string, statusCode: number = 400) {
+    super(message, code, statusCode);
+    this.name = 'BackupError';
+  }
+}
+
 export interface BackupMetadata {
   id: string;
   name: string;
@@ -42,6 +49,7 @@ export interface BackupMetadata {
   status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'corrupted';
   size: number;
   compressed: boolean;
+  encrypted: boolean;
   verified: boolean;
   checksum: string;
   filePath: string;
@@ -58,6 +66,8 @@ export interface CreateBackupOptions {
   type?: 'full' | 'incremental';
   compress?: boolean;
   verify?: boolean;
+  encrypt?: boolean;
+  encryptionKey?: string; // If not provided, will use environment variable
   parentBackupId?: string; // Required for incremental backups
 }
 
@@ -66,6 +76,7 @@ export interface RestoreOptions {
   targetFile?: string;
   pointInTime?: string; // ISO timestamp
   preserveExisting?: boolean;
+  decryptionKey?: string; // Required for encrypted backups
 }
 
 export interface RestoreValidationResult {
@@ -107,8 +118,62 @@ export interface RestoreProgress {
 export class BackupService {
   private readonly backupDir: string;
 
+  private readonly algorithm = 'aes-256-gcm';
+
+  private readonly keyLength = 32; // 256 bits
+
+  private readonly ivLength = 16; // 128 bits
+
   constructor(private readonly db: DatabaseConnection) {
     this.backupDir = path.join(process.cwd(), 'backups');
+  }
+
+  /**
+   * Generate or retrieve encryption key
+   */
+  private getEncryptionKey(providedKey?: string): Buffer {
+    if (providedKey) {
+      return Buffer.from(providedKey, 'hex');
+    }
+
+    const envKey = process.env.BACKUP_ENCRYPTION_KEY;
+    if (envKey) {
+      return Buffer.from(envKey, 'hex');
+    }
+
+    throw new BackupError(
+      'No encryption key provided. Set BACKUP_ENCRYPTION_KEY environment variable or provide encryptionKey option',
+      'ENCRYPTION_KEY_MISSING'
+    );
+  }
+
+  /**
+   * Encrypt data using AES-256-GCM
+   */
+  private encryptData(data: Buffer, key: Buffer): Buffer {
+    const iv = crypto.randomBytes(this.ivLength);
+    const cipher = crypto.createCipher(this.algorithm, key);
+    cipher.setAutoPadding(true);
+
+    const encrypted = Buffer.concat([cipher.update(data), cipher.final()]);
+    const authTag = cipher.getAuthTag();
+
+    // Combine IV + auth tag + encrypted data
+    return Buffer.concat([iv, authTag, encrypted]);
+  }
+
+  /**
+   * Decrypt data using AES-256-GCM
+   */
+  private decryptData(encryptedData: Buffer, key: Buffer): Buffer {
+    const iv = encryptedData.subarray(0, this.ivLength);
+    const authTag = encryptedData.subarray(this.ivLength, this.ivLength + 16);
+    const encrypted = encryptedData.subarray(this.ivLength + 16);
+
+    const decipher = crypto.createDecipher(this.algorithm, key);
+    decipher.setAuthTag(authTag);
+
+    return Buffer.concat([decipher.update(encrypted), decipher.final()]);
   }
 
   /**
@@ -129,6 +194,7 @@ export class BackupService {
       status: 'pending',
       size: 0,
       compressed: options.compress ?? false,
+      encrypted: options.encrypt ?? false,
       verified: false,
       checksum: '',
       filePath: '',
@@ -221,6 +287,7 @@ export class BackupService {
       status: 'pending',
       size: 0,
       compressed: options.compress ?? false,
+      encrypted: options.encrypt ?? false,
       verified: false,
       checksum: '',
       filePath: '',
@@ -559,8 +626,8 @@ export class BackupService {
       params.push(options.offset);
     }
 
-    const rows = await this.db.query(query, params as any[]);
-    return rows.map(BackupService.deserializeBackupMetadata);
+    const rows = await this.db.query<any>(query, params);
+    return rows.map(row => BackupService.deserializeBackupMetadata(row));
   }
 
   /**
@@ -986,12 +1053,12 @@ export class BackupService {
     message: string;
   }> {
     try {
-      const result = await this.db.queryOne('PRAGMA integrity_check');
-      const isPassed = result && result.integrity_check === 'ok';
+      const result = await this.db.queryOne<{ integrity_check: string }>('PRAGMA integrity_check');
+      const isPassed = result?.integrity_check === 'ok';
 
       return {
         name: 'Database Integrity',
-        passed: isPassed,
+        passed: isPassed ?? false,
         message: isPassed ? 'Database integrity check passed' : 'Database integrity check failed',
       };
     } catch (error) {

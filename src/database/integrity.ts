@@ -378,20 +378,21 @@ export class DatabaseIntegrityChecker {
       logger.debug('Checking for orphaned records');
 
       // Check for tasks with invalid parent relationships
-      const invalidParentTasks = await this.db.query(`
+      const invalidParentTasks = await this.db.query<{ count: number }>(`
         SELECT COUNT(*) as count
         FROM tasks t1
         WHERE t1.parent_task_id IS NOT NULL
         AND t1.parent_task_id NOT IN (SELECT id FROM tasks WHERE archived = FALSE)
       `);
 
-      if (invalidParentTasks[0]?.count > 0) {
-        warnings.push(`Found ${invalidParentTasks[0].count} tasks with invalid parent references`);
-        metadata.invalidParentTasks = invalidParentTasks[0].count;
+      const invalidParentCount = invalidParentTasks[0]?.count ?? 0;
+      if (invalidParentCount > 0) {
+        warnings.push(`Found ${invalidParentCount} tasks with invalid parent references`);
+        metadata.invalidParentTasks = invalidParentCount;
       }
 
       // Check for tags with zero usage but existing in task_tags
-      const unusedTagsWithReferences = await this.db.query(`
+      const unusedTagsWithReferences = await this.db.query<{ count: number }>(`
         SELECT COUNT(*) as count
         FROM tags t
         WHERE t.id IN (SELECT DISTINCT tag_id FROM task_tags)
@@ -403,15 +404,19 @@ export class DatabaseIntegrityChecker {
         )
       `);
 
-      if (unusedTagsWithReferences[0]?.count > 0) {
-        warnings.push(
-          `Found ${unusedTagsWithReferences[0].count} tags with zero usage count but active references`
-        );
-        metadata.unusedTagsWithReferences = unusedTagsWithReferences[0].count;
+      const unusedTagsCount = unusedTagsWithReferences[0]?.count ?? 0;
+      if (unusedTagsCount > 0) {
+        warnings.push(`Found ${unusedTagsCount} tags with zero usage count but active references`);
+        metadata.unusedTagsWithReferences = unusedTagsCount;
       }
 
       // Check for columns without any tasks
-      const emptyColumns = await this.db.query(`
+      const emptyColumns = await this.db.query<{
+        id: string;
+        name: string;
+        board_id: string;
+        task_count: number;
+      }>(`
         SELECT c.id, c.name, c.board_id, COUNT(t.id) as task_count
         FROM columns c
         LEFT JOIN tasks t ON c['id'] = t['column_id'] AND t['archived'] = FALSE
@@ -467,7 +472,15 @@ export class DatabaseIntegrityChecker {
       logger.debug('Checking for circular dependencies');
 
       // Check for circular dependencies using recursive CTE
-      const circularDependencies = await this.db.query(
+      interface CircularDependency {
+        task_id: string;
+        depends_on_task_id: string;
+        depth: number;
+        path: string;
+        task_title: string;
+        dependency_title: string;
+      }
+      const circularDependencies = await this.db.query<CircularDependency>(
         `
         WITH RECURSIVE dependency_cycle_check(task_id, depends_on_task_id, depth, path) AS (
           -- Start with direct dependencies
@@ -510,13 +523,13 @@ export class DatabaseIntegrityChecker {
         // Group by task for better reporting
         const taskGroups = circularDependencies.reduce(
           (groups, dep) => {
-            if (!groups[dep.task_id]) {
-              groups[dep.task_id] = [];
-            }
-            groups[dep.task_id].push(dep);
-            return groups;
+            const taskId = dep.task_id;
+            return {
+              ...groups,
+              [taskId]: [...(groups[taskId] || []), dep],
+            };
           },
-          {} as Record<string, any[]>
+          {} as Record<string, CircularDependency[]>
         );
 
         metadata.affectedTasks = Object.keys(taskGroups).length;

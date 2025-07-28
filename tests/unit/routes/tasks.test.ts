@@ -70,10 +70,10 @@ function createMockError(message: string, statusCode: number): Error & { statusC
 }
 
 jest.doMock('../../../src/utils/errors', () => ({
-  NotFoundError: function(entity: string, id: string) {
+  NotFoundError(entity: string, id: string) {
     return createMockError(`${String(entity)} ${String(id)} not found`, 404);
   },
-  ValidationError: function(message = 'Validation error') {
+  ValidationError(message = 'Validation error') {
     return createMockError(message, 400);
   },
 }));

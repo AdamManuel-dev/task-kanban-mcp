@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS notes (
   id TEXT PRIMARY KEY,
   task_id TEXT NOT NULL,
   content TEXT NOT NULL,
-  category TEXT DEFAULT 'general' CHECK (category IN ('general', 'progress', 'blocker', 'decision', 'question')),
+  category TEXT DEFAULT 'general' CHECK (category IN ('general', 'implementation', 'research', 'blocker', 'idea')),
   pinned BOOLEAN DEFAULT FALSE,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,

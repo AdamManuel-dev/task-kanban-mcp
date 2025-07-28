@@ -276,15 +276,11 @@ export class MCPKanbanServer {
 
       // Keep the process running
       process.on('SIGINT', () => {
-        this.stop().catch(error => 
-          logger.error('Failed to stop server on SIGINT', { error })
-        );
+        this.stop().catch(error => logger.error('Failed to stop server on SIGINT', { error }));
       });
 
       process.on('SIGTERM', () => {
-        this.stop().catch(error => 
-          logger.error('Failed to stop server on SIGTERM', { error })
-        );
+        this.stop().catch(error => logger.error('Failed to stop server on SIGTERM', { error }));
       });
     } catch (error) {
       logger.error('Failed to start MCP server', { error });

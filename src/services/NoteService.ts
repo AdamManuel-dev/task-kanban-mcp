@@ -569,7 +569,7 @@ export class NoteService {
         params.push(category);
       }
 
-      if (pinned_only) {
+      if (pinnedOnly) {
         conditions.push('n.pinned = TRUE');
       }
 
@@ -595,14 +595,18 @@ export class NoteService {
       >(sql, params);
 
       return results.map(result => {
-        NoteService.convertNoteDates(result);
+        const processedResult = { ...result };
+        NoteService.convertNoteDates(processedResult);
 
         if (highlight) {
-          result.highlighted_content = NoteService.highlightSearchTerm(result.content, query);
+          processedResult.highlighted_content = NoteService.highlightSearchTerm(
+            result.content,
+            query
+          );
         }
 
         return {
-          ...result,
+          ...processedResult,
           task_title: result.task_title,
           board_name: result.board_name,
           relevance_score: result.relevance_score,
@@ -635,13 +639,13 @@ export class NoteService {
     options: PaginationOptions & { days?: number; board_id?: string } = {}
   ): Promise<Note[]> {
     const { days = 7, board_id, ...paginationOptions } = options;
-    const date_from = new Date();
-    date_from.setDate(date_from.getDate() - days);
+    const dateFrom = new Date();
+    dateFrom.setDate(dateFrom.getDate() - days);
 
     return this.getNotes({
       ...paginationOptions,
       ...(board_id ? { board_id } : {}),
-      date_from,
+      dateFrom,
       sortBy: 'created_at',
       sortOrder: 'desc',
     });
@@ -995,8 +999,14 @@ export class NoteService {
    * @param note Note object with potentially string-based dates
    */
   private static convertNoteDates(note: Note): void {
-    note.created_at = new Date(note.created_at);
-    note.updated_at = new Date(note.updated_at);
+    if (typeof note.created_at === 'string') {
+      const createdDate = new Date(note.created_at);
+      note.created_at = createdDate;
+    }
+    if (typeof note.updated_at === 'string') {
+      const updatedDate = new Date(note.updated_at);
+      note.updated_at = updatedDate;
+    }
   }
 
   /**

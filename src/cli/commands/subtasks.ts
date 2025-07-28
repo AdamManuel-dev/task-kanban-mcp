@@ -294,7 +294,14 @@ export function registerSubtaskCommands(program: Command): void {
         // Simple text-based visualization
         const printNode = (node: any, indent = 0) => {
           const prefix = '  '.repeat(indent) + (indent > 0 ? '└─ ' : '');
-          const status = node.status === 'completed' ? '✓' : node.status === 'blocked' ? '⚠' : '○';
+          let status: string;
+          if (node.status === 'completed') {
+            status = '✓';
+          } else if (node.status === 'blocked') {
+            status = '⚠';
+          } else {
+            status = '○';
+          }
           logger.info(
             `${String(prefix)}${String(status)} ${String(String(node.id))}: ${String(String(node.title))} (${String(String(node.status))})`
           );

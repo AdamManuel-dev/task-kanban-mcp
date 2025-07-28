@@ -54,7 +54,7 @@ export class DependencyVisualizationService {
         JOIN tasks t1 ON td.task_id = t1.id
         JOIN tasks t2 ON td.depends_on_task_id = t2.id
       `;
-      
+
       const params: any[] = [];
       if (boardId) {
         tasksQuery += ' AND board_id = ?';
@@ -64,7 +64,7 @@ export class DependencyVisualizationService {
 
       const [tasks, dependencies] = await Promise.all([
         dbConnection.query(tasksQuery, boardId ? [boardId] : []),
-        dbConnection.query(dependenciesQuery, boardId ? [boardId, boardId] : [])
+        dbConnection.query(dependenciesQuery, boardId ? [boardId, boardId] : []),
       ]);
 
       // Build the graph
@@ -88,7 +88,7 @@ export class DependencyVisualizationService {
             column_id: task.column_id,
             position: task.position,
             priority: task.priority,
-            status: task.status as any,
+            status: task.status,
             assignee: task.assignee,
             due_date: task.due_date ? new Date(task.due_date) : undefined,
             estimated_hours: task.estimated_hours,
@@ -110,7 +110,7 @@ export class DependencyVisualizationService {
       for (const edge of edges) {
         const taskNode = nodes.get(edge.task_id);
         const dependsOnNode = nodes.get(edge.depends_on_task_id);
-        
+
         if (taskNode && dependsOnNode) {
           taskNode.dependencies.push(edge.depends_on_task_id);
           dependsOnNode.dependents.push(edge.task_id);
@@ -137,7 +137,9 @@ export class DependencyVisualizationService {
       };
     } catch (error) {
       logger.error('Failed to get dependency graph:', error);
-      throw new Error(`Failed to get dependency graph: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to get dependency graph: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -150,7 +152,7 @@ export class DependencyVisualizationService {
   ): Promise<string> {
     try {
       const graph = await this.getDependencyGraph(boardId);
-      
+
       if (graph.nodes.size === 0) {
         return 'No tasks found.';
       }
@@ -180,7 +182,7 @@ export class DependencyVisualizationService {
   async findCriticalPath(boardId?: string): Promise<CriticalPathResult> {
     try {
       const graph = await this.getDependencyGraph(boardId);
-      
+
       if (graph.nodes.size === 0) {
         return {
           critical_path: [],
@@ -193,12 +195,12 @@ export class DependencyVisualizationService {
       }
 
       // Use topological sort and find longest path
-      const { sortedNodes, longestPaths } = this.calculateLongestPaths(graph);
-      
+      const { longestPaths } = this.calculateLongestPaths(graph);
+
       // Find the path with maximum duration
       let maxDuration = 0;
       let criticalEndTask: string | null = null;
-      
+
       for (const [taskId, duration] of longestPaths.entries()) {
         if (duration > maxDuration) {
           maxDuration = duration;
@@ -243,7 +245,7 @@ export class DependencyVisualizationService {
     try {
       const graph = await this.getDependencyGraph();
       const node = graph.nodes.get(taskId);
-      
+
       if (!node) {
         throw new Error('Task not found');
       }
@@ -251,12 +253,12 @@ export class DependencyVisualizationService {
       const directDependents = node.dependents.map(id => graph.nodes.get(id)!.task);
       const indirectDependents: Task[] = [];
       const visited = new Set<string>();
-      
+
       // Find all indirect dependents using DFS
       const findIndirectDependents = (nodeId: string) => {
         if (visited.has(nodeId)) return;
         visited.add(nodeId);
-        
+
         const currentNode = graph.nodes.get(nodeId);
         if (currentNode) {
           for (const dependentId of currentNode.dependents) {
@@ -300,11 +302,9 @@ export class DependencyVisualizationService {
       visited.add(taskId);
 
       const node = nodes.get(taskId)!;
-      
+
       // Calculate depth as max of dependency depths + 1
-      node.depth = Math.max(
-        ...node.dependencies.map(depId => nodes.get(depId)?.depth ?? -1)
-      ) + 1;
+      node.depth = Math.max(...node.dependencies.map(depId => nodes.get(depId)?.depth ?? -1)) + 1;
 
       // Add dependents to queue
       for (const dependentId of node.dependents) {
@@ -317,7 +317,7 @@ export class DependencyVisualizationService {
 
   private generateTreeView(graph: DependencyGraph, options: GraphFormatOptions): string {
     let output = '🌳 Task Dependency Tree\n\n';
-    
+
     // Group by depth
     const levels = new Map<number, DependencyNode[]>();
     for (const node of graph.nodes.values()) {
@@ -333,14 +333,14 @@ export class DependencyVisualizationService {
       if (nodesAtDepth.length === 0) continue;
 
       output += `Level ${depth}:\n`;
-      
+
       for (const node of nodesAtDepth) {
         const indent = '  '.repeat(depth);
         const statusIcon = this.getStatusIcon(node.task.status);
         const priorityIcon = this.getPriorityIcon(node.task.priority);
-        
+
         output += `${indent}${statusIcon} ${priorityIcon} ${node.task.title} (${node.task.id})\n`;
-        
+
         if (options.showTaskDetails) {
           if (node.task.assignee) {
             output += `${indent}    👤 Assigned to: ${node.task.assignee}\n`;
@@ -378,10 +378,10 @@ export class DependencyVisualizationService {
     // Add nodes
     for (const node of graph.nodes.values()) {
       const statusColor = this.getStatusColor(node.task.status);
-      const label = options.showTaskDetails 
+      const label = options.showTaskDetails
         ? `"${node.task.title}\\n${node.task.status}\\nPriority: ${node.task.priority}"`
         : `"${node.task.title}"`;
-      
+
       output += `  "${node.task.id}" [label=${label}, fillcolor="${statusColor}", style=filled];\n`;
     }
 
@@ -391,7 +391,7 @@ export class DependencyVisualizationService {
     for (const edge of graph.edges) {
       const style = edge.dependency_type === 'blocks' ? 'solid' : 'dashed';
       const color = edge.dependency_type === 'blocks' ? 'red' : 'blue';
-      
+
       output += `  "${edge.depends_on_task_id}" -> "${edge.task_id}" [style=${style}, color=${color}];\n`;
     }
 
@@ -399,9 +399,9 @@ export class DependencyVisualizationService {
     return output;
   }
 
-  private generateAsciiGrid(graph: DependencyGraph, options: GraphFormatOptions): string {
+  private generateAsciiGrid(graph: DependencyGraph, _options: GraphFormatOptions): string {
     let output = '📊 Task Dependencies (ASCII Grid)\n\n';
-    
+
     // Simple linear representation showing blocking relationships
     for (const node of graph.nodes.values()) {
       if (graph.roots.includes(node.task.id)) {
@@ -426,15 +426,15 @@ export class DependencyVisualizationService {
     const node = graph.nodes.get(taskId)!;
     const statusIcon = this.getStatusIcon(node.task.status);
     const priorityIcon = this.getPriorityIcon(node.task.priority);
-    
+
     let output = `${prefix}${statusIcon} ${priorityIcon} ${node.task.title}\n`;
-    
-    const dependents = node.dependents;
+
+    const { dependents } = node;
     dependents.forEach((dependentId, index) => {
       const isLast = index === dependents.length - 1;
       const newPrefix = prefix + (isLast ? '    ' : '│   ');
       const connector = isLast ? '└── ' : '├── ';
-      
+
       output += `${prefix}${connector}`;
       output += this.generateSubtree(graph, dependentId, newPrefix, new Set(visited));
     });
@@ -449,7 +449,7 @@ export class DependencyVisualizationService {
   } {
     const inDegree = new Map<string, number>();
     const longestPaths = new Map<string, number>();
-    
+
     // Initialize in-degrees and paths
     for (const node of graph.nodes.values()) {
       inDegree.set(node.task.id, node.dependencies.length);
@@ -459,7 +459,7 @@ export class DependencyVisualizationService {
     // Topological sort with longest path calculation
     const queue: string[] = [];
     const sortedNodes: string[] = [];
-    
+
     // Start with nodes that have no dependencies
     for (const [taskId, degree] of inDegree.entries()) {
       if (degree === 0) {
@@ -470,21 +470,21 @@ export class DependencyVisualizationService {
     while (queue.length > 0) {
       const taskId = queue.shift()!;
       sortedNodes.push(taskId);
-      
+
       const node = graph.nodes.get(taskId)!;
-      const taskDuration = node.task.estimated_hours || 1;
-      
+
       for (const dependentId of node.dependents) {
         const currentPath = longestPaths.get(dependentId)!;
-        const newPath = (longestPaths.get(taskId)! + (graph.nodes.get(dependentId)!.task.estimated_hours || 1));
-        
+        const newPath =
+          longestPaths.get(taskId)! + (graph.nodes.get(dependentId)!.task.estimated_hours || 1);
+
         if (newPath > currentPath) {
           longestPaths.set(dependentId, newPath);
         }
 
         const newInDegree = inDegree.get(dependentId)! - 1;
         inDegree.set(dependentId, newInDegree);
-        
+
         if (newInDegree === 0) {
           queue.push(dependentId);
         }
@@ -501,15 +501,15 @@ export class DependencyVisualizationService {
   ): Task[] {
     const path: Task[] = [];
     let currentId = endTaskId;
-    
+
     while (currentId) {
       const node = graph.nodes.get(currentId)!;
       path.unshift(node.task);
-      
+
       // Find the dependency that contributed to the longest path
       let maxDependency: string | null = null;
       let maxPath = -1;
-      
+
       for (const depId of node.dependencies) {
         const depPath = longestPaths.get(depId)!;
         if (depPath > maxPath) {
@@ -517,21 +517,27 @@ export class DependencyVisualizationService {
           maxDependency = depId;
         }
       }
-      
+
       currentId = maxDependency!;
     }
-    
+
     return path;
   }
 
   private getStatusIcon(status: string): string {
     switch (status) {
-      case 'todo': return '⭕';
-      case 'in_progress': return '🔄';
-      case 'done': return '✅';
-      case 'blocked': return '🚫';
-      case 'archived': return '📦';
-      default: return '❓';
+      case 'todo':
+        return '⭕';
+      case 'in_progress':
+        return '🔄';
+      case 'done':
+        return '✅';
+      case 'blocked':
+        return '🚫';
+      case 'archived':
+        return '📦';
+      default:
+        return '❓';
     }
   }
 
@@ -545,12 +551,18 @@ export class DependencyVisualizationService {
 
   private getStatusColor(status: string): string {
     switch (status) {
-      case 'todo': return 'lightblue';
-      case 'in_progress': return 'yellow';
-      case 'done': return 'lightgreen';
-      case 'blocked': return 'red';
-      case 'archived': return 'gray';
-      default: return 'white';
+      case 'todo':
+        return 'lightblue';
+      case 'in_progress':
+        return 'yellow';
+      case 'done':
+        return 'lightgreen';
+      case 'blocked':
+        return 'red';
+      case 'archived':
+        return 'gray';
+      default:
+        return 'white';
     }
   }
 }

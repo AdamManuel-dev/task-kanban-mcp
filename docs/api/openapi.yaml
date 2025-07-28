@@ -10,12 +10,18 @@ info:
     
     ## Features
     - **Task Management**: Create, update, delete, and organize tasks
+    - **Subtask Support**: Hierarchical task organization with progress tracking
+    - **Task Dependencies**: Dependency management with cycle detection
+    - **Task Templates**: Predefined templates for common task types
     - **Board Management**: Multi-board support with customizable columns
     - **Real-time Updates**: WebSocket integration for live collaboration
     - **AI Integration**: Context-aware task prioritization and suggestions
+    - **Analytics & Reporting**: Completion analytics and velocity tracking
+    - **Performance Monitoring**: System health and performance dashboards
     - **Backup & Recovery**: Comprehensive data backup and restoration
     - **Advanced Search**: Full-text search across tasks and notes
     - **Tag System**: Hierarchical tagging with automatic categorization
+    - **Git Integration**: Branch-based board mapping and context awareness
     
     ## Authentication
     All API requests require authentication using API keys.
@@ -2199,3 +2205,647 @@ components:
             processingTime:
               type: number
               description: Processing time in milliseconds 
+
+  # NEW ENDPOINTS - Subtasks, Dependencies, Templates, Analytics, Performance
+
+  /tasks/{taskId}/subtasks:
+    get:
+      summary: Get subtasks for a task
+      tags: [Tasks]
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of subtasks
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Task'
+    post:
+      summary: Create a subtask
+      tags: [Tasks]
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                priority:
+                  type: integer
+                assignee:
+                  type: string
+                due_date:
+                  type: string
+                  format: date-time
+      responses:
+        '201':
+          description: Subtask created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Task'
+
+  /tasks/{taskId}/dependencies:
+    get:
+      summary: Get task dependencies
+      tags: [Tasks]
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Task dependencies
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      dependsOn:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Task'
+                      dependents:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Task'
+    post:
+      summary: Add task dependency
+      tags: [Tasks]
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dependsOnTaskId:
+                  type: string
+                dependencyType:
+                  type: string
+                  enum: [blocks, relates_to, duplicates]
+      responses:
+        '201':
+          description: Dependency added
+        '400':
+          description: Circular dependency detected
+
+  /templates:
+    get:
+      summary: Get task templates
+      tags: [Templates]
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum: [bug, feature, meeting, maintenance, research, review, custom]
+      responses:
+        '200':
+          description: List of templates
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TaskTemplate'
+    post:
+      summary: Create task template
+      tags: [Templates]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskTemplateCreate'
+      responses:
+        '201':
+          description: Template created
+
+  /templates/{templateId}:
+    get:
+      summary: Get task template
+      tags: [Templates]
+      parameters:
+        - name: templateId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Task template details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/TaskTemplate'
+
+  /analytics/completion:
+    get:
+      summary: Get task completion analytics
+      tags: [Analytics]
+      parameters:
+        - name: boardId
+          in: query
+          schema:
+            type: string
+        - name: timeframe
+          in: query
+          schema:
+            type: integer
+            description: Timeframe in days
+      responses:
+        '200':
+          description: Completion analytics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/CompletionAnalytics'
+
+  /analytics/velocity:
+    get:
+      summary: Get velocity metrics
+      tags: [Analytics]
+      parameters:
+        - name: boardId
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Velocity metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/VelocityMetrics'
+
+  /analytics/dashboard:
+    get:
+      summary: Get analytics dashboard
+      tags: [Analytics]
+      parameters:
+        - name: boardId
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Analytics dashboard data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/AnalyticsDashboard'
+
+  /performance/health:
+    get:
+      summary: Get system health metrics
+      tags: [Performance]
+      responses:
+        '200':
+          description: System health metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/SystemHealth'
+
+  /performance/dashboard:
+    get:
+      summary: Get performance dashboard
+      tags: [Performance]
+      responses:
+        '200':
+          description: Performance dashboard data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/PerformanceDashboard'
+
+  /performance/metrics/endpoint:
+    get:
+      summary: Get endpoint-specific metrics
+      tags: [Performance]
+      parameters:
+        - name: endpoint
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: timeframe
+          in: query
+          schema:
+            type: integer
+            description: Timeframe in milliseconds
+      responses:
+        '200':
+          description: Endpoint metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/EndpointMetrics'
+
+  /performance/alerts:
+    get:
+      summary: Get alert rules
+      tags: [Performance]
+      responses:
+        '200':
+          description: List of alert rules
+    post:
+      summary: Create alert rule
+      tags: [Performance]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlertRule'
+      responses:
+        '201':
+          description: Alert rule created
+
+  /performance/alerts/{ruleId}:
+    delete:
+      summary: Delete alert rule
+      tags: [Performance]
+      parameters:
+        - name: ruleId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Alert rule deleted
+
+components:
+  schemas:
+    TaskTemplate:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+          enum: [bug, feature, meeting, maintenance, research, review, custom]
+        title_template:
+          type: string
+        description_template:
+          type: string
+        priority:
+          type: integer
+        estimated_hours:
+          type: number
+        default_tags:
+          type: array
+          items:
+            type: string
+        is_system:
+          type: boolean
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    TaskTemplateCreate:
+      type: object
+      required: [name, title_template, category]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+          enum: [bug, feature, meeting, maintenance, research, review, custom]
+        title_template:
+          type: string
+        description_template:
+          type: string
+        priority:
+          type: integer
+        estimated_hours:
+          type: number
+        default_tags:
+          type: array
+          items:
+            type: string
+
+    CompletionAnalytics:
+      type: object
+      properties:
+        totalTasks:
+          type: integer
+        completedTasks:
+          type: integer
+        completionRate:
+          type: number
+        averageCompletionTime:
+          type: number
+        completionsByStatus:
+          type: object
+        completionsByPriority:
+          type: object
+        completionsByTimeframe:
+          type: object
+          properties:
+            today:
+              type: integer
+            thisWeek:
+              type: integer
+            thisMonth:
+              type: integer
+            lastMonth:
+              type: integer
+        topPerformers:
+          type: array
+          items:
+            type: object
+            properties:
+              assignee:
+                type: string
+              completedTasks:
+                type: integer
+              averageTime:
+                type: number
+        trends:
+          type: object
+          properties:
+            dailyCompletions:
+              type: array
+              items:
+                type: object
+                properties:
+                  date:
+                    type: string
+                  count:
+                    type: integer
+
+    VelocityMetrics:
+      type: object
+      properties:
+        currentSprint:
+          type: object
+          properties:
+            plannedPoints:
+              type: number
+            completedPoints:
+              type: number
+            remainingPoints:
+              type: number
+            velocityRate:
+              type: number
+        historicalVelocity:
+          type: object
+          properties:
+            last7Days:
+              type: number
+            last14Days:
+              type: number
+            last30Days:
+              type: number
+            average:
+              type: number
+            trend:
+              type: string
+              enum: [increasing, decreasing, stable]
+
+    AnalyticsDashboard:
+      type: object
+      properties:
+        completion:
+          $ref: '#/components/schemas/CompletionAnalytics'
+        velocity:
+          $ref: '#/components/schemas/VelocityMetrics'
+        productivity:
+          type: object
+        summary:
+          type: object
+          properties:
+            keyMetrics:
+              type: object
+            alerts:
+              type: array
+              items:
+                type: string
+            achievements:
+              type: array
+              items:
+                type: string
+
+    SystemHealth:
+      type: object
+      properties:
+        uptime:
+          type: number
+        memoryUsage:
+          type: object
+        cpuUsage:
+          type: object
+        requestsPerMinute:
+          type: number
+        errorRate:
+          type: number
+        averageResponseTime:
+          type: number
+        databaseHealth:
+          type: object
+        websocketConnections:
+          type: number
+
+    PerformanceDashboard:
+      type: object
+      properties:
+        overview:
+          type: object
+          properties:
+            totalRequests:
+              type: integer
+            averageResponseTime:
+              type: number
+            errorRate:
+              type: number
+            uptime:
+              type: number
+            healthScore:
+              type: number
+              minimum: 0
+              maximum: 100
+        realtime:
+          type: object
+          properties:
+            requestsPerSecond:
+              type: number
+            activeUsers:
+              type: integer
+            memoryUsage:
+              type: number
+            cpuUsage:
+              type: number
+        topEndpoints:
+          type: array
+          items:
+            type: object
+            properties:
+              endpoint:
+                type: string
+              requests:
+                type: integer
+              averageTime:
+                type: number
+              errorRate:
+                type: number
+        alerts:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                enum: [warning, error, critical]
+              message:
+                type: string
+              timestamp:
+                type: integer
+
+    EndpointMetrics:
+      type: object
+      properties:
+        endpoint:
+          type: string
+        timeframe:
+          type: integer
+        statistics:
+          type: object
+          properties:
+            totalRequests:
+              type: integer
+            averageResponseTime:
+              type: number
+            errorRate:
+              type: number
+            maxResponseTime:
+              type: number
+            minResponseTime:
+              type: number
+            p95ResponseTime:
+              type: number
+            p99ResponseTime:
+              type: number
+
+    AlertRule:
+      type: object
+      required: [id, name, condition, severity, action, enabled]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        condition:
+          type: object
+          properties:
+            metric:
+              type: string
+              enum: [responseTime, errorRate, memoryUsage, dbQueryTime]
+            operator:
+              type: string
+              enum: ['>', '<', '=', '>=', '<=']
+            threshold:
+              type: number
+            duration:
+              type: number
+        severity:
+          type: string
+          enum: [warning, error, critical]
+        action:
+          type: string
+          enum: [log, email, webhook]
+        enabled:
+          type: boolean 

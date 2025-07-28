@@ -353,7 +353,7 @@ export class InputSanitizer {
   /**
    * Check if input contains suspicious patterns
    */
-  detectSuspiciousPatterns(input: string): { suspicious: boolean; patterns: string[] } {
+  static detectSuspiciousPatterns(input: string): { suspicious: boolean; patterns: string[] } {
     const suspiciousPatterns = [
       { pattern: /javascript:/i, name: 'JavaScript protocol' },
       { pattern: /data:/i, name: 'Data protocol' },
@@ -420,7 +420,7 @@ export class InputSanitizer {
     }
 
     // Check for excessive special characters
-    const specialCharCount = (input.match(/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?]/g) || []).length;
+    const specialCharCount = (input.match(/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/g) || []).length;
     const specialCharRatio = specialCharCount / input.length;
     if (specialCharRatio > 0.3) {
       issues.push('High ratio of special characters');

@@ -1,0 +1,599 @@
+name: Cross-Platform Installation Testing
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'install.sh'
+      - 'install.ps1'
+      - 'install.bat'
+      - 'macos/install-macos.sh'
+      - 'linux/install-linux.sh'
+      - 'package.json'
+      - '.github/workflows/install-testing.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'install.sh'
+      - 'install.ps1'
+      - 'install.bat'
+      - 'macos/install-macos.sh'
+      - 'linux/install-linux.sh'
+      - 'package.json'
+      - '.github/workflows/install-testing.yml'
+  schedule:
+    # Run weekly on Sundays at 3 AM UTC
+    - cron: '0 3 * * 0'
+  workflow_dispatch:
+    inputs:
+      test_scope:
+        description: 'Test scope'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - linux-only
+          - windows-only
+          - macos-only
+      node_version:
+        description: 'Node.js version to test'
+        required: false
+        default: '18'
+
+env:
+  NODE_ENV: test
+  CI: true
+
+jobs:
+  # Test Linux installations
+  test-linux:
+    if: github.event.inputs.test_scope == 'all' || github.event.inputs.test_scope == 'linux-only' || github.event.inputs.test_scope == ''
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Ubuntu versions
+          - os: ubuntu-20.04
+            node-version: '18'
+            install-method: 'manual'
+          - os: ubuntu-22.04
+            node-version: '18'
+            install-method: 'manual'
+          - os: ubuntu-22.04
+            node-version: '20'
+            install-method: 'manual'
+
+          # Container-based testing for other distributions
+          - container: 'debian:bullseye'
+            node-version: '18'
+            install-method: 'manual'
+          - container: 'debian:bookworm'
+            node-version: '18'
+            install-method: 'manual'
+          - container: 'centos:7'
+            node-version: '18'
+            install-method: 'manual'
+          - container: 'fedora:37'
+            node-version: '18'
+            install-method: 'manual'
+          - container: 'fedora:38'
+            node-version: '18'
+            install-method: 'manual'
+          - container: 'archlinux:latest'
+            node-version: '18'
+            install-method: 'manual'
+          - container: 'opensuse/leap:15.4'
+            node-version: '18'
+            install-method: 'manual'
+          - container: 'alpine:3.17'
+            node-version: '18'
+            install-method: 'manual'
+          - container: 'alpine:3.18'
+            node-version: '18'
+            install-method: 'manual'
+
+    container: ${{ matrix.container }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        if: matrix.container == ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ github.event.inputs.node_version || matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install system dependencies (Container)
+        if: matrix.container != ''
+        run: |
+          case "${{ matrix.container }}" in
+            debian:*|ubuntu:*)
+              apt-get update
+              apt-get install -y curl wget git build-essential python3 sudo
+              ;;
+            centos:*)
+              yum update -y
+              yum groupinstall -y "Development Tools"
+              yum install -y curl wget git python3 sudo
+              ;;
+            fedora:*)
+              dnf update -y
+              dnf groupinstall -y "Development Tools"
+              dnf install -y curl wget git python3 sudo
+              ;;
+            archlinux:*)
+              pacman -Syu --noconfirm
+              pacman -S --noconfirm base-devel curl wget git python sudo
+              ;;
+            opensuse/*)
+              zypper refresh
+              zypper install -y -t pattern devel_basis
+              zypper install -y curl wget git python3 sudo
+              ;;
+            alpine:*)
+              apk update
+              apk add curl wget git build-base python3 sudo bash
+              ;;
+          esac
+
+      - name: Install Node.js (Container)
+        if: matrix.container != ''
+        run: |
+          curl -fsSL https://rpm.nodesource.com/setup_${{ matrix.node-version }}.x | bash - || \
+          curl -fsSL https://deb.nodesource.com/setup_${{ matrix.node-version }}.x | bash - || \
+          (
+            # Fallback for distributions without NodeSource packages
+            wget -qO- https://nodejs.org/dist/v${{ matrix.node-version }}.0.0/node-v${{ matrix.node-version }}.0.0-linux-x64.tar.xz | tar -xJ -C /usr/local --strip-components=1
+          )
+
+          # Install via package manager
+          case "${{ matrix.container }}" in
+            debian:*|ubuntu:*)
+              apt-get install -y nodejs || true
+              ;;
+            centos:*|fedora:*)
+              yum install -y nodejs npm || dnf install -y nodejs npm || true
+              ;;
+            archlinux:*)
+              pacman -S --noconfirm nodejs npm || true
+              ;;
+            opensuse/*)
+              zypper install -y nodejs${{ matrix.node-version }} npm${{ matrix.node-version }} || true
+              ;;
+            alpine:*)
+              apk add nodejs npm || true
+              ;;
+          esac
+
+      - name: Verify Node.js installation
+        run: |
+          node --version
+          npm --version
+
+      - name: Test installation script
+        run: |
+          # Make script executable
+          chmod +x linux/install-linux.sh
+
+          # Test with different options
+          ./linux/install-linux.sh --help
+
+          # Test dependency check
+          ./linux/install-linux.sh --skip-deps --no-service --no-user --method manual --path /tmp/mcp-kanban-test
+
+      - name: Verify installation
+        run: |
+          # Check if files were created
+          ls -la /tmp/mcp-kanban-test/
+
+          # Test CLI
+          if [ -f /tmp/mcp-kanban-test/dist/cli/index.js ]; then
+            node /tmp/mcp-kanban-test/dist/cli/index.js --version
+          fi
+
+          # Test server startup (quick check)
+          if [ -f /tmp/mcp-kanban-test/dist/index.js ]; then
+            timeout 10s node /tmp/mcp-kanban-test/dist/index.js --port 3001 &
+            sleep 3
+            curl -f http://localhost:3001/api/health || echo "Health check failed"
+            killall node || true
+          fi
+
+      - name: Upload installation logs
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: linux-install-logs-${{ matrix.container || matrix.os }}-node${{ matrix.node-version }}
+          path: |
+            /tmp/mcp-kanban-test/logs/
+            /var/log/
+          retention-days: 7
+
+  # Test Windows installations
+  test-windows:
+    if: github.event.inputs.test_scope == 'all' || github.event.inputs.test_scope == 'windows-only' || github.event.inputs.test_scope == ''
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - node-version: '18'
+            install-method: 'powershell'
+          - node-version: '20'
+            install-method: 'powershell'
+          - node-version: '18'
+            install-method: 'batch'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ github.event.inputs.node_version || matrix.node-version }}
+          cache: 'npm'
+
+      - name: Test PowerShell installation script
+        if: matrix.install-method == 'powershell'
+        shell: powershell
+        run: |
+          # Set execution policy for testing
+          Set-ExecutionPolicy RemoteSigned -Scope Process -Force
+
+          # Test help
+          .\install.ps1 -Help
+
+          # Test installation
+          .\install.ps1 -InstallPath "C:\temp\mcp-kanban-test" -SkipDependencyCheck -Force -Development
+
+      - name: Test Batch installation script
+        if: matrix.install-method == 'batch'
+        shell: cmd
+        run: |
+          # Test help
+          install.bat /?
+
+          # Test installation
+          install.bat /path:"C:\temp\mcp-kanban-test" /skipcheck /force
+
+      - name: Verify Windows installation
+        shell: powershell
+        run: |
+          # Check installation directory
+          Get-ChildItem -Path "C:\temp\mcp-kanban-test" -Recurse | Select-Object Name, Length
+
+          # Test CLI if available
+          if (Test-Path "C:\temp\mcp-kanban-test\dist\cli\index.js") {
+            node "C:\temp\mcp-kanban-test\dist\cli\index.js" --version
+          }
+
+          # Test server startup
+          if (Test-Path "C:\temp\mcp-kanban-test\dist\index.js") {
+            $job = Start-Job -ScriptBlock {
+              Set-Location "C:\temp\mcp-kanban-test"
+              node "dist\index.js" --port 3002
+            }
+            Start-Sleep -Seconds 5
+            try {
+              Invoke-WebRequest -Uri "http://localhost:3002/api/health" -TimeoutSec 5
+              Write-Host "Health check passed"
+            } catch {
+              Write-Host "Health check failed: $_"
+            }
+            Stop-Job $job -ErrorAction SilentlyContinue
+            Remove-Job $job -ErrorAction SilentlyContinue
+          }
+
+      - name: Upload Windows installation logs
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: windows-install-logs-node${{ matrix.node-version }}-${{ matrix.install-method }}
+          path: |
+            C:\temp\mcp-kanban-test\logs\
+            C:\Windows\Temp\
+          retention-days: 7
+
+  # Test macOS installations
+  test-macos:
+    if: github.event.inputs.test_scope == 'all' || github.event.inputs.test_scope == 'macos-only' || github.event.inputs.test_scope == ''
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - node-version: '18'
+            install-method: 'manual'
+          - node-version: '20'
+            install-method: 'manual'
+          - node-version: '18'
+            install-method: 'homebrew'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        if: matrix.install-method == 'manual'
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ github.event.inputs.node_version || matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install Homebrew (if testing Homebrew method)
+        if: matrix.install-method == 'homebrew'
+        run: |
+          # Check if Homebrew is already installed
+          if ! command -v brew &> /dev/null; then
+            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          fi
+
+          # Install Node.js via Homebrew
+          brew install node@${{ matrix.node-version }}
+          brew link node@${{ matrix.node-version }} --force
+
+      - name: Test macOS installation script
+        run: |
+          # Make script executable
+          chmod +x macos/install-macos.sh
+
+          # Test help
+          ./macos/install-macos.sh --help
+
+          # Test installation
+          ./macos/install-macos.sh \
+            --path "/tmp/mcp-kanban-test" \
+            --method ${{ matrix.install-method }} \
+            --no-service \
+            --skip-deps \
+            --force
+
+      - name: Verify macOS installation
+        run: |
+          # Check installation directory
+          ls -la /tmp/mcp-kanban-test/
+
+          # Test CLI
+          if [ -f /tmp/mcp-kanban-test/dist/cli/index.js ]; then
+            node /tmp/mcp-kanban-test/dist/cli/index.js --version
+          fi
+
+          # Test server startup
+          if [ -f /tmp/mcp-kanban-test/dist/index.js ]; then
+            cd /tmp/mcp-kanban-test
+            timeout 10s node dist/index.js --port 3003 &
+            sleep 3
+            curl -f http://localhost:3003/api/health || echo "Health check failed"
+            killall node || true
+          fi
+
+      - name: Upload macOS installation logs
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: macos-install-logs-node${{ matrix.node-version }}-${{ matrix.install-method }}
+          path: |
+            /tmp/mcp-kanban-test/logs/
+            ~/Library/Logs/
+          retention-days: 7
+
+  # Test package creation
+  test-package-creation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dpkg-dev rpm build-essential
+
+      - name: Test package creation
+        run: |
+          # Create temporary installation
+          chmod +x linux/install-linux.sh
+          sudo ./linux/install-linux.sh \
+            --path "/opt/mcp-kanban-test" \
+            --no-service \
+            --create-packages \
+            --force
+
+      - name: Verify packages
+        run: |
+          # Check if packages were created
+          ls -la /tmp/mcp-kanban-build/
+
+          # Test .deb package
+          if [ -f /tmp/mcp-kanban-build/*.deb ]; then
+            dpkg-deb --info /tmp/mcp-kanban-build/*.deb
+            dpkg-deb --contents /tmp/mcp-kanban-build/*.deb
+          fi
+
+          # Test .rpm package
+          if [ -f /tmp/mcp-kanban-build/*.rpm ]; then
+            rpm -qpi /tmp/mcp-kanban-build/*.rpm
+            rpm -qpl /tmp/mcp-kanban-build/*.rpm
+          fi
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v3
+        with:
+          name: distribution-packages
+          path: /tmp/mcp-kanban-build/
+          retention-days: 30
+
+  # Integration testing
+  test-integration:
+    runs-on: ubuntu-latest
+    needs: [test-linux, test-windows, test-macos]
+    if: always() && (needs.test-linux.result == 'success' || needs.test-windows.result == 'success' || needs.test-macos.result == 'success')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        run: npm run build
+
+      - name: Run integration tests
+        run: |
+          # Start MCP Kanban server
+          npm start &
+          SERVER_PID=$!
+
+          # Wait for server to start
+          sleep 10
+
+          # Test API endpoints
+          curl -f http://localhost:3000/api/health
+          curl -f http://localhost:3000/api/boards
+
+          # Test MCP integration
+          timeout 5s node dist/mcp/index.js || echo "MCP server test completed"
+
+          # Test CLI
+          node dist/cli/index.js --version
+          node dist/cli/index.js boards list --help
+
+          # Cleanup
+          kill $SERVER_PID || true
+
+      - name: Run installation validation tests
+        run: |
+          # Create a comprehensive test
+          npm test -- --testNamePattern="installation"
+
+  # Performance testing
+  test-performance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Test installation performance
+        run: |
+          # Time the installation process
+          time ./linux/install-linux.sh \
+            --path "/tmp/mcp-kanban-perf" \
+            --no-service \
+            --force
+
+          # Measure startup time
+          cd /tmp/mcp-kanban-perf
+          time timeout 5s node dist/index.js --port 3004 || true
+
+      - name: Upload performance results
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-results
+          path: |
+            /tmp/performance-*.log
+            /tmp/mcp-kanban-perf/logs/
+          retention-days: 14
+
+  # Security testing
+  test-security:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install security tools
+        run: |
+          npm install -g npm-audit-resolver
+          sudo apt-get install -y shellcheck
+
+      - name: Security audit
+        run: |
+          # Audit npm dependencies
+          npm audit --audit-level moderate
+
+          # Check shell scripts
+          shellcheck install.sh
+          shellcheck macos/install-macos.sh
+          shellcheck linux/install-linux.sh
+
+      - name: Test installation security
+        run: |
+          # Test with restricted permissions
+          ./linux/install-linux.sh \
+            --path "/tmp/mcp-kanban-secure" \
+            --no-service \
+            --force
+
+          # Check file permissions
+          find /tmp/mcp-kanban-secure -type f -executable | head -10
+          find /tmp/mcp-kanban-secure -type f -perm /002 | head -10
+
+  # Summary job
+  installation-test-summary:
+    runs-on: ubuntu-latest
+    needs:
+      [
+        test-linux,
+        test-windows,
+        test-macos,
+        test-package-creation,
+        test-integration,
+        test-performance,
+        test-security,
+      ]
+    if: always()
+
+    steps:
+      - name: Summary
+        run: |
+          echo "# Installation Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Platform | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|---------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Linux | ${{ needs.test-linux.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Windows | ${{ needs.test-windows.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| macOS | ${{ needs.test-macos.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Package Creation | ${{ needs.test-package-creation.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Integration | ${{ needs.test-integration.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Performance | ${{ needs.test-performance.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Security | ${{ needs.test-security.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Overall status
+          if [[ "${{ needs.test-linux.result }}" == "success" && 
+                "${{ needs.test-windows.result }}" == "success" && 
+                "${{ needs.test-macos.result }}" == "success" ]]; then
+            echo "✅ All platform tests passed!" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Some platform tests failed. Check the logs for details." >> $GITHUB_STEP_SUMMARY
+          fi

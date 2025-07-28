@@ -439,10 +439,14 @@ export class TransactionManager {
    * ```
    */
   static transactional(options: TransactionOptions = {}) {
-    return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+    return function transactionDecorator(
+      _target: any,
+      _propertyKey: string,
+      descriptor: PropertyDescriptor
+    ) {
       const originalMethod = descriptor.value;
 
-      descriptor.value = async function (...args: any[]) {
+      descriptor.value = async function wrappedTransactionMethod(...args: any[]) {
         const transactionManager = new TransactionManager(this.db);
         return transactionManager.executeTransaction(
           async _context => originalMethod.apply(this, args),
@@ -481,7 +485,7 @@ export class TransactionManager {
 
     for (let i = context.rollbackActions.length - 1; i >= 0; i -= 1) {
       try {
-        await context.rollbackActions[i]();
+        await context.rollbackActions[i]?.();
       } catch (error) {
         logger.error('Rollback action failed', {
           transactionId: context.id,
@@ -576,7 +580,7 @@ export class TransactionManager {
    */
   private static isRetryableError(error: unknown): boolean {
     if (error instanceof DatabaseError) {
-      return error.isRetryable();
+      return error.context?.metadata?.isRetryable as boolean;
     }
     return false;
   }

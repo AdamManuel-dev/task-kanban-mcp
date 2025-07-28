@@ -19,7 +19,9 @@
  * ```
  */
 
+import type { UpdateBoardRequest } from '@/types';
 import { logger } from '../utils/logger';
+import type { CreateTaskRequest, UpdateTaskRequest } from '../services/TaskService';
 import { TaskService } from '../services/TaskService';
 import { BoardService } from '../services/BoardService';
 import { NoteService } from '../services/NoteService';
@@ -32,8 +34,7 @@ import type {
   SubscriptionChannel,
   SubscribeMessage,
   UnsubscribeMessage,
-  GetTaskMessage,
-  UpdateTaskMessage,
+  UpdateSubtaskMessage,
 } from './types';
 
 /**
@@ -128,13 +129,18 @@ export class MessageHandler {
         return;
       }
 
+      if (!message.payload) {
+        this.webSocketManager.sendError(clientId, 'INVALID_REQUEST', 'Invalid payload', message.id);
+        return;
+      }
+
       const context: MessageContext = {
         clientId,
         client,
         message,
         subscriptionManager: this.webSocketManager.getSubscriptionManager(),
         webSocketManager: this.webSocketManager,
-      };
+      } as MessageContext;
 
       logger.debug('Handling WebSocket message', {
         clientId,
@@ -189,15 +195,43 @@ export class MessageHandler {
           break;
 
         case 'user_presence':
-          await this.handleUserPresence(context);
+          this.handleUserPresence(context);
           break;
 
         case 'typing_start':
-          await this.handleTypingStart(context);
+          this.handleTypingStart(context);
           break;
 
         case 'typing_stop':
-          await this.handleTypingStop(context);
+          this.handleTypingStop(context);
+          break;
+
+        case 'add_dependency':
+          await this.handleAddDependency(context);
+          break;
+
+        case 'remove_dependency':
+          await this.handleRemoveDependency(context);
+          break;
+
+        case 'create_subtask':
+          await this.handleCreateSubtask(context);
+          break;
+
+        case 'update_subtask':
+          await this.handleUpdateSubtask(context);
+          break;
+
+        case 'delete_subtask':
+          await this.handleDeleteSubtask(context);
+          break;
+
+        case 'bulk_operation':
+          await this.handleBulkOperation(context);
+          break;
+
+        case 'filter_subscription':
+          this.handleFilterSubscription(context);
           break;
 
         default:
@@ -400,7 +434,7 @@ export class MessageHandler {
    */
   private async handleGetTask(context: MessageContext): Promise<void> {
     const { clientId, message } = context;
-    const payload = message.payload as GetTaskMessage['payload'];
+    const payload = message.payload as { taskId: string };
 
     if (!payload?.taskId) {
       this.webSocketManager.sendError(
@@ -413,7 +447,7 @@ export class MessageHandler {
     }
 
     try {
-      const task = await this.taskService.getTasks(payload.taskId);
+      const task = await this.taskService.getTaskById(payload.taskId);
       if (!task) {
         this.webSocketManager.sendError(clientId, 'TASK_NOT_FOUND', 'Task not found', message.id);
         return;
@@ -454,7 +488,7 @@ export class MessageHandler {
    */
   private async handleUpdateTask(context: MessageContext): Promise<void> {
     const { clientId, message } = context;
-    const payload = message.payload as UpdateTaskMessage['payload'];
+    const payload = message.payload as UpdateSubtaskMessage['payload'];
 
     if (!payload?.taskId || !payload?.updates) {
       this.webSocketManager.sendError(
@@ -476,9 +510,10 @@ export class MessageHandler {
       });
 
       // Broadcast update to other clients subscribed to this task
-      this.webSocketManager.broadcastToChannel(`task:${payload.taskId}`, {
+      this.webSocketManager.broadcast({
         type: 'task_updated',
         payload: { task },
+        id: message.id,
       });
     } catch (error) {
       this.webSocketManager.sendError(
@@ -513,7 +548,7 @@ export class MessageHandler {
    */
   private async handleCreateTask(context: MessageContext): Promise<void> {
     const { clientId, client, message } = context;
-    const taskData = message.payload;
+    const taskData = message.payload as CreateTaskRequest | undefined;
 
     if (!taskData?.title || !taskData.board_id) {
       this.webSocketManager.sendError(
@@ -582,7 +617,7 @@ export class MessageHandler {
    */
   private async handleDeleteTask(context: MessageContext): Promise<void> {
     const { clientId, client, message } = context;
-    const { taskId } = message.payload;
+    const { taskId } = message.payload as { taskId: string };
 
     if (!taskId) {
       this.webSocketManager.sendError(
@@ -657,7 +692,7 @@ export class MessageHandler {
    */
   private async handleGetBoard(context: MessageContext): Promise<void> {
     const { clientId, client, message } = context;
-    const { boardId } = message.payload;
+    const { boardId } = message.payload as { boardId: string };
 
     if (!boardId) {
       this.webSocketManager.sendError(
@@ -729,9 +764,9 @@ export class MessageHandler {
    */
   private async handleUpdateBoard(context: MessageContext): Promise<void> {
     const { clientId, client, message } = context;
-    const { boardId, updates } = message.payload;
+    const payload = message.payload as UpdateBoardRequest | undefined;
 
-    if (!boardId || !updates) {
+    if (!payload) {
       this.webSocketManager.sendError(
         clientId,
         'INVALID_REQUEST',
@@ -745,7 +780,7 @@ export class MessageHandler {
       // Check permissions
       if (
         !client.permissions.has('write:all') &&
-        !client.permissions.has(`write:board:${String(boardId)}`)
+        !client.permissions.has(`write:board:${String(payload)}`)
       ) {
         this.webSocketManager.sendError(
           clientId,
@@ -756,7 +791,7 @@ export class MessageHandler {
         return;
       }
 
-      const updatedBoard = await this.boardService.updateBoard(boardId, updates);
+      const updatedBoard = await this.boardService.updateBoard(message.id, payload);
 
       this.webSocketManager.sendToClient(clientId, {
         type: 'board_updated_response',
@@ -765,17 +800,17 @@ export class MessageHandler {
       });
 
       // Broadcast update to subscribers
-      this.webSocketManager.getSubscriptionManager().publishBoardUpdate(boardId, {
+      this.webSocketManager.getSubscriptionManager().publishBoardUpdate(message.id, {
         type: 'board:updated',
         data: {
           board: updatedBoard,
-          changes: updates,
+          changes: payload as Record<string, unknown>,
           updatedBy: client.user?.id ?? 'unknown',
         },
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      logger.error('Error updating board', { boardId, updates, error });
+      logger.error('Error updating board', { payload, error });
       this.webSocketManager.sendError(
         clientId,
         'BOARD_UPDATE_ERROR',
@@ -807,7 +842,7 @@ export class MessageHandler {
    */
   private async handleAddNote(context: MessageContext): Promise<void> {
     const { clientId, client, message } = context;
-    const noteData = message.payload;
+    const noteData = message.payload as { content: string; task_id: string } | undefined;
 
     if (!noteData?.content || !noteData.task_id) {
       this.webSocketManager.sendError(
@@ -877,9 +912,9 @@ export class MessageHandler {
    */
   private async handleAssignTag(context: MessageContext): Promise<void> {
     const { clientId, client, message } = context;
-    const { taskId, tagId } = message.payload;
+    const payload = message.payload as { taskId: string; tagId: string } | undefined;
 
-    if (!taskId || !tagId) {
+    if (!payload) {
       this.webSocketManager.sendError(
         clientId,
         'INVALID_REQUEST',
@@ -893,7 +928,7 @@ export class MessageHandler {
       // Check permissions
       if (
         !client.permissions.has('write:all') &&
-        !client.permissions.has(`write:task:${String(taskId)}`)
+        !client.permissions.has(`write:task:${String(payload?.taskId)}`)
       ) {
         this.webSocketManager.sendError(
           clientId,
@@ -904,23 +939,28 @@ export class MessageHandler {
         return;
       }
 
-      await this.tagService.addTagToTask(taskId, tagId);
+      await this.tagService.addTagToTask(payload?.taskId, payload?.tagId);
 
       this.webSocketManager.sendToClient(clientId, {
         type: 'tag_assigned_response',
         id: message.id,
-        payload: { taskId, tagId },
+        payload: { taskId: payload?.taskId, tagId: payload?.tagId },
       });
 
       // Get task to find board ID for broadcasting
-      const task = await this.taskService.getTaskById(taskId);
+      const task = await this.taskService.getTaskById(payload?.taskId);
       if (task) {
         this.webSocketManager
           .getSubscriptionManager()
-          .publishTagAssigned(taskId, tagId, task.board_id, client.user?.id ?? 'unknown');
+          .publishTagAssigned(
+            payload?.taskId,
+            payload?.tagId,
+            task.board_id,
+            client.user?.id ?? 'unknown'
+          );
       }
     } catch (error) {
-      logger.error('Error assigning tag', { taskId, tagId, error });
+      logger.error('Error assigning tag', { payload, error });
       this.webSocketManager.sendError(
         clientId,
         'TAG_ASSIGN_ERROR',
@@ -952,9 +992,15 @@ export class MessageHandler {
    */
   private handleUserPresence(context: MessageContext): void {
     const { clientId, client, message } = context;
-    const { status, boardId, taskId } = message.payload;
+    const payload = message.payload as
+      | {
+          status: string;
+          boardId: string;
+          taskId: string;
+        }
+      | undefined;
 
-    if (!status || !client.user) {
+    if (!payload || !client.user) {
       this.webSocketManager.sendError(
         clientId,
         'INVALID_REQUEST',
@@ -966,20 +1012,22 @@ export class MessageHandler {
 
     try {
       // Broadcast presence update
-      this.webSocketManager.getSubscriptionManager().publishUserPresence(client.user.id, status, {
-        boardId,
-        taskId,
-        userId: client.user.id,
-        timestamp: new Date().toISOString(),
-      });
+      this.webSocketManager
+        .getSubscriptionManager()
+        .publishUserPresence(client.user.id, payload.status as 'online' | 'offline' | 'away', {
+          boardId: payload.boardId,
+          taskId: payload.taskId,
+          userId: client.user.id,
+          timestamp: new Date().toISOString(),
+        });
 
       this.webSocketManager.sendToClient(clientId, {
         type: 'presence_updated',
         id: message.id,
-        payload: { status },
+        payload: { status: payload.status },
       });
     } catch (error) {
-      logger.error('Error updating user presence', { status, boardId, taskId, error });
+      logger.error('Error updating user presence', { payload, error });
       this.webSocketManager.sendError(
         clientId,
         'PRESENCE_ERROR',
@@ -1010,7 +1058,7 @@ export class MessageHandler {
    */
   private handleTypingStart(context: MessageContext): void {
     const { client, message } = context;
-    const { taskId, boardId } = message.payload;
+    const payload = message.payload as { taskId: string; boardId: string } | undefined;
 
     if (!client.user) {
       return;
@@ -1019,16 +1067,20 @@ export class MessageHandler {
     // Broadcast typing indicator
     this.webSocketManager
       .getSubscriptionManager()
-      .publishTaskUpdate(String(taskId ?? 'unknown'), String(boardId ?? 'unknown'), {
-        type: 'typing:start',
-        data: {
-          userId: client.user.id,
-          taskId,
-          boardId,
+      .publishTaskUpdate(
+        String(payload?.taskId ?? 'unknown'),
+        String(payload?.boardId ?? 'unknown'),
+        {
+          type: 'typing:start',
+          data: {
+            userId: client.user.id,
+            taskId: payload?.taskId ?? 'unknown',
+            boardId: payload?.boardId ?? 'unknown',
+            timestamp: new Date().toISOString(),
+          },
           timestamp: new Date().toISOString(),
-        },
-        timestamp: new Date().toISOString(),
-      });
+        }
+      );
   }
 
   /**
@@ -1052,7 +1104,7 @@ export class MessageHandler {
    */
   private handleTypingStop(context: MessageContext): void {
     const { client, message } = context;
-    const { taskId, boardId } = message.payload;
+    const payload = message.payload as { taskId: string; boardId: string } | undefined;
 
     if (!client.user) {
       return;
@@ -1061,15 +1113,428 @@ export class MessageHandler {
     // Broadcast typing stop indicator
     this.webSocketManager
       .getSubscriptionManager()
-      .publishTaskUpdate(String(taskId ?? 'unknown'), String(boardId ?? 'unknown'), {
-        type: 'typing:stop',
-        data: {
-          userId: client.user.id,
-          taskId,
-          boardId,
+      .publishTaskUpdate(
+        String(payload?.taskId ?? 'unknown'),
+        String(payload?.boardId ?? 'unknown'),
+        {
+          type: 'typing:stop',
+          data: {
+            userId: client.user.id,
+            taskId: payload?.taskId ?? 'unknown',
+            boardId: payload?.boardId ?? 'unknown',
+            timestamp: new Date().toISOString(),
+          },
           timestamp: new Date().toISOString(),
-        },
-        timestamp: new Date().toISOString(),
+        }
+      );
+  }
+
+  /**
+   * Handle adding dependency between tasks
+   */
+  private async handleAddDependency(context: MessageContext): Promise<void> {
+    const { message, clientId } = context;
+    const payload = message.payload as
+      | {
+          taskId: string;
+          dependsOnTaskId: string;
+          dependencyType: string;
+        }
+      | undefined;
+
+    try {
+      const dependency = await this.taskService.addDependency(
+        payload?.taskId ?? 'unknown',
+        payload?.dependsOnTaskId ?? 'unknown',
+        payload?.dependencyType as 'blocks' | 'relates_to' | 'duplicates' | undefined
+      );
+
+      // Get both tasks for the event
+      const [task, dependsOnTask] = await Promise.all([
+        this.taskService.getTaskById(payload?.taskId ?? 'unknown'),
+        this.taskService.getTaskById(payload?.dependsOnTaskId ?? 'unknown'),
+      ]);
+
+      if (task && dependsOnTask) {
+        // Broadcast dependency added event
+        this.webSocketManager.broadcast({
+          type: 'dependency:added',
+          payload: {
+            taskId: payload?.taskId ?? 'unknown',
+            dependsOnTaskId: payload?.dependsOnTaskId ?? 'unknown',
+            dependencyType: payload?.dependencyType || 'blocks',
+            addedBy: clientId,
+            boardId: task.board_id,
+          },
+          id: message.id,
+        });
+      }
+
+      this.webSocketManager.sendSuccess(clientId, dependency, message.id);
+    } catch (error) {
+      this.webSocketManager.sendError(
+        clientId,
+        'DEPENDENCY_ADD_FAILED',
+        `Failed to add dependency: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        message.id
+      );
+    }
+  }
+
+  /**
+   * Handle removing dependency between tasks
+   */
+  private async handleRemoveDependency(context: MessageContext): Promise<void> {
+    const { message, clientId } = context;
+    const payload = message.payload as
+      | {
+          taskId: string;
+          dependsOnTaskId: string;
+        }
+      | undefined;
+
+    try {
+      // Get task info before removing
+      const task = await this.taskService.getTaskById(payload?.taskId ?? 'unknown');
+
+      await this.taskService.removeDependency(
+        payload?.taskId ?? 'unknown',
+        payload?.dependsOnTaskId ?? 'unknown'
+      );
+
+      if (task) {
+        // Broadcast dependency removed event
+        this.webSocketManager.broadcast({
+          type: 'dependency:removed',
+          payload: {
+            taskId: payload?.taskId ?? 'unknown',
+            dependsOnTaskId: payload?.dependsOnTaskId ?? 'unknown',
+            removedBy: clientId,
+            boardId: task.board_id,
+          },
+          id: message.id,
+        });
+      }
+
+      this.webSocketManager.sendToClient(clientId, {
+        type: 'dependency_removed_response',
+        id: message.id,
+        payload: { success: true },
       });
+    } catch (error) {
+      this.webSocketManager.sendError(
+        clientId,
+        'DEPENDENCY_REMOVE_FAILED',
+        `Failed to remove dependency: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        message.id
+      );
+    }
+  }
+
+  /**
+   * Handle creating subtask
+   */
+  private async handleCreateSubtask(context: MessageContext): Promise<void> {
+    const { message, clientId } = context;
+    const payload = message.payload as
+      | {
+          due_date: Date;
+          parentTaskId: string;
+          title: string;
+          description: string;
+          priority: string;
+          assignee: string;
+        }
+      | undefined;
+
+    if (!payload) {
+      this.webSocketManager.sendError(clientId, 'INVALID_REQUEST', 'Invalid payload', message.id);
+      return;
+    }
+
+    try {
+      // Get parent task info
+      const parentTask = await this.taskService.getTaskById(payload?.parentTaskId ?? 'unknown');
+      if (!parentTask) {
+        throw new Error('Parent task not found');
+      }
+
+      const subtask = await this.taskService.createTask({
+        title: payload?.title ?? 'unknown',
+        description: payload?.description ?? 'unknown',
+        board_id: parentTask.board_id,
+        column_id: parentTask.column_id,
+        priority: (payload?.priority || parentTask.priority) as number,
+        assignee: payload?.assignee ?? 'unknown',
+        due_date: payload?.due_date ?? new Date(),
+        parent_task_id: payload?.parentTaskId ?? 'unknown',
+      });
+
+      // Calculate parent progress
+      const parentProgress = await this.calculateParentProgress(payload?.parentTaskId ?? 'unknown');
+
+      // Broadcast subtask created event
+      this.webSocketManager.broadcast({
+        type: 'subtask:created',
+        payload: {
+          subtask,
+          parentTaskId: payload?.parentTaskId,
+          createdBy: clientId,
+          boardId: parentTask.board_id,
+          parentProgress,
+        },
+        id: message.id,
+      });
+
+      this.webSocketManager.sendToClient(clientId, {
+        type: 'subtask_created_response',
+        id: message.id,
+        payload: { success: true },
+      });
+    } catch (error) {
+      this.webSocketManager.sendError(
+        clientId,
+        'SUBTASK_CREATE_FAILED',
+        `Failed to create subtask: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        message.id
+      );
+    }
+  }
+
+  /**
+   * Handle updating subtask
+   */
+  private async handleUpdateSubtask(context: MessageContext): Promise<void> {
+    const { message, clientId } = context;
+    const payload = message.payload as
+      | {
+          subtaskId: string;
+          updates: UpdateSubtaskMessage['payload'];
+        }
+      | undefined;
+
+    if (!payload) {
+      this.webSocketManager.sendError(clientId, 'INVALID_REQUEST', 'Invalid payload', message.id);
+      return;
+    }
+
+    try {
+      const existingSubtask = await this.taskService.getTaskById(payload?.subtaskId ?? 'unknown');
+      if (!existingSubtask?.parent_task_id) {
+        throw new Error('Subtask not found');
+      }
+
+      const updatedSubtask = await this.taskService.updateTask(
+        payload?.subtaskId ?? 'unknown',
+        payload?.updates as UpdateTaskRequest
+      );
+
+      // Calculate parent progress
+      const parentProgress = await this.calculateParentProgress(existingSubtask.parent_task_id);
+
+      // Broadcast subtask updated event
+      this.webSocketManager.broadcast({
+        type: 'subtask:updated',
+        payload: {
+          subtask: updatedSubtask,
+          changes: payload?.updates,
+          parentTaskId: existingSubtask.parent_task_id,
+          updatedBy: clientId,
+          boardId: updatedSubtask.board_id,
+          parentProgress,
+        },
+        id: message.id,
+      });
+
+      this.webSocketManager.sendToClient(clientId, {
+        type: 'subtask_updated_response',
+        id: message.id,
+        payload: { success: true },
+      });
+    } catch (error) {
+      this.webSocketManager.sendError(
+        clientId,
+        'SUBTASK_UPDATE_FAILED',
+        `Failed to update subtask: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        message.id
+      );
+    }
+  }
+
+  /**
+   * Handle deleting subtask
+   */
+  private async handleDeleteSubtask(context: MessageContext): Promise<void> {
+    const { message, clientId } = context;
+    const payload = message.payload as { subtaskId: string } | undefined;
+
+    try {
+      const subtask = await this.taskService.getTaskById(payload?.subtaskId ?? 'unknown');
+      if (!subtask?.parent_task_id) {
+        throw new Error('Subtask not found');
+      }
+
+      const parentTaskId = subtask.parent_task_id;
+      const boardId = subtask.board_id;
+
+      await this.taskService.deleteTask(payload?.subtaskId ?? 'unknown');
+
+      // Calculate parent progress after deletion
+      const parentProgress = await this.calculateParentProgress(parentTaskId);
+
+      // Broadcast subtask deleted event
+      this.webSocketManager.broadcast({
+        type: 'subtask:deleted',
+        payload: {
+          subtaskId: payload?.subtaskId ?? 'unknown',
+          parentTaskId,
+          deletedBy: clientId,
+          boardId,
+          parentProgress,
+        },
+        id: message.id,
+      });
+
+      this.webSocketManager.sendToClient(clientId, {
+        type: 'subtask_deleted_response',
+        id: message.id,
+        payload: { success: true },
+      });
+    } catch (error) {
+      this.webSocketManager.sendError(
+        clientId,
+        'SUBTASK_DELETE_FAILED',
+        `Failed to delete subtask: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        message.id
+      );
+    }
+  }
+
+  /**
+   * Handle bulk operations on multiple tasks
+   */
+  private async handleBulkOperation(context: MessageContext): Promise<void> {
+    const { message, clientId } = context;
+    const payload = message.payload as
+      | {
+          operation: string;
+          taskIds: string[];
+          changes: Record<string, unknown>;
+        }
+      | undefined;
+
+    try {
+      const results: any[] = [];
+      let boardId = '';
+
+      switch (payload?.operation) {
+        case 'update':
+          for (const taskId of payload?.taskIds ?? []) {
+            const task = await this.taskService.updateTask(taskId, payload?.changes ?? {});
+            results.push(task);
+            if (!boardId) boardId = task.board_id;
+          }
+          break;
+
+        case 'delete':
+          for (const taskId of payload.taskIds) {
+            const task = await this.taskService.getTaskById(taskId);
+            if (task) {
+              await this.taskService.deleteTask(taskId);
+              if (!boardId) boardId = task.board_id;
+            }
+          }
+          break;
+
+        default:
+          throw new Error(`Unsupported bulk operation: ${payload?.operation}`);
+      }
+
+      // Broadcast bulk operation event
+      this.webSocketManager.broadcast({
+        type: 'bulk:operation',
+        payload: {
+          operation: payload?.operation,
+          taskIds: payload?.taskIds,
+          changes: payload?.changes,
+          operatedBy: clientId,
+          boardId,
+          affectedCount: results.length,
+        },
+        id: message.id,
+      });
+
+      this.webSocketManager.sendToClient(clientId, {
+        type: 'bulk_operation_response',
+        id: message.id,
+        payload: { success: true, affectedCount: results.length, results },
+      });
+    } catch (error) {
+      this.webSocketManager.sendError(
+        clientId,
+        'BULK_OPERATION_FAILED',
+        `Failed to perform bulk operation: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        message.id
+      );
+    }
+  }
+
+  /**
+   * Handle filter subscription for client-side event filtering
+   */
+  private handleFilterSubscription(context: MessageContext): void {
+    const { message, clientId } = context;
+    const payload = message.payload as
+      | {
+          channel: string;
+          filter: Record<string, unknown>;
+        }
+      | undefined;
+
+    try {
+      // Store filter preferences for this client
+      context.subscriptionManager.setClientFilter(
+        clientId,
+        payload?.channel ?? 'unknown',
+        payload?.filter ?? {}
+      );
+
+      this.webSocketManager.sendToClient(clientId, {
+        type: 'filter_subscription_response',
+        id: message.id,
+        payload: { success: true },
+      });
+    } catch (error) {
+      this.webSocketManager.sendError(
+        clientId,
+        'FILTER_SUBSCRIPTION_FAILED',
+        `Failed to apply filter: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        message.id
+      );
+    }
+  }
+
+  /**
+   * Calculate progress percentage for parent task based on completed subtasks
+   */
+  private async calculateParentProgress(parentTaskId: string): Promise<number> {
+    try {
+      const taskWithSubtasks = await this.taskService.getTaskWithSubtasks(parentTaskId);
+      if (!taskWithSubtasks?.subtasks) {
+        return 0;
+      }
+
+      const totalSubtasks = taskWithSubtasks.subtasks.length;
+      if (totalSubtasks === 0) return 0;
+
+      const completedSubtasks = taskWithSubtasks.subtasks.filter(
+        subtask => subtask.status === 'done'
+      ).length;
+
+      return Math.round((completedSubtasks / totalSubtasks) * 100);
+    } catch (error) {
+      logger.error('Failed to calculate parent progress', { parentTaskId, error });
+      return 0;
+    }
   }
 }

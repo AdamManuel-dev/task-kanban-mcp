@@ -53,7 +53,7 @@ export class SpinnerManager {
   /**
    * Safe spinner operation wrapper
    */
-  private safeOperation<T>(operation: () => T, fallback: T): T {
+  private static safeOperation<T>(operation: () => T, fallback: T): T {
     try {
       return operation();
     } catch (error) {

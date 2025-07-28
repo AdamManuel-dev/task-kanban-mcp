@@ -104,7 +104,7 @@ export class SchedulingService {
     private readonly db: DatabaseConnection,
     private readonly backupService: BackupService
   ) {
-    this.ensureScheduleTable().catch(error => 
+    this.ensureScheduleTable().catch(error =>
       logger.error('Failed to ensure schedule table on initialization', { error })
     );
   }
@@ -291,7 +291,7 @@ export class SchedulingService {
     }
 
     this.isRunning = true;
-    this.loadAndStartSchedules().catch(error => 
+    this.loadAndStartSchedules().catch(error =>
       logger.error('Failed to load and start schedules', { error })
     );
     logger.info('Backup scheduler started');
@@ -554,15 +554,15 @@ export class SchedulingService {
     await this.db.execute(query, [
       schedule.id,
       schedule.name,
-      schedule.description,
+      schedule.description ?? '',
       schedule.cronExpression,
       schedule.backupType,
       schedule.enabled ? 1 : 0,
-      schedule.lastRunAt,
-      schedule.nextRunAt,
+      schedule.lastRunAt ?? '',
+      schedule.nextRunAt ?? '',
       schedule.runCount,
       schedule.failureCount,
-      schedule.retentionDays,
+      schedule.retentionDays ?? 30,
       schedule.compressionEnabled ? 1 : 0,
       schedule.verificationEnabled ? 1 : 0,
       schedule.createdAt,
@@ -625,7 +625,7 @@ export class SchedulingService {
 
     // Create new cron job
     const task = cron.schedule(schedule.cronExpression, () => {
-      this.executeBackup(schedule).catch(error => 
+      this.executeBackup(schedule).catch(error =>
         logger.error('Failed to execute backup', { error, scheduleId: schedule.id })
       );
     });

@@ -1,6 +1,7 @@
 import type { Command } from 'commander';
 import inquirer from 'inquirer';
-import type { CliComponents } from '../types';
+import type { CliComponents, CreateNoteRequest } from '../types';
+import { buildSearchNotesParams } from '../utils/parameter-builder';
 
 export function registerNoteCommands(program: Command): void {
   const noteCmd = program.command('note').alias('n').description('Manage notes');
@@ -30,15 +31,12 @@ export function registerNoteCommands(program: Command): void {
         const { apiClient, formatter } = getComponents();
 
         try {
-          const params: Record<string, string> = {
-            limit: options.limit || '20',
-            sort: options.sort || 'createdAt',
-            order: options.order || 'desc',
-          };
-
-          if (options.category) params.category = options.category;
-          if (options.task) params.taskId = options.task;
-          if (options.pinned) params.pinned = 'true';
+          const params = buildSearchNotesParams({
+            limit: parseInt(options.limit || '20', 10),
+            ...(options.category && { category: options.category }),
+            ...(options.task && { taskId: options.task }),
+            ...(options.pinned && { pinned: 'true' }),
+          });
 
           const notes = await apiClient.getNotes(params);
 
@@ -138,7 +136,7 @@ export function registerNoteCommands(program: Command): void {
               type: 'list',
               name: 'category',
               message: 'Note category:',
-              choices: ['general', 'meeting', 'idea', 'bug', 'feature', 'docs'],
+              choices: ['general', 'implementation', 'research', 'blocker', 'idea'],
               default: 'general',
             });
           }
@@ -172,7 +170,7 @@ export function registerNoteCommands(program: Command): void {
         noteData.pinned = options.pin ?? noteData.pinned ?? false;
 
         try {
-          const note = (await apiClient.createNote(noteData)) as any;
+          const note = (await apiClient.createNote(noteData as CreateNoteRequest)) as any;
           formatter.success(`Note created successfully: ${String(String(note.id))}`);
           formatter.output(note);
         } catch (error) {
@@ -225,7 +223,7 @@ export function registerNoteCommands(program: Command): void {
               type: 'list',
               name: 'category',
               message: 'Note category:',
-              choices: ['general', 'meeting', 'idea', 'bug', 'feature', 'docs'],
+              choices: ['general', 'implementation', 'research', 'blocker', 'idea'],
               default: currentNote.category ?? 'general',
             },
             {

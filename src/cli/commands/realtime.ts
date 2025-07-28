@@ -170,9 +170,7 @@ export function registerRealtimeCommands(program: Command): void {
 
           // Poll for new logs every second
           const interval = setInterval(() => {
-            streamLogs().catch(error => 
-              console.error('Failed to stream logs:', error)
-            );
+            streamLogs().catch(error => console.error('Failed to stream logs:', error));
           }, 1000);
 
           // Handle graceful shutdown

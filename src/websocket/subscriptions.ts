@@ -4,6 +4,7 @@ import { SubscriptionChannel } from './types';
 import type { WebSocketManager } from './server';
 import type { AllWebSocketMessages, SystemNotification, PublicationContext } from './messageTypes';
 import type { Task, Note } from '../types';
+import { WebSocketAuth } from './auth';
 
 export interface Subscription {
   id: string;
@@ -15,6 +16,10 @@ export interface Subscription {
 }
 
 export class SubscriptionManager {
+  setClientFilter(_clientId: string, _channel: string, _filter: Record<string, unknown>): void {
+    throw new Error('Method not implemented.');
+  }
+
   private readonly subscriptions = new Map<string, Subscription>();
 
   private readonly clientSubscriptions = new Map<string, Set<string>>();
@@ -40,7 +45,7 @@ export class SubscriptionManager {
       }
 
       // Check permissions
-      if (!this.webSocketManager.getAuth().canSubscribeToChannel(client.permissions, channel)) {
+      if (!WebSocketAuth.canSubscribeToChannel(client.permissions, channel)) {
         return { success: false, error: 'Insufficient permissions' };
       }
 
@@ -409,11 +414,7 @@ export class SubscriptionManager {
     });
   }
 
-  publishTaskUpdated(
-    task: Task,
-    changes: Record<string, unknown>,
-    updatedBy: string
-  ): number {
+  publishTaskUpdated(task: Task, changes: Record<string, unknown>, updatedBy: string): number {
     return this.publishTaskUpdate(task.id, task.board_id, {
       type: 'task:updated',
       data: {
@@ -438,12 +439,7 @@ export class SubscriptionManager {
     });
   }
 
-  publishNoteAdded(
-    note: Note,
-    taskId: string,
-    boardId: string,
-    addedBy: string
-  ): number {
+  publishNoteAdded(note: Note, taskId: string, boardId: string, addedBy: string): number {
     return this.publishTaskUpdate(taskId, boardId, {
       type: 'note:added',
       data: {

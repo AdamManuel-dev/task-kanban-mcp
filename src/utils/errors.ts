@@ -779,7 +779,10 @@ export function createServiceErrorHandler(serviceName: string) {
   ): PropertyDescriptor {
     const originalMethod = descriptor.value;
 
-    descriptor.value = async function (this: T, ...args: unknown[]): Promise<unknown> {
+    descriptor.value = async function wrappedErrorHandlerMethod(
+      this: T,
+      ...args: unknown[]
+    ): Promise<unknown> {
       const context: ErrorContext = {
         service: serviceName,
         method: propertyKey,

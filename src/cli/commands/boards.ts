@@ -93,6 +93,7 @@ interface ViewBoardOptions {
 interface CreateBoardData {
   name?: string;
   description?: string;
+  useAsDefault?: boolean;
 }
 
 interface CreateBoardOptions {
@@ -116,6 +117,7 @@ interface UpdateBoardOptions {
 interface UpdateBoardPromptResult {
   name?: string;
   description?: string;
+  [key: string]: unknown;
 }
 
 interface DeleteBoardOptions {
@@ -263,7 +265,7 @@ export function registerBoardCommands(program: Command): void {
     .description('Show board details')
     .option('--tasks', 'include tasks in board')
     .option('--stats', 'include board statistics')
-    .action(async (id: string, options: ShowBoardOptions) => {
+    .action(async (id: string, options: ShowBoardOptions): Promise<void> => {
       const { apiClient, formatter } = getComponents();
 
       try {
@@ -353,7 +355,7 @@ export function registerBoardCommands(program: Command): void {
     .option('--refresh <seconds>', 'auto-refresh interval', '30')
     .option('--max-height <number>', 'maximum column height', '8')
     .option('--column-width <number>', 'column width', '25')
-    .action(async (id?: string, options?: ViewBoardOptions) => {
+    .action(async (id?: string, options?: ViewBoardOptions): Promise<void> => {
       const { config, apiClient, formatter } = getComponents();
 
       try {
@@ -549,27 +551,29 @@ export function registerBoardCommands(program: Command): void {
         });
 
         const answers = await inquirer.prompt<CreateBoardPromptResult>(questions);
-        boardData = { ...boardData, ...answers };
+        const { useAsDefault, ...restAnswers } = answers;
+        boardData = { ...boardData, ...restAnswers, useAsDefault: useAsDefault ?? false };
       }
 
       // Use command line options or answers
-      boardData.name = options.name ?? boardData.name;
-      boardData.description = options.description ?? boardData.description;
+      if (options.name !== undefined) boardData.name = options.name;
+      if (options.description !== undefined) boardData.description = options.description;
 
       try {
-        const board = await apiClient.createBoard(boardData as CreateBoardRequest);
+        const { useAsDefault: _useAsDefault, ...createData } = boardData;
+        const board = await apiClient.createBoard(createData as CreateBoardRequest);
         if (isSuccessResponse(board)) {
           formatter.success(`Board created successfully: ${String(board.data.id)}`);
           formatter.output(board.data);
+
+          // Set as default if requested from interactive prompt
+          if (boardData.useAsDefault) {
+            config.setDefaultBoard(board.data.id);
+            formatter.info(`Set as default board`);
+          }
         } else {
           formatter.error('Failed to create board');
           process.exit(1);
-        }
-
-        // Set as default if requested
-        if (boardData.useAsDefault && isSuccessResponse(board)) {
-          config.setDefaultBoard(board.data.id);
-          formatter.info(`Set as default board`);
         }
       } catch (error) {
         formatter.error(

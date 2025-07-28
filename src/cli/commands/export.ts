@@ -68,13 +68,13 @@ export function registerExportCommands(program: Command): void {
           };
 
           if (options.boardIds) {
-            params.boardIds = options.boardIds;
+            params['boardIds'] = options.boardIds;
           }
 
           // Add anonymization options
           if (options.anonymize) {
-            params.anonymize = 'true';
-            params.anonymizationOptions = JSON.stringify({
+            params['anonymize'] = 'true';
+            params['anonymizationOptions'] = JSON.stringify({
               anonymizeUserData: options.anonymizeUserData ?? true,
               anonymizeTaskTitles: options.anonymizeTaskTitles ?? true,
               anonymizeDescriptions: options.anonymizeDescriptions ?? true,
@@ -154,8 +154,8 @@ export function registerExportCommands(program: Command): void {
 
           // Add anonymization options
           if (options.anonymize) {
-            params.anonymize = 'true';
-            params.anonymizationOptions = JSON.stringify({
+            params['anonymize'] = 'true';
+            params['anonymizationOptions'] = JSON.stringify({
               anonymizeUserData: options.anonymizeUserData ?? true,
               anonymizeTaskTitles: options.anonymizeTaskTitles ?? true,
               anonymizeDescriptions: options.anonymizeDescriptions ?? true,
@@ -221,7 +221,7 @@ export function registerExportCommands(program: Command): void {
         };
 
         if (options.boardIds) {
-          params.boardIds = options.boardIds;
+          params['boardIds'] = options.boardIds;
         }
 
         const response = await apiClient.request<AnyApiResponse>(
@@ -271,10 +271,10 @@ export function registerExportCommands(program: Command): void {
     .action(async (input: string, output: string, options: any) => {
       const { formatter } = getComponents();
       try {
-        const fromFormat = options.from.toLowerCase();
-        const toFormat = options.to.toLowerCase();
+        const fromFormat = options['from'].toLowerCase();
+        const toFormat = options['to'].toLowerCase();
         const supported = getSupportedConversions();
-        if (!supported.from?.includes(fromFormat) || !supported.to?.includes(toFormat)) {
+        if (!supported['from']?.includes(fromFormat) || !supported['to']?.includes(toFormat)) {
           formatter.error(`Unsupported conversion: ${fromFormat} → ${toFormat}`);
           process.exit(1);
         }
@@ -351,7 +351,7 @@ export function registerExportCommands(program: Command): void {
         }
 
         const endpoint = options.validateOnly ? '/import/validate' : '/import';
-        const response = await apiClient.request(endpoint, { method: 'POST', body: formData });
+        const response = await apiClient.request<AnyApiResponse>('POST', endpoint, formData);
 
         if (options.validateOnly) {
           if (isSuccessResponse(response)) {

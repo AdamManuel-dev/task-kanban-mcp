@@ -34,6 +34,7 @@ import inquirer from 'inquirer';
 import type { CliComponents, CreateTaskRequest } from '../types';
 import type { Task } from '../../types';
 import { createTaskPrompt, PromptCancelledError } from '../prompts/task-prompts';
+import { buildSearchTasksParams } from '../utils/parameter-builder';
 import { SpinnerManager } from '../utils/spinner';
 import { isSuccessResponse } from '../api-client-wrapper';
 import { TaskTemplateService } from '../../services/TaskTemplateService';
@@ -204,20 +205,15 @@ export function registerTaskCommands(program: Command): void {
         const { config, apiClient, formatter } = getComponents();
 
         try {
-          const params: Record<string, string> = {
-            limit: options.limit ?? '20',
+          const params = buildSearchTasksParams({
+            limit: parseInt(options.limit ?? '20', 10),
             sort: options.sort ?? 'createdAt',
             order: options.order ?? 'desc',
-          };
-
-          if (options.board) params.board = options.board;
-          if (options.status) params.status = options.status;
-          if (options.tags) params.tags = options.tags;
-
-          // Use default board if no board specified
-          if (!options.board && config.getDefaultBoard()) {
-            params.board = config.getDefaultBoard()!;
-          }
+            ...(options.board && { board: options.board }),
+            ...(!options.board && config.getDefaultBoard() && { board: config.getDefaultBoard()! }),
+            ...(options.status && { status: options.status }),
+            ...(options.tags && { tags: options.tags }),
+          });
 
           const tasks = await apiClient.getTasks(params);
 
@@ -362,7 +358,7 @@ export function registerTaskCommands(program: Command): void {
         if (options.template) {
           const templateService = TaskTemplateService.getInstance();
           const template = await templateService.getTemplate(options.template);
-          
+
           if (!template) {
             spinner.fail(`Template not found: ${options.template}`);
             process.exit(1);
@@ -375,7 +371,7 @@ export function registerTaskCommands(program: Command): void {
 
           // Extract variables from template
           const titleVariables = extractTemplateVariables(template.title_template);
-          const descVariables = template.description_template 
+          const descVariables = template.description_template
             ? extractTemplateVariables(template.description_template)
             : [];
           const allVariables = [...new Set([...titleVariables, ...descVariables])];
@@ -383,7 +379,7 @@ export function registerTaskCommands(program: Command): void {
           let variables: Record<string, any> = {};
           if (allVariables.length > 0) {
             console.log(`\n📝 Template: ${template.name}\n`);
-            
+
             const variableAnswers = await inquirer.prompt(
               allVariables.map(variable => ({
                 type: 'input',
@@ -396,7 +392,7 @@ export function registerTaskCommands(program: Command): void {
 
           // Process templates
           const title = processTemplate(template.title_template, variables);
-          const description = template.description_template 
+          const description = template.description_template
             ? processTemplate(template.description_template, variables)
             : '';
 
@@ -926,6 +922,9 @@ export function registerTaskCommands(program: Command): void {
               case 'exit':
                 shouldExit = true;
                 break;
+              default:
+                formatter.warn(`Unknown action: ${String(action)}`);
+                break;
             }
 
             if (action !== 'continue') {
@@ -1102,8 +1101,14 @@ export function registerTaskCommands(program: Command): void {
               (dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
             );
             const dueDateStr = dueDate.toLocaleDateString();
-            const urgencyIndicator =
-              daysUntilDue < 0 ? '🚨 OVERDUE' : daysUntilDue <= 1 ? '⚠️ DUE SOON' : '';
+            let urgencyIndicator: string;
+            if (daysUntilDue < 0) {
+              urgencyIndicator = '🚨 OVERDUE';
+            } else if (daysUntilDue <= 1) {
+              urgencyIndicator = '⚠️ DUE SOON';
+            } else {
+              urgencyIndicator = '';
+            }
             formatter.output(`📅 Due: ${dueDateStr} ${urgencyIndicator}`);
           }
 
@@ -1134,7 +1139,9 @@ function extractTemplateVariables(template: string): string[] {
   let match;
 
   while ((match = variableRegex.exec(template)) !== null) {
-    variables.add(match[1]);
+    if (match[1]) {
+      variables.add(match[1]);
+    }
   }
 
   return Array.from(variables).sort();
@@ -1142,7 +1149,7 @@ function extractTemplateVariables(template: string): string[] {
 
 function processTemplate(template: string, variables: Record<string, any>): string {
   let result = template;
-  
+
   // Replace variables in format {{variable_name}}
   for (const [key, value] of Object.entries(variables)) {
     const pattern = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
