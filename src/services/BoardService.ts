@@ -663,11 +663,11 @@ export class BoardService {
         [columnId, data.board_id, data.name, data.position, data.wip_limit || null, now, now]
       );
 
-      const column = await this.db.queryFirst<Column>('SELECT * FROM columns WHERE id = ?', [
+      const columnResult = await this.db.query<Column>('SELECT * FROM columns WHERE id = ?', [
         columnId,
       ]);
 
-      if (!column) {
+      if (!columnResult || columnResult.length === 0) {
         throw BoardService.createError('COLUMN_CREATE_FAILED', 'Failed to retrieve created column');
       }
 
@@ -676,7 +676,7 @@ export class BoardService {
         board_id: data.board_id,
         name: data.name,
       });
-      return column;
+      return columnResult[0]!;
     } catch (error) {
       if (
         (error instanceof Error && error.message.includes('BOARD_')) ||
@@ -718,7 +718,7 @@ export class BoardService {
   ): Promise<Column> {
     try {
       // Verify column exists
-      const existingColumn = await this.db.queryFirst<Column>(
+      const existingColumn = await this.db.query<Column>(
         'SELECT * FROM columns WHERE id = ?',
         [id]
       );
@@ -756,10 +756,10 @@ export class BoardService {
 
       await this.db.query(
         `UPDATE columns SET ${updateFields.join(', ')} WHERE id = ?`,
-        updateValues
+        updateValues as any[]
       );
 
-      const updatedColumn = await this.db.queryFirst<Column>('SELECT * FROM columns WHERE id = ?', [
+      const updatedColumn = await this.db.query<Column>('SELECT * FROM columns WHERE id = ?', [
         id,
       ]);
 
@@ -793,23 +793,23 @@ export class BoardService {
   async deleteColumn(id: string): Promise<void> {
     try {
       // Verify column exists
-      const column = await this.db.queryFirst<Column>('SELECT * FROM columns WHERE id = ?', [id]);
+      const columnResult = await this.db.query<Column>('SELECT * FROM columns WHERE id = ?', [id]);
 
-      if (!column) {
+      if (!columnResult || columnResult.length === 0) {
         throw BoardService.createError('COLUMN_NOT_FOUND', 'Column not found', { id });
       }
 
       // Check if column has tasks
-      const taskCount = await this.db.queryFirst<{ count: number }>(
+      const taskCountResult = await this.db.query<{ count: number }>(
         'SELECT COUNT(*) as count FROM tasks WHERE column_id = ? AND archived = FALSE',
         [id]
       );
 
-      if (taskCount && taskCount.count > 0) {
+      if (taskCountResult && taskCountResult.length > 0 && taskCountResult[0].count > 0) {
         throw BoardService.createError(
           'COLUMN_HAS_TASKS',
           'Cannot delete column with tasks. Move tasks to another column first.',
-          { id, taskCount: taskCount.count }
+          { id, taskCount: taskCountResult[0].count }
         );
       }
 

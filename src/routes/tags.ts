@@ -42,14 +42,14 @@ export function tagRoutes(): Router {
       const totalTags = await tagService.getTags(countOptions);
       const total = totalTags.length;
 
-      return res.apiPagination(
+      res.apiPagination(
         tags,
         Math.floor(options.offset / options.limit) + 1,
         options.limit,
         total
       );
     } catch (error) {
-      return next(error);
+      next(error);
     }
   });
 
@@ -58,9 +58,9 @@ export function tagRoutes(): Router {
     try {
       const tagData = validateInput(TagValidation.create, req.body);
       const tag = await tagService.createTag(tagData);
-      return res.status(201).apiSuccess(tag);
+      res.status(201).apiSuccess(tag);
     } catch (error) {
-      return next(error);
+      next(error);
     }
   });
 
@@ -69,9 +69,9 @@ export function tagRoutes(): Router {
     try {
       const { includeUsageCount = false } = req.query;
       const tree = await tagService.getTagTree(includeUsageCount === 'true');
-      return res.apiSuccess(tree);
+      res.apiSuccess(tree);
     } catch (error) {
-      return next(error);
+      next(error);
     }
   });
 
@@ -87,9 +87,9 @@ export function tagRoutes(): Router {
       };
 
       const popularTags = await tagService.getPopularTags(options);
-      return res.apiSuccess(popularTags);
+      res.apiSuccess(popularTags);
     } catch (error) {
-      return next(error);
+      next(error);
     }
   });
 
@@ -118,9 +118,9 @@ export function tagRoutes(): Router {
         '#f5b7b1',
         '#d5dbdb',
       ];
-      return res.apiSuccess(colors);
+      res.apiSuccess(colors);
     } catch (error) {
-      return next(error);
+      next(error);
     }
   });
 
@@ -129,9 +129,9 @@ export function tagRoutes(): Router {
     try {
       const { board_id } = req.query;
       const stats = await tagService.getTagStats(board_id as string);
-      return res.apiSuccess(stats);
+      res.apiSuccess(stats);
     } catch (error) {
-      return next(error);
+      next(error);
     }
   });
 
@@ -155,9 +155,9 @@ export function tagRoutes(): Router {
         throw new NotFoundError('Tag', id);
       }
 
-      return res.apiSuccess(tag);
+      res.apiSuccess(tag);
     } catch (error) {
-      return next(error);
+      next(error);
     }
   });
 
@@ -170,9 +170,9 @@ export function tagRoutes(): Router {
       }
       const updateData = validateInput(TagValidation.update, req.body);
       const tag = await tagService.updateTag(id, updateData);
-      return res.apiSuccess(tag);
+      res.apiSuccess(tag);
     } catch (error) {
-      return next(error);
+      next(error);
     }
   });
 
@@ -184,9 +184,9 @@ export function tagRoutes(): Router {
         throw new NotFoundError('Tag', 'ID is required');
       }
       await tagService.deleteTag(id);
-      return res.status(204).send();
+      res.status(204).send();
     } catch (error) {
-      return next(error);
+      next(error);
     }
   });
 
@@ -203,9 +203,9 @@ export function tagRoutes(): Router {
         throw new NotFoundError('Tag', id);
       }
 
-      return res.apiSuccess(tagWithChildren.children ?? []);
+      res.apiSuccess(tagWithChildren.children ?? []);
     } catch (error) {
-      return next(error);
+      next(error);
     }
   });
 
@@ -217,9 +217,9 @@ export function tagRoutes(): Router {
         throw new NotFoundError('Tag', 'ID is required');
       }
       const path = await tagService.getTagPath(id);
-      return res.apiSuccess(path);
+      res.apiSuccess(path);
     } catch (error) {
-      return next(error);
+      next(error);
     }
   });
 
@@ -233,13 +233,14 @@ export function tagRoutes(): Router {
       const { target_tag_id: targetTagId } = req.body;
 
       if (!targetTagId) {
-        return res.status(400).apiError('INVALID_INPUT', 'target_tag_id is required');
+        res.status(400).apiError('INVALID_INPUT', 'target_tag_id is required');
+        return;
       }
 
       await tagService.mergeTags(id, targetTagId);
-      return res.status(204).send();
+      res.status(204).send();
     } catch (error) {
-      return next(error);
+      next(error);
     }
   });
 
@@ -275,12 +276,12 @@ export function tagRoutes(): Router {
       // TODO: This currently just returns task IDs. You might want to fetch the actual task objects
       // by using TaskService to get the full task details based on these IDs
 
-      return res.apiSuccess({
+      res.apiSuccess({
         task_ids: taskIds,
         message: 'Returns task IDs. Use TaskService to get full task details.',
       });
     } catch (error) {
-      return next(error);
+      next(error);
     }
   });
 

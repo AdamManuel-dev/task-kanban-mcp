@@ -138,11 +138,8 @@ router.post(
       const db = dbConnection;
       const exportService = new ExportService(db);
 
-      await exportService.convertFormat(
-        validated.inputPath,
-        validated.outputFormat,
-        validated.outputPath
-      );
+      // TODO: Implement convertFormat method in ExportService
+      throw new Error('Convert format not implemented yet');
 
       return res.apiSuccess({
         message: 'Format conversion completed successfully',

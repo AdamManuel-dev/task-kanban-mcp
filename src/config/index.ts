@@ -19,7 +19,7 @@
 
 import * as dotenv from 'dotenv';
 import { z } from 'zod';
-import { configureCloudEnvironment, getCloudEnvironmentConfig, CLOUD_ENV } from './cloud-env';
+import { configureCloudEnvironment, getCloudEnvironmentConfig } from './cloud-env';
 import { envManager, ENV_VALIDATION } from './env-manager';
 
 // Load environment variables

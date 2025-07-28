@@ -55,7 +55,7 @@ export class BoardFormatter {
 
     // Board stats
     if (showStats) {
-      const stats = this.calculateBoardStats(board);
+      const stats = BoardFormatter.calculateBoardStats(board);
       output.push(BoardFormatter.formatBoardStats(stats));
       output.push('');
     }
@@ -193,7 +193,7 @@ export class BoardFormatter {
    * Format board statistics
    */
   private static formatBoardStats(
-    stats: ReturnType<BoardFormatter['calculateBoardStats']>
+    stats: ReturnType<typeof BoardFormatter.calculateBoardStats>
   ): string {
     const lines: string[] = [];
 

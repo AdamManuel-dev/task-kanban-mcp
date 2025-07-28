@@ -140,7 +140,7 @@ export class BoardMappingService {
   ): string | null {
     // Try exact repository name match
     if (boards[repo.name]) {
-      return boards[repo.name];
+      return boards[repo.name] || null;
     }
 
     // Try remote URL matching
@@ -169,7 +169,7 @@ export class BoardMappingService {
     for (const pattern of patterns) {
       const match = url.match(pattern);
       if (match) {
-        return match[1];
+        return match[1] || null;
       }
     }
 

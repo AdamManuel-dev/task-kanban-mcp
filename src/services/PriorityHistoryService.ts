@@ -60,7 +60,7 @@ export class PriorityHistoryService {
    */
   async initializeSchema(): Promise<void> {
     try {
-      await dbConnection.run(`
+      await dbConnection.execute(`
         CREATE TABLE IF NOT EXISTS priority_history (
           id TEXT PRIMARY KEY,
           task_id TEXT NOT NULL,
@@ -74,12 +74,12 @@ export class PriorityHistoryService {
         )
       `);
 
-      await dbConnection.run(`
+      await dbConnection.execute(`
         CREATE INDEX IF NOT EXISTS idx_priority_history_task_id 
         ON priority_history (task_id)
       `);
 
-      await dbConnection.run(`
+      await dbConnection.execute(`
         CREATE INDEX IF NOT EXISTS idx_priority_history_timestamp 
         ON priority_history (timestamp)
       `);
@@ -151,7 +151,7 @@ export class PriorityHistoryService {
    */
   async getTaskPriorityHistory(taskId: string): Promise<PriorityChange[]> {
     try {
-      const rows = await dbConnection.all(
+      const rows = await dbConnection.query(
         `SELECT * FROM priority_history 
          WHERE task_id = ? 
          ORDER BY timestamp ASC`,
@@ -202,7 +202,7 @@ export class PriorityHistoryService {
         params.push(timeRange.start.toISOString(), timeRange.end.toISOString());
       }
 
-      const changes = await dbConnection.all(baseQuery, params);
+      const changes = await dbConnection.query(baseQuery, params);
 
       // Calculate total changes
       const totalChanges = changes.length;
@@ -231,10 +231,11 @@ export class PriorityHistoryService {
 
       const mostChangedTasks = Array.from(taskChangeCounts.entries())
         .map(([taskId, count]) => ({
-          task: taskDetails.get(taskId),
+          task: taskDetails.get(taskId)!,
           change_count: count,
           latest_reason: taskLatestReasons.get(taskId),
         }))
+        .filter(item => item.task) // Filter out entries where task is undefined
         .sort((a, b) => b.change_count - a.change_count)
         .slice(0, 10);
 

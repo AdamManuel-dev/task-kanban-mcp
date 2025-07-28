@@ -57,7 +57,8 @@ export function contextRoutes(): Router {
       const { maxRelatedTasks = 10 } = req.query;
 
       if (!id) {
-        return res.status(400).json({ error: 'Task ID is required' });
+        res.status(400).json({ error: 'Task ID is required' });
+        return;
       }
 
       const options = {

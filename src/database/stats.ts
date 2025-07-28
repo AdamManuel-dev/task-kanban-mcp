@@ -382,8 +382,8 @@ export class StatisticsCollector {
           if (statResult?.stat) {
             const stats = statResult.stat.split(' ');
             if (stats.length >= 2) {
-              usageCount = parseInt(stats[0], 10) || 0;
-              efficiency = parseFloat(stats[1]) || 0;
+              usageCount = parseInt(stats[0] || '0', 10) || 0;
+              efficiency = parseFloat(stats[1] || '0') || 0;
             }
           }
         } catch {

@@ -1,11 +1,12 @@
 import type { Task } from '@/types';
+import chalk from 'chalk';
 
 interface TaskListProps {
   tasks: Task[];
   selectedIndex?: number;
   showDetails?: boolean;
   maxHeight?: number;
-  sortBy?: 'priority' | 'due_date' | 'created_at' | 'title';
+  sortBy?: 'priority' | 'due_date' | 'created_at' | 'updated_at' | 'title';
   filterBy?: {
     status?: Task['status'];
     assignee?: string;
@@ -17,6 +18,7 @@ interface TaskFilter {
   status?: Task['status'];
   assignee?: string;
   search?: string;
+  priority?: number;
 }
 
 /**
@@ -41,6 +43,81 @@ export class TaskListFormatter {
 
     // Apply filters and sorting
     this.tasks = this.processTaskList(tasks, options.sortBy, options.filterBy);
+  }
+
+  /**
+   * Process and filter task list
+   */
+  private processTaskList(
+    tasks: TaskListProps['tasks'],
+    sortBy?: TaskListProps['sortBy'],
+    filterBy?: TaskFilter
+  ): TaskListProps['tasks'] {
+    let processed = [...tasks];
+    
+    // Apply filters
+    if (filterBy) {
+      if (filterBy.status) {
+        processed = processed.filter(task => task.status === filterBy.status);
+      }
+      if (filterBy.priority) {
+        processed = processed.filter(task => task.priority === filterBy.priority);
+      }
+      if (filterBy.assignee) {
+        processed = processed.filter(task => task.assignee === filterBy.assignee);
+      }
+    }
+    
+    // Apply sorting
+    if (sortBy) {
+      processed.sort((a, b) => {
+        switch (sortBy) {
+          case 'priority':
+            return (b.priority || 0) - (a.priority || 0);
+          case 'due_date':
+            if (!a.due_date && !b.due_date) return 0;
+            if (!a.due_date) return 1;
+            if (!b.due_date) return -1;
+            return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+          case 'created_at':
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          case 'updated_at':
+            return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+          default:
+            return 0;
+        }
+      });
+    }
+    
+    return processed;
+  }
+
+  /**
+   * Format a single task item
+   */
+  private formatTaskItem(task: TaskListProps['tasks'][0], isSelected: boolean): string {
+    const prefix = isSelected ? '▶ ' : '  ';
+    const priorityText = task.priority ? `P${task.priority}` : 'P0';
+    
+    let line = `${prefix}${task.title}`;
+    if (task.assignee) {
+      line += ` [@${task.assignee}]`;
+    }
+    line += ` [${task.status}] [${priorityText}]`;
+    
+    return isSelected ? chalk.inverse(line) : line;
+  }
+
+  /**
+   * Render task list summary
+   */
+  private renderSummary(): string {
+    const total = this.tasks.length;
+    const completed = this.tasks.filter(task => task.status === 'done').length;
+    const inProgress = this.tasks.filter(task => task.status === 'in_progress').length;
+    const todo = this.tasks.filter(task => task.status === 'todo').length;
+    
+    return `Total: ${total} | Done: ${completed} | In Progress: ${inProgress} | Todo: ${todo}`;
   }
 
   /**
@@ -94,72 +171,6 @@ export class TaskListFormatter {
     return output.join('\n');
   }
 
-  private static _formatTaskItem(task: Task, isSelected: boolean): string {
-    const prefix = isSelected ? '→' : ' ';
-    const statusIcon = this.getStatusIcon(task.status);
-    const priorityText = this.formatPriority(task.priority);
-    const dueDateText = this.formatDueDate(task.due_date);
-
-    const titleLine = `${String(prefix)} ${String(statusIcon)} ${String(String(this.truncateText(task.title, 40)))} ${String(priorityText)}`;
-
-    let output = titleLine;
-
-    if (task.assignee || dueDateText) {
-      const detailsLine = `${task.assignee ? `@${task.assignee}` : ''} ${dueDateText}`;
-      output += `\n${detailsLine.trim()}`;
-    }
-
-    return output;
-  }
-
-  private static _processTaskList(
-    tasks: Task[],
-    sortBy?: TaskListProps['sortBy'],
-    filterBy?: TaskFilter
-  ): Task[] {
-    let processed = [...tasks];
-
-    // Apply filters
-    if (filterBy) {
-      if (filterBy.status) {
-        processed = processed.filter(task => task.status === filterBy.status);
-      }
-      if (filterBy.assignee) {
-        processed = processed.filter(task => task.assignee === filterBy.assignee);
-      }
-      if (filterBy.search) {
-        const searchLower = filterBy.search.toLowerCase();
-        processed = processed.filter(
-          task =>
-            task.title.toLowerCase().includes(searchLower) ||
-            (task.description && task.description.toLowerCase().includes(searchLower))
-        );
-      }
-    }
-
-    // Apply sorting
-    if (sortBy) {
-      processed.sort((a, b) => {
-        switch (sortBy) {
-          case 'priority':
-            return b.priority - a.priority;
-          case 'due_date':
-            if (!a.due_date && !b.due_date) return 0;
-            if (!a.due_date) return 1;
-            if (!b.due_date) return -1;
-            return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
-          case 'created_at':
-            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-          case 'title':
-            return a.title.localeCompare(b.title);
-          default:
-            return 0;
-        }
-      });
-    }
-
-    return processed;
-  }
 
   private static getStatusIcon(status: Task['status']): string {
     const statusMap = {
@@ -200,22 +211,6 @@ export class TaskListFormatter {
     return `${String(String(text.substring(0, maxLength - 3)))}...`;
   }
 
-  private static _renderSummary(): string {
-    const statusCounts = this.tasks.reduce(
-      (acc, task) => {
-        acc[task.status] = (acc[task.status] || 0) + 1;
-        return acc;
-      },
-      {} as Record<Task['status'], number>
-    );
-
-    const total = this.tasks.length;
-    const completed = statusCounts.done || 0;
-    const inProgress = statusCounts.in_progress || 0;
-    const blocked = statusCounts.blocked || 0;
-
-    return `Total: ${String(total)} | Done: ${String(completed)} | In Progress: ${String(inProgress)} | Blocked: ${String(blocked)}`;
-  }
 }
 
 /**

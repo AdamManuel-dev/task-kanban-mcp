@@ -211,7 +211,7 @@ export class TodoProcessor {
     const listr = new Listr(
       groups.map((group, index) => ({
         title: `Execution Group ${index + 1} (${group.length} tasks)`,
-        task: (_ctx, _task) => {
+        task: (_ctx: any, _task: any) => {
           const subtasks = group.map(todo => ({
             title: `${todo.id}: ${todo.text}`,
             task: async () => {
@@ -230,7 +230,7 @@ export class TodoProcessor {
             } as any,
           });
         },
-      })),
+      })) as any,
       {
         concurrent: false,
         rendererOptions: {

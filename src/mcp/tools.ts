@@ -1225,7 +1225,7 @@ export class MCPToolRegistry {
         general: 'general',
         meeting: 'general',
         idea: 'general',
-        todo: 'progress',
+        todo: 'implementation',
         reminder: 'general',
       };
       noteData.category = categoryMap[category] ?? 'general';
@@ -1281,10 +1281,10 @@ export class MCPToolRegistry {
       }
       searchOptions.category = category as
         | 'general'
-        | 'progress'
+        | 'implementation'
+        | 'research'
         | 'blocker'
-        | 'decision'
-        | 'question';
+        | 'idea';
     }
 
     const notes = await this.services.noteService.searchNotes(searchOptions);
@@ -1846,12 +1846,12 @@ export class MCPToolRegistry {
     }
 
     // Get the enhanced result for the top task
-    const nextTask = availableTasks[0];
-    const enhancedResult = enhancedResults.find(result => result.task.id === nextTask.id);
+    const nextTask = availableTasks[0] || null;
+    const enhancedResult = nextTask ? enhancedResults.find(result => result.task.id === nextTask.id) : undefined;
 
     let reasoning = enhancedResult
       ? enhancedResult.reasoning.join('; ')
-      : `Priority: ${String(nextTask.priority ?? 1)}`;
+      : `Priority: ${String(nextTask?.priority ?? 1)}`;
 
     if (enhancedResult?.confidence) {
       reasoning += ` (Confidence: ${Math.round(enhancedResult.confidence * 100)}%)`;
@@ -1910,7 +1910,7 @@ export class MCPToolRegistry {
       await this.services.noteService.createNote({
         task_id: taskId,
         content: `Priority changed from ${String(oldPriority)} to ${String(priority)}: ${String(reasoning)}`,
-        category: 'decision',
+        category: 'general',
       });
     }
 
@@ -1962,7 +1962,7 @@ export class MCPToolRegistry {
     // Dependency and subtask analysis
     if (include_dependencies) {
       const dependencies = await this.services.taskService.getTaskDependencies(task_id);
-      factors.dependency_count = dependencies.dependencies.length + dependencies.dependents.length;
+      factors.dependency_count = dependencies.length;
     }
 
     if (include_subtasks) {
@@ -2087,7 +2087,7 @@ export class MCPToolRegistry {
       if (task.status === 'done') continue;
 
       const dependencies = await this.services.taskService.getTaskDependencies(task.id);
-      const blockingCount = dependencies.dependents.length;
+      const blockingCount = dependencies.length;
 
       if (blockingCount > 0) {
         // Get all tasks this task blocks (transitively)
@@ -2099,7 +2099,7 @@ export class MCPToolRegistry {
           visited.add(taskId);
 
           const deps = await this.services.taskService.getTaskDependencies(taskId);
-          for (const dependent of deps.dependents) {
+          for (const dependent of deps) {
             const dependentTask = await this.services.taskService.getTaskById(dependent.task_id);
             if (dependentTask && dependentTask.status !== 'done') {
               blockedTasks.push(dependentTask);
@@ -2164,7 +2164,7 @@ export class MCPToolRegistry {
     return {
       success: true,
       critical_path: {
-        tasks: criticalPath.path,
+        tasks: (criticalPath as any).tasks || [],
         total_estimated_hours: criticalPath.totalDuration,
         bottlenecks: bottlenecks.slice(0, 10), // Top 10 bottlenecks
       },

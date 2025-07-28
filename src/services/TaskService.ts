@@ -1883,7 +1883,7 @@ export class TaskService {
               field_name: field,
               old_value: oldValue,
               new_value: newValue,
-              changed_by: updateData.change_reason ? 'system' : null,
+              changed_by: updateData.change_reason ? 'system' : 'user',
               reason: updateData.change_reason,
             });
 

@@ -106,7 +106,7 @@ router.post('/create', validateRequest(CreateBackupSchema), (req, res) => {
       let backup;
       if (options['type'] === 'incremental') {
         if (!options['parentBackupId']) {
-          return res
+          res
             .status(400)
             .json(formatErrorResponse('Parent backup ID is required for incremental backups'));
         }
@@ -119,7 +119,7 @@ router.post('/create', validateRequest(CreateBackupSchema), (req, res) => {
       res.status(201).json(formatSuccessResponse(backup));
     } catch (error) {
       logger.error('Backup creation failed:', error);
-      return res
+      res
         .status(500)
         .json(
           formatErrorResponse(
@@ -205,7 +205,7 @@ router.get('/list', validateRequest(ListBackupsSchema), (req, res) => {
       res.json(formatSuccessResponse(backups));
     } catch (error) {
       logger.error('Failed to list backups:', error);
-      return res
+      res
         .status(500)
         .json(
           formatErrorResponse(
@@ -348,7 +348,7 @@ router.post(
       res.json(formatSuccessResponse(null, 'Database restored successfully'));
     } catch (error) {
       logger.error(`Restore failed for backup ${String(String(req.params['id']))}:`, error);
-      return res
+      res
         .status(500)
         .json(
           formatErrorResponse(
@@ -428,7 +428,7 @@ router.post(
       // Validate target time format
       const targetDate = new Date(targetTime);
       if (isNaN(targetDate.getTime())) {
-        return res
+        res
           .status(400)
           .json(
             formatErrorResponse(
@@ -439,13 +439,10 @@ router.post(
 
       logger.info(`Point-in-time restoration requested to: ${String(targetTime)}`);
 
-      await backupService.restoreToPointInTime(targetTime, {
-        verify,
-        preserveExisting,
-      });
+      await backupService.restoreToPointInTime(targetTime);
 
       logger.info(`Point-in-time restoration completed to: ${String(targetTime)}`);
-      return res.json(
+      res.json(
         formatSuccessResponse({
           restoredTo: targetTime,
           message: 'Point-in-time restoration completed successfully',
@@ -453,7 +450,7 @@ router.post(
       );
     } catch (error) {
       logger.error('Point-in-time restoration failed:', error);
-      return res
+      res
         .status(500)
         .json(
           formatErrorResponse(
@@ -512,7 +509,7 @@ router.post(
       }
       const isValid = await backupService.verifyBackup(id);
 
-      return res.json(
+      res.json(
         formatSuccessResponse({
           valid: isValid,
           message: isValid ? 'Backup verification passed' : 'Backup verification failed',
@@ -520,7 +517,7 @@ router.post(
       );
     } catch (error) {
       logger.error(`Backup verification failed for ${String(String(req.params['id']))}:`, error);
-      return res
+      res
         .status(500)
         .json(
           formatErrorResponse(
@@ -596,7 +593,7 @@ router.get(
             'Content-Disposition',
             `attachment; filename="${String(String((backup as any)['name']))}.json"`
           );
-          return res.json(backup);
+          res.json(backup);
           break;
         case 'sql':
           res.setHeader('Content-Type', 'application/sql');
@@ -604,7 +601,7 @@ router.get(
             'Content-Disposition',
             `attachment; filename="${String(String((backup as any)['name']))}.sql"`
           );
-          return res.send(
+          res.send(
             `-- Backup metadata for ${String(String((backup as any)['name']))}\n-- ID: ${String(String((backup as any)['id']))}\n-- Created: ${String(String((backup as any)['createdAt']))}`
           );
           break;
@@ -614,7 +611,7 @@ router.get(
             'Content-Disposition',
             `attachment; filename="${String(String((backup as any)['name']))}.csv"`
           );
-          return res.send(
+          res.send(
             `id,name,type,status,size,created_at\n${String(String((backup as any)['id']))},${String(String((backup as any)['name']))},${String(String((backup as any)['type']))},${String(String((backup as any)['status']))},${String(String((backup as any)['size']))},${String(String((backup as any)['createdAt']))}`
           );
           break;
@@ -624,7 +621,7 @@ router.get(
       }
     } catch (error) {
       logger.error(`Backup export failed for ${String(String(req.params['id']))}:`, error);
-      return res
+      res
         .status(500)
         .json(
           formatErrorResponse(
@@ -684,7 +681,7 @@ router.delete(
       res.json(formatSuccessResponse(null, 'Backup deleted successfully'));
     } catch (error) {
       logger.error(`Failed to delete backup ${String(String(req.params['id']))}:`, error);
-      return res
+      res
         .status(500)
         .json(
           formatErrorResponse(
@@ -785,7 +782,7 @@ router.post(
       res.json(formatSuccessResponse(validation, 'Validation completed'));
     } catch (error) {
       logger.error(`Restore validation failed for backup ${req.params['id']}:`, error);
-      return res
+      res
         .status(500)
         .json(
           formatErrorResponse(
@@ -845,7 +842,7 @@ router.post(
       res.json(formatSuccessResponse(integrityCheck, 'Integrity check completed'));
     } catch (error) {
       logger.error('Data integrity check failed:', error);
-      return res
+      res
         .status(500)
         .json(
           formatErrorResponse(
@@ -939,7 +936,7 @@ router.post(
       res.json(formatSuccessResponse(null, 'Partial restore completed successfully'));
     } catch (error) {
       logger.error(`Partial restore failed for backup ${req.params['id']}:`, error);
-      return res
+      res
         .status(500)
         .json(
           formatErrorResponse(
@@ -1021,12 +1018,12 @@ router.post(
       const progressId = await backupService.restoreFromBackupWithProgress(id, options);
 
       logger.info(`Restore with progress started for backup: ${id}`, { progressId });
-      return res.json(
+      res.json(
         formatSuccessResponse({ progressId }, 'Restore started with progress tracking')
       );
     } catch (error) {
       logger.error(`Restore with progress failed for backup ${req.params['id']}:`, error);
-      return res
+      res
         .status(500)
         .json(
           formatErrorResponse(
@@ -1094,18 +1091,18 @@ router.get(
     try {
       const { progressId } = req.params;
       if (!progressId) {
-        return res.status(400).json(formatErrorResponse('Progress ID is required'));
+        res.status(400).json(formatErrorResponse('Progress ID is required'));
       }
 
-      const progress = await backupService.getRestoreProgress(progressId);
+      const progress = await backupService.getRestoreProgress(progressId!);
       if (!progress) {
-        return res.status(404).json(formatErrorResponse('Progress not found'));
+        res.status(404).json(formatErrorResponse('Progress not found'));
       }
 
       res.json(formatSuccessResponse(progress, 'Progress retrieved'));
     } catch (error) {
       logger.error(`Failed to get progress ${req.params['progressId']}:`, error);
-      return res
+      res
         .status(500)
         .json(
           formatErrorResponse(
@@ -1154,16 +1151,16 @@ router.delete(
     try {
       const { progressId } = req.params;
       if (!progressId) {
-        return res.status(400).json(formatErrorResponse('Progress ID is required'));
+        res.status(400).json(formatErrorResponse('Progress ID is required'));
       }
 
-      await backupService.clearRestoreProgress(progressId);
+      await backupService.clearRestoreProgress(progressId!);
 
       logger.info(`Progress cleared: ${progressId}`);
       res.json(formatSuccessResponse(null, 'Progress cleared successfully'));
     } catch (error) {
       logger.error(`Failed to clear progress ${req.params['progressId']}:`, error);
-      return res
+      res
         .status(500)
         .json(
           formatErrorResponse(

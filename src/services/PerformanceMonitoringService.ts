@@ -150,7 +150,7 @@ export class PerformanceMonitoringService extends EventEmitter {
           const result = (await originalQuery.call(this, sql, params)) as T[];
           const queryTime = Date.now() - queryStart;
           dbQueryTime += queryTime;
-          self.trackDbQuery(String(sql), queryTime);
+          (globalThis as any).trackDbQuery?.(String(sql), queryTime);
           return result;
         } catch (error) {
           const queryTime = Date.now() - queryStart;

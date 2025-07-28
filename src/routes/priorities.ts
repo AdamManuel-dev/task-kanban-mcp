@@ -135,7 +135,7 @@ router.get(
         // Skill context matching
         if (
           skill_context &&
-          task.description?.toLowerCase().includes(skill_context.toLowerCase())
+          task.description?.toLowerCase().includes(String(skill_context).toLowerCase())
         ) {
           score += 10;
         }
@@ -151,7 +151,7 @@ router.get(
         return {
           ...task,
           priority_score: score,
-          reasoning: generatePriorityReasoning(task, score, skill_context),
+          reasoning: generatePriorityReasoning(task, score, String(skill_context ?? '')),
         };
       });
 

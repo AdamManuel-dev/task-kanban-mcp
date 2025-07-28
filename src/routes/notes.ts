@@ -16,7 +16,8 @@ export function noteRoutes(): Router {
       const { query, limit = 50, offset = 0, task_id, board_id, category, pinned } = req.query;
 
       if (!query) {
-        return res.status(400).apiError('INVALID_INPUT', 'Search query is required');
+        res.status(400).apiError('INVALID_INPUT', 'Search query is required');
+        return;
       }
 
       const options: any = {
@@ -34,14 +35,14 @@ export function noteRoutes(): Router {
 
       const searchResults = await noteService.searchNotes(options);
 
-      return res.apiPagination(
+      res.apiPagination(
         searchResults,
         Math.floor(options.offset / options.limit) + 1,
         options.limit,
         searchResults.length
       );
     } catch (error) {
-      return next(error);
+      next(error);
     }
   });
 
@@ -56,9 +57,9 @@ export function noteRoutes(): Router {
       };
 
       const categories = await noteService.getNoteCategories(filters);
-      return res.apiSuccess(categories);
+      res.apiSuccess(categories);
     } catch (error) {
-      return next(error);
+      next(error);
     }
   });
 
@@ -75,9 +76,9 @@ export function noteRoutes(): Router {
       };
 
       const recentNotes = await noteService.getRecentNotes(options);
-      return res.apiSuccess(recentNotes);
+      res.apiSuccess(recentNotes);
     } catch (error) {
-      return next(error);
+      next(error);
     }
   });
 
@@ -95,9 +96,9 @@ export function noteRoutes(): Router {
       };
 
       const pinnedNotes = await noteService.getNotes(options);
-      return res.apiSuccess(pinnedNotes);
+      res.apiSuccess(pinnedNotes);
     } catch (error) {
-      return next(error);
+      next(error);
     }
   });
 
@@ -137,14 +138,14 @@ export function noteRoutes(): Router {
       const totalNotes = await noteService.getNotes(countOptions);
       const total = totalNotes.length;
 
-      return res.apiPagination(
+      res.apiPagination(
         notes,
         Math.floor(options.offset / options.limit) + 1,
         options.limit,
         total
       );
     } catch (error) {
-      return next(error);
+      next(error);
     }
   });
 
@@ -162,9 +163,9 @@ export function noteRoutes(): Router {
       if (rawNoteData.pinned !== undefined) noteData.pinned = rawNoteData.pinned;
 
       const note = await noteService.createNote(noteData);
-      return res.status(201).apiSuccess(note);
+      res.status(201).apiSuccess(note);
     } catch (error) {
-      return next(error);
+      next(error);
     }
   });
 
@@ -174,7 +175,8 @@ export function noteRoutes(): Router {
       const { id } = req.params;
 
       if (!id) {
-        return res.status(400).json({ error: 'Note ID is required' });
+        res.status(400).json({ error: 'Note ID is required' });
+        return;
       }
 
       const note = await noteService.getNoteById(id);
@@ -183,9 +185,9 @@ export function noteRoutes(): Router {
         throw new NotFoundError('Note', id);
       }
 
-      return res.apiSuccess(note);
+      res.apiSuccess(note);
     } catch (error) {
-      return next(error);
+      next(error);
     }
   });
 
@@ -195,7 +197,8 @@ export function noteRoutes(): Router {
       const { id } = req.params;
 
       if (!id) {
-        return res.status(400).json({ error: 'Note ID is required' });
+        res.status(400).json({ error: 'Note ID is required' });
+        return;
       }
 
       const rawUpdateData = validateInput(NoteValidation.update, req.body);
@@ -204,9 +207,9 @@ export function noteRoutes(): Router {
         Object.entries(rawUpdateData).filter(([, value]) => value !== undefined)
       );
       const note = await noteService.updateNote(id, updateData);
-      return res.apiSuccess(note);
+      res.apiSuccess(note);
     } catch (error) {
-      return next(error);
+      next(error);
     }
   });
 
@@ -216,13 +219,14 @@ export function noteRoutes(): Router {
       const { id } = req.params;
 
       if (!id) {
-        return res.status(400).json({ error: 'Note ID is required' });
+        res.status(400).json({ error: 'Note ID is required' });
+        return;
       }
 
       await noteService.deleteNote(id);
-      return res.status(204).send();
+      res.status(204).send();
     } catch (error) {
-      return next(error);
+      next(error);
     }
   });
 
@@ -232,13 +236,14 @@ export function noteRoutes(): Router {
       const { id } = req.params;
 
       if (!id) {
-        return res.status(400).json({ error: 'Note ID is required' });
+        res.status(400).json({ error: 'Note ID is required' });
+        return;
       }
 
       const note = await noteService.pinNote(id);
-      return res.apiSuccess(note);
+      res.apiSuccess(note);
     } catch (error) {
-      return next(error);
+      next(error);
     }
   });
 
@@ -248,13 +253,14 @@ export function noteRoutes(): Router {
       const { id } = req.params;
 
       if (!id) {
-        return res.status(400).json({ error: 'Note ID is required' });
+        res.status(400).json({ error: 'Note ID is required' });
+        return;
       }
 
       const note = await noteService.unpinNote(id);
-      return res.apiSuccess(note);
+      res.apiSuccess(note);
     } catch (error) {
-      return next(error);
+      next(error);
     }
   });
 

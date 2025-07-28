@@ -395,7 +395,7 @@ export class ExportService {
 
     query += ' ORDER BY created_at DESC';
 
-    return this.db.query<Board>(query, params);
+    return this.db.query<Board>(query, params as any[]);
   }
 
   private async getColumns(boardIds: string[]): Promise<Column[]> {
@@ -433,7 +433,7 @@ export class ExportService {
 
     query += ' ORDER BY created_at DESC';
 
-    return this.db.query<Task>(query, params);
+    return this.db.query<Task>(query, params as any[]);
   }
 
   private async getTags(_options: ExportOptions): Promise<Tag[]> {
@@ -461,7 +461,7 @@ export class ExportService {
 
     query += ' ORDER BY created_at DESC';
 
-    return await this.db.query<Note>(query, params);
+    return await this.db.query<Note>(query, params as any[]);
   }
 
   private static convertArrayToCSV(data: unknown[], columns: string[]): string {
@@ -507,7 +507,7 @@ export class ExportService {
           [
             board.id,
             board.name,
-            board.description,
+            board.description || null,
             (board as Board & { is_active?: boolean }).is_active ?? true,
             board.created_at,
             board.updated_at,
@@ -537,7 +537,7 @@ export class ExportService {
             column.board_id,
             column.name,
             column.position,
-            column.wip_limit,
+            column.wip_limit || null,
             column.created_at,
             column.updated_at,
           ]
@@ -588,18 +588,18 @@ export class ExportService {
           [
             task.id,
             task.title,
-            task.description,
+            task.description || null,
             task.board_id,
             task.column_id,
             task.position,
             task.priority,
             task.status,
-            task.assignee,
-            task.due_date,
-            task.estimated_hours,
-            task.actual_hours,
-            task.parent_task_id,
-            task.metadata,
+            task.assignee || null,
+            task.due_date || null,
+            task.estimated_hours || null,
+            task.actual_hours || null,
+            task.parent_task_id || null,
+            task.metadata || null,
             task.created_at,
             task.updated_at,
           ]
@@ -643,7 +643,7 @@ export class ExportService {
         // eslint-disable-next-line no-await-in-loop
         await this.db.execute(
           'INSERT OR REPLACE INTO tags (id, name, color, description, parent_tag_id, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-          [tag.id, tag.name, tag.color, tag.description, tag.parent_tag_id, tag.created_at]
+          [tag.id, tag.name, tag.color || null, tag.description || null, tag.parent_tag_id || null, tag.created_at]
         );
         result.imported++;
       } catch (error: unknown) {

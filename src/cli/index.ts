@@ -150,11 +150,11 @@ const main = async (): Promise<void> => {
     registerConfigCommands(program);
     registerNextCommands(program);
     addEnvironmentCommands(program);
-    program.addCommand(createTemplatesCommand());
-    program.addCommand(createDependenciesCommand());
+    program.command(createTemplatesCommand());
+    program.command(createDependenciesCommand());
 
     // Parse command line arguments
-    await program.parseAsync();
+    program.parse(process.argv);
   } catch (error) {
     logger.error('CLI initialization failed', { error });
     // eslint-disable-next-line no-console

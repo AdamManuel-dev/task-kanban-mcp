@@ -231,7 +231,7 @@ export class BackupSchedulerService {
     const task = this.schedules.get(scheduleId);
     if (task) {
       task.stop();
-      task.destroy();
+      (task as any).destroy?.();
       this.schedules.delete(scheduleId);
       logger.info('Backup schedule stopped', { scheduleId });
     }
@@ -333,7 +333,7 @@ export class BackupSchedulerService {
   private getNextRunTime(cronExpression: string): string {
     try {
       const task = cron.schedule(cronExpression, () => {}, { scheduled: false });
-      const nextDates = task.nextDates(1);
+      const nextDates = (task as any).nextDates(1);
       return nextDates[0].toISOString();
     } catch (error) {
       logger.error('Failed to calculate next run time', { cronExpression, error });
@@ -417,8 +417,8 @@ export class BackupSchedulerService {
         schedule.retentionDays,
         schedule.compress ? 1 : 0,
         schedule.verify ? 1 : 0,
-        schedule.lastRun,
-        schedule.nextRun,
+        schedule.lastRun || null,
+        schedule.nextRun || null,
         schedule.successCount,
         schedule.failureCount,
         schedule.createdAt,
@@ -444,7 +444,7 @@ export class BackupSchedulerService {
         schedule.retentionDays,
         schedule.compress ? 1 : 0,
         schedule.verify ? 1 : 0,
-        schedule.nextRun,
+        schedule.nextRun || null,
         schedule.updatedAt,
         schedule.id,
       ]
@@ -482,7 +482,7 @@ export class BackupSchedulerService {
     for (const [scheduleId, task] of this.schedules.entries()) {
       try {
         task.stop();
-        task.destroy();
+        (task as any).destroy?.();
         logger.info('Stopped scheduled task', { scheduleId });
       } catch (error) {
         logger.error('Error stopping scheduled task', { scheduleId, error });

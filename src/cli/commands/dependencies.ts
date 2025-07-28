@@ -302,12 +302,12 @@ export function createDependenciesCommand(): Command {
         ]);
 
         if (!task) {
-          console.error(chalk.red(`❌ Task not found: ${taskId}`));
+          logger.error(chalk.red(`❌ Task not found: ${taskId}`));
           return;
         }
 
         if (!dependsOnTask) {
-          console.error(chalk.red(`❌ Dependency task not found: ${dependsOnId}`));
+          logger.error(chalk.red(`❌ Dependency task not found: ${dependsOnId}`));
           return;
         }
 
@@ -319,20 +319,20 @@ export function createDependenciesCommand(): Command {
           impact.directDependents.some(t => t.id === taskId) ||
           impact.indirectDependents.some(t => t.id === taskId)
         ) {
-          console.error(chalk.red('❌ Cannot add dependency: would create a cycle'));
+          logger.error(chalk.red('❌ Cannot add dependency: would create a cycle'));
           return;
         }
 
         // Add the dependency (this would need to be implemented in TaskService)
-        console.log(
+        logger.info(
           chalk.blue(`🔗 Adding dependency: ${task.title} depends on ${dependsOnTask.title}`)
         );
 
         // TODO: Implement addDependency method in TaskService
-        console.log(chalk.yellow('⚠️  Dependency addition not yet implemented in TaskService'));
+        logger.warn(chalk.yellow('⚠️  Dependency addition not yet implemented in TaskService'));
       } catch (error) {
         logger.error('Failed to add dependency:', error);
-        console.error(chalk.red('❌ Failed to add dependency'));
+        logger.error(chalk.red('❌ Failed to add dependency'));
       }
     });
 
@@ -349,18 +349,18 @@ export function createDependenciesCommand(): Command {
 
         const task = await taskService.getTaskById(taskId);
         if (!task) {
-          console.error(chalk.red(`❌ Task not found: ${taskId}`));
+          logger.error(chalk.red(`❌ Task not found: ${taskId}`));
           return;
         }
 
-        console.log(chalk.blue.bold(`🔗 Dependencies for: ${task.title}\n`));
+        logger.info(chalk.blue.bold(`🔗 Dependencies for: ${task.title}\n`));
 
         const impact = await depService.analyzeTaskImpact(taskId);
         const graph = await depService.getDependencyGraph();
         const node = graph.nodes.get(taskId);
 
         if (!node) {
-          console.log(chalk.yellow('Task not found in dependency graph.'));
+          logger.info(chalk.yellow('Task not found in dependency graph.'));
           return;
         }
 
@@ -371,33 +371,33 @@ export function createDependenciesCommand(): Command {
         }
 
         if (displayOptions.outgoing) {
-          console.log(chalk.red.bold('📤 This task depends on:'));
+          logger.info(chalk.red.bold('📤 This task depends on:'));
           if (node.dependencies.length === 0) {
-            console.log(chalk.dim('   No dependencies'));
+            logger.info(chalk.dim('   No dependencies'));
           } else {
             for (const depId of node.dependencies) {
               const depNode = graph.nodes.get(depId)!;
               const statusIcon = getStatusIcon(depNode.task.status);
-              console.log(`   ${statusIcon} ${depNode.task.title} (${depId})`);
+              logger.info(`   ${statusIcon} ${depNode.task.title} (${depId})`);
             }
           }
-          console.log();
+          logger.info('');
         }
 
         if (displayOptions.incoming) {
-          console.log(chalk.yellow.bold('📥 Tasks that depend on this:'));
+          logger.info(chalk.yellow.bold('📥 Tasks that depend on this:'));
           if (impact.directDependents.length === 0) {
-            console.log(chalk.dim('   No dependents'));
+            logger.info(chalk.dim('   No dependents'));
           } else {
             impact.directDependents.forEach(depTask => {
               const statusIcon = getStatusIcon(depTask.status);
-              console.log(`   ${statusIcon} ${depTask.title} (${depTask.id})`);
+              logger.info(`   ${statusIcon} ${depTask.title} (${depTask.id})`);
             });
           }
         }
       } catch (error) {
         logger.error('Failed to list dependencies:', error);
-        console.error(chalk.red('❌ Failed to list dependencies'));
+        logger.error(chalk.red('❌ Failed to list dependencies'));
       }
     });
 

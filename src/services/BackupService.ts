@@ -780,14 +780,14 @@ export class BackupService {
       const metadata = await this.getBackupMetadata(backupId);
       if (!metadata) {
         result.isValid = false;
-        result.errors.push('Backup not found');
+        (result.errors as string[]).push('Backup not found');
         return result;
       }
 
       // Check backup status
       if (metadata.status !== 'completed') {
         result.isValid = false;
-        result.errors.push('Cannot restore from incomplete backup');
+        (result.errors as string[]).push('Cannot restore from incomplete backup');
         return result;
       }
 
@@ -798,10 +798,10 @@ export class BackupService {
 
         if (isNaN(pointInTime.getTime())) {
           result.isValid = false;
-          result.errors.push('Invalid point-in-time format');
+          (result.errors as string[]).push('Invalid point-in-time format');
         } else if (pointInTime > backupTime) {
           result.isValid = false;
-          result.errors.push('Point-in-time cannot be after backup creation time');
+          (result.errors as string[]).push('Point-in-time cannot be after backup creation time');
         }
       }
 
@@ -810,7 +810,7 @@ export class BackupService {
         const targetValidation = await this.validateRestoreTarget(options.targetFile);
         if (!targetValidation.isValid) {
           result.isValid = false;
-          result.errors.push(...targetValidation.errors);
+          (result.errors as string[]).push(...targetValidation.errors);
         }
       }
 
@@ -818,7 +818,7 @@ export class BackupService {
       const compatibilityCheck = await this.validateBackupCompatibility(metadata);
       if (!compatibilityCheck.isValid) {
         result.isValid = false;
-        result.errors.push(...compatibilityCheck.errors);
+        (result.errors as string[]).push(...compatibilityCheck.errors);
       }
 
       // Validate backup content structure
@@ -826,11 +826,11 @@ export class BackupService {
       result.tableChecks = contentValidation.tableChecks;
       if (!contentValidation.isValid) {
         result.isValid = false;
-        result.errors.push(...contentValidation.errors);
+        (result.errors as string[]).push(...contentValidation.errors);
       }
     } catch (error) {
       result.isValid = false;
-      result.errors.push(
+      (result.errors as string[]).push(
         `Validation error: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
@@ -873,14 +873,14 @@ export class BackupService {
       ];
       requiredTables.forEach(table => {
         if (!tableDefinitions.has(table)) {
-          result.errors.push(`Required table '${table}' not found in backup`);
+          (result.errors as string[]).push(`Required table '${table}' not found in backup`);
         }
       });
 
       // Check schema version compatibility (if schema versioning is implemented)
       const schemaVersion = this.extractSchemaVersion(sqlContent);
       if (schemaVersion && !this.isSchemaVersionCompatible(schemaVersion)) {
-        result.errors.push(`Schema version ${schemaVersion} is not compatible with current system`);
+        (result.errors as string[]).push(`Schema version ${schemaVersion} is not compatible with current system`);
       }
 
       if (result.errors.length > 0) {
@@ -888,7 +888,7 @@ export class BackupService {
       }
     } catch (error) {
       result.isValid = false;
-      result.errors.push(
+      (result.errors as string[]).push(
         `Compatibility check failed: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
@@ -928,7 +928,7 @@ export class BackupService {
       // Note: This is a simplified check. In production, you'd want more sophisticated space checking
     } catch (error) {
       result.isValid = false;
-      result.errors.push(
+      (result.errors as string[]).push(
         `Target validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
@@ -973,16 +973,16 @@ export class BackupService {
           message: info.message,
         };
 
-        result.tableChecks.push(check);
+        (result.tableChecks as any[]).push(check);
 
         if (!info.isValid) {
           result.isValid = false;
-          result.errors.push(`Table ${tableName}: ${info.message}`);
+          (result.errors as string[]).push(`Table ${tableName}: ${info.message}`);
         }
       });
     } catch (error) {
       result.isValid = false;
-      result.errors.push(
+      (result.errors as string[]).push(
         `Content validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
@@ -1295,7 +1295,7 @@ export class BackupService {
     while ((match = createTableRegex.exec(sqlContent)) !== null) {
       const tableName = match[1];
       const definition = match[2];
-      tableDefinitions.set(tableName, definition);
+      tableDefinitions.set(tableName!, definition!);
     }
 
     return tableDefinitions;
@@ -1307,7 +1307,7 @@ export class BackupService {
   private extractSchemaVersion(sqlContent: string): string | null {
     const versionRegex = /-- Schema Version:\s*(\d+\.\d+\.\d+)/i;
     const match = sqlContent.match(versionRegex);
-    return match ? match[1] : null;
+    return match?.[1] || null;
   }
 
   /**
@@ -1334,7 +1334,7 @@ export class BackupService {
     let match;
     while ((match = tableRegex.exec(sqlContent)) !== null) {
       const tableName = match[1];
-      tableCounts.set(tableName, (tableCounts.get(tableName) || 0) + 1);
+      tableCounts.set(tableName!, (tableCounts.get(tableName!) || 0) + 1);
     }
 
     // Validate each table

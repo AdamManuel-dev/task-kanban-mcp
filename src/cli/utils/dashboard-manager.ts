@@ -118,15 +118,15 @@ export class DashboardManager {
 
     // Help and settings
     this.screen.key(['h', '?', 'F12'], () => {
-      DashboardManager.showHelp();
+      this.showHelp();
     });
 
     this.screen.key(['t', 'F9'], () => {
-      DashboardManager.toggleTheme();
+      this.toggleTheme();
     });
 
     this.screen.key(['a', 'F10'], () => {
-      DashboardManager.toggleAutoRefresh();
+      this.toggleAutoRefresh();
     });
 
     // Navigation within widgets
@@ -455,7 +455,7 @@ export class DashboardManager {
       right: 1,
       width: Math.floor((this.screen as any).width * 0.4),
       height: 3,
-      border: { type: 'line' as any as any, fg: 'red' },
+      border: { type: 'line' as any, fg: 'red' as any },
       style: { fg: 'white', bg: 'red' },
       label: '⚠️  Error',
       content: message,
@@ -475,13 +475,13 @@ export class DashboardManager {
   /**
    * Show theme change notification
    */
-  private static showThemeNotification(message: string): void {
+  private showThemeNotification(message: string): void {
     const themeBox = blessed.box({
       top: 1,
       left: 1,
       width: Math.floor((this.screen as any).width * 0.3),
       height: 3,
-      border: { type: 'line' as any, fg: this.themeHelper.getColor('primary') },
+      border: { type: 'line' as any, fg: this.themeHelper.getColor('primary') as any },
       style: {
         fg: this.themeHelper.getColor('foreground'),
         bg: this.themeHelper.getColor('secondary'),
@@ -504,13 +504,13 @@ export class DashboardManager {
   /**
    * Show help overlay
    */
-  private static showHelp(): void {
+  private showHelp(): void {
     const helpBox = blessed.box({
       top: 'center',
       left: 'center',
       width: '50%',
       height: '60%',
-      border: { type: 'line' as any, fg: 'yellow' },
+      border: { type: 'line' as any, fg: 'yellow' as any },
       style: { fg: 'white', bg: 'black' },
       label: '📖 Dashboard Help',
       content: `
@@ -573,12 +573,12 @@ Press any key to close this help...
   /**
    * Toggle between available themes
    */
-  private static toggleTheme(): void {
+  private toggleTheme(): void {
     const themes = getThemeNames();
     const currentIndex = themes.indexOf(this.config.theme);
     const nextIndex = (currentIndex + 1) % themes.length;
 
-    this.config.theme = themes[nextIndex];
+    this.config.theme = themes[nextIndex] || 'dark';
     this.themeHelper.setTheme(this.config.theme);
 
     // Show theme change notification
@@ -591,7 +591,7 @@ Press any key to close this help...
   /**
    * Toggle auto-refresh
    */
-  private static toggleAutoRefresh(): void {
+  private toggleAutoRefresh(): void {
     this.config.autoRefresh = !this.config.autoRefresh;
 
     if (this.config.autoRefresh) {
@@ -700,7 +700,7 @@ Press any key to close this help...
   /**
    * Generate sample data for demo
    */
-  private static generateSampleData(): DashboardData {
+  private generateSampleData(): DashboardData {
     return {
       tasks: {
         total: 45,
@@ -837,7 +837,7 @@ Press any key to close this help...
       left: 'center',
       width: '60%',
       height: '50%',
-      border: { type: 'line' as any, fg: this.themeHelper.getColor('primary') },
+      border: { type: 'line' as any, fg: this.themeHelper.getColor('primary') as any },
       style: {
         fg: this.themeHelper.getColor('foreground'),
         bg: this.themeHelper.getColor('background'),
@@ -910,7 +910,7 @@ Press any key to close...
       right: 0,
       width: '25%',
       height: '30%',
-      border: { type: 'line' as any, fg: 'yellow' },
+      border: { type: 'line' as any, fg: 'yellow' as any },
       style: { fg: 'yellow', bg: 'black' },
       label: '🐛 Debug Info',
       content: `
@@ -964,7 +964,7 @@ ${String(debugInfo)}
       left: 'center',
       width: '50%',
       height: 3,
-      border: { type: 'line' as any, fg: this.themeHelper.getColor('info') },
+      border: { type: 'line' as any, fg: this.themeHelper.getColor('info') as any },
       style: {
         fg: this.themeHelper.getColor('foreground'),
         bg: this.themeHelper.getColor('secondary'),

@@ -33,7 +33,7 @@ export interface EnvValidationResult {
 /**
  * Environment variable validation rules
  */
-export const ENV_RULES: EnvValidationRule[] = [
+export const ENV_RULES: readonly EnvValidationRule[] = [
   // Server configuration
   {
     key: 'NODE_ENV',
@@ -278,7 +278,7 @@ export const ENV_RULES: EnvValidationRule[] = [
 export class EnvironmentManager {
   private readonly cache: Map<string, any> = new Map();
 
-  private validated = false;
+  private validated = false; // eslint-disable-line @typescript-eslint/no-unused-vars
 
   /**
    * Gets an environment variable with type conversion and validation

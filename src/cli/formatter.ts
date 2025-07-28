@@ -48,7 +48,7 @@ export class OutputFormatter {
         OutputFormatter.outputJson(data);
         break;
       case 'csv':
-        OutputFormatter.outputCsv(data, options);
+        this.outputCsv(data, options);
         break;
       case 'table':
       default:
@@ -62,7 +62,7 @@ export class OutputFormatter {
    */
   success(message: string): void {
     if (!this.options.quiet) {
-      logger.info(OutputFormatter.colorize(message, 'green'));
+      logger.info(this.colorize(message, 'green'));
     }
   }
 
@@ -70,7 +70,7 @@ export class OutputFormatter {
    * Output error message
    */
   error(message: string): void {
-    logger.error(OutputFormatter.colorize(`Error: ${String(message)}`, 'red'));
+    logger.error(this.colorize(`Error: ${String(message)}`, 'red'));
   }
 
   /**
@@ -78,7 +78,7 @@ export class OutputFormatter {
    */
   warn(message: string): void {
     if (!this.options.quiet) {
-      logger.warn(OutputFormatter.colorize(`Warning: ${String(message)}`, 'yellow'));
+      logger.warn(this.colorize(`Warning: ${String(message)}`, 'yellow'));
     }
   }
 
@@ -87,7 +87,7 @@ export class OutputFormatter {
    */
   info(message: string): void {
     if (this.options.verbose && !this.options.quiet) {
-      logger.info(OutputFormatter.colorize(message, 'cyan'));
+      logger.info(this.colorize(message, 'cyan'));
     }
   }
 
@@ -96,7 +96,7 @@ export class OutputFormatter {
    */
   debug(message: string): void {
     if (this.options.verbose && !this.options.quiet) {
-      logger.info(OutputFormatter.colorize(`Debug: ${String(message)}`, 'gray'));
+      logger.info(this.colorize(`Debug: ${String(message)}`, 'gray'));
     }
   }
 
@@ -110,7 +110,7 @@ export class OutputFormatter {
   /**
    * Output CSV format
    */
-  private static outputCsv<T>(data: T, options?: { headers?: string[]; fields?: string[] }): void {
+  private outputCsv<T>(data: T, options?: { headers?: string[]; fields?: string[] }): void {
     let items: T[];
     if (!Array.isArray(data)) {
       items = [data];
@@ -124,7 +124,7 @@ export class OutputFormatter {
       return;
     }
 
-    const fields = options?.fields ?? Object.keys(processedItems[0]);
+    const fields = options?.fields ?? Object.keys(processedItems[0] as Record<string, unknown>);
     const headers = options?.headers ?? fields;
 
     // Output headers
@@ -134,7 +134,7 @@ export class OutputFormatter {
     processedItems.forEach((item): void => {
       const values = fields.map((field): string => {
         const value = OutputFormatter.getNestedValue(item, field);
-        const stringValue = OutputFormatter.formatValue(value);
+        const stringValue = this.formatValue(value);
         // Escape commas and quotes in CSV
         return `"${String(stringValue.replace(/"/g, '""'))}"`;
       });
@@ -154,7 +154,7 @@ export class OutputFormatter {
 
     const items = Array.isArray(data) ? data : [data];
     if (items.length === 0) {
-      logger.info(OutputFormatter.colorize('No items found', 'gray'));
+      logger.info(this.colorize('No items found', 'gray'));
       return;
     }
 
@@ -164,7 +164,7 @@ export class OutputFormatter {
       fields.map((field: string): string => OutputFormatter.formatHeader(field));
 
     const table = new Table({
-      head: headers.map((h: string): string => OutputFormatter.colorize(h, 'cyan')),
+      head: headers.map((h: string): string => this.colorize(h, 'cyan')),
       style: {
         'padding-left': 1,
         'padding-right': 1,
@@ -175,7 +175,7 @@ export class OutputFormatter {
     items.forEach((item): void => {
       const row = fields.map((field: string): string => {
         const value = OutputFormatter.getNestedValue(item, field);
-        return OutputFormatter.formatTableValue(value, field);
+        return this.formatTableValue(value, field);
       });
       table.push(row);
     });
@@ -196,8 +196,8 @@ export class OutputFormatter {
 
     Object.entries(obj as Record<string, unknown>).forEach(([key, value]): void => {
       table.push([
-        OutputFormatter.colorize(OutputFormatter.formatHeader(key), 'cyan'),
-        OutputFormatter.formatTableValue(value, key),
+        this.colorize(OutputFormatter.formatHeader(key), 'cyan'),
+        this.formatTableValue(value, key),
       ]);
     });
 
@@ -219,8 +219,8 @@ export class OutputFormatter {
   /**
    * Format value for display
    */
-  private static formatValue(value: unknown): string {
-    if (value === null ?? value === undefined) {
+  private formatValue(value: unknown): string {
+    if (value === null || value === undefined) {
       return '';
     }
 
@@ -242,7 +242,7 @@ export class OutputFormatter {
   /**
    * Format value for table display with colors
    */
-  private static formatTableValue(value: unknown, field: string): string {
+  private formatTableValue(value: unknown, field: string): string {
     const formatted = this.formatValue(value);
 
     if (!this.options.color) {
@@ -320,7 +320,7 @@ export class OutputFormatter {
   /**
    * Apply color if color is enabled
    */
-  private static colorize(text: string, color: string): string {
+  private colorize(text: string, color: string): string {
     if (!this.options.color) {
       return text;
     }

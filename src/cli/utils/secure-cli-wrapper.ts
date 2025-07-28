@@ -393,7 +393,7 @@ export class SecureCliWrapper {
         critical: chalk.red,
       }[event.risk];
 
-      logger.log(
+      logger.info(
         color(
           `🔒 Security [${String(String(event.risk.toUpperCase()))}]: ${String(String(event.type))} - ${String(String(event.details))}`
         )
@@ -754,7 +754,7 @@ export function addSecurityMiddleware(program: Command): Command {
     .command('report')
     .description('Show security report')
     .action(() => {
-      logger.log(secureCliWrapper.generateSecurityReport());
+      logger.info(secureCliWrapper.generateSecurityReport());
     });
 
   securityCmd
@@ -763,11 +763,11 @@ export function addSecurityMiddleware(program: Command): Command {
     .action((limit?: string) => {
       const events = secureCliWrapper.getSecurityEvents(limit ? parseInt(limit, 10) : 20);
       if (events.length === 0) {
-        logger.log(chalk.green('✅ No security events recorded'));
+        logger.info(chalk.green('✅ No security events recorded'));
         return;
       }
 
-      logger.log(chalk.blue('🔒 Recent Security Events:'));
+      logger.info(chalk.blue('🔒 Recent Security Events:'));
       events.forEach(event => {
         const color = {
           low: chalk.blue,
@@ -776,7 +776,7 @@ export function addSecurityMiddleware(program: Command): Command {
           critical: chalk.red,
         }[event.risk];
 
-        logger.log(
+        logger.info(
           `${event.timestamp.toISOString()} ${color(`[${event.risk.toUpperCase()}]`)} ${event.type}: ${event.details}`
         );
       });
@@ -787,7 +787,7 @@ export function addSecurityMiddleware(program: Command): Command {
     .description('Clear security event log')
     .action(() => {
       secureCliWrapper.clearSecurityEvents();
-      logger.log(chalk.green('✅ Security events cleared'));
+      logger.info(chalk.green('✅ Security events cleared'));
     });
 
   securityCmd
@@ -795,8 +795,8 @@ export function addSecurityMiddleware(program: Command): Command {
     .description('Show security configuration')
     .action(() => {
       const config = secureCliWrapper.getConfig();
-      logger.log(chalk.blue('🔧 Security Configuration:'));
-      logger.log(JSON.stringify(config, null, 2));
+      logger.info(chalk.blue('🔧 Security Configuration:'));
+      logger.info(JSON.stringify(config, null, 2));
     });
 
   return program;

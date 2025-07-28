@@ -49,7 +49,7 @@ export class PromptCancelledError extends Error {
  */
 async function safePrompt<T>(promptConfig: any): Promise<T> {
   try {
-    return await prompt<T>(promptConfig);
+    return await prompt(promptConfig);
   } catch (error) {
     // Check if it's a cancellation (Ctrl+C, ESC, etc.)
     if (error instanceof Error) {
@@ -260,10 +260,10 @@ export async function createTaskPrompt(defaults?: Partial<TaskInput>): Promise<T
     if (response.description?.trim()) {
       cleanedResponse.description = response.description.trim();
     }
-    if (response.priority && response.priority !== 'undefined') {
+    if (response.priority && response.priority !== ('undefined' as any)) {
       cleanedResponse.priority = response.priority as Priority;
     }
-    if (response.size && response.size !== 'undefined') {
+    if (response.size && response.size !== ('undefined' as any)) {
       cleanedResponse.size = response.size as TaskSize;
     }
     if (response.assignee?.trim()) {
@@ -354,7 +354,7 @@ export async function moveTaskPrompt(
     return {
       taskId,
       targetColumn: response.targetColumn,
-      position,
+      position: position ?? undefined,
     };
   } catch (error) {
     if (error instanceof PromptCancelledError) {

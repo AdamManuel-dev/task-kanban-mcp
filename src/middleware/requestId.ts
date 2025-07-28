@@ -9,7 +9,7 @@ declare global {
   }
 }
 
-export function requestIdMiddleware(req: Request, res: Response, next: NextFunction) {
+export function requestIdMiddleware(req: Request, res: Response, next: NextFunction): void {
   const requestId = req.get('X-Request-ID') || uuidv4();
 
   req.requestId = requestId;

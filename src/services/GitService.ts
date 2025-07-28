@@ -85,9 +85,9 @@ export class GitService {
         const lastCommit = parts[1];
 
         return {
-          name,
+          name: name || '',
           isActive,
-          lastCommit: lastCommit !== name ? lastCommit : undefined,
+          lastCommit: lastCommit !== name ? lastCommit || '' : '',
         };
       });
     } catch (error) {
@@ -112,10 +112,10 @@ export class GitService {
         .map(line => {
           const [hash, message, author, dateStr] = line.split('|');
           return {
-            hash,
-            message,
-            author,
-            date: new Date(dateStr),
+            hash: hash || '',
+            message: message || '',
+            author: author || '',
+            date: new Date(dateStr || Date.now()),
           };
         });
     } catch (error) {

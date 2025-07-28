@@ -74,7 +74,7 @@ function extractUuidParams(path: string): string[] {
 /**
  * Create a validation middleware for request body/query/params
  */
-export function validateRequest<T>(schema: z.ZodSchema<T>) {
+export function validateRequest<T>(schema: z.ZodSchema<T>): (req: Request, res: Response, next: NextFunction) => void {
   return (req: Request, _res: Response, next: NextFunction) => {
     try {
       const data = {

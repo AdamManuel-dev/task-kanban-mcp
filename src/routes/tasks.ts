@@ -224,14 +224,14 @@ export function taskRoutes(): Router {
         const totalTasks = await taskService.getTasks(countOptions);
         const total = totalTasks.length;
 
-        return res.apiPagination(
+        res.apiPagination(
           tasks,
           Math.floor(options.offset / options.limit) + 1,
           options.limit,
           total
         );
       } catch (error) {
-        return next(error);
+        next(error);
       }
     }
   );
@@ -286,9 +286,9 @@ export function taskRoutes(): Router {
           Object.entries(rawTaskData).filter(([, value]) => value !== undefined)
         ) as unknown as CreateTaskRequest;
         const task = await taskService.createTask(taskData);
-        return res.status(201).apiSuccess(task);
+        res.status(201).apiSuccess(task);
       } catch (error) {
-        return next(error);
+        next(error);
       }
     }
   );
@@ -350,9 +350,9 @@ export function taskRoutes(): Router {
         throw new NotFoundError('Task', id);
       }
 
-      return res.apiSuccess(task);
+      res.apiSuccess(task);
     } catch (error) {
-      return next(error);
+      next(error);
     }
   });
 
@@ -402,9 +402,9 @@ export function taskRoutes(): Router {
         }
         const updateData = validateInput(TaskValidation.update, req.body);
         const task = await taskService.updateTask(id, updateData);
-        return res.apiSuccess(task);
+        res.apiSuccess(task);
       } catch (error) {
-        return next(error);
+        next(error);
       }
     }
   );
@@ -433,9 +433,9 @@ export function taskRoutes(): Router {
         throw new NotFoundError('Task', 'ID is required');
       }
       await taskService.deleteTask(id);
-      return res.status(204).send();
+      res.status(204).send();
     } catch (error) {
-      return next(error);
+      next(error);
     }
   });
 
@@ -489,9 +489,9 @@ export function taskRoutes(): Router {
           dependencyData.dependency_type
         );
 
-        return res.status(201).apiSuccess(dependency);
+        res.status(201).apiSuccess(dependency);
       } catch (error) {
-        return next(error);
+        next(error);
       }
     }
   );
@@ -578,7 +578,7 @@ export function taskRoutes(): Router {
           throw new NotFoundError('Task', id);
         }
 
-        return res.apiSuccess({
+        res.apiSuccess({
           dependencies: taskWithDeps.dependencies?.map(d => d.depends_on_task_id) || [],
           dependents: taskWithDeps.dependents?.map(d => d.task_id) || [],
           added: results.added,
@@ -586,7 +586,7 @@ export function taskRoutes(): Router {
           errors: results.errors.length > 0 ? results.errors : undefined,
         });
       } catch (error) {
-        return next(error);
+        next(error);
       }
     }
   );
@@ -605,9 +605,9 @@ export function taskRoutes(): Router {
           throw new NotFoundError('Dependency', 'Dependency ID is required');
         }
         await taskService.removeDependency(id, dependsOnId);
-        return res.status(204).send();
+        res.status(204).send();
       } catch (error) {
-        return next(error);
+        next(error);
       }
     }
   );
@@ -628,12 +628,12 @@ export function taskRoutes(): Router {
           throw new NotFoundError('Task', id);
         }
 
-        return res.apiSuccess({
+        res.apiSuccess({
           dependencies: taskWithDeps.dependencies,
           dependents: taskWithDeps.dependents,
         });
       } catch (error) {
-        return next(error);
+        next(error);
       }
     }
   );
@@ -657,7 +657,7 @@ export function taskRoutes(): Router {
         // Convert Map to Object for JSON serialization
         const nodes = Object.fromEntries(graph.nodes);
 
-        return res.apiSuccess({
+        res.apiSuccess({
           nodes,
           edges: graph.edges,
           roots: graph.roots,
@@ -670,7 +670,7 @@ export function taskRoutes(): Router {
           },
         });
       } catch (error) {
-        return next(error);
+        next(error);
       }
     }
   );
@@ -691,9 +691,9 @@ export function taskRoutes(): Router {
 
         const criticalPath = await depService.findCriticalPath(board_id as string);
 
-        return res.apiSuccess(criticalPath);
+        res.apiSuccess(criticalPath);
       } catch (error) {
-        return next(error);
+        next(error);
       }
     }
   );
@@ -719,9 +719,9 @@ export function taskRoutes(): Router {
         );
 
         const subtask = await taskService.createTask(subtaskData as any);
-        return res.status(201).apiSuccess(subtask);
+        res.status(201).apiSuccess(subtask);
       } catch (error) {
-        return next(error);
+        next(error);
       }
     }
   );
@@ -739,9 +739,9 @@ export function taskRoutes(): Router {
         throw new NotFoundError('Task', id);
       }
 
-      return res.apiSuccess(taskWithSubtasks.subtasks);
+      res.apiSuccess(taskWithSubtasks.subtasks);
     } catch (error) {
-      return next(error);
+      next(error);
     }
   });
 
@@ -773,9 +773,9 @@ export function taskRoutes(): Router {
         );
 
         const updatedSubtask = await taskService.updateTask(id, updateData as any);
-        return res.apiSuccess(updatedSubtask);
+        res.apiSuccess(updatedSubtask);
       } catch (error) {
-        return next(error);
+        next(error);
       }
     }
   );
@@ -801,9 +801,9 @@ export function taskRoutes(): Router {
         }
 
         await taskService.deleteTask(id);
-        return res.status(204).send();
+        res.status(204).send();
       } catch (error) {
-        return next(error);
+        next(error);
       }
     }
   );
@@ -855,9 +855,9 @@ export function taskRoutes(): Router {
       };
 
       const note = await noteService.createNote(noteData);
-      return res.status(201).apiSuccess(note);
+      res.status(201).apiSuccess(note);
     } catch (error) {
-      return next(error);
+      next(error);
     }
   });
 
@@ -882,9 +882,9 @@ export function taskRoutes(): Router {
         throw new ValidationError('Task ID is required');
       }
       const notes = await noteService.getTaskNotes(id, options);
-      return res.apiSuccess(notes);
+      res.apiSuccess(notes);
     } catch (error) {
-      return next(error);
+      next(error);
     }
   });
 
@@ -923,7 +923,8 @@ export function taskRoutes(): Router {
       const { tag_ids: tagIds } = req.body;
 
       if (!Array.isArray(tagIds)) {
-        return res.status(400).apiError('INVALID_INPUT', 'tag_ids must be an array');
+        res.status(400).apiError('INVALID_INPUT', 'tag_ids must be an array');
+        return;
       }
 
       if (!id) {
@@ -936,9 +937,9 @@ export function taskRoutes(): Router {
         })
       );
 
-      return res.status(201).apiSuccess(assignedTags);
+      res.status(201).apiSuccess(assignedTags);
     } catch (error) {
-      return next(error);
+      next(error);
     }
   });
 
@@ -956,9 +957,9 @@ export function taskRoutes(): Router {
           throw new NotFoundError('Tag', 'Tag ID is required');
         }
         await tagService.removeTagFromTask(id, tagId);
-        return res.status(204).send();
+        res.status(204).send();
       } catch (error) {
-        return next(error);
+        next(error);
       }
     }
   );
@@ -971,9 +972,9 @@ export function taskRoutes(): Router {
         throw new ValidationError('Task ID is required');
       }
       const tags = await tagService.getTaskTags(id);
-      return res.apiSuccess(tags);
+      res.apiSuccess(tags);
     } catch (error) {
-      return next(error);
+      next(error);
     }
   });
 
@@ -982,9 +983,9 @@ export function taskRoutes(): Router {
     try {
       const { board_id } = req.query;
       const blockedTasks = await taskService.getBlockedTasks(board_id as string);
-      return res.apiSuccess(blockedTasks);
+      res.apiSuccess(blockedTasks);
     } catch (error) {
-      return next(error);
+      next(error);
     }
   });
 
@@ -993,9 +994,9 @@ export function taskRoutes(): Router {
     try {
       const { board_id } = req.query;
       const overdueTasks = await taskService.getOverdueTasks(board_id as string);
-      return res.apiSuccess(overdueTasks);
+      res.apiSuccess(overdueTasks);
     } catch (error) {
-      return next(error);
+      next(error);
     }
   });
 
@@ -1040,7 +1041,7 @@ export function taskRoutes(): Router {
       }
 
       if (availableTasks.length === 0) {
-        return res.apiSuccess({
+        res.apiSuccess({
           next_task: null,
           reasoning: 'No available tasks found matching the criteria',
         });
@@ -1148,12 +1149,12 @@ export function taskRoutes(): Router {
 
       reasoning += `\n\nThis task was chosen from ${availableTasks.length} available task(s) using priority-first sorting with deadline awareness.`;
 
-      return res.apiSuccess({
+      res.apiSuccess({
         next_task: nextTask,
         reasoning,
       });
     } catch (error) {
-      return next(error);
+      next(error);
     }
   });
 
