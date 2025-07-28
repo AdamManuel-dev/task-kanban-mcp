@@ -4,9 +4,7 @@
 
 import request from 'supertest';
 import { app } from '@/server';
-import { dbConnection } from '@/database/connection';
 import { AnalyticsService } from '@/services/AnalyticsService';
-import { performanceMonitor } from '@/services/PerformanceMonitoringService';
 
 describe('Analytics Integration Tests', () => {
   let analyticsService: AnalyticsService;

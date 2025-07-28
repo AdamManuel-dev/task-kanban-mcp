@@ -125,7 +125,7 @@ export class TaskHistoryService {
       query += ' ORDER BY changed_at DESC';
 
       const rows = await dbConnection.query(query, params);
-      return rows.map(this.mapRowToHistoryEntry);
+      return rows.map(row => this.mapRowToHistoryEntry(row));
     } catch (error) {
       logger.error('Failed to get task history:', error);
       throw new Error(
@@ -420,7 +420,7 @@ export class TaskHistoryService {
       params.push(limit);
 
       const rows = await dbConnection.query(query, params);
-      return rows.map(this.mapRowToHistoryEntry) as PriorityChangeEntry[];
+      return rows.map(row => this.mapRowToHistoryEntry(row)) as PriorityChangeEntry[];
     } catch (error) {
       logger.error('Failed to get recent priority changes:', error);
       throw error;

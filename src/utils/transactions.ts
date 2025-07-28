@@ -580,7 +580,7 @@ export class TransactionManager {
    */
   private static isRetryableError(error: unknown): boolean {
     if (error instanceof DatabaseError) {
-      return error.context?.metadata?.['isRetryable'] as boolean;
+      return error.context?.metadata?.isRetryable as boolean;
     }
     return false;
   }

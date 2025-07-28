@@ -111,15 +111,12 @@ export function registerSubtaskCommands(program: Command): void {
           }
 
           // Use command line options or answers
-          subtaskData['title'] = options['title'] ?? subtaskData['title'];
-          subtaskData['description'] = options['description'] ?? subtaskData['description'];
-          subtaskData['priority'] = parseInt(
-            options['priority'] ?? String(subtaskData['priority']),
-            10
-          );
+          subtaskData.title = options.title ?? subtaskData.title;
+          subtaskData.description = options.description ?? subtaskData.description;
+          subtaskData.priority = parseInt(options.priority ?? String(subtaskData.priority), 10);
 
-          if (options.due ?? subtaskData['dueDate']) {
-            subtaskData['dueDate'] = options.due ?? subtaskData['dueDate'];
+          if (options.due ?? subtaskData.dueDate) {
+            subtaskData.dueDate = options.due ?? subtaskData.dueDate;
           }
 
           const subtask = await apiClient.createTask(subtaskData as any);
@@ -149,7 +146,7 @@ export function registerSubtaskCommands(program: Command): void {
         };
 
         if (options.status) {
-          params['status'] = options['status'];
+          params.status = options.status;
         }
 
         const subtasks = (await apiClient.getTasks(params)) as any;

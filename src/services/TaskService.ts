@@ -1589,7 +1589,7 @@ export class TaskService {
 
     // Topological sort using DFS
     const sortedTasks: string[] = [];
-    const visit = (taskId: string) => {
+    const visit = (taskId: string): void => {
       if (visited.has(taskId)) return;
       visited.add(taskId);
 
@@ -1695,7 +1695,7 @@ export class TaskService {
         total_impacted_count: impactedTasks.direct.length + impactedTasks.indirect.length,
         upstream_dependencies: dependencyTasks,
         impact_score: impactScore,
-        risk_level: (() => {
+        risk_level: ((): 'low' | 'medium' | 'high' => {
           if (impactScore > 10) return 'high';
           if (impactScore > 5) return 'medium';
           return 'low';
@@ -1725,7 +1725,7 @@ export class TaskService {
     const direct: Task[] = [];
     const indirect: Task[] = [];
 
-    const findDownstream = async (currentTaskId: string, depth: number = 0) => {
+    const findDownstream = async (currentTaskId: string, depth: number = 0): Promise<void> => {
       if (visited.has(currentTaskId)) return;
       visited.add(currentTaskId);
 
@@ -1760,7 +1760,7 @@ export class TaskService {
     const visited = new Set<string>();
     const upstream: Task[] = [];
 
-    const findUpstream = async (currentTaskId: string) => {
+    const findUpstream = async (currentTaskId: string): Promise<void> => {
       if (visited.has(currentTaskId)) return;
       visited.add(currentTaskId);
 

@@ -5,7 +5,7 @@
 
 import { GitService } from './GitService';
 import { PriorityHistoryService } from './PriorityHistoryService';
-import { TaskService } from './TaskService';
+import type { TaskService } from './TaskService';
 import { logger } from '../utils/logger';
 import type { Task } from '../types';
 
@@ -42,10 +42,11 @@ export interface EnhancedPriorityResult {
 }
 
 export class AIContextualPrioritizer {
-  private gitService = GitService;
-  private priorityHistoryService = new PriorityHistoryService();
+  private readonly gitService = GitService;
 
-  constructor(private taskService: TaskService) {}
+  private readonly priorityHistoryService = new PriorityHistoryService();
+
+  constructor(private readonly taskService: TaskService) {}
 
   /**
    * Enhanced prioritization with contextual awareness and ML-like capabilities
@@ -196,13 +197,17 @@ export class AIContextualPrioritizer {
         score: 60,
         reasoning: `Overdue by ${Math.abs(Math.round(hoursUntilDue))} hours (+60 points)`,
       };
-    } else if (hoursUntilDue <= 4) {
+    }
+    if (hoursUntilDue <= 4) {
       return { score: 45, reasoning: `Due in ${Math.round(hoursUntilDue)} hours (+45 points)` };
-    } else if (hoursUntilDue <= 24) {
+    }
+    if (hoursUntilDue <= 24) {
       return { score: 30, reasoning: `Due today (+30 points)` };
-    } else if (hoursUntilDue <= 72) {
+    }
+    if (hoursUntilDue <= 72) {
       return { score: 15, reasoning: `Due in ${Math.round(hoursUntilDue / 24)} days (+15 points)` };
-    } else if (hoursUntilDue <= 168) {
+    }
+    if (hoursUntilDue <= 168) {
       return { score: 5, reasoning: `Due this week (+5 points)` };
     }
 
@@ -394,9 +399,9 @@ export class AIContextualPrioritizer {
       }
 
       // Calculate similarity to recently completed tasks
-      const similarities = recentCompleted.map(completedTask => {
-        return this.calculateTextSimilarity(task.title, completedTask.title);
-      });
+      const similarities = recentCompleted.map(completedTask =>
+        this.calculateTextSimilarity(task.title, completedTask.title)
+      );
 
       const maxSimilarity = Math.max(...similarities);
 

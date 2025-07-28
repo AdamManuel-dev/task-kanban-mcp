@@ -12,6 +12,7 @@ import { contextRoutes } from './context';
 // Import new route modules
 import analyticsRoutes from './analytics';
 import performanceRoutes from './performance';
+import prioritiesRoutes from './priorities';
 
 const router = Router();
 
@@ -31,5 +32,6 @@ router.use('/v1/context', contextRoutes());
 // New feature routes
 router.use('/v1/analytics', analyticsRoutes);
 router.use('/v1/performance', performanceRoutes);
+router.use('/v1/priorities', prioritiesRoutes);
 
 export default router;

@@ -41,10 +41,10 @@ export interface CloudEnvironmentInfo {
  * Detects the current cloud development environment
  */
 export function detectCloudEnvironment(): CloudEnvironmentInfo {
-  const env = process.env;
+  const { env } = process;
 
   // Replit detection
-  if (env['REPLIT_DB_URL'] || env['REPL_SLUG']) {
+  if (env.REPLIT_DB_URL || env.REPL_SLUG) {
     return {
       platform: 'replit',
       isCloud: true,
@@ -67,25 +67,25 @@ export function detectCloudEnvironment(): CloudEnvironmentInfo {
       },
       urls: {
         preview:
-          env['REPL_SLUG'] && env['REPL_OWNER']
-            ? `https://${env['REPL_SLUG']}.${env['REPL_OWNER']}.repl.co`
+          env.REPL_SLUG && env.REPL_OWNER
+            ? `https://${env.REPL_SLUG}.${env.REPL_OWNER}.repl.co`
             : undefined,
         webapp:
-          env['REPL_SLUG'] && env['REPL_OWNER']
-            ? `https://${env['REPL_SLUG']}.${env['REPL_OWNER']}.repl.co`
+          env.REPL_SLUG && env.REPL_OWNER
+            ? `https://${env.REPL_SLUG}.${env.REPL_OWNER}.repl.co`
             : undefined,
         websocket:
-          env['REPL_SLUG'] && env['REPL_OWNER']
-            ? `wss://${env['REPL_SLUG']}.${env['REPL_OWNER']}.repl.co:3456`
+          env.REPL_SLUG && env.REPL_OWNER
+            ? `wss://${env.REPL_SLUG}.${env.REPL_OWNER}.repl.co:3456`
             : undefined,
       },
     };
   }
 
   // GitHub Codespaces detection
-  if (env['CODESPACES'] || env['GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN']) {
-    const codespaceName = env['CODESPACE_NAME'];
-    const domain = env['GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN'];
+  if (env.CODESPACES || env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN) {
+    const codespaceName = env.CODESPACE_NAME;
+    const domain = env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN;
 
     return {
       platform: 'codespaces',
@@ -116,8 +116,8 @@ export function detectCloudEnvironment(): CloudEnvironmentInfo {
   }
 
   // GitPod detection
-  if (env['GITPOD_WORKSPACE_ID'] || env['GITPOD_WORKSPACE_URL']) {
-    const workspaceUrl = env['GITPOD_WORKSPACE_URL'];
+  if (env.GITPOD_WORKSPACE_ID || env.GITPOD_WORKSPACE_URL) {
+    const workspaceUrl = env.GITPOD_WORKSPACE_URL;
 
     return {
       platform: 'gitpod',
@@ -148,7 +148,7 @@ export function detectCloudEnvironment(): CloudEnvironmentInfo {
   }
 
   // StackBlitz detection
-  if (env['STACKBLITZ']) {
+  if (env.STACKBLITZ) {
     return {
       platform: 'stackblitz',
       isCloud: true,
@@ -179,7 +179,7 @@ export function detectCloudEnvironment(): CloudEnvironmentInfo {
   }
 
   // CodeSandbox detection
-  if (env['CODESANDBOX_SSE']) {
+  if (env.CODESANDBOX_SSE) {
     return {
       platform: 'codesandbox',
       isCloud: true,
@@ -351,21 +351,21 @@ export function configureCloudEnvironment(): CloudEnvironmentInfo {
   // Set environment-specific process settings
   if (cloudEnv.isCloud) {
     // Optimize for cloud environments
-    process.env['UV_THREADPOOL_SIZE'] = '32'; // Smaller thread pool
-    process.env['NODE_OPTIONS'] = `--max-old-space-size=${cloudEnv.limits.memory}`;
+    process.env.UV_THREADPOOL_SIZE = '32'; // Smaller thread pool
+    process.env.NODE_OPTIONS = `--max-old-space-size=${cloudEnv.limits.memory}`;
 
     // Set platform-specific environment variables
     if (cloudEnv.platform === 'replit') {
-      process.env['REPLIT_ENVIRONMENT'] = 'true';
+      process.env.REPLIT_ENVIRONMENT = 'true';
     }
 
     // Configure CORS for cloud environments
     if (cloudEnv.urls.webapp) {
-      process.env['CORS_ORIGIN'] = cloudEnv.urls.webapp;
+      process.env.CORS_ORIGIN = cloudEnv.urls.webapp;
     }
   } else {
     // Local development optimizations
-    process.env['NODE_ENV'] = process.env['NODE_ENV'] || 'development';
+    process.env.NODE_ENV = process.env.NODE_ENV || 'development';
   }
 
   return cloudEnv;
@@ -407,19 +407,19 @@ export function validateCloudEnvironment(cloudEnv: CloudEnvironmentInfo): {
   // Platform-specific validations
   switch (cloudEnv.platform) {
     case 'replit':
-      if (!process.env['REPL_SLUG']) {
+      if (!process.env.REPL_SLUG) {
         warnings.push('REPL_SLUG not found. Some features may not work correctly.');
       }
       break;
 
     case 'codespaces':
-      if (!process.env['CODESPACE_NAME']) {
+      if (!process.env.CODESPACE_NAME) {
         warnings.push('CODESPACE_NAME not found. URL generation may fail.');
       }
       break;
 
     case 'gitpod':
-      if (!process.env['GITPOD_WORKSPACE_URL']) {
+      if (!process.env.GITPOD_WORKSPACE_URL) {
         warnings.push('GITPOD_WORKSPACE_URL not found. URL generation may fail.');
       }
       break;

@@ -257,7 +257,7 @@ router.get(
 
       return res.json(formatSuccessResponse(backup));
     } catch (error) {
-      logger.error(`Failed to get backup ${String(String(req.params['id']))}:`, error);
+      logger.error(`Failed to get backup ${String(String(req.params.id))}:`, error);
       return res
         .status(500)
         .json(
@@ -337,7 +337,7 @@ router.post(
       logger.info(`Database restored from backup: ${String(id)}`);
       return res.json(formatSuccessResponse(null, 'Database restored successfully'));
     } catch (error) {
-      logger.error(`Restore failed for backup ${String(String(req.params['id']))}:`, error);
+      logger.error(`Restore failed for backup ${String(String(req.params.id))}:`, error);
       return res
         .status(500)
         .json(
@@ -507,7 +507,7 @@ router.post(
         })
       );
     } catch (error) {
-      logger.error(`Backup verification failed for ${String(String(req.params['id']))}:`, error);
+      logger.error(`Backup verification failed for ${String(String(req.params.id))}:`, error);
       return res
         .status(500)
         .json(
@@ -566,7 +566,7 @@ router.get(
       if (!id) {
         return res.status(400).json(formatErrorResponse('Backup ID is required'));
       }
-      const format = (req.query['format'] as string) || 'json';
+      const format = (req.query.format as string) || 'json';
 
       const backup = await backupService.getBackupMetadata(id);
       if (!backup) {
@@ -608,7 +608,7 @@ router.get(
           return res.status(400).json(formatErrorResponse('Unsupported export format'));
       }
     } catch (error) {
-      logger.error(`Backup export failed for ${String(String(req.params['id']))}:`, error);
+      logger.error(`Backup export failed for ${String(String(req.params.id))}:`, error);
       return res
         .status(500)
         .json(
@@ -667,7 +667,7 @@ router.delete(
       logger.info(`Backup deleted via API: ${String(id)}`);
       return res.json(formatSuccessResponse(null, 'Backup deleted successfully'));
     } catch (error) {
-      logger.error(`Failed to delete backup ${String(String(req.params['id']))}:`, error);
+      logger.error(`Failed to delete backup ${String(String(req.params.id))}:`, error);
       return res
         .status(500)
         .json(
@@ -767,7 +767,7 @@ router.post(
       });
       return res.json(formatSuccessResponse(validation, 'Validation completed'));
     } catch (error) {
-      logger.error(`Restore validation failed for backup ${req.params['id']}:`, error);
+      logger.error(`Restore validation failed for backup ${req.params.id}:`, error);
       return res
         .status(500)
         .json(
@@ -920,7 +920,7 @@ router.post(
       logger.info(`Partial restore completed for backup: ${id}`, { tables: options.tables });
       return res.json(formatSuccessResponse(null, 'Partial restore completed successfully'));
     } catch (error) {
-      logger.error(`Partial restore failed for backup ${req.params['id']}:`, error);
+      logger.error(`Partial restore failed for backup ${req.params.id}:`, error);
       return res
         .status(500)
         .json(
@@ -1006,7 +1006,7 @@ router.post(
         formatSuccessResponse({ progressId }, 'Restore started with progress tracking')
       );
     } catch (error) {
-      logger.error(`Restore with progress failed for backup ${req.params['id']}:`, error);
+      logger.error(`Restore with progress failed for backup ${req.params.id}:`, error);
       return res
         .status(500)
         .json(
@@ -1085,7 +1085,7 @@ router.get(
 
       return res.json(formatSuccessResponse(progress, 'Progress retrieved'));
     } catch (error) {
-      logger.error(`Failed to get progress ${req.params['progressId']}:`, error);
+      logger.error(`Failed to get progress ${req.params.progressId}:`, error);
       return res
         .status(500)
         .json(
@@ -1143,7 +1143,7 @@ router.delete(
       logger.info(`Progress cleared: ${progressId}`);
       return res.json(formatSuccessResponse(null, 'Progress cleared successfully'));
     } catch (error) {
-      logger.error(`Failed to clear progress ${req.params['progressId']}:`, error);
+      logger.error(`Failed to clear progress ${req.params.progressId}:`, error);
       return res
         .status(500)
         .json(

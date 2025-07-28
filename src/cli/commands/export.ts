@@ -271,8 +271,8 @@ export function registerExportCommands(program: Command): void {
     .action(async (input: string, output: string, options: any) => {
       const { formatter } = getComponents();
       try {
-        const fromFormat = options.from.toLowerCase();
-        const toFormat = options.to.toLowerCase();
+        const fromFormat = options['from'].toLowerCase();
+        const toFormat = options['to'].toLowerCase();
         const supported = getSupportedConversions();
         if (!supported['from']?.includes(fromFormat) || !supported['to']?.includes(toFormat)) {
           formatter.error(`Unsupported conversion: ${fromFormat} → ${toFormat}`);

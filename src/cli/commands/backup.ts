@@ -13,6 +13,8 @@ function hasDataProperty<T>(response: AnyApiResponse): response is { data: T } {
 interface CreateBackupOptions {
   compress?: boolean;
   verify?: boolean;
+  encrypt?: boolean;
+  encryptionKey?: string;
   description?: string;
 }
 
@@ -36,6 +38,7 @@ interface RestoreBackupOptions {
   confirmed?: boolean;
   targetTime?: string;
   force?: boolean;
+  decryptionKey?: string;
 }
 
 // Specific types for inquirer prompts
@@ -88,6 +91,11 @@ export function registerBackupCommands(program: Command): void {
     .description('Create a new backup')
     .option('-c, --compress', 'compress backup file')
     .option('-v, --verify', 'verify backup after creation')
+    .option('-e, --encrypt', 'encrypt backup file')
+    .option(
+      '--encryption-key <key>',
+      'encryption key (hex format, or use BACKUP_ENCRYPTION_KEY env var)'
+    )
     .option('--description <desc>', 'backup description')
     .action(async (name?: string, options: CreateBackupOptions = {}) => {
       const { apiClient, formatter } = getComponents();
@@ -105,6 +113,11 @@ export function registerBackupCommands(program: Command): void {
         backupData.name = backupName;
         backupData.compress = Boolean(options.compress);
         backupData.verify = Boolean(options.verify);
+        backupData.encrypt = Boolean(options.encrypt);
+
+        if (options.encryptionKey) {
+          backupData.encryptionKey = String(options.encryptionKey);
+        }
 
         if (options.description) {
           backupData.description = String(options.description);
@@ -124,8 +137,8 @@ export function registerBackupCommands(program: Command): void {
 
         formatter.success(`Backup created successfully: ${backup.data.id}`);
         formatter.output(backup.data, {
-          fields: ['id', 'name', 'size', 'compressed', 'verified', 'createdAt'],
-          headers: ['ID', 'Name', 'Size', 'Compressed', 'Verified', 'Created'],
+          fields: ['id', 'name', 'size', 'compressed', 'encrypted', 'verified', 'createdAt'],
+          headers: ['ID', 'Name', 'Size', 'Compressed', 'Encrypted', 'Verified', 'Created'],
         });
       } catch (error) {
         formatter.error(
@@ -167,8 +180,8 @@ export function registerBackupCommands(program: Command): void {
           }
 
           formatter.output(backups, {
-            fields: ['id', 'name', 'size', 'compressed', 'verified', 'createdAt'],
-            headers: ['ID', 'Name', 'Size', 'Compressed', 'Verified', 'Created'],
+            fields: ['id', 'name', 'size', 'compressed', 'encrypted', 'verified', 'createdAt'],
+            headers: ['ID', 'Name', 'Size', 'Compressed', 'Encrypted', 'Verified', 'Created'],
           });
         } else {
           formatter.error(
@@ -189,6 +202,10 @@ export function registerBackupCommands(program: Command): void {
     .description('Restore from a backup')
     .option('-f, --force', 'skip confirmation')
     .option('--verify', 'verify backup before restore')
+    .option(
+      '--decryption-key <key>',
+      'decryption key for encrypted backups (hex format, or use BACKUP_ENCRYPTION_KEY env var)'
+    )
     .action(async (id: string, options: RestoreBackupOptions) => {
       const { apiClient, formatter } = getComponents();
 
@@ -367,6 +384,10 @@ export function registerBackupCommands(program: Command): void {
     .description('Restore database to specific point in time')
     .option('--no-verify', 'skip backup verification before restoration')
     .option('--preserve-existing', 'create backup of current state before restoration')
+    .option(
+      '--decryption-key <key>',
+      'decryption key for encrypted backups (hex format, or use BACKUP_ENCRYPTION_KEY env var)'
+    )
     .action(async (targetTime?: string, options: RestoreBackupOptions = {}) => {
       const { apiClient, formatter } = getComponents();
 

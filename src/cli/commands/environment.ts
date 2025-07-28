@@ -24,9 +24,9 @@
  */
 
 import type { Command } from 'commander';
-import { cloudEnvironment } from '../config';
-import { envManager } from '../config/env-manager';
-import { generateEnvironmentDocs, validateCloudEnvironment } from '../config/cloud-env';
+import { cloudEnvironment } from '../../config';
+import { envManager } from '../../config/env-manager';
+import { generateEnvironmentDocs, validateCloudEnvironment } from '../../config/cloud-env';
 import type { CliComponents } from '../types';
 
 interface EnvironmentOptions {
@@ -48,6 +48,7 @@ function getComponents(): CliComponents {
     apiClient: serviceContainer.getApiClient(),
     formatter: serviceContainer.getFormatter(),
     config: serviceContainer.getConfig(),
+    services: serviceContainer.getServices(),
   };
 }
 
@@ -231,13 +232,13 @@ async function showEnvironmentInfo(formatter: any, options: EnvironmentOptions):
   if (validation.errors.length > 0) {
     formatter.info('');
     formatter.error('**Validation Errors**:');
-    validation.errors.forEach(error => formatter.error(`• ${error}`));
+    validation.errors.forEach((error: string) => formatter.error(`• ${error}`));
   }
 
   if (validation.warnings.length > 0) {
     formatter.info('');
     formatter.warn('**Validation Warnings**:');
-    validation.warnings.forEach(warning => formatter.warn(`• ${warning}`));
+    validation.warnings.forEach((warning: string) => formatter.warn(`• ${warning}`));
   }
 
   // Environment variables (if requested)
@@ -265,17 +266,14 @@ async function showEnvironmentInfo(formatter: any, options: EnvironmentOptions):
   // Run additional validation if requested
   if (options.validate) {
     formatter.info('');
-    await validateEnvironment(formatter, { format: options.format });
+    await validateEnvironment(formatter, options.format ? { format: options.format } : {});
   }
 }
 
 /**
  * Validates environment configuration
  */
-async function validateEnvironment(
-  formatter: any,
-  options: Pick<EnvironmentOptions, 'format'>
-): Promise<void> {
+function validateEnvironment(formatter: any, _options: Pick<EnvironmentOptions, 'format'>): void {
   formatter.info('🔍 **Running Environment Validation**...\n');
 
   // Re-run validation
@@ -384,7 +382,7 @@ async function validateEnvironment(
 /**
  * Shows platform-specific information
  */
-async function showPlatformInfo(formatter: any): Promise<void> {
+function showPlatformInfo(formatter: any): void {
   const { info, platform, isCloud } = cloudEnvironment;
 
   formatter.info(
@@ -461,7 +459,7 @@ async function showPlatformInfo(formatter: any): Promise<void> {
     optimizations.push('• CORS configured for Replit domain');
   }
 
-  if (platform === 'stackblitz' && !info.features.websocket) {
+  if (platform === 'stackblitz' && !info.urls.websocket) {
     optimizations.push('• WebSockets disabled due to platform limitations');
   }
 
@@ -471,8 +469,8 @@ async function showPlatformInfo(formatter: any): Promise<void> {
 /**
  * Shows environment URLs
  */
-async function showEnvironmentUrls(formatter: any): Promise<void> {
-  const { urls, platform, isCloud } = cloudEnvironment;
+function showEnvironmentUrls(formatter: any): void {
+  const { urls, platform, isCloud, info } = cloudEnvironment;
 
   formatter.info('🔗 **Application URLs**\n');
 
@@ -496,7 +494,7 @@ async function showEnvironmentUrls(formatter: any): Promise<void> {
 
   if (urls.websocket) {
     formatter.info(`• **WebSocket Server**: ${urls.websocket}`);
-  } else if (cloudEnvironment.features.websocket) {
+  } else if (info.websocketPort) {
     formatter.warn('• WebSocket URL not available (check platform configuration)');
   } else {
     formatter.info('• WebSocket disabled for this platform');
@@ -527,7 +525,7 @@ async function generateEnvironmentDocumentation(
   const docs = generateEnvironmentDocs(cloudEnvironment.info);
   const envDocs = envManager.generateDocs();
 
-  const fullDocs = docs + '\n\n' + envDocs;
+  const fullDocs = `${docs}\n\n${envDocs}`;
 
   if (options.output) {
     // Write to file

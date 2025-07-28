@@ -490,10 +490,10 @@ export class PriorityHistoryService {
 
     const priorities = changes.map(c => c.new_priority);
     const n = priorities.length;
-    let sumX = 0,
-      sumY = 0,
-      sumXY = 0,
-      sumXX = 0;
+    let sumX = 0;
+    let sumY = 0;
+    let sumXY = 0;
+    let sumXX = 0;
 
     for (let i = 0; i < n; i++) {
       sumX += i;

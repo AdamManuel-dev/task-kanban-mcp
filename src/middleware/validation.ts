@@ -34,21 +34,21 @@ export function requestValidationMiddleware(
   }
 
   // Validate query parameters
-  if (req.query['limit']) {
-    const limit = parseInt(req.query['limit'] as string, 10);
+  if (req.query.limit) {
+    const limit = parseInt(req.query.limit as string, 10);
     if (isNaN(limit) || limit <= 0 || limit > 1000) {
       return next(new ValidationError('Invalid limit parameter'));
     }
   }
 
-  if (req.query['offset']) {
-    const offset = parseInt(req.query['offset'] as string, 10);
+  if (req.query.offset) {
+    const offset = parseInt(req.query.offset as string, 10);
     if (isNaN(offset) || offset < 0) {
       return next(new ValidationError('Invalid offset parameter'));
     }
   }
 
-  if (req.query['sortOrder'] && !['asc', 'desc'].includes(req.query['sortOrder'] as string)) {
+  if (req.query.sortOrder && !['asc', 'desc'].includes(req.query.sortOrder as string)) {
     return next(new ValidationError('Sort order must be "asc" or "desc"'));
   }
 

@@ -182,6 +182,8 @@ export interface BackupInfo {
   description?: string;
   compress?: boolean; // For requests
   verify?: boolean; // For requests
+  encrypt?: boolean; // For requests
+  encryptionKey?: string; // For requests
 }
 
 export interface BackupResponse extends ApiResponse<BackupInfo> {

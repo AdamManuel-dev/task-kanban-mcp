@@ -496,6 +496,101 @@ export function taskRoutes(): Router {
     }
   );
 
+  /**
+   * Batch update task dependencies.
+   *
+   * @route PATCH /api/v1/tasks/:id/dependencies
+   * @auth Required - Write permission
+   *
+   * @param {string} id - Task ID
+   * @bodyparam {string[]} add - Array of task IDs to add as dependencies
+   * @bodyparam {string[]} remove - Array of task IDs to remove as dependencies
+   * @bodyparam {string} [dependency_type] - Type for new dependencies: blocks, required, related (default: blocks)
+   *
+   * @response 200 - Dependencies updated
+   * ```json
+   * {
+   *   "success": true,
+   *   "data": {
+   *     "dependencies": ["task456", "task789"],
+   *     "dependents": ["task123"],
+   *     "added": ["task789"],
+   *     "removed": ["task999"]
+   *   }
+   * }
+   * ```
+   *
+   * @response 400 - Invalid input data
+   * @response 401 - Missing or invalid API key
+   * @response 403 - Insufficient permissions
+   * @response 404 - Task not found
+   */
+  // PATCH /api/v1/tasks/:id/dependencies - Batch update dependencies
+  router.patch(
+    '/:id/dependencies',
+    requirePermission('write'),
+    async (req, res, next): Promise<void> => {
+      try {
+        const { id } = req.params;
+        if (!id) {
+          throw new NotFoundError('Task', 'ID is required');
+        }
+
+        const { add = [], remove = [], dependency_type = 'blocks' } = req.body;
+
+        if (!Array.isArray(add) || !Array.isArray(remove)) {
+          throw new ValidationError('add and remove must be arrays');
+        }
+
+        const results = {
+          added: [] as string[],
+          removed: [] as string[],
+          errors: [] as string[],
+        };
+
+        // Remove dependencies first
+        for (const dependsOnId of remove) {
+          try {
+            await taskService.removeDependency(id, dependsOnId);
+            results.removed.push(dependsOnId);
+          } catch (error) {
+            results.errors.push(
+              `Failed to remove dependency ${dependsOnId}: ${error instanceof Error ? error.message : 'Unknown error'}`
+            );
+          }
+        }
+
+        // Add new dependencies
+        for (const dependsOnId of add) {
+          try {
+            await taskService.addDependency(id, dependsOnId, dependency_type);
+            results.added.push(dependsOnId);
+          } catch (error) {
+            results.errors.push(
+              `Failed to add dependency ${dependsOnId}: ${error instanceof Error ? error.message : 'Unknown error'}`
+            );
+          }
+        }
+
+        // Get updated dependencies
+        const taskWithDeps = await taskService.getTaskWithDependencies(id);
+        if (!taskWithDeps) {
+          throw new NotFoundError('Task', id);
+        }
+
+        return res.apiSuccess({
+          dependencies: taskWithDeps.dependencies?.map(d => d.depends_on_task_id) || [],
+          dependents: taskWithDeps.dependents?.map(d => d.task_id) || [],
+          added: results.added,
+          removed: results.removed,
+          errors: results.errors.length > 0 ? results.errors : undefined,
+        });
+      } catch (error) {
+        return next(error);
+      }
+    }
+  );
+
   // DELETE /api/v1/tasks/:id/dependencies/:dependsOnId - Remove dependency
   router.delete(
     '/:id/dependencies/:dependsOnId',

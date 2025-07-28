@@ -398,7 +398,7 @@ export class MCPToolRegistry {
             content: { type: 'string', description: 'Note content' },
             category: {
               type: 'string',
-              enum: ['general', 'progress', 'blocker', 'decision', 'question'],
+              enum: ['general', 'implementation', 'research', 'blocker', 'idea'],
               description: 'Note category',
               default: 'general',
             },
@@ -418,7 +418,7 @@ export class MCPToolRegistry {
             board_id: { type: 'string', description: 'Filter by board ID' },
             category: {
               type: 'string',
-              enum: ['general', 'progress', 'blocker', 'decision', 'question'],
+              enum: ['general', 'implementation', 'research', 'blocker', 'idea'],
               description: 'Filter by category',
             },
             limit: { type: 'number', description: 'Maximum number of results', default: 50 },
@@ -1204,7 +1204,7 @@ export class MCPToolRegistry {
     interface CreateNoteData {
       content: string;
       task_id: string;
-      category?: 'general' | 'progress' | 'blocker' | 'decision' | 'question';
+      category?: 'general' | 'implementation' | 'research' | 'blocker' | 'idea';
       pinned?: boolean;
     }
     const noteData: CreateNoteData = {
@@ -1220,7 +1220,7 @@ export class MCPToolRegistry {
     if (category) {
       const categoryMap: Record<
         string,
-        'general' | 'progress' | 'blocker' | 'decision' | 'question'
+        'general' | 'implementation' | 'research' | 'blocker' | 'idea'
       > = {
         general: 'general',
         meeting: 'general',
@@ -1259,7 +1259,7 @@ export class MCPToolRegistry {
       query: string;
       task_id?: string;
       board_id?: string;
-      category?: 'general' | 'progress' | 'blocker' | 'decision' | 'question';
+      category?: 'general' | 'implementation' | 'research' | 'blocker' | 'idea';
       limit?: number;
     }
     const searchOptions: SearchNotesOptions = {
@@ -1273,7 +1273,7 @@ export class MCPToolRegistry {
 
     // Validate and cast category if provided
     if (category) {
-      const validCategories = ['general', 'progress', 'blocker', 'decision', 'question'];
+      const validCategories = ['general', 'implementation', 'research', 'blocker', 'idea'];
       if (!validCategories.includes(category)) {
         throw new Error(
           `Invalid category: ${String(category)}. Must be one of: ${String(String(validCategories.join(', ')))}`

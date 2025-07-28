@@ -54,22 +54,22 @@ const InteractiveView: React.FC<InteractiveViewProps> = ({ mode, data }) => {
     }
   );
 
-  const handleTaskSelect = (task: Task) => {
+  const handleTaskSelect = (task: Task): void => {
     setStatusMessage(`Selected task: ${String(String(task.title))}`);
     setStatusType('success');
   };
 
-  const handleBoardTaskSelect = (task: Task, columnId: string) => {
+  const handleBoardTaskSelect = (task: Task, columnId: string): void => {
     setStatusMessage(`Selected task: ${String(String(task.title))} in column ${String(columnId)}`);
     setStatusType('success');
   };
 
-  const handleColumnSelect = (column: Column) => {
+  const handleColumnSelect = (column: Column): void => {
     setStatusMessage(`Selected column: ${String(String(column.name))}`);
     setStatusType('info');
   };
 
-  const renderHelp = () => (
+  const renderHelp = (): JSX.Element => (
     <div>
       <h2>{chalk.cyan('🎮 Interactive View Help')}</h2>
       <br />
@@ -117,7 +117,7 @@ const InteractiveView: React.FC<InteractiveViewProps> = ({ mode, data }) => {
     </div>
   );
 
-  const renderCurrentView = () => {
+  const renderCurrentView = (): JSX.Element => {
     switch (currentView) {
       case 'tasks':
         const taskListOutput = createTaskList({
@@ -175,7 +175,7 @@ const InteractiveView: React.FC<InteractiveViewProps> = ({ mode, data }) => {
 };
 
 // Sample data generator
-const generateSampleData = () => {
+const generateSampleData = (): { tasks: Task[]; boards: any[]; columns: any[] } => {
   const sampleTasks: Task[] = [
     {
       id: 'TASK-001',
@@ -284,7 +284,7 @@ export const interactiveViewCommand = new Command('interactive')
   });
 
 // Placeholder for real data fetching
-async function fetchRealData() {
+function fetchRealData(): { tasks: Task[]; boards: any[]; columns: any[] } {
   // This would connect to the actual API
   // For now, return sample data
   return generateSampleData();

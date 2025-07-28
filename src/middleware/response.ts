@@ -37,9 +37,13 @@ declare global {
   }
 }
 
-export function responseFormattingMiddleware(req: Request, res: Response, next: NextFunction) {
+export function responseFormattingMiddleware(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void {
   // Add success response helper
-  res.apiSuccess = function <T>(data: T, meta?: Partial<ApiResponse['meta']>) {
+  res.apiSuccess = function <T>(data: T, meta?: Partial<ApiResponse['meta']>): void {
     const response: ApiResponse<T> = {
       success: true,
       data,
@@ -59,7 +63,7 @@ export function responseFormattingMiddleware(req: Request, res: Response, next: 
     message: string,
     statusCode = 500,
     details?: any
-  ) {
+  ): void {
     const response: ApiResponse = {
       success: false,
       error: {
@@ -83,7 +87,7 @@ export function responseFormattingMiddleware(req: Request, res: Response, next: 
     limit: number,
     total: number,
     meta?: Partial<ApiResponse['meta']>
-  ) {
+  ): void {
     const totalPages = Math.ceil(total / limit);
     const hasNext = page < totalPages;
     const hasPrev = page > 1;

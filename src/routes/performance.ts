@@ -72,7 +72,7 @@ const alertRuleSchema = z.object({
  */
 router.get(
   '/health',
-  asyncHandler(async (req, res) => {
+  asyncHandler((req, res) => {
     const health = performanceMonitor.getSystemHealth();
 
     logger.debug('System health requested', {
@@ -124,7 +124,7 @@ router.get(
  */
 router.get(
   '/dashboard',
-  asyncHandler(async (req, res) => {
+  asyncHandler((req, res) => {
     const dashboard = performanceMonitor.getDashboard();
 
     logger.debug('Performance dashboard requested', {
@@ -165,9 +165,9 @@ router.get(
  */
 router.get(
   '/metrics/endpoint',
-  asyncHandler(async (req, res) => {
-    const endpoint = req.query['endpoint'] as string;
-    const timeframe = req.query['timeframe'] ? Number(req.query['timeframe']) : undefined;
+  asyncHandler((req, res) => {
+    const endpoint = req.query.endpoint as string;
+    const timeframe = req.query.timeframe ? Number(req.query.timeframe) : undefined;
 
     const metrics = performanceMonitor.getEndpointMetrics(endpoint, timeframe);
 
@@ -233,8 +233,8 @@ router.get(
  */
 router.get(
   '/export',
-  asyncHandler(async (req, res) => {
-    const format = (req.query['format'] as 'json' | 'prometheus') || 'json';
+  asyncHandler((req, res) => {
+    const format = (req.query.format as 'json' | 'prometheus') || 'json';
 
     const metrics = performanceMonitor.exportMetrics(format);
 
@@ -265,7 +265,7 @@ router.get(
  */
 router.get(
   '/alerts',
-  asyncHandler(async (req, res) => {
+  asyncHandler((req, res) => {
     // Access private alertRules through a public method (would need to add this to the service)
     const alertRules = []; // performanceMonitor.getAlertRules();
 
@@ -309,7 +309,7 @@ router.get(
 router.post(
   '/alerts',
   validateRequest({ body: alertRuleSchema }),
-  asyncHandler(async (req, res) => {
+  asyncHandler((req, res) => {
     const alertRule = req.body;
 
     performanceMonitor.addAlertRule(alertRule);
@@ -349,7 +349,7 @@ router.post(
  */
 router.delete(
   '/alerts/:ruleId',
-  asyncHandler(async (req, res) => {
+  asyncHandler((req, res) => {
     const { ruleId } = req.params;
 
     const deleted = performanceMonitor.removeAlertRule(ruleId);
@@ -388,7 +388,7 @@ router.delete(
  */
 router.get(
   '/status',
-  asyncHandler(async (req, res) => {
+  asyncHandler((req, res) => {
     const health = performanceMonitor.getSystemHealth();
     const dashboard = performanceMonitor.getDashboard();
 
@@ -447,7 +447,7 @@ router.get(
 router.get(
   '/trends',
   validateRequest({ query: timeframeSchema }),
-  asyncHandler(async (req, res) => {
+  asyncHandler((req, res) => {
     const { hours = 24 } = req.query as { hours?: number };
     const dashboard = performanceMonitor.getDashboard();
 

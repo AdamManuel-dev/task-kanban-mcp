@@ -118,7 +118,7 @@ export interface Note {
   id: string;
   task_id: string;
   content: string;
-  category: 'general' | 'progress' | 'blocker' | 'decision' | 'question';
+  category: 'general' | 'implementation' | 'research' | 'blocker' | 'idea';
   pinned: boolean;
   created_at: Date;
   updated_at: Date;

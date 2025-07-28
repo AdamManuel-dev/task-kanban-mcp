@@ -419,7 +419,7 @@ export async function bulkTaskActionPrompt(
           message: 'Target column name:',
           validate: (value: string) => (value.trim() ? true : 'Column name required'),
         });
-        params['column'] = column;
+        params.column = column;
         break;
       }
 
@@ -430,7 +430,7 @@ export async function bulkTaskActionPrompt(
           message: 'Assign to (username or email):',
           validate: (value: string) => (value.trim() ? true : 'Assignee required'),
         });
-        params['assignee'] = assignee;
+        params.assignee = assignee;
         break;
       }
 
@@ -442,7 +442,7 @@ export async function bulkTaskActionPrompt(
           separator: ',',
           validate: (value: string[]) => (value.length > 0 ? true : 'At least one tag required'),
         });
-        params['tags'] = tags.map(t => t.trim()).filter(t => t.length > 0);
+        params.tags = tags.map(t => t.trim()).filter(t => t.length > 0);
         break;
       }
 
@@ -533,7 +533,7 @@ export async function taskFilterPrompt(): Promise<{
         message: 'Select statuses:',
         choices: ['todo', 'in_progress', 'done', 'blocked', 'cancelled'],
       });
-      if (status.length > 0) filters['status'] = status;
+      if (status.length > 0) filters.status = status;
     }
 
     if (response.filterBy.includes('priority')) {
@@ -543,7 +543,7 @@ export async function taskFilterPrompt(): Promise<{
         message: 'Select priorities:',
         choices: PRIORITIES.map(p => ({ name: p, value: p })),
       });
-      if (priority.length > 0) filters['priority'] = priority;
+      if (priority.length > 0) filters.priority = priority;
     }
 
     if (response.filterBy.includes('assignee')) {
@@ -552,7 +552,7 @@ export async function taskFilterPrompt(): Promise<{
         name: 'assignee',
         message: 'Assignee (username or email):',
       });
-      if (assignee.trim()) filters['assignee'] = assignee.trim();
+      if (assignee.trim()) filters.assignee = assignee.trim();
     }
 
     if (response.filterBy.includes('tags')) {
@@ -563,7 +563,7 @@ export async function taskFilterPrompt(): Promise<{
         separator: ',',
       });
       if (tags.length > 0) {
-        filters['tags'] = tags.map(t => t.trim()).filter(t => t.length > 0);
+        filters.tags = tags.map(t => t.trim()).filter(t => t.length > 0);
       }
     }
 
@@ -583,7 +583,7 @@ export async function taskFilterPrompt(): Promise<{
         },
       ]);
       if (dateRange.start && dateRange.end) {
-        filters['dateRange'] = dateRange;
+        filters.dateRange = dateRange;
       }
     }
 

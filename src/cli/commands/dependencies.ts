@@ -100,7 +100,7 @@ export function createDependenciesCommand(): Command {
 
         const formatOptions: GraphFormatOptions = {
           format: options.format as 'tree' | 'dot' | 'ascii',
-          showTaskDetails: options.details,
+          ...(options.details !== undefined && { showTaskDetails: options.details }),
         };
 
         logger.info('Starting dependency visualization generation', {

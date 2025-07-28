@@ -276,7 +276,8 @@ export const ENV_RULES: EnvValidationRule[] = [
  * Environment variable manager class
  */
 export class EnvironmentManager {
-  private cache: Map<string, any> = new Map();
+  private readonly cache: Map<string, any> = new Map();
+
   private validated = false;
 
   /**
@@ -443,21 +444,21 @@ export class EnvironmentManager {
     };
 
     for (const rule of ENV_RULES) {
-      const key = rule.key;
+      const { key } = rule;
       if (key.startsWith('NODE_ENV') || key.startsWith('PORT') || key.startsWith('HOST')) {
-        categories['Server'].push(rule);
+        categories.Server.push(rule);
       } else if (key.startsWith('DATABASE_')) {
-        categories['Database'].push(rule);
+        categories.Database.push(rule);
       } else if (key.includes('SECRET') || key.includes('KEY') || key.includes('CORS')) {
-        categories['Security'].push(rule);
+        categories.Security.push(rule);
       } else if (key.includes('MEMORY') || key.includes('TIMEOUT') || key.includes('LIMIT')) {
-        categories['Performance'].push(rule);
+        categories.Performance.push(rule);
       } else if (key.startsWith('ENABLE_')) {
-        categories['Features'].push(rule);
+        categories.Features.push(rule);
       } else if (key.startsWith('LOG_')) {
-        categories['Logging'].push(rule);
+        categories.Logging.push(rule);
       } else {
-        categories['Network'].push(rule);
+        categories.Network.push(rule);
       }
     }
 

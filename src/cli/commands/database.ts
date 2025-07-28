@@ -1,6 +1,15 @@
 import type { Command } from 'commander';
 import inquirer from 'inquirer';
-import type { CliComponents, AnyApiResponse } from '../types';
+import type { 
+  CliComponents, 
+  AnyApiResponse, 
+  ApiResponse,
+  DatabaseVacuumResult,
+  DatabaseHealthResponse,
+  MigrationsResponse,
+  MigrationResponse,
+  MigrationResult
+} from '../types';
 import { buildDatabaseStatsParams } from '../utils/parameter-builder';
 import { logger } from '../../utils/logger';
 import { isSuccessResponse } from '../api-client-wrapper';

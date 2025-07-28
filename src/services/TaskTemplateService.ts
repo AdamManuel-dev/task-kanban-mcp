@@ -60,7 +60,7 @@ export class TaskTemplateService {
       query += ' ORDER BY is_system DESC, category, name';
 
       const rows = await dbConnection.query(query, params);
-      return rows.map(this.mapRowToTemplate);
+      return rows.map(row => this.mapRowToTemplate(row));
     } catch (error) {
       logger.error('Failed to get templates:', error);
       throw new Error(

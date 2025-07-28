@@ -693,8 +693,8 @@ class GlobalErrorHandler {
         }
         if (error instanceof NotFoundError) {
           return new NotFoundError(
-            ((error.details as Record<string, unknown>)?.['resource'] as string) || 'Resource',
-            ((error.details as Record<string, unknown>)?.['identifier'] as string | number) ||
+            ((error.details as Record<string, unknown>)?.resource as string) || 'Resource',
+            ((error.details as Record<string, unknown>)?.identifier as string | number) ||
               'unknown',
             context
           );

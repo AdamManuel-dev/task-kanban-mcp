@@ -142,8 +142,7 @@ export class PerformanceMonitoringService extends EventEmitter {
       let dbQueryTime = 0;
 
       // Track database queries
-      const originalQuery = dbConnection.query;
-      const self = this;
+      const originalQuery = dbConnection.query.bind(dbConnection);
       dbConnection.query = async function <T = any>(sql: string, params?: any): Promise<T[]> {
         const queryStart = Date.now();
         dbQueryCount++;

@@ -317,7 +317,7 @@ export class ThemeHelper {
    * Update theme
    */
   setTheme(themeName: string): void {
-    this.theme = getTheme(themeName);
+    (this as any).theme = getTheme(themeName);
   }
 
   /**
@@ -337,7 +337,7 @@ export class ThemeHelper {
   /**
    * Get widget styles for donut charts
    */
-  getDonutStyles() {
+  getDonutStyles(): { remainColor: string; colors: string[] } {
     return {
       remainColor: this.theme.widgets.donut.remainColor,
       colors: this.theme.widgets.donut.colors,
@@ -347,7 +347,7 @@ export class ThemeHelper {
   /**
    * Get widget styles for bar charts
    */
-  getBarStyles() {
+  getBarStyles(): { barColor: string; textColor: string } {
     return {
       barColor: this.theme.widgets.bar.barColor,
       textColor: this.theme.widgets.bar.textColor,
@@ -357,7 +357,7 @@ export class ThemeHelper {
   /**
    * Get widget styles for line charts
    */
-  getLineStyles() {
+  getLineStyles(): { style: { line: string; text: string; baseline: string } } {
     return {
       style: {
         line: this.theme.widgets.line.lineColor,
@@ -370,7 +370,12 @@ export class ThemeHelper {
   /**
    * Get widget styles for tables
    */
-  getTableStyles() {
+  getTableStyles(): {
+    fg: string;
+    selectedFg: string;
+    selectedBg: string;
+    border: { type: string; fg: string };
+  } {
     return {
       fg: this.theme.widgets.table.fg,
       selectedFg: this.theme.widgets.table.selectedFg,
@@ -382,7 +387,7 @@ export class ThemeHelper {
   /**
    * Get widget styles for log widgets
    */
-  getLogStyles() {
+  getLogStyles(): { fg: string; selectedFg: string } {
     return {
       fg: this.theme.widgets.log.fg,
       selectedFg: this.theme.widgets.log.selectedFg,
@@ -392,7 +397,7 @@ export class ThemeHelper {
   /**
    * Get widget styles for gauge widgets
    */
-  getGaugeStyles() {
+  getGaugeStyles(): { stroke: string; fill: string } {
     return {
       stroke: this.theme.widgets.gauge.stroke,
       fill: this.theme.widgets.gauge.fill,
@@ -402,7 +407,7 @@ export class ThemeHelper {
   /**
    * Get widget styles for sparkline widgets
    */
-  getSparklineStyles() {
+  getSparklineStyles(): { style: { fg: string } } {
     return {
       style: { fg: this.theme.widgets.sparkline.fg },
     };
@@ -411,7 +416,7 @@ export class ThemeHelper {
   /**
    * Get widget styles for box widgets
    */
-  getBoxStyles() {
+  getBoxStyles(): { style: { fg: string; bg: string }; border: { type: string; fg: string } } {
     return {
       style: {
         fg: this.theme.widgets.box.fg,
@@ -424,7 +429,7 @@ export class ThemeHelper {
   /**
    * Get header styles
    */
-  getHeaderStyles() {
+  getHeaderStyles(): { border: { type: string; fg: string }; style: { fg: string; bg: string } } {
     return {
       border: { type: 'line', fg: this.theme.colors.border },
       style: {
@@ -437,7 +442,7 @@ export class ThemeHelper {
   /**
    * Get footer styles
    */
-  getFooterStyles() {
+  getFooterStyles(): { border: { type: string; fg: string }; style: { fg: string } } {
     return {
       border: { type: 'line', fg: this.theme.colors.border },
       style: { fg: this.theme.colors.foreground },
