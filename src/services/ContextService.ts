@@ -284,7 +284,7 @@ export class ContextService {
           this.getPriorityAnalysis(max_items),
           this.getBlockerAnalysis(),
           this.taskService.getOverdueTasks(),
-          includeMetrics
+          include_metrics
             ? this.calculateProjectMetrics()
             : Promise.resolve(ContextService.getEmptyMetrics()),
         ]);

@@ -164,12 +164,12 @@ export function boardRoutes(): Router {
         const totalBoards = await boardService.getBoards(countOptions);
         const total = totalBoards.length;
 
-        res.apiPagination(
-          boards,
-          Math.floor(options.offset / options.limit) + 1,
-          options.limit,
+        res.apiPagination({
+          data: boards,
+          page: Math.floor(options.offset / options.limit) + 1,
+          limit: options.limit,
           total
-        );
+        });
       } catch (error) {
         return next(error);
       }
@@ -277,11 +277,11 @@ export function boardRoutes(): Router {
 
       let board;
       if (include === 'columns') {
-        board = await boardService.getBoardWithColumns(id!);
+        board = await boardService.getBoardWithColumns(id);
       } else if (include === 'tasks') {
-        board = await boardService.getBoardWithStats(id!);
+        board = await boardService.getBoardWithStats(id);
       } else {
-        board = await boardService.getBoardById(id!);
+        board = await boardService.getBoardById(id);
       }
 
       if (!board) {
@@ -341,7 +341,7 @@ export function boardRoutes(): Router {
         const updateData = Object.fromEntries(
           Object.entries(rawUpdateData).filter(([, value]) => value !== undefined)
         );
-        const board = await boardService.updateBoard(id!, updateData);
+        const board = await boardService.updateBoard(id, updateData);
         res.apiSuccess(board);
       } catch (error) {
         return next(error);
@@ -375,7 +375,7 @@ export function boardRoutes(): Router {
         res.status(400).json({ error: 'Board ID is required' });
       }
 
-      await boardService.deleteBoard(id!);
+      await boardService.deleteBoard(id);
       res.status(204).send();
     } catch (error) {
       return next(error);
@@ -419,7 +419,7 @@ export function boardRoutes(): Router {
         res.status(400).json({ error: 'Board ID is required' });
       }
 
-      const board = await boardService.archiveBoard(id!);
+      const board = await boardService.archiveBoard(id);
       res.apiSuccess(board);
     } catch (error) {
       return next(error);
@@ -435,7 +435,7 @@ export function boardRoutes(): Router {
         res.status(400).json({ error: 'Board ID is required' });
       }
 
-      const board = await boardService.unarchiveBoard(id!);
+      const board = await boardService.unarchiveBoard(id);
       res.apiSuccess(board);
     } catch (error) {
       return next(error);
@@ -492,7 +492,7 @@ export function boardRoutes(): Router {
 
         const { name } = req.body;
 
-        const newBoard = await boardService.duplicateBoard(id!, name);
+        const newBoard = await boardService.duplicateBoard(id, name);
         res.status(201).apiSuccess(newBoard);
       } catch (error) {
         return next(error);
@@ -509,7 +509,7 @@ export function boardRoutes(): Router {
         res.status(400).json({ error: 'Board ID is required' });
       }
 
-      const boardWithColumns = await boardService.getBoardWithColumns(id!);
+      const boardWithColumns = await boardService.getBoardWithColumns(id);
 
       if (!boardWithColumns) {
         throw new NotFoundError('Board', id);
@@ -609,7 +609,7 @@ export function boardRoutes(): Router {
       try {
         const { columnId } = req.params;
         const updateData = validateInput(BoardValidation.column.update, req.body);
-        const column = await boardService.updateColumn(columnId!, updateData);
+        const column = await boardService.updateColumn(columnId, updateData);
         res.json({
           success: true,
           data: column,
@@ -652,7 +652,7 @@ export function boardRoutes(): Router {
     async (req, res, next): Promise<void> => {
       try {
         const { columnId } = req.params;
-        await boardService.deleteColumn(columnId!);
+        await boardService.deleteColumn(columnId);
         res.status(204).send();
       } catch (error) {
         return next(error);
@@ -747,12 +747,12 @@ export function boardRoutes(): Router {
       });
       const total = totalTasks.length;
 
-      res.apiPagination(
-        tasks,
-        Math.floor(options.offset / options.limit) + 1,
-        options.limit,
+      res.apiPagination({
+        data: tasks,
+        page: Math.floor(options.offset / options.limit) + 1,
+        limit: options.limit,
         total
-      );
+      });
     } catch (error) {
       return next(error);
     }
@@ -814,7 +814,7 @@ export function boardRoutes(): Router {
         res.status(400).json({ error: 'Board ID is required' });
       }
 
-      const analytics = await boardService.getBoardWithStats(id!);
+      const analytics = await boardService.getBoardWithStats(id);
       res.apiSuccess(analytics);
     } catch (error) {
       return next(error);

@@ -3,8 +3,7 @@
  * Tests for Zod schemas and validation type safety
  */
 
-import { z } from 'zod';
-import { validateInput, TaskValidation, NoteValidation } from '@/utils/validation';
+import { validateInput, TaskValidation, NoteValidation } from '../../../src/utils/validation';
 
 describe('Validation Type Safety Tests', () => {
   describe('TaskValidation Schemas', () => {

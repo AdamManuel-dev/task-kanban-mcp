@@ -99,7 +99,7 @@ export function registerRestoreCommand(backupCmd: Command): void {
             }
           );
 
-          const restoreResult = await restoreWithProgress();
+          await restoreWithProgress();
 
           logger.info('Database restore completed', {
             backupId: id,

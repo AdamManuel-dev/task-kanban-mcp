@@ -80,6 +80,7 @@ interface ListScheduleOptions {
   limit?: string;
 }
 
+// eslint-disable-next-line max-lines-per-function
 export function registerBackupCommands(program: Command): void {
   const backupCmd = program.command('backup').alias('bak').description('Manage database backups');
 

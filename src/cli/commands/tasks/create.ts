@@ -18,17 +18,17 @@ import { PromptCancelledError } from '../../prompts/types';
 import { SpinnerManager } from '../../utils/spinner';
 import { isSuccessResponse } from '../../api-client-wrapper';
 import { TaskTemplateService } from '../../../services/TaskTemplateService';
-import { getComponents } from '../../utils/command-helpers';
-import { PRIORITY_MAPPING } from '../../../constants';
-import { handleValidationError } from '../../../utils/error-handler';
-import { logger } from '../../../utils/logger';
 import {
+  getComponents,
   withErrorHandling,
   withSpinner,
   validateRequiredFields,
   showSuccess,
   ensureBoardId,
 } from '../../utils/command-helpers';
+import { PRIORITY_MAPPING } from '../../../constants';
+import { handleValidationError } from '../../../utils/error-handler';
+import { logger } from '../../../utils/logger';
 
 // Helper functions for template processing (declared first to avoid hoisting issues)
 function extractTemplateVariables(template: string): string[] {

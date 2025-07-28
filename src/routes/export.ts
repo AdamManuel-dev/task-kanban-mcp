@@ -99,7 +99,7 @@ router.post(
     try {
       return res
         .status(501)
-        .apiError('Import functionality requires multer middleware', 'NOT_IMPLEMENTED');
+        .apiError({ message: 'Import functionality requires multer middleware', code: 'NOT_IMPLEMENTED', statusCode: 501 });
     } catch (error) {
       return next(error);
     }
@@ -114,7 +114,7 @@ router.post(
     try {
       return res
         .status(501)
-        .apiError('Import validation requires multer middleware', 'NOT_IMPLEMENTED');
+        .apiError({ message: 'Import validation requires multer middleware', code: 'NOT_IMPLEMENTED', statusCode: 501 });
     } catch (error) {
       return next(error);
     }

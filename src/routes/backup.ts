@@ -439,7 +439,16 @@ router.post(
 
       logger.info(`Point-in-time restoration requested to: ${String(targetTime)}`);
 
-      await backupService.restoreToPointInTime(targetTime);
+      // Get the most recent backup to restore from
+      const backups = await backupService.listBackups({ limit: 1 });
+      const latestBackup = backups[0];
+      
+      if (!latestBackup) {
+        res.status(404).json(formatErrorResponse('No backups available for restoration'));
+        return;
+      }
+      
+      await backupService.restoreToPointInTime(latestBackup.id, targetTime, { verify, preserveExisting });
 
       logger.info(`Point-in-time restoration completed to: ${String(targetTime)}`);
       res.json(
@@ -1091,11 +1100,13 @@ router.get(
       const { progressId } = req.params;
       if (!progressId) {
         res.status(400).json(formatErrorResponse('Progress ID is required'));
+        return;
       }
 
-      const progress = await backupService.getRestoreProgress(progressId!);
+      const progress = await backupService.getRestoreProgress(progressId);
       if (!progress) {
         res.status(404).json(formatErrorResponse('Progress not found'));
+        return;
       }
 
       res.json(formatSuccessResponse(progress, 'Progress retrieved'));
@@ -1151,9 +1162,10 @@ router.delete(
       const { progressId } = req.params;
       if (!progressId) {
         res.status(400).json(formatErrorResponse('Progress ID is required'));
+        return;
       }
 
-      await backupService.clearRestoreProgress(progressId!);
+      await backupService.clearRestoreProgress(progressId);
 
       logger.info(`Progress cleared: ${progressId}`);
       res.json(formatSuccessResponse(null, 'Progress cleared successfully'));

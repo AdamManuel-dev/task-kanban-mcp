@@ -63,13 +63,13 @@ export function registerNextCommand(taskCmd: Command): void {
 
           // Display the recommended task
           formatter.success('🎯 Next Recommended Task:');
-          formatter.output(`📋 ${String((nextTask as any).title)}`);
-          formatter.output(`🆔 ID: ${String((nextTask as any).id)}`);
-          formatter.output(`📊 Priority: ${String((nextTask as any).priority ?? 'Not set')}`);
-          formatter.output(`📅 Status: ${String((nextTask as any).status)}`);
+          formatter.output(`📋 ${String(nextTask.title)}`);
+          formatter.output(`🆔 ID: ${String(nextTask.id)}`);
+          formatter.output(`📊 Priority: ${String(nextTask.priority ?? 'Not set')}`);
+          formatter.output(`📅 Status: ${String(nextTask.status)}`);
 
-          if ((nextTask as any).due_date) {
-            const dueDate = new Date((nextTask as any).due_date);
+          if (nextTask.due_date) {
+            const dueDate = new Date(nextTask.due_date);
             const now = new Date();
             const daysUntilDue = Math.ceil(
               (dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
@@ -86,18 +86,16 @@ export function registerNextCommand(taskCmd: Command): void {
             formatter.output(`📅 Due: ${dueDateStr} ${urgencyIndicator}`);
           }
 
-          if ((nextTask as any).description) {
-            formatter.output(`📝 Description: ${String((nextTask as any).description)}`);
+          if (nextTask.description) {
+            formatter.output(`📝 Description: ${String(nextTask.description)}`);
           }
 
           formatter.info(`\n💡 Reasoning: ${String(reasoning)}`);
 
           // Provide action suggestions
           formatter.info('\n🚀 Quick Actions:');
-          formatter.output(
-            `   kanban task update ${String((nextTask as any).id)} --status in_progress`
-          );
-          formatter.output(`   kanban task show ${String((nextTask as any).id)} --context`);
+          formatter.output(`   kanban task update ${String(nextTask.id)} --status in_progress`);
+          formatter.output(`   kanban task show ${String(nextTask.id)} --context`);
         } catch (error) {
           formatter.error(
             `Failed to get next task: ${String(error instanceof Error ? error.message : 'Unknown error')}`

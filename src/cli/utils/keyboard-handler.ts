@@ -18,7 +18,7 @@ export class KeyboardHandler {
 
   private helpVisible = false;
 
-  private readonly refreshCallback?: () => Promise<void> | void;
+  private refreshCallback?: () => Promise<void> | void;
 
   constructor() {
     this.setupDefaultShortcuts();
@@ -123,7 +123,7 @@ export class KeyboardHandler {
     if (globalShortcuts.length > 0) {
       console.log(chalk.yellow.bold('\nGlobal Shortcuts:'));
       globalShortcuts.forEach(shortcut => {
-        const keyDisplay = this.formatKeyDisplay(shortcut.key);
+        const keyDisplay = KeyboardHandler.formatKeyDisplay(shortcut.key);
         console.log(`  ${String(keyDisplay)} - ${String(String(shortcut.description))}`);
       });
     }
@@ -131,7 +131,7 @@ export class KeyboardHandler {
     if (localShortcuts.length > 0) {
       console.log(chalk.yellow.bold('\nContext Shortcuts:'));
       localShortcuts.forEach(shortcut => {
-        const keyDisplay = this.formatKeyDisplay(shortcut.key);
+        const keyDisplay = KeyboardHandler.formatKeyDisplay(shortcut.key);
         console.log(`  ${String(keyDisplay)} - ${String(String(shortcut.description))}`);
       });
     }

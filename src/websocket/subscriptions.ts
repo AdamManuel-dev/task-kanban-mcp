@@ -249,6 +249,7 @@ export class SubscriptionManager {
     context?: PublicationContext
   ): number {
     const message = {
+      id: `connection-${userId}-${Date.now()}`,
       type: 'connection:status' as const,
       data: {
         status: status === 'online' ? ('connected' as const) : ('disconnected' as const),
@@ -269,6 +270,7 @@ export class SubscriptionManager {
   // Publish system notifications
   publishSystemNotification(notification: SystemNotification, targetUsers?: string[]): number {
     const message = {
+      id: `notification-${Date.now()}`,
       type: 'system:notification' as const,
       data: notification,
       timestamp: new Date().toISOString(),
@@ -404,6 +406,7 @@ export class SubscriptionManager {
   // Message type specific publishing methods
   publishTaskCreated(task: Task, createdBy: string): number {
     return this.publishTaskUpdate(task.id, task.board_id, {
+      id: `task-created-${task.id}`,
       type: 'task:created',
       data: {
         task,
@@ -416,6 +419,7 @@ export class SubscriptionManager {
 
   publishTaskUpdated(task: Task, changes: Record<string, unknown>, updatedBy: string): number {
     return this.publishTaskUpdate(task.id, task.board_id, {
+      id: `task-updated-${task.id}`,
       type: 'task:updated',
       data: {
         task,
@@ -429,6 +433,7 @@ export class SubscriptionManager {
 
   publishTaskDeleted(taskId: string, boardId: string, deletedBy: string): number {
     return this.publishTaskUpdate(taskId, boardId, {
+      id: `task-deleted-${taskId}`,
       type: 'task:deleted',
       data: {
         taskId,
@@ -441,6 +446,7 @@ export class SubscriptionManager {
 
   publishNoteAdded(note: Note, taskId: string, boardId: string, addedBy: string): number {
     return this.publishTaskUpdate(taskId, boardId, {
+      id: `note-added-${note.id}`,
       type: 'note:added',
       data: {
         note,
@@ -454,6 +460,7 @@ export class SubscriptionManager {
 
   publishTagAssigned(taskId: string, tagId: string, boardId: string, assignedBy: string): number {
     return this.publishTaskUpdate(taskId, boardId, {
+      id: `tag-assigned-${taskId}-${tagId}`,
       type: 'tag:assigned',
       data: {
         taskId,

@@ -551,8 +551,8 @@ export class MCPResourceRegistry {
         board_id: parsedUri.id,
         limit: 10000,
       });
-      const allNotes = [];
-      const allTags = [];
+      const allNotes: unknown[] = [];
+      const allTags: unknown[] = [];
 
       // Get all notes and tags for tasks
       await Promise.all(

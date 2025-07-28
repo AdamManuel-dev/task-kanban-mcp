@@ -43,10 +43,10 @@ export async function safePrompt<T>(promptConfig: PromptConfig | PromptConfig[])
 
     // Wrap other errors in SystemError
     if (!(error instanceof CancellationError)) {
-      throw new SystemError(
-        'Prompt execution',
-        error instanceof Error ? error : new Error(String(error))
-      );
+      throw new SystemError({
+        operation: 'Prompt execution',
+        cause: error instanceof Error ? error : new Error(String(error)),
+      });
     }
 
     throw error;

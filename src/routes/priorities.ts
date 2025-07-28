@@ -74,7 +74,7 @@ const CalculatePrioritiesSchema = z.object({
 router.get(
   '/next',
   requirePermission('read'),
-  validateRequest(NextTaskSchema, 'query'),
+  validateRequest(NextTaskSchema),
   async (req, res, next): Promise<void> => {
     try {
       const { board_id, assignee, skill_context, exclude_blocked, limit } = req.query;
@@ -157,7 +157,7 @@ router.get(
 
       // Sort by priority score and take top N
       scoredTasks.sort((a, b) => b.priority_score - a.priority_score);
-      const nextTasks = scoredTasks.slice(0, limit as number);
+      const nextTasks = scoredTasks.slice(0, parseInt(String(limit), 10) || 10);
 
       return res.apiSuccess({
         next_tasks: nextTasks,

@@ -16,7 +16,7 @@ export function noteRoutes(): Router {
       const { query, limit = 50, offset = 0, task_id, board_id, category, pinned } = req.query;
 
       if (!query) {
-        res.status(400).apiError('INVALID_INPUT', 'Search query is required');
+        res.apiError({ code: 'INVALID_INPUT', message: 'Search query is required', statusCode: 400 });
         return;
       }
 
@@ -35,12 +35,12 @@ export function noteRoutes(): Router {
 
       const searchResults = await noteService.searchNotes(options);
 
-      res.apiPagination(
-        searchResults,
-        Math.floor(options.offset / options.limit) + 1,
-        options.limit,
-        searchResults.length
-      );
+      res.apiPagination({
+        data: searchResults,
+        page: Math.floor(options.offset / options.limit) + 1,
+        limit: options.limit,
+        total: searchResults.length
+      });
     } catch (error) {
       next(error);
     }
@@ -138,12 +138,12 @@ export function noteRoutes(): Router {
       const totalNotes = await noteService.getNotes(countOptions);
       const total = totalNotes.length;
 
-      res.apiPagination(
-        notes,
-        Math.floor(options.offset / options.limit) + 1,
-        options.limit,
+      res.apiPagination({
+        data: notes,
+        page: Math.floor(options.offset / options.limit) + 1,
+        limit: options.limit,
         total
-      );
+      });
     } catch (error) {
       next(error);
     }

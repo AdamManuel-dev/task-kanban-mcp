@@ -145,6 +145,7 @@ function getInstalledTypes(): string[] {
   }
 }
 
+// eslint-disable-next-line max-lines-per-function
 function checkForOutdatedTypes(): string[] {
   try {
     const output = execSync('npm outdated', { encoding: 'utf8' });
@@ -260,6 +261,7 @@ function generateRecommendations(auditResult: AuditResult): string[] {
   return recommendations;
 }
 
+// eslint-disable-next-line max-lines-per-function
 function generateDetailedReport(auditResult: AuditResult): string {
   return `# Third-Party Type Definitions Audit
 

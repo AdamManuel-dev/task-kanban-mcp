@@ -29,6 +29,7 @@ export interface TaskTemplateCreateRequest {
   tags?: string[];
   checklist_items?: string[];
   custom_fields?: Record<string, any>;
+  created_by?: string;
 }
 
 export interface TaskTemplateUpdateRequest {

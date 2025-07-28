@@ -365,7 +365,9 @@ export function configureCloudEnvironment(): CloudEnvironmentInfo {
     }
   } else {
     // Local development optimizations
-    process.env.NODE_ENV = process.env.NODE_ENV || 'development';
+    if (!process.env.NODE_ENV) {
+      process.env.NODE_ENV = 'development';
+    }
   }
 
   return cloudEnv;

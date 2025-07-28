@@ -109,7 +109,7 @@ export class TagServiceKysely {
       return tag || null;
     } catch (error) {
       logger.error('Failed to get tag by ID', { error, id });
-      throw new BaseServiceError('TAG_FETCH_FAILED', 'Failed to fetch tag', error);
+      throw new BaseServiceError('TAG_FETCH_FAILED', 'Failed to fetch tag');
     }
   }
 
@@ -147,7 +147,7 @@ export class TagServiceKysely {
       return tags;
     } catch (error) {
       logger.error('Failed to get tags', { error, filters });
-      throw new BaseServiceError('TAG_FETCH_FAILED', 'Failed to fetch tags', error);
+      throw new BaseServiceError('TAG_FETCH_FAILED', 'Failed to fetch tags');
     }
   }
 
@@ -175,7 +175,7 @@ export class TagServiceKysely {
         }
 
         // Prevent circular references
-        if (await this.wouldCreateCircularReference(id, data.parent_id)) {
+        if (await this.checkCircularReference(id, data.parent_id)) {
           throw new ValidationError('Cannot create circular tag hierarchy');
         }
       }
@@ -265,7 +265,7 @@ export class TagServiceKysely {
       })) as TagWithUsage[];
     } catch (error) {
       logger.error('Failed to get tags with usage', { error });
-      throw new BaseServiceError('TAG_USAGE_FETCH_FAILED', 'Failed to fetch tag usage', error);
+      throw new BaseServiceError('TAG_USAGE_FETCH_FAILED', 'Failed to fetch tag usage');
     }
   }
 
@@ -289,11 +289,11 @@ export class TagServiceKysely {
         })
       );
 
-      return false;
+      const rootTags = allTags.filter(tag => !tag.parent_id);
+      return rootTags;
     } catch (error) {
-      logger.error('Failed to check circular reference', { error, tagId, parentId });
-      // Conservative approach: assume circular reference to prevent data corruption
-      return true;
+      logger.error('Failed to get tag hierarchy', { error });
+      return [];
     }
   }
 
@@ -318,7 +318,40 @@ export class TagServiceKysely {
       return tags;
     } catch (error) {
       logger.error('Failed to search tags', { error, query });
-      throw new BaseServiceError('TAG_SEARCH_FAILED', 'Failed to search tags', error);
+      throw new BaseServiceError('TAG_SEARCH_FAILED', 'Failed to search tags');
+    }
+  }
+
+  /**
+   * Check if creating a parent-child relationship would create a circular reference
+   */
+  private async checkCircularReference(tagId: string, parentId: string): Promise<boolean> {
+    try {
+      // Follow the parent chain to see if we eventually reach the original tag
+      let currentParentId = parentId;
+      const visited = new Set<string>();
+      
+      while (currentParentId && currentParentId !== '' && !visited.has(currentParentId)) {
+        if (currentParentId === tagId) {
+          return true; // Circular reference detected
+        }
+        
+        visited.add(currentParentId);
+        
+        const parent = await this.db
+          .selectFrom('tags')
+          .select(['parent_id'])
+          .where('id', '=', currentParentId)
+          .executeTakeFirst();
+          
+        currentParentId = parent?.parent_id || '';
+      }
+      
+      return false;
+    } catch (error) {
+      logger.error('Failed to check circular reference', { error, tagId, parentId });
+      // Conservative approach: assume circular reference to prevent data corruption
+      return true;
     }
   }
 }

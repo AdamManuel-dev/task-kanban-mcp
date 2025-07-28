@@ -155,9 +155,9 @@ export class StatisticsCollector {
 
   private readonly config: StatsConfig;
 
-  private readonly queryHistory: QueryRecord[] = [];
+  private queryHistory: QueryRecord[] = [];
 
-  private readonly monitoringActive = false;
+  private monitoringActive = false;
 
   constructor(db: DatabaseConnection, config: Partial<StatsConfig> = {}) {
     this.db = db;

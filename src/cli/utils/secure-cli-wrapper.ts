@@ -7,7 +7,7 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { commandInjectionPrevention, validateCommand } from './command-injection-prevention';
-import { inputSanitizer } from './input-sanitizer';
+import { inputSanitizer, InputSanitizer } from './input-sanitizer';
 import { logger } from '../../utils/logger';
 
 /**
@@ -68,11 +68,11 @@ export interface SecurityEvent {
  * ```
  */
 export class SecureCliWrapper {
-  private static readonly instance: SecureCliWrapper;
+  private static instance: SecureCliWrapper;
 
-  private readonly securityEvents: SecurityEvent[] = [];
+  private securityEvents: SecurityEvent[] = [];
 
-  private readonly config: SecurityConfig;
+  private config: SecurityConfig;
 
   constructor(config: Partial<SecurityConfig> = {}) {
     this.config = {
@@ -286,7 +286,7 @@ export class SecureCliWrapper {
           if (options && typeof options === 'object') {
             for (const [key, value] of Object.entries(options)) {
               if (typeof value === 'string') {
-                const suspicious = inputSanitizer.detectSuspiciousPatterns(value);
+                const suspicious = InputSanitizer.detectSuspiciousPatterns(value);
                 if (suspicious.suspicious) {
                   this.logSecurityEvent({
                     type: 'suspicious_pattern',
@@ -530,7 +530,7 @@ export class SecureCliWrapper {
 
     // Additional validation for the entire command line
     const fullCommand = sanitizedResult.sanitized.join(' ');
-    const suspicious = inputSanitizer.detectSuspiciousPatterns(fullCommand);
+    const suspicious = InputSanitizer.detectSuspiciousPatterns(fullCommand);
 
     if (suspicious.suspicious) {
       this.logSecurityEvent({
@@ -744,7 +744,7 @@ export function addSecurityMiddleware(program: Command): Command {
       logger.warn(chalk.yellow('⚠️  Security warnings:', validation.warnings.join(', ')));
     }
 
-    return originalParse.call(this, argv, options);
+    return originalParse(argv ? [...argv] : argv);
   };
 
   // Add security command

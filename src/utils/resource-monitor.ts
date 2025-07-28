@@ -546,7 +546,7 @@ export function initializeResourceMonitoring(config?: ResourceMonitorConfig): vo
 
   resourceMonitor.on('memory-leak-detected', trend => {
     logger.error('Potential memory leak detected', {
-      trend: trend.map(m => (m / 1024 / 1024).toFixed(2)),
+      trend: trend.map((m: number) => (m / 1024 / 1024).toFixed(2)),
     });
   });
 

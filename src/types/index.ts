@@ -89,6 +89,32 @@ export interface Task {
 }
 
 /**
+ * Raw database representation of a task
+ * @description Similar to Task but with string dates as returned from SQLite
+ */
+export interface DatabaseTask {
+  id: string;
+  title: string;
+  description?: string | null;
+  board_id: string;
+  column_id: string;
+  position: number;
+  priority: number;
+  status: 'todo' | 'in_progress' | 'done' | 'blocked' | 'archived';
+  assignee?: string | null;
+  due_date?: string | null;
+  estimated_hours?: number | null;
+  actual_hours?: number | null;
+  parent_task_id?: string | null;
+  progress?: number | null;
+  created_at: string;
+  updated_at: string;
+  completed_at?: string | null;
+  archived: number; // SQLite boolean as integer
+  metadata?: string | null;
+}
+
+/**
  * Represents a dependency relationship between tasks
  *
  * @interface TaskDependency
@@ -355,6 +381,7 @@ export interface CreateTaskRequest {
   assignee?: string;
   dueDate?: string;
   tags?: string[];
+  parent_task_id?: string;
 }
 
 export interface UpdateTaskRequest {

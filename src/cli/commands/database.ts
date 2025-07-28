@@ -131,7 +131,18 @@ export function registerDatabaseCommands(program: Command): void {
           ...(options.performance && { performance: options.performance }),
         });
 
-        const result = await apiClient.request('GET', '/api/database/stats', undefined, params);
+        // Convert params to Record<string, string> format
+        const queryParams: Record<string, string> = {};
+        if (params.tables) queryParams.tables = params.tables;
+        if (params.indexes) queryParams.indexes = params.indexes;
+        if (params.performance) queryParams.performance = params.performance;
+
+        const result = await apiClient.request(
+          'GET',
+          '/api/database/stats',
+          undefined,
+          queryParams
+        );
 
         formatter.success('Database statistics:');
         formatter.output(result, {

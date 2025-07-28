@@ -113,7 +113,7 @@ describe('Result Pattern Implementation', () => {
       const result = Ok(42);
 
       const output = match(result, {
-        ok: data => `Success: ${data}`,
+        ok: data => `Success: ${String(data)}`,
         err: error => `Error: ${error.message}`,
       });
 
@@ -124,7 +124,7 @@ describe('Result Pattern Implementation', () => {
       const result = Err(new Error('test error'));
 
       const output = match(result, {
-        ok: data => `Success: ${data}`,
+        ok: data => `Success: ${String(data)}`,
         err: error => `Error: ${error.message}`,
       });
 
@@ -174,7 +174,7 @@ describe('Result Pattern Implementation', () => {
     });
 
     test('fromPromise() with custom error mapper', async () => {
-      const errorPromise = Promise.reject('string error');
+      const errorPromise = Promise.reject(new Error('string error'));
 
       const result = await fromPromise(errorPromise, error => new Error(`Mapped: ${error}`));
 
@@ -402,7 +402,7 @@ describe('Result Pattern Implementation', () => {
       }
 
       const getUser = (): Result<User, Error> => Ok({ id: 1, name: 'test' });
-      const getPreferences = (user: User): Result<object, Error> =>
+      const getPreferences = (_user: User): Result<object, Error> =>
         Ok({ theme: 'dark', lang: 'en' });
 
       const buildProfile =

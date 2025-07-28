@@ -107,7 +107,7 @@ export function registerListCommand(backupCmd: Command): void {
           compressed: backup.compressed ? '✓' : '✗',
           verified: backup.verified ? '✓' : '✗',
           created: formatRelativeTime(backup.createdAt),
-          description: backup.description || 'No description',
+          description: backup.description ?? 'No description',
         }));
 
         formatOutput(displayBackups, {

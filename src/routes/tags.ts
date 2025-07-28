@@ -42,7 +42,12 @@ export function tagRoutes(): Router {
       const totalTags = await tagService.getTags(countOptions);
       const total = totalTags.length;
 
-      res.apiPagination(tags, Math.floor(options.offset / options.limit) + 1, options.limit, total);
+      res.apiPagination({
+        data: tags,
+        page: Math.floor(options.offset / options.limit) + 1,
+        limit: options.limit,
+        total
+      });
     } catch (error) {
       next(error);
     }
@@ -228,7 +233,7 @@ export function tagRoutes(): Router {
       const { target_tag_id: targetTagId } = req.body;
 
       if (!targetTagId) {
-        res.status(400).apiError('INVALID_INPUT', 'target_tag_id is required');
+        res.apiError({ code: 'INVALID_INPUT', message: 'target_tag_id is required', statusCode: 400 });
         return;
       }
 

@@ -98,9 +98,8 @@ export const dashboardCommand = new Command('dashboard')
         logger.info('Dashboard started! Press "h" for help, "q" to quit.');
       } catch (error) {
         const { formatter } = getComponents();
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         handleCommandError(
-          formatter as any,
+          formatter,
           {
             operation: 'start dashboard',
             details: { layout: options.layout, theme: options.theme },

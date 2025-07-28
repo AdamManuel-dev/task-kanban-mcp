@@ -78,7 +78,7 @@ module.exports = {
     'blessed-contrib': 'commonjs blessed-contrib',
   },
   optimization: {
-    minimize: false,
+    minimize: true,
     minimizer: [
       new (require('terser-webpack-plugin'))({
         terserOptions: {

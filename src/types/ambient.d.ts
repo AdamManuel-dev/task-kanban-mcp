@@ -458,12 +458,47 @@ declare module 'ink' {
   import { Component } from 'react';
 
   export interface BoxProps {
+    // Layout properties
+    flexDirection?: 'row' | 'row-reverse' | 'column' | 'column-reverse';
+    alignItems?: 'flex-start' | 'center' | 'flex-end';
+    justifyContent?:
+      | 'flex-start'
+      | 'center'
+      | 'flex-end'
+      | 'space-between'
+      | 'space-around'
+      | 'space-evenly';
+    flexGrow?: number;
+    flexShrink?: number;
+    flexBasis?: number | string;
+
+    // Margin properties
     margin?: number | { top?: number; bottom?: number; left?: number; right?: number };
     marginX?: number;
     marginY?: number;
+    marginTop?: number;
+    marginBottom?: number;
+    marginLeft?: number;
+    marginRight?: number;
+
+    // Padding properties
     padding?: number | { top?: number; bottom?: number; left?: number; right?: number };
     paddingX?: number;
     paddingY?: number;
+    paddingTop?: number;
+    paddingBottom?: number;
+    paddingLeft?: number;
+    paddingRight?: number;
+
+    // Size properties
+    width?: number | string;
+    height?: number | string;
+    minWidth?: number;
+    minHeight?: number;
+    maxWidth?: number;
+    maxHeight?: number;
+
+    // Border properties
     borderStyle?:
       | 'single'
       | 'double'
@@ -476,6 +511,12 @@ declare module 'ink' {
     borderDimColor?: string;
     borderBackgroundColor?: string;
     borderDirection?: 'horizontal' | 'vertical' | 'left' | 'right' | 'top' | 'bottom';
+
+    // Display properties
+    display?: 'flex' | 'none';
+    gap?: number;
+    overflow?: 'visible' | 'hidden';
+
     children?: ReactNode;
   }
 

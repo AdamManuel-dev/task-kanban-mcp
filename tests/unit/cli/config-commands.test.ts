@@ -3,7 +3,7 @@
  * Tests the new repository mapping commands added in Phase 15.1
  */
 
-import { expect } from 'chai';
+import { describe, it, beforeEach, afterEach, expect } from '@jest/globals';
 import * as sinon from 'sinon';
 import { Command } from 'commander';
 import { BoardMappingService } from '../../../src/services/BoardMappingService';

@@ -267,7 +267,7 @@ router.get(
   '/alerts',
   asyncHandler(async (req, res, next): Promise<void> => {
     // Access private alertRules through a public method (would need to add this to the service)
-    const alertRules = []; // performanceMonitor.getAlertRules();
+    const alertRules: any[] = []; // performanceMonitor.getAlertRules();
 
     res.json({
       success: true,
@@ -308,7 +308,7 @@ router.get(
  */
 router.post(
   '/alerts',
-  validateRequest({ body: alertRuleSchema }),
+  validateRequest(alertRuleSchema),
   asyncHandler(async (req, res, next): Promise<void> => {
     const alertRule = req.body;
 
@@ -352,7 +352,7 @@ router.delete(
   asyncHandler(async (req, res, next): Promise<void> => {
     const { ruleId } = req.params;
 
-    const deleted = performanceMonitor.removeAlertRule(ruleId!);
+    const deleted = performanceMonitor.removeAlertRule(ruleId);
 
     if (!deleted) {
       res.status(404).json({
@@ -447,7 +447,7 @@ router.get(
  */
 router.get(
   '/trends',
-  validateRequest({ query: timeframeSchema }),
+  validateRequest(timeframeSchema),
   asyncHandler(async (req, res, next): Promise<void> => {
     const { hours = 24 } = req.query as { hours?: number };
     const dashboard = performanceMonitor.getDashboard();

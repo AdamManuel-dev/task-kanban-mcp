@@ -322,7 +322,7 @@ export class TaskHistoryService {
 
       const mostActiveTasks = Object.values(taskChangeCounts)
         .sort((a, b) => (b as any).change_count - (a as any).change_count)
-        .slice(0, 10) as { task_id: string; task_title: string; change_count: number; }[];
+        .slice(0, 10) as { task_id: string; task_title: string; change_count: number }[];
 
       // Count common change reasons
       const reasonCounts = allPriorityChanges
@@ -339,7 +339,7 @@ export class TaskHistoryService {
       const commonChangeReasons = Object.entries(reasonCounts)
         .map(([reason, count]) => ({ reason, count: count as number }))
         .sort((a, b) => b.count - a.count)
-        .slice(0, 10) as { reason: string; count: number; }[];
+        .slice(0, 10) as { reason: string; count: number }[];
 
       // Analyze priority distribution
       const priorityValues = allPriorityChanges

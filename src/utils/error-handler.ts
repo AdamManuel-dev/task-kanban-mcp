@@ -244,6 +244,7 @@ export const withErrorHandling = async <T>(
     return await operation();
   } catch (error) {
     handleCommandError(formatter, context, error);
+    throw error; // Re-throw after handling
   }
 };
 

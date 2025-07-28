@@ -113,7 +113,7 @@ export class WebSocketAuth {
         resolve({
           success: true,
           user,
-          permissions: new Set(permissions),
+          permissions,
         });
       } catch (error) {
         resolve({
@@ -150,7 +150,7 @@ export class WebSocketAuth {
       return {
         success: true,
         user,
-        permissions: new Set(validatedPermissions),
+        permissions: validatedPermissions,
       };
     } catch (error) {
       logger.error('API key authentication error', { error });
@@ -191,7 +191,7 @@ export class WebSocketAuth {
         resolve({
           success: true,
           user,
-          permissions: new Set(permissions),
+          permissions,
         });
       } catch (error) {
         resolve({

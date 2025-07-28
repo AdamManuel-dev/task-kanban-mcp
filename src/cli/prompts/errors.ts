@@ -176,10 +176,10 @@ export function createErrorResponse(
 
   // Handle standard errors
   const message = error instanceof Error ? error.message : String(error);
-  const systemError = new SystemError(
+  const systemError = new SystemError({
     operation,
-    error instanceof Error ? error : new Error(message)
-  );
+    cause: error instanceof Error ? error : new Error(message),
+  });
 
   logger.error(`${operation} failed`, systemError.getLogData());
 
@@ -226,11 +226,11 @@ export async function withErrorHandling<T>(
     }
 
     // Wrap in system error
-    throw new SystemError(
+    throw new SystemError({
       operation,
-      error instanceof Error ? error : new Error(String(error)),
-      context
-    );
+      cause: error instanceof Error ? error : new Error(String(error)),
+      context,
+    });
   }
 }
 
@@ -250,7 +250,12 @@ export function validateInput<T>(
   }
 
   const reason = typeof result === 'string' ? result : 'validation failed';
-  throw new ValidationError(field, value, reason, context);
+  throw new ValidationError({
+    field,
+    value,
+    reason,
+    context,
+  });
 }
 
 /**

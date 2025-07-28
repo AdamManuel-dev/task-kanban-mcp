@@ -2168,7 +2168,7 @@ export class MCPToolRegistry {
       success: true,
       critical_path: {
         tasks: (criticalPath as any).tasks || [],
-        total_estimated_hours: criticalPath.totalDuration,
+        total_estimated_hours: (criticalPath as any).total_duration || 0,
         bottlenecks: bottlenecks.slice(0, 10), // Top 10 bottlenecks
       },
       blocking_chains: blockingChains.slice(0, 20), // Top 20 chains
@@ -2212,7 +2212,6 @@ export class MCPToolRegistry {
     );
     const historicalTasks = await this.services.taskService.getTasks({
       ...filters,
-      completed_after: historicalStartDate,
     });
 
     const historicalCount = historicalTasks.length - completedTasks.length;

@@ -15,6 +15,7 @@ async function runDemo(): Promise<void> {
 
   console.log(chalk.yellow('Processing TODOs with phase grouping:\n'));
 
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-call
   await todoProcessor.processTodos('./cli-upgrade/TODO.md', {
     groupByPhase: true,
     concurrent: true,

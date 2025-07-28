@@ -923,14 +923,14 @@ export function taskRoutes(): Router {
       const { tag_ids: tagIds } = req.body;
 
       if (!Array.isArray(tagIds)) {
-        res.status(400).apiError('INVALID_INPUT', 'tag_ids must be an array');
+        res.apiError({ code: 'INVALID_INPUT', message: 'tag_ids must be an array', statusCode: 400 });
         return;
       }
 
       if (!id) {
         throw new ValidationError('Task ID is required');
       }
-      const assignedTags = [];
+      const assignedTags: any[] = [];
       await Promise.all(
         tagIds.map(async tagId => {
           await tagService.addTagToTask(id, tagId);
@@ -1026,17 +1026,17 @@ export function taskRoutes(): Router {
       );
 
       // Exclude blocked tasks if requested
-      if (filters.exclude_blocked) {
+      if (filters.excludeBlocked) {
         availableTasks = availableTasks.filter(task => task.status !== 'blocked');
       }
 
       // Filter by skill context if provided
-      if (filters.skill_context) {
+      if (filters.skillContext) {
         availableTasks = availableTasks.filter(
           task =>
-            task.title.toLowerCase().includes(filters.skill_context.toLowerCase()) ||
+            task.title.toLowerCase().includes(filters.skillContext.toLowerCase()) ||
             (task.description &&
-              task.description.toLowerCase().includes(filters.skill_context.toLowerCase()))
+              task.description.toLowerCase().includes(filters.skillContext.toLowerCase()))
         );
       }
 
@@ -1109,8 +1109,8 @@ export function taskRoutes(): Router {
       }
 
       // Skill context reasoning
-      if (filters.skill_context) {
-        reasoningFactors.push(`🎯 Matches skill context: "${filters.skill_context}"`);
+      if (filters.skillContext) {
+        reasoningFactors.push(`🎯 Matches skill context: "${filters.skillContext}"`);
       }
 
       // Task complexity reasoning based on description length

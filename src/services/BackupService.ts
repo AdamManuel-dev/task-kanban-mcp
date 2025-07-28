@@ -1297,7 +1297,7 @@ export class BackupService {
     while ((match = createTableRegex.exec(sqlContent)) !== null) {
       const tableName = match[1];
       const definition = match[2];
-      tableDefinitions.set(tableName!, definition!);
+      tableDefinitions.set(tableName, definition);
     }
 
     return tableDefinitions;
@@ -1336,7 +1336,7 @@ export class BackupService {
     let match;
     while ((match = tableRegex.exec(sqlContent)) !== null) {
       const tableName = match[1];
-      tableCounts.set(tableName!, (tableCounts.get(tableName!) || 0) + 1);
+      tableCounts.set(tableName, (tableCounts.get(tableName) || 0) + 1);
     }
 
     // Validate each table

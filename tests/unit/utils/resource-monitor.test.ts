@@ -201,7 +201,7 @@ describe('ResourceMonitor', () => {
       // Simulate increasing memory usage
       let callCount = 0;
       const originalGetMemoryStats = leakMonitor.getMemoryStats;
-      leakMonitor.getMemoryStats = function () {
+      leakMonitor.getMemoryStats = function mockGetMemoryStats() {
         const stats = originalGetMemoryStats.call(this);
         // Simulate increasing heap usage
         stats.heapUsed += callCount * 10 * 1024 * 1024; // Increase by 10MB each time
@@ -477,7 +477,7 @@ describe('Configuration and Edge Cases', () => {
       {}, // Default config
     ];
 
-    configs.forEach((config, index) => {
+    configs.forEach((config, _index) => {
       expect(() => {
         const monitor = new ResourceMonitor(config);
         monitor.destroy();

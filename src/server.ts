@@ -12,7 +12,7 @@ import { dbConnection } from '@/database/connection';
 import { globalErrorHandler } from '@/utils/errors';
 import { createApiMiddleware } from '@/middleware';
 // Check if WebSockets should be enabled
-const enableWebSockets = process.env['ENABLE_WEBSOCKETS'] !== 'false';
+const enableWebSockets = process.env.ENABLE_WEBSOCKETS !== 'false';
 
 export async function createServer(): Promise<express.Application> {
   const app = express();
@@ -260,7 +260,7 @@ export async function startServer(): Promise<{
       host: config.server.host,
       port: config.server.port,
     });
-    
+
     const server = app.listen(config.server.port, config.server.host, () => {
       logger.info('Server started successfully', {
         host: config.server.host,
@@ -277,7 +277,11 @@ export async function startServer(): Promise<{
 
     // Handle server errors
     server.on('error', (error: any) => {
-      logger.error('Server error:', { error: error.message, code: error.code, port: config.server.port });
+      logger.error('Server error:', {
+        error: error.message,
+        code: error.code,
+        port: config.server.port,
+      });
       throw error;
     });
 

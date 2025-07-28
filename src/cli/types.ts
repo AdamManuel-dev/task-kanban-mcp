@@ -482,13 +482,13 @@ export interface SearchTasksParams {
   order?: string;
 }
 
-export interface SearchNotesParams extends Record<string, string> {
+export interface SearchNotesParams {
   category?: string;
   limit?: string;
   search?: string;
 }
 
-export interface BackupParams extends Record<string, string> {
+export interface BackupParams {
   compress?: string;
   encrypt?: string;
   destination?: string;
@@ -500,18 +500,18 @@ export interface RealtimeSubscriptionParams {
   events?: string[];
 }
 
-export interface DatabaseStatsParams extends Record<string, string> {
+export interface DatabaseStatsParams {
   tables?: string;
   indexes?: string;
   performance?: string;
 }
 
-export interface ExportQueryParams extends Record<string, string> {
+export interface ExportQueryParams {
   anonymize?: string;
   anonymizationOptions?: string;
 }
 
-export interface AdvancedSearchParams extends Record<string, string> {
+export interface AdvancedSearchParams {
   title?: string;
   description?: string;
   tags?: string;

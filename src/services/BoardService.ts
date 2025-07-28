@@ -676,7 +676,7 @@ export class BoardService {
         board_id: data.board_id,
         name: data.name,
       });
-      return columnResult[0]!;
+      return columnResult[0];
     } catch (error) {
       if (
         (error instanceof Error && error.message.includes('BOARD_')) ||
@@ -718,13 +718,15 @@ export class BoardService {
   ): Promise<Column> {
     try {
       // Verify column exists
-      const existingColumn = await this.db.query<Column>('SELECT * FROM columns WHERE id = ?', [
+      const existingColumnResults = await this.db.query<Column>('SELECT * FROM columns WHERE id = ?', [
         id,
       ]);
 
-      if (!existingColumn) {
+      if (!existingColumnResults.length) {
         throw BoardService.createError('COLUMN_NOT_FOUND', 'Column not found', { id });
       }
+      
+      const existingColumn = existingColumnResults[0];
 
       const updateFields: string[] = [];
       const updateValues: unknown[] = [];
@@ -758,12 +760,13 @@ export class BoardService {
         updateValues as any[]
       );
 
-      const updatedColumn = await this.db.query<Column>('SELECT * FROM columns WHERE id = ?', [id]);
+      const updatedColumnResults = await this.db.query<Column>('SELECT * FROM columns WHERE id = ?', [id]);
 
-      if (!updatedColumn) {
+      if (!updatedColumnResults.length) {
         throw BoardService.createError('COLUMN_UPDATE_FAILED', 'Failed to retrieve updated column');
       }
 
+      const updatedColumn = updatedColumnResults[0];
       logger.info('Column updated successfully', { id, updates: data });
       return updatedColumn;
     } catch (error) {
@@ -812,7 +815,7 @@ export class BoardService {
 
       await this.db.query('DELETE FROM columns WHERE id = ?', [id]);
 
-      logger.info('Column deleted successfully', { id, board_id: column.board_id });
+      logger.info('Column deleted successfully', { id, board_id: columnResult[0].board_id });
     } catch (error) {
       if (error instanceof Error && error.message.includes('COLUMN_')) {
         throw error;

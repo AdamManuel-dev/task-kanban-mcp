@@ -246,18 +246,18 @@ export class TaskTemplateService {
         : '';
 
       // Create the task using TaskService
-      const TaskService = await import('./TaskService').then(m => m.TaskService);
-      const taskService = TaskService.getInstance();
+      const { TaskService } = await import('./TaskService');
+      const { dbConnection } = await import('@/database/connection');
+      const taskService = new TaskService(dbConnection);
 
       const taskData = {
         title,
         description,
         board_id: request.board_id,
+        column_id: 'default',
         priority: template.priority,
-        estimated_hours: template.estimated_hours,
         assignee: request.assignee,
-        due_date: request.due_date,
-        parent_task_id: request.parent_task_id,
+        due_date: request.due_date ? new Date(request.due_date) : undefined,
         tags: template.tags,
       };
 
@@ -278,7 +278,7 @@ export class TaskTemplateService {
       return {
         task_id: task.id,
         title: task.title,
-        description: task.description,
+        description: task.description ?? '',
         created_checklist_items: createdChecklistItems,
         applied_tags: template.tags,
         template_name: template.name,

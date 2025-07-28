@@ -10,7 +10,7 @@
 import { spawn } from 'child_process';
 import path from 'path';
 import { logger } from '@/utils/logger';
-import { inputSanitizer } from './input-sanitizer';
+import { inputSanitizer, InputSanitizer } from './input-sanitizer';
 
 /**
  * Options for command execution with security controls
@@ -94,7 +94,7 @@ export interface ExecutionResult {
  * ```
  */
 export class CommandInjectionPrevention {
-  private static readonly instance: CommandInjectionPrevention;
+  private static instance: CommandInjectionPrevention;
 
   private readonly dangerousCommands: Set<string>;
 
@@ -385,7 +385,7 @@ export class CommandInjectionPrevention {
 
     // Additional security checks for the complete command
     const fullCommand = `${sanitizedCommand} ${sanitizedArgs.join(' ')}`;
-    const suspiciousCheck = inputSanitizer.detectSuspiciousPatterns(fullCommand) as {
+    const suspiciousCheck = InputSanitizer.detectSuspiciousPatterns(fullCommand) as {
       suspicious: boolean;
       patterns: string[];
     };

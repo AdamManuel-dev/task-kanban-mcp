@@ -415,14 +415,14 @@ export function withCaching<Args extends unknown[], Return>(
 
     // Try cache first
     const cached = cache.get(key);
-    if (cached !== undefined) {
+    if (cached !== undefined && cached !== null) {
       performanceMonitor.record({
         operationName: `${operationName} (cached)`,
         duration: 0.1, // Minimal cache access time
         timestamp: new Date(),
         metadata: { cacheHit: true, key },
       });
-      return cached;
+      return cached as Return;
     }
 
     // Execute operation and cache result

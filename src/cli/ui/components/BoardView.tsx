@@ -69,7 +69,7 @@ const renderTaskItem = (
   const borderChar = isSelected ? '█' : '│';
 
   return (
-    <Box key={task.id} flexDirection="column" width={columnWidth}>
+    <Box key={task.id}>
       <Text>
         {borderChar} {taskTitle}
       </Text>
@@ -95,17 +95,17 @@ const renderColumn = (
   const visibleTasks = column.tasks.slice(scrollOffset, scrollOffset + maxColumnHeight);
 
   return (
-    <Box key={column.id} flexDirection="column" width={columnWidth} marginRight={1}>
+    <Box key={column.id}>
       {/* Show scroll indicator if there are tasks above */}
       {scrollOffset > 0 && (
-        <Box justifyContent="center" width={columnWidth}>
+        <Box>
           <Text color="gray">⬆ {scrollOffset} more</Text>
         </Box>
       )}
 
-      <Box flexDirection="column" minHeight={maxColumnHeight * 3}>
+      <Box>
         {visibleTasks.length === 0 ? (
-          <Box marginTop={1} justifyContent="center" width={columnWidth}>
+          <Box>
             <Text color="gray">Empty</Text>
           </Box>
         ) : (
@@ -115,7 +115,7 @@ const renderColumn = (
 
       {/* Show scroll indicator if there are more tasks below */}
       {column.tasks.length > scrollOffset + maxColumnHeight && (
-        <Box justifyContent="center" width={columnWidth}>
+        <Box>
           <Text color="gray">⬇ {column.tasks.length - scrollOffset - maxColumnHeight} more</Text>
         </Box>
       )}

@@ -8,7 +8,8 @@
  * Patterns: Railway-oriented programming, explicit error handling
  */
 
-import type { Task, CreateTaskRequest, UpdateTaskRequest } from '../types';
+import type { Task } from '../types';
+import type { CreateTaskRequest, UpdateTaskRequest } from './TaskService';
 import type { DatabaseConnection } from '../database/connection';
 import {
   Ok,
@@ -56,20 +57,20 @@ export class TaskServiceResult {
             title: data.title,
             description: data.description || '',
             board_id: data.board_id,
-            column_id: data.column_id || '',
-            position: data.position || 0,
+            column_id: data.column_id || 'default',
+            position: 0,
             priority: data.priority || 5,
             status: data.status || 'todo',
-            assignee: data.assignee || null,
-            due_date: data.due_date || null,
-            estimated_hours: data.estimated_hours || null,
-            actual_hours: null,
-            parent_task_id: data.parent_task_id || null,
+            assignee: data.assignee,
+            due_date: data.due_date,
+            estimated_hours: undefined,
+            actual_hours: undefined,
+            parent_task_id: undefined,
             created_at: new Date(now),
             updated_at: new Date(now),
-            completed_at: null,
+            completed_at: undefined,
             archived: false,
-            metadata: data.metadata || {},
+            metadata: '{}',
           };
 
           await db.run(
@@ -120,7 +121,7 @@ export class TaskServiceResult {
         // Validate task ID
         const validationResult = validateWith(
           taskId,
-          id => id && id.trim().length > 0,
+          (id: string) => Boolean(id && id.trim().length > 0),
           'Task ID is required'
         );
 
@@ -152,24 +153,28 @@ export class TaskServiceResult {
         // Validate inputs
         const taskIdValidation = validateWith(
           taskId,
-          id => id && id.trim().length > 0,
+          (id: string) => Boolean(id && id.trim().length > 0),
           'Task ID is required'
         );
 
         const updatesValidation = validateWith(
           updates,
-          data => Object.keys(data).length > 0,
+          (data: object) => Boolean(Object.keys(data).length > 0),
           'No updates provided'
         );
 
-        const validationResult = validateAll(updates, [
+        const fieldsValidation = validateAll(updates, [
           data =>
             data.title
-              ? validateWith(data.title, t => t.trim().length > 0, 'Title cannot be empty')
+              ? isOk(validateWith(data.title, (t: string) => t.trim().length > 0, 'Title cannot be empty'))
+                ? Ok(data)
+                : Err('Title cannot be empty')
               : Ok(data),
           data =>
-            data.priority
-              ? validateWith(data.priority, p => p >= 1 && p <= 10, 'Priority must be between 1-10')
+            data.priority !== undefined
+              ? isOk(validateWith(data.priority, (p: number) => p >= 1 && p <= 10, 'Priority must be between 1-10'))
+                ? Ok(data)
+                : Err('Priority must be between 1-10')
               : Ok(data),
         ]);
 
@@ -179,8 +184,8 @@ export class TaskServiceResult {
         if (!isOk(updatesValidation)) {
           throw new Error(updatesValidation.error);
         }
-        if (!isOk(validationResult)) {
-          throw new Error(`Validation failed: ${validationResult.error.join(', ')}`);
+        if (!isOk(fieldsValidation)) {
+          throw new Error(`Validation failed: ${fieldsValidation.error.join(', ')}`);
         }
 
         // Check task exists
@@ -229,7 +234,7 @@ export class TaskServiceResult {
         // Validate task ID
         const validationResult = validateWith(
           taskId,
-          id => id && id.trim().length > 0,
+          (id: string) => Boolean(id && id.trim().length > 0),
           'Task ID is required'
         );
 
@@ -273,19 +278,29 @@ export class TaskServiceResult {
    */
   private validateCreateTaskRequest(data: CreateTaskRequest): Result<CreateTaskRequest, string[]> {
     return validateAll(data, [
-      req => validateWith(req.title, t => t && t.trim().length > 0, 'Title is required'),
-      req => validateWith(req.board_id, b => b && b.trim().length > 0, 'Board ID is required'),
       req =>
-        req.priority
-          ? validateWith(req.priority, p => p >= 1 && p <= 10, 'Priority must be between 1-10')
+        isOk(validateWith(req.title, (t: string) => Boolean(t && t.trim().length > 0), 'Title is required'))
+          ? Ok(req)
+          : Err('Title is required'),
+      req =>
+        isOk(validateWith(req.board_id, (b: string) => Boolean(b && b.trim().length > 0), 'Board ID is required'))
+          ? Ok(req)
+          : Err('Board ID is required'),
+      req =>
+        req.priority !== undefined
+          ? isOk(validateWith(req.priority, (p: number) => p >= 1 && p <= 10, 'Priority must be between 1-10'))
+            ? Ok(req)
+            : Err('Priority must be between 1-10')
           : Ok(req),
       req =>
         req.status
-          ? validateWith(
+          ? isOk(validateWith(
               req.status,
               s => ['todo', 'in_progress', 'done', 'blocked'].includes(s),
               'Invalid status'
-            )
+            ))
+            ? Ok(req)
+            : Err('Invalid status')
           : Ok(req),
     ]);
   }
@@ -293,9 +308,10 @@ export class TaskServiceResult {
   private async validateParentTaskExists(parentTaskId: string): Promise<ServiceResult<boolean>> {
     return wrapServiceOperation(
       async () => {
-        const parent = await this.db.queryOne('SELECT id FROM tasks WHERE id = ? AND archived = 0', [
-          parentTaskId,
-        ]);
+        const parent = await this.db.queryOne(
+          'SELECT id FROM tasks WHERE id = ? AND archived = 0',
+          [parentTaskId]
+        );
 
         if (!parent) {
           throw new Error(`Parent task not found: ${parentTaskId}`);
@@ -325,7 +341,7 @@ export class TaskServiceResult {
       parent_task_id: row.parent_task_id,
       created_at: new Date(row.created_at),
       updated_at: new Date(row.updated_at),
-      completed_at: row.completed_at ? new Date(row.completed_at) : null,
+      completed_at: row.completed_at ? new Date(row.completed_at) : undefined,
       archived: Boolean(row.archived),
       metadata: row.metadata ? JSON.parse(row.metadata) : {},
     };

@@ -131,7 +131,6 @@ export function registerDeleteCommand(backupCmd: Command): void {
           cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
 
           // Identify backups to delete (older than cutoff, but keep minimum)
-          const backupsToKeep = allBackups.slice(0, keepMinimum);
           const eligibleForDeletion = allBackups
             .slice(keepMinimum)
             .filter(backup => new Date(backup.createdAt) < cutoffDate);

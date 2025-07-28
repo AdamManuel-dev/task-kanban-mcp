@@ -14,9 +14,9 @@ import type { Database as DatabaseSchema } from './kyselySchema';
 export class KyselyConnection {
   private static instance: KyselyConnection | null = null;
 
-  private readonly _db: Kysely<DatabaseSchema> | null = null;
+  private _db: Kysely<DatabaseSchema> | null = null;
 
-  private readonly _sqliteDb: Database.Database | null = null;
+  private _sqliteDb: Database.Database | null = null;
 
   private constructor() {
     // Private constructor for singleton pattern
@@ -188,7 +188,7 @@ export class KyselyConnection {
     totalSize: number;
     walSize: number;
   }> {
-    if (!this._db ?? !this._sqliteDb) {
+    if (!this._db || !this._sqliteDb) {
       throw new Error('Database not initialized');
     }
 
@@ -198,12 +198,12 @@ export class KyselyConnection {
 
       const tableStats = await Promise.all(
         tables.map(async table => {
-          const countResult = await this._db
+          const countResult = await this._db!
             .selectFrom(table as any)
-            .select([this._db.fn.count<number>('id').as('count')])
+            .select([this._db!.fn.count<number>('id').as('count')])
             .executeTakeFirst();
 
-          const sizeResult = this._sqliteDb
+          const sizeResult = this._sqliteDb!
             .prepare<
               unknown[],
               { size: number }

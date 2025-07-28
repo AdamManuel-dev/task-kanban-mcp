@@ -27,7 +27,11 @@ describe('Phase 15 Endpoints Performance Tests', () => {
         createTestTask(testBoardId, {
           title: `Performance Task ${i}`,
           priority: Math.floor(Math.random() * 5) + 1,
-          status: i % 3 === 0 ? 'done' : i % 3 === 1 ? 'in_progress' : 'todo',
+          status: (() => {
+            if (i % 3 === 0) return 'done';
+            if (i % 3 === 1) return 'in_progress';
+            return 'todo';
+          })(),
           due_date: new Date(Date.now() + Math.random() * 30 * 24 * 60 * 60 * 1000), // Random date within 30 days
         })
       );

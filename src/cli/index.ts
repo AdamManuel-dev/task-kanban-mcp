@@ -1,10 +1,6 @@
 #!/usr/bin/env node
 
 // Load environment variables before other imports
-require('dotenv').config();
-
-console.log('Dotenv loaded, starting imports...');
-
 import { Command } from 'commander';
 import { config } from '../config';
 import { dbConnection } from '../database/connection';
@@ -35,6 +31,10 @@ import { SpinnerManager } from './utils/spinner';
 import { ConfigManager } from './config';
 import { initializeResourceMonitoring } from '../utils/resource-monitor';
 import type { CliComponents } from './types';
+
+require('dotenv').config();
+
+// Dotenv loaded, starting imports
 
 // Global CLI components
 declare global {
@@ -80,7 +80,7 @@ const initializeComponents = async (): Promise<CliComponents> => {
 
 // Global error handler for CLI
 const setupGlobalErrorHandler = (): void => {
-  process.on('uncaughtException', (error) => {
+  process.on('uncaughtException', error => {
     logger.error('Uncaught exception in CLI', { error });
     // eslint-disable-next-line no-console
     console.error('\n❌ Uncaught Exception:', error);
@@ -89,19 +89,18 @@ const setupGlobalErrorHandler = (): void => {
 
   process.on('unhandledRejection', (reason, rejectedPromise) => {
     logger.error('Unhandled promise rejection in CLI', { reason, promise: rejectedPromise });
-    // eslint-disable-next-line no-console
-    console.error('\n❌ Unhandled Rejection at:', rejectedPromise, 'reason:', reason);
+    logger.error('❌ Unhandled Rejection at:', { promise: rejectedPromise, reason });
     process.exit(1);
   });
 
   // Graceful shutdown handling (Ctrl+C)
   process.on('SIGINT', () => {
-    console.log('\n\n👋 Shutting down gracefully...');
+    logger.info('👋 Shutting down gracefully...');
     process.exit(0);
   });
 
   process.on('SIGTERM', () => {
-    console.log('\n\n👋 Shutting down gracefully...');
+    logger.info('👋 Shutting down gracefully...');
     process.exit(0);
   });
 };
@@ -131,14 +130,13 @@ program
 
       // Check config
       spinner.succeed('Configuration: OK');
-      console.log(`   Database: ${config.database.path}`);
-      console.log(`   Port: ${config.server.port}`);
+      logger.info(`   Database: ${config.database.path}`);
+      logger.info(`   Port: ${config.server.port}`);
 
-      console.log('\n🎉 System is healthy!');
+      logger.info('🎉 System is healthy!');
     } catch (error) {
       logger.error('System health check failed', { error });
-      // eslint-disable-next-line no-console
-      console.error('❌ System health check failed:', error);
+      logger.error('❌ System health check failed:', error);
       process.exit(1);
     }
   });
@@ -149,12 +147,12 @@ const main = async (): Promise<void> => {
     // Setup global error handling
     setupGlobalErrorHandler();
 
-    console.log('Starting CLI initialization...');
+    logger.info('Starting CLI initialization...');
 
     // Initialize components
     global.cliComponents = await initializeComponents();
-    
-    console.log('Components initialized successfully');
+
+    logger.info('Components initialized successfully');
 
     // Register all command modules
     // registerTaskCommands(program);

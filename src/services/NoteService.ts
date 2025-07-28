@@ -569,7 +569,7 @@ export class NoteService {
         params.push(category);
       }
 
-      if (pinnedOnly) {
+      if (pinned_only) {
         conditions.push('n.pinned = TRUE');
       }
 
@@ -645,7 +645,7 @@ export class NoteService {
     return this.getNotes({
       ...paginationOptions,
       ...(board_id ? { board_id } : {}),
-      dateFrom,
+      date_from: dateFrom,
       sortBy: 'created_at',
       sortOrder: 'desc',
     });
@@ -872,12 +872,12 @@ export class NoteService {
         ),
       ]);
 
-      const by_category: Record<Note['category'], number> = {
+      const by_category: Record<'general' | 'implementation' | 'research' | 'blocker' | 'idea', number> = {
         general: 0,
-        progress: 0,
+        implementation: 0,
+        research: 0,
         blocker: 0,
-        decision: 0,
-        question: 0,
+        idea: 0,
       };
 
       categoryStats.forEach(stat => {

@@ -505,10 +505,8 @@ export function getSupportedConversions(): Record<string, string[]> {
   return {
     from: ['json', 'csv'],
     to: ['json', 'csv', 'xml'],
-    conversions: [
-      { from: 'json', to: 'csv', function: 'jsonToCsv' },
-      { from: 'csv', to: 'json', function: 'csvToJson' },
-      { from: 'json', to: 'xml', function: 'jsonToXml' },
-    ],
+    'json-conversions': ['csv', 'xml'],
+    'csv-conversions': ['json'],
+    'xml-conversions': [],
   };
 }

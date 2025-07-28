@@ -7,10 +7,10 @@ import { app } from '@/server';
 import { AnalyticsService } from '@/services/AnalyticsService';
 
 describe('Analytics Integration Tests', () => {
-  let analyticsService: AnalyticsService;
+  let _analyticsService: AnalyticsService;
 
   beforeAll(async () => {
-    analyticsService = AnalyticsService.getInstance();
+    _analyticsService = AnalyticsService.getInstance();
     // Set up test data
     await setupTestData();
   });

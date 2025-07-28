@@ -286,7 +286,7 @@ describe('Installation Performance Tests', () => {
       const concurrentCommands = Array(5)
         .fill(0)
         .map(
-          (_, i) => () =>
+          (_, _i) => () =>
             execSync(`node dist/cli/index.js --version`, {
               stdio: 'pipe',
               timeout: 5000,

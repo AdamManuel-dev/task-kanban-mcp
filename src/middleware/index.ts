@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { apiRoutes } from '@/routes';
+import apiRoutes from '@/routes';
 import { authenticationMiddleware } from './auth';
 import { requestLoggingMiddleware } from './logging';
 import { requestValidationMiddleware } from './validation';
@@ -27,7 +27,7 @@ export async function createApiMiddleware(): Promise<Router> {
   router.use(requestValidationMiddleware);
 
   // API routes
-  router.use('/v1', await apiRoutes());
+  router.use('/api', apiRoutes);
 
   return router;
 }

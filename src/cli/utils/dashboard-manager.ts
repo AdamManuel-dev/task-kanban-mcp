@@ -42,7 +42,7 @@ export class DashboardManager {
 
   private readonly themeHelper: ThemeHelper;
 
-  private readonly refreshTimer?: NodeJS.Timeout;
+  private refreshTimer?: NodeJS.Timeout;
 
   private currentLayout: 'overview' | 'velocity' | 'personal' = 'overview';
 
@@ -650,7 +650,7 @@ Press any key to close this help...
       this.screen.render();
     } catch (error) {
       // Show error notification and use sample data
-      this.showErrorNotification(`Data refresh failed: ${String(String(error.message))}`);
+      this.showErrorNotification(`Data refresh failed: ${error instanceof Error ? error.message : String(error)}`);
       const fallbackData = this.generateSampleData();
 
       switch (this.currentLayout) {

@@ -28,7 +28,7 @@ export interface SanitizationResult {
  * Main input sanitizer class with security-focused features
  */
 export class InputSanitizer {
-  private static readonly instance: InputSanitizer;
+  private static instance: InputSanitizer;
 
   private readonly purify: any;
 
@@ -403,7 +403,7 @@ export class InputSanitizer {
     }
 
     // Check for suspicious patterns
-    const suspiciousCheck = this.detectSuspiciousPatterns(input);
+    const suspiciousCheck = InputSanitizer.detectSuspiciousPatterns(input);
     if (suspiciousCheck.suspicious) {
       issues.push(
         `Suspicious patterns detected: ${String(String(suspiciousCheck.patterns.join(', ')))}`
@@ -454,7 +454,7 @@ export const sanitizeUrl = (input: string): SanitizationResult => inputSanitizer
 export const sanitizeFilePath = (input: string): SanitizationResult =>
   inputSanitizer.sanitizeFilePath(input);
 export const detectSuspicious = (input: string): { suspicious: boolean; patterns: string[] } =>
-  inputSanitizer.detectSuspiciousPatterns(input);
+  InputSanitizer.detectSuspiciousPatterns(input);
 
 /**
  * Safe prompt wrapper that automatically sanitizes input

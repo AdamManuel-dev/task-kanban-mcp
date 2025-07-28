@@ -7,6 +7,7 @@ import type { Task, Board, Note } from '../types';
 // Base message structure
 export interface WebSocketMessage {
   type: string;
+  id: string;
   data?: unknown;
   timestamp?: string;
   requestId?: string;

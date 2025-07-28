@@ -351,7 +351,7 @@ describe('CLI Command Helpers', () => {
   describe('Validation Helpers', () => {
     describe('ensureBoardId()', () => {
       test('should return existing board ID', async () => {
-        const result = await ensureBoardId('existing-id');
+        const result = ensureBoardId('existing-id');
 
         expect(result).toBe('existing-id');
         expect(mockComponents.apiClient.getBoard).not.toHaveBeenCalled();
@@ -364,7 +364,7 @@ describe('CLI Command Helpers', () => {
         ]);
         mockInquirer.prompt.mockResolvedValue({ boardId: 'board1' });
 
-        const result = await ensureBoardId();
+        const result = ensureBoardId();
 
         expect(result).toBe('board1');
         expect(mockComponents.apiClient.getBoards).toHaveBeenCalled();

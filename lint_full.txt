@@ -1,0 +1,449 @@
+
+> @mcp-kanban/server@0.1.0 lint:test
+> eslint tests --ext .ts,.tsx --config .eslintrc.test.js
+
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/e2e/cli-interactive.test.ts
+   11:48  warning  Arrow function has too many lines (304). Maximum allowed is 50  max-lines-per-function
+   28:41  warning  Arrow function has too many lines (85). Maximum allowed is 50   max-lines-per-function
+  131:33  warning  Arrow function has too many lines (60). Maximum allowed is 50   max-lines-per-function
+  202:35  warning  Arrow function has too many lines (57). Maximum allowed is 50   max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/e2e/cli-security.test.ts
+  11:36  warning  Arrow function has too many lines (120). Maximum allowed is 50  max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/e2e/cli-workflow.test.ts
+  11:45  warning  Arrow function has too many lines (162). Maximum allowed is 50       max-lines-per-function
+  29:47  warning  Arrow function has too many lines (67). Maximum allowed is 50        max-lines-per-function
+  30:57  warning  Async arrow function has too many lines (65). Maximum allowed is 50  max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/e2e/http-api.test.ts
+   11:32  warning  Arrow function has too many lines (400). Maximum allowed is 50  max-lines-per-function
+  112:47  warning  Arrow function has too many lines (63). Maximum allowed is 50   max-lines-per-function
+  189:35  warning  Arrow function has too many lines (85). Maximum allowed is 50   max-lines-per-function
+  297:36  warning  Arrow function has too many lines (51). Maximum allowed is 50   max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/e2e/mcp-api.test.ts
+   21:31  warning  Arrow function has too many lines (577). Maximum allowed is 50  max-lines-per-function
+  111:39  warning  Arrow function has too many lines (72). Maximum allowed is 50   max-lines-per-function
+  198:43  warning  Arrow function has too many lines (112). Maximum allowed is 50  max-lines-per-function
+  332:35  warning  Arrow function has too many lines (75). Maximum allowed is 50   max-lines-per-function
+  425:29  warning  Arrow function has too many lines (85). Maximum allowed is 50   max-lines-per-function
+  529:43  warning  Arrow function has too many lines (89). Maximum allowed is 50   max-lines-per-function
+  639:43  warning  Arrow function has too many lines (78). Maximum allowed is 50   max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/integration/analytics/analytics.test.ts
+    9:41  warning  Arrow function has too many lines (87). Maximum allowed is 50                  max-lines-per-function
+   10:7   warning  'analyticsService' is assigned a value but never used                          @typescript-eslint/no-unused-vars
+  117:54  warning  Arrow function has too many lines (165). Maximum allowed is 50                 max-lines-per-function
+  365:1   warning  Async function 'setupTestData' has too many lines (63). Maximum allowed is 50  max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/integration/api/backup.test.ts
+   14:45  warning  Arrow function has too many lines (483). Maximum allowed is 50  max-lines-per-function
+   54:39  warning  Arrow function has too many lines (91). Maximum allowed is 50   max-lines-per-function
+  154:36  warning  Arrow function has too many lines (53). Maximum allowed is 50   max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/integration/api/boards.test.ts
+   15:41  warning  Arrow function has too many lines (500). Maximum allowed is 50  max-lines-per-function
+   43:35  warning  Arrow function has too many lines (73). Maximum allowed is 50   max-lines-per-function
+  130:34  warning  Arrow function has too many lines (98). Maximum allowed is 50   max-lines-per-function
+  242:38  warning  Arrow function has too many lines (57). Maximum allowed is 50   max-lines-per-function
+  309:38  warning  Arrow function has too many lines (78). Maximum allowed is 50   max-lines-per-function
+  453:49  warning  Arrow function has too many lines (66). Maximum allowed is 50   max-lines-per-function
+  532:48  warning  Arrow function has too many lines (70). Maximum allowed is 50   max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/integration/api/context.test.ts
+   15:43  warning  Arrow function has too many lines (351). Maximum allowed is 50  max-lines-per-function
+   76:45  warning  Arrow function has too many lines (67). Maximum allowed is 50   max-lines-per-function
+  157:44  warning  Arrow function has too many lines (57). Maximum allowed is 50   max-lines-per-function
+  225:44  warning  Arrow function has too many lines (68). Maximum allowed is 50   max-lines-per-function
+  338:42  warning  Arrow function has too many lines (65). Maximum allowed is 50   max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/integration/api/export.test.ts
+   13:45  warning  Arrow function has too many lines (331). Maximum allowed is 50  max-lines-per-function
+   76:34  warning  Arrow function has too many lines (119). Maximum allowed is 50  max-lines-per-function
+  215:45  warning  Arrow function has too many lines (54). Maximum allowed is 50   max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/integration/api/health.test.ts
+  13:42  warning  Arrow function has too many lines (193). Maximum allowed is 50  max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/integration/api/notes.test.ts
+   15:41  warning  Arrow function has too many lines (445). Maximum allowed is 50  max-lines-per-function
+   77:34  warning  Arrow function has too many lines (87). Maximum allowed is 50   max-lines-per-function
+  182:33  warning  Arrow function has too many lines (97). Maximum allowed is 50   max-lines-per-function
+  340:37  warning  Arrow function has too many lines (69). Maximum allowed is 50   max-lines-per-function
+  468:40  warning  Arrow function has too many lines (79). Maximum allowed is 50   max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/integration/api/priorities.test.ts
+   11:46  warning  Arrow function has too many lines (224). Maximum allowed is 50  max-lines-per-function
+  113:49  warning  Arrow function has too many lines (52). Maximum allowed is 50   max-lines-per-function
+  176:52  warning  Arrow function has too many lines (93). Maximum allowed is 50   max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/integration/api/schedule.test.ts
+   13:47  warning  Arrow function has too many lines (402). Maximum allowed is 50  max-lines-per-function
+   36:41  warning  Arrow function has too many lines (109). Maximum allowed is 50  max-lines-per-function
+  157:38  warning  Arrow function has too many lines (51). Maximum allowed is 50   max-lines-per-function
+  257:37  warning  Arrow function has too many lines (59). Maximum allowed is 50   max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/integration/api/tags.test.ts
+   15:40  warning  Arrow function has too many lines (530). Maximum allowed is 50  max-lines-per-function
+   42:33  warning  Arrow function has too many lines (88). Maximum allowed is 50   max-lines-per-function
+  151:32  warning  Arrow function has too many lines (102). Maximum allowed is 50  max-lines-per-function
+  318:36  warning  Arrow function has too many lines (78). Maximum allowed is 50   max-lines-per-function
+  462:39  warning  Arrow function has too many lines (82). Maximum allowed is 50   max-lines-per-function
+  556:43  warning  Arrow function has too many lines (80). Maximum allowed is 50   max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/integration/api/tasks.test.ts
+   15:40  warning  Arrow function has too many lines (562). Maximum allowed is 50  max-lines-per-function
+   77:34  warning  Arrow function has too many lines (94). Maximum allowed is 50   max-lines-per-function
+  188:33  warning  Arrow function has too many lines (125). Maximum allowed is 50  max-lines-per-function
+  387:37  warning  Arrow function has too many lines (82). Maximum allowed is 50   max-lines-per-function
+  538:44  warning  Arrow function has too many lines (51). Maximum allowed is 50   max-lines-per-function
+  598:43  warning  Arrow function has too many lines (75). Maximum allowed is 50   max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/integration/cli/command-helpers.test.ts
+  99:46  warning  Arrow function has too many lines (215). Maximum allowed is 50  max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/integration/database/connection.test.ts
+   10:51  warning  Arrow function has too many lines (365). Maximum allowed is 50  max-lines-per-function
+   21:37  warning  Arrow function has too many lines (85). Maximum allowed is 50   max-lines-per-function
+  133:32  warning  Arrow function has too many lines (53). Maximum allowed is 50   max-lines-per-function
+  203:28  warning  Arrow function has too many lines (92). Maximum allowed is 50   max-lines-per-function
+  324:27  warning  Arrow function has too many lines (62). Maximum allowed is 50   max-lines-per-function
+  408:33  warning  Arrow function has too many lines (64). Maximum allowed is 50   max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/integration/mcp/server.test.ts
+   10:42  warning  Arrow function has too many lines (412). Maximum allowed is 50       max-lines-per-function
+   15:13  warning  Async arrow function has too many lines (55). Maximum allowed is 50  max-lines-per-function
+  132:29  warning  Arrow function has too many lines (82). Maximum allowed is 50        max-lines-per-function
+  241:33  warning  Arrow function has too many lines (59). Maximum allowed is 50        max-lines-per-function
+  322:31  warning  Arrow function has too many lines (51). Maximum allowed is 50        max-lines-per-function
+  391:37  warning  Arrow function has too many lines (83). Maximum allowed is 50        max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/integration/middleware/response-config.test.ts
+   16:55  warning  Arrow function has too many lines (281). Maximum allowed is 50  max-lines-per-function
+   31:50  warning  Arrow function has too many lines (66). Maximum allowed is 50   max-lines-per-function
+  108:55  warning  Arrow function has too many lines (122). Maximum allowed is 50  max-lines-per-function
+  279:49  warning  Arrow function has too many lines (55). Maximum allowed is 50   max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/integration/websocket/connection.test.ts
+   12:52  warning  Arrow function has too many lines (331). Maximum allowed is 50  max-lines-per-function
+   39:36  warning  Arrow function has too many lines (72). Maximum allowed is 50   max-lines-per-function
+  130:30  warning  Arrow function has too many lines (79). Maximum allowed is 50   max-lines-per-function
+  227:32  warning  Arrow function has too many lines (67). Maximum allowed is 50   max-lines-per-function
+  317:29  warning  Arrow function has too many lines (56). Maximum allowed is 50   max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/integration/websocket/subscriptions.test.ts
+   14:59  warning  Arrow function has too many lines (513). Maximum allowed is 50       max-lines-per-function
+  125:37  warning  Arrow function has too many lines (98). Maximum allowed is 50        max-lines-per-function
+  247:33  warning  Arrow function has too many lines (112). Maximum allowed is 50       max-lines-per-function
+  440:36  warning  Arrow function has too many lines (112). Maximum allowed is 50       max-lines-per-function
+  491:58  warning  Async arrow function has too many lines (72). Maximum allowed is 50  max-lines-per-function
+  584:27  warning  Arrow function has too many lines (69). Maximum allowed is 50        max-lines-per-function
+  585:43  warning  Async arrow function has too many lines (53). Maximum allowed is 50  max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/performance/api-load.test.ts
+   22:28  warning  Arrow function has too many lines (339). Maximum allowed is 50       max-lines-per-function
+  113:43  warning  Arrow function has too many lines (95). Maximum allowed is 50        max-lines-per-function
+  246:34  warning  Arrow function has too many lines (56). Maximum allowed is 50        max-lines-per-function
+  365:40  warning  Arrow function has too many lines (81). Maximum allowed is 50        max-lines-per-function
+  373:40  warning  Arrow function has too many lines (73). Maximum allowed is 50        max-lines-per-function
+  374:80  warning  Async arrow function has too many lines (71). Maximum allowed is 50  max-lines-per-function
+  378:43  warning  Async arrow function has too many lines (60). Maximum allowed is 50  max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/performance/database-performance.test.ts
+   16:40  warning  Arrow function has too many lines (633). Maximum allowed is 50       max-lines-per-function
+   19:7   warning  '_noteService' is assigned a value but never used                    @typescript-eslint/no-unused-vars
+   20:7   warning  '_tagService' is assigned a value but never used                     @typescript-eslint/no-unused-vars
+  100:43  warning  Arrow function has too many lines (77). Maximum allowed is 50        max-lines-per-function
+  193:33  warning  Arrow function has too many lines (123). Maximum allowed is 50       max-lines-per-function
+  336:41  warning  Arrow function has too many lines (110). Maximum allowed is 50       max-lines-per-function
+  337:70  warning  Async arrow function has too many lines (74). Maximum allowed is 50  max-lines-per-function
+  464:54  warning  Arrow function has too many lines (89). Maximum allowed is 50        max-lines-per-function
+  569:46  warning  Arrow function has too many lines (69). Maximum allowed is 50        max-lines-per-function
+  664:44  warning  Arrow function has too many lines (100). Maximum allowed is 50       max-lines-per-function
+  670:61  warning  Async arrow function has too many lines (52). Maximum allowed is 50  max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/performance/installation-performance.test.ts
+   11:44  warning  Arrow function has too many lines (331). Maximum allowed is 50       max-lines-per-function
+   35:40  warning  Arrow function has too many lines (69). Maximum allowed is 50        max-lines-per-function
+  123:35  warning  Arrow function has too many lines (101). Maximum allowed is 50       max-lines-per-function
+  189:62  warning  Async arrow function has too many lines (51). Maximum allowed is 50  max-lines-per-function
+  255:31  warning  Arrow function has too many lines (60). Maximum allowed is 50        max-lines-per-function
+  289:15  warning  'i' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/performance/phase15-endpoints.test.ts
+  12:50  warning  Arrow function has too many lines (251). Maximum allowed is 50  max-lines-per-function
+  30:19  error    Do not nest ternary expressions                                 no-nested-ternary
+  44:48  warning  Arrow function has too many lines (63). Maximum allowed is 50   max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/performance/regression-detection.test.ts
+   38:46  warning  Arrow function has too many lines (366). Maximum allowed is 50       max-lines-per-function
+  263:42  warning  Arrow function has too many lines (66). Maximum allowed is 50        max-lines-per-function
+  264:30  warning  Arrow function has too many lines (64). Maximum allowed is 50        max-lines-per-function
+  265:77  warning  Async arrow function has too many lines (62). Maximum allowed is 50  max-lines-per-function
+  346:38  warning  Arrow function has too many lines (77). Maximum allowed is 50        max-lines-per-function
+  347:46  warning  Async arrow function has too many lines (55). Maximum allowed is 50  max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/performance/websocket-stress.test.ts
+   16:36  warning  Arrow function has too many lines (398). Maximum allowed is 50       max-lines-per-function
+   85:39  warning  Arrow function has too many lines (55). Maximum allowed is 50        max-lines-per-function
+  160:42  warning  Arrow function has too many lines (86). Maximum allowed is 50        max-lines-per-function
+  208:68  warning  Async arrow function has too many lines (52). Maximum allowed is 50  max-lines-per-function
+  274:40  warning  Arrow function has too many lines (98). Maximum allowed is 50        max-lines-per-function
+  323:60  warning  Async arrow function has too many lines (61). Maximum allowed is 50  max-lines-per-function
+  405:46  warning  Arrow function has too many lines (68). Maximum allowed is 50        max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/cli/command-injection-prevention.test.ts
+   55:40  warning  Arrow function has too many lines (473). Maximum allowed is 50  max-lines-per-function
+   83:34  warning  Arrow function has too many lines (134). Maximum allowed is 50  max-lines-per-function
+  165:45  warning  Arrow function has too many lines (54). Maximum allowed is 50   max-lines-per-function
+  247:38  warning  Arrow function has too many lines (72). Maximum allowed is 50   max-lines-per-function
+  473:33  warning  Arrow function has too many lines (108). Maximum allowed is 50  max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/cli/commands/performance.test.ts
+   17:3   warning  'getPerformanceSummary' is defined but never used               @typescript-eslint/no-unused-vars
+   91:38  warning  Arrow function has too many lines (328). Maximum allowed is 50  max-lines-per-function
+   99:42  warning  Arrow function has too many lines (58). Maximum allowed is 50   max-lines-per-function
+  312:13  warning  'mockBenchmark' is assigned a value but never used              @typescript-eslint/no-unused-vars
+  327:13  warning  'mockError' is assigned a value but never used                  @typescript-eslint/no-unused-vars
+  339:13  warning  'mockMonitoringLoop' is assigned a value but never used         @typescript-eslint/no-unused-vars
+  384:13  warning  'mockAnalyze' is assigned a value but never used                @typescript-eslint/no-unused-vars
+  398:13  warning  'mockRecommendations' is assigned a value but never used        @typescript-eslint/no-unused-vars
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/cli/config-commands.test.ts
+  14:44  warning  Arrow function has too many lines (225). Maximum allowed is 50  max-lines-per-function
+  15:7   warning  'program' is assigned a value but never used                    @typescript-eslint/no-unused-vars
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/cli/types.test.ts
+   19:23  warning  Arrow function has too many lines (365). Maximum allowed is 50  max-lines-per-function
+  178:29  warning  Arrow function has too many lines (70). Maximum allowed is 50   max-lines-per-function
+  357:50  warning  Arrow function has too many lines (62). Maximum allowed is 50   max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/cli/utils/command-helpers.test.ts
+   71:33  warning  Arrow function has too many lines (420). Maximum allowed is 50  max-lines-per-function
+  351:34  warning  Arrow function has too many lines (122). Maximum allowed is 50  max-lines-per-function
+  354:24  error    Unexpected `await` of a non-Promise (non-"Thenable") value      @typescript-eslint/await-thenable
+  367:24  error    Unexpected `await` of a non-Promise (non-"Thenable") value      @typescript-eslint/await-thenable
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/cli/utils/security.test.ts
+   64:55  warning  Arrow function has too many lines (557). Maximum allowed is 50                                                                                                                                                                                                                                                                                                                                                      max-lines-per-function
+   69:44  warning  Arrow function has too many lines (162). Maximum allowed is 50                                                                                                                                                                                                                                                                                                                                                      max-lines-per-function
+   70:43  warning  Arrow function has too many lines (133). Maximum allowed is 50                                                                                                                                                                                                                                                                                                                                                      max-lines-per-function
+  141:42  error    Missing radix parameter                                                                                                                                                                                                                                                                                                                                                                                             radix
+  260:34  warning  Arrow function has too many lines (176). Maximum allowed is 50                                                                                                                                                                                                                                                                                                                                                      max-lines-per-function
+  261:37  warning  Arrow function has too many lines (57). Maximum allowed is 50                                                                                                                                                                                                                                                                                                                                                       max-lines-per-function
+  265:11  error    Unexpected template string expression                                                                                                                                                                                                                                                                                                                                                                               no-template-curly-in-string
+  365:41  warning  Arrow function has too many lines (53). Maximum allowed is 50                                                                                                                                                                                                                                                                                                                                                       max-lines-per-function
+  367:15  warning  'shellMetachars' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                 @typescript-eslint/no-unused-vars
+  416:22  error    Unexpected control character(s) in regular expression: \x00, \x1f                                                                                                                                                                                                                                                                                                                                                   no-control-regex
+  467:34  warning  Arrow function has too many lines (123). Maximum allowed is 50                                                                                                                                                                                                                                                                                                                                                      max-lines-per-function
+  496:43  warning  Arrow function has too many lines (51). Maximum allowed is 50                                                                                                                                                                                                                                                                                                                                                       max-lines-per-function
+  623:42  warning  Arrow function has too many lines (62). Maximum allowed is 50                                                                                                                                                                                                                                                                                                                                                       max-lines-per-function
+  649:13  error    Unexpected string concatenation of literals                                                                                                                                                                                                                                                                                                                                                                         no-useless-concat
+  761:5   error    Script URL is a form of eval                                                                                                                                                                                                                                                                                                                                                                                        no-script-url
+  770:5   error    Unexpected template string expression                                                                                                                                                                                                                                                                                                                                                                               no-template-curly-in-string
+  774:5   error    Unexpected template string expression                                                                                                                                                                                                                                                                                                                                                                               no-template-curly-in-string
+  784:38  error    Don't use `Function` as a type. The `Function` type accepts any function-like value.
+It provides no type safety when calling the function, which can be a common source of bugs.
+It also accepts things like class declarations, which will throw at runtime as they will not be called with `new`.
+If you are expecting the function to accept certain arguments, you should explicitly define the function shape  @typescript-eslint/ban-types
+  799:49  error    Don't use `Function` as a type. The `Function` type accepts any function-like value.
+It provides no type safety when calling the function, which can be a common source of bugs.
+It also accepts things like class declarations, which will throw at runtime as they will not be called with `new`.
+If you are expecting the function to accept certain arguments, you should explicitly define the function shape  @typescript-eslint/ban-types
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/database/connection.test.ts
+  7:32  warning  Arrow function has too many lines (134). Maximum allowed is 50  max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/database/integrity.test.ts
+    9:38  warning  Arrow function has too many lines (344). Maximum allowed is 50  max-lines-per-function
+  239:41  warning  Arrow function has too many lines (52). Maximum allowed is 50   max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/database/migrations.test.ts
+    6:29  warning  Arrow function has too many lines (295). Maximum allowed is 50  max-lines-per-function
+  124:35  warning  Arrow function has too many lines (130). Maximum allowed is 50  max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/database/schema-debug.test.ts
+  10:35  warning  Arrow function has too many lines (75). Maximum allowed is 50  max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/database/schema.test.ts
+  18:27  warning  Arrow function has too many lines (259). Maximum allowed is 50  max-lines-per-function
+  47:31  warning  Arrow function has too many lines (81). Maximum allowed is 50   max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/database/seeds.test.ts
+    7:24  warning  Arrow function has too many lines (241). Maximum allowed is 50  max-lines-per-function
+  116:30  warning  Arrow function has too many lines (85). Maximum allowed is 50   max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/mcp/types.test.ts
+   18:23  warning  Arrow function has too many lines (328). Maximum allowed is 50  max-lines-per-function
+   96:30  warning  Arrow function has too many lines (58). Maximum allowed is 50   max-lines-per-function
+  186:29  warning  Arrow function has too many lines (55). Maximum allowed is 50   max-lines-per-function
+  310:50  warning  Arrow function has too many lines (70). Maximum allowed is 50   max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/middleware/auth.test.ts
+   46:39  warning  Arrow function has too many lines (286). Maximum allowed is 50  max-lines-per-function
+   68:40  warning  Arrow function has too many lines (83). Maximum allowed is 50   max-lines-per-function
+  232:34  warning  Arrow function has too many lines (55). Maximum allowed is 50   max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/middleware/logging.test.ts
+  21:32  warning  Arrow function has too many lines (280). Maximum allowed is 50  max-lines-per-function
+  55:40  warning  Arrow function has too many lines (251). Maximum allowed is 50  max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/middleware/requestId.test.ts
+  10:35  warning  Arrow function has too many lines (296). Maximum allowed is 50  max-lines-per-function
+  26:35  warning  Arrow function has too many lines (211). Maximum allowed is 50  max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/middleware/response.test.ts
+   14:33  warning  Arrow function has too many lines (460). Maximum allowed is 50  max-lines-per-function
+   61:33  warning  Arrow function has too many lines (71). Maximum allowed is 50   max-lines-per-function
+  154:31  warning  Arrow function has too many lines (83). Maximum allowed is 50   max-lines-per-function
+  254:36  warning  Arrow function has too many lines (127). Maximum allowed is 50  max-lines-per-function
+  509:26  warning  Arrow function has too many lines (62). Maximum allowed is 50   max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/middleware/validation.test.ts
+   12:35  warning  Arrow function has too many lines (342). Maximum allowed is 50  max-lines-per-function
+   34:43  warning  Arrow function has too many lines (213). Maximum allowed is 50  max-lines-per-function
+  315:31  warning  Arrow function has too many lines (73). Maximum allowed is 50   max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/routes/tasks.test.ts
+   91:26  warning  Arrow function has too many lines (377). Maximum allowed is 50  max-lines-per-function
+  140:33  warning  Arrow function has too many lines (106). Maximum allowed is 50  max-lines-per-function
+  262:34  warning  Arrow function has too many lines (58). Maximum allowed is 50   max-lines-per-function
+  331:37  warning  Arrow function has too many lines (101). Maximum allowed is 50  max-lines-per-function
+  444:39  warning  Arrow function has too many lines (58). Maximum allowed is 50   max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/server.test.ts
+   23:23  warning  Arrow function has too many lines (53). Maximum allowed is 50   max-lines-per-function
+  109:32  warning  Arrow function has too many lines (182). Maximum allowed is 50  max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/services/BoardMappingService.test.ts
+   12:44  warning  Arrow function has too many lines (317). Maximum allowed is 50  max-lines-per-function
+   32:33  warning  Arrow function has too many lines (115). Maximum allowed is 50  max-lines-per-function
+  174:13  warning  'loadStub' is assigned a value but never used                   @typescript-eslint/no-unused-vars
+  305:27  warning  Arrow function has too many lines (53). Maximum allowed is 50   max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/services/BoardService.test.ts
+   12:26  warning  Arrow function has too many lines (346). Maximum allowed is 50  max-lines-per-function
+   34:46  warning  Arrow function has too many lines (58). Maximum allowed is 50   max-lines-per-function
+  108:53  warning  Arrow function has too many lines (79). Maximum allowed is 50   max-lines-per-function
+  211:55  warning  Arrow function has too many lines (59). Maximum allowed is 50   max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/services/ContextService.test.ts
+  107:49  warning  Arrow function has too many lines (221). Maximum allowed is 50  max-lines-per-function
+  114:42  warning  Arrow function has too many lines (56). Maximum allowed is 50   max-lines-per-function
+  183:39  warning  Arrow function has too many lines (72). Maximum allowed is 50   max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/services/DependencyVisualizationService.test.ts
+   10:44  warning  Arrow function has too many lines (189). Maximum allowed is 50  max-lines-per-function
+  197:13  warning  'result' is assigned a value but never used                     @typescript-eslint/no-unused-vars
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/services/GitService.test.ts
+   9:13  warning  'path' is defined but never used                                @typescript-eslint/no-unused-vars
+  12:35  warning  Arrow function has too many lines (197). Maximum allowed is 50  max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/services/NoteService.test.ts
+   22:25  warning  Arrow function has too many lines (658). Maximum allowed is 50  max-lines-per-function
+   80:26  warning  Arrow function has too many lines (54). Maximum allowed is 50   max-lines-per-function
+  182:24  warning  Arrow function has too many lines (76). Maximum allowed is 50   max-lines-per-function
+  351:26  warning  Arrow function has too many lines (54). Maximum allowed is 50   max-lines-per-function
+  442:27  warning  Arrow function has too many lines (72). Maximum allowed is 50   max-lines-per-function
+  731:28  warning  Arrow function has too many lines (65). Maximum allowed is 50   max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/services/TagService.test.ts
+   22:24  warning  Arrow function has too many lines (611). Maximum allowed is 50  max-lines-per-function
+   79:25  warning  Arrow function has too many lines (59). Maximum allowed is 50   max-lines-per-function
+  202:23  warning  Arrow function has too many lines (69). Maximum allowed is 50   max-lines-per-function
+  396:25  warning  Arrow function has too many lines (68). Maximum allowed is 50   max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/services/TaskHistoryService.test.ts
+  11:32  warning  Arrow function has too many lines (231). Maximum allowed is 50  max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/services/TaskService.simple.test.ts
+  18:40  warning  Arrow function has too many lines (60). Maximum allowed is 50  max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/services/TaskService.test.ts
+   22:25  warning  Arrow function has too many lines (541). Maximum allowed is 50  max-lines-per-function
+   85:45  warning  Arrow function has too many lines (91). Maximum allowed is 50   max-lines-per-function
+  202:52  warning  Arrow function has too many lines (85). Maximum allowed is 50   max-lines-per-function
+  307:54  warning  Arrow function has too many lines (76). Maximum allowed is 50   max-lines-per-function
+  512:58  warning  Arrow function has too many lines (57). Maximum allowed is 50   max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/services/TaskTemplateService.test.ts
+   8:33  warning  Arrow function has too many lines (135). Maximum allowed is 50  max-lines-per-function
+  25:35  warning  Arrow function has too many lines (71). Maximum allowed is 50   max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/utils/cache.test.ts
+   20:8   warning  'CacheStats' is defined but never used                          @typescript-eslint/no-unused-vars
+   21:8   warning  'CacheOptions' is defined but never used                        @typescript-eslint/no-unused-vars
+   41:26  warning  Arrow function has too many lines (215). Maximum allowed is 50  max-lines-per-function
+  339:37  warning  Arrow function has too many lines (112). Maximum allowed is 50  max-lines-per-function
+  361:29  warning  Arrow function has too many lines (57). Maximum allowed is 50   max-lines-per-function
+  481:36  warning  Arrow function has too many lines (68). Maximum allowed is 50   max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/utils/errors.test.ts
+   40:29  warning  Arrow function has too many lines (476). Maximum allowed is 50  max-lines-per-function
+  248:35  warning  Arrow function has too many lines (74). Maximum allowed is 50   max-lines-per-function
+  484:25  warning  Arrow function has too many lines (52). Maximum allowed is 50   max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/utils/resource-monitor.test.ts
+   16:8   warning  'ResourceStats' is defined but never used                                @typescript-eslint/no-unused-vars
+   17:8   warning  'MemoryStats' is defined but never used                                  @typescript-eslint/no-unused-vars
+   18:8   warning  'CpuStats' is defined but never used                                     @typescript-eslint/no-unused-vars
+   32:29  warning  Arrow function has too many lines (194). Maximum allowed is 50           max-lines-per-function
+  204:36  warning  Unexpected unnamed function                                              func-names
+  284:41  warning  Arrow function has too many lines (58). Maximum allowed is 50            max-lines-per-function
+  360:46  warning  Arrow function has too many lines (81). Maximum allowed is 50            max-lines-per-function
+  445:9   warning  'errorHandled' is assigned a value but never used                        @typescript-eslint/no-unused-vars
+  480:30  warning  'index' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/utils/result.test.ts
+   27:43  warning  Arrow function has too many lines (372). Maximum allowed is 50          max-lines-per-function
+  127:33  error    Invalid type "never" of template literal expression                     @typescript-eslint/restrict-template-expressions
+  177:28  error    Expected the Promise rejection reason to be an Error                    prefer-promise-reject-errors
+  346:47  warning  Arrow function has too many lines (68). Maximum allowed is 50           max-lines-per-function
+  405:31  warning  'user' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+  427:42  warning  Arrow function has too many lines (60). Maximum allowed is 50           max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/utils/transactions.test.ts
+  28:35  warning  Arrow function has too many lines (179). Maximum allowed is 50  max-lines-per-function
+  36:34  warning  Arrow function has too many lines (129). Maximum allowed is 50  max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/utils/typeGuards.test.ts
+  4:25  warning  Arrow function has too many lines (76). Maximum allowed is 50  max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/utils/typeSafety.test.ts
+   39:31  warning  Arrow function has too many lines (463). Maximum allowed is 50  max-lines-per-function
+   44:31  warning  Arrow function has too many lines (109). Maximum allowed is 50  max-lines-per-function
+  180:36  warning  Arrow function has too many lines (116). Maximum allowed is 50  max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/utils/validation.test.ts
+    22:34  warning  Arrow function has too many lines (869). Maximum allowed is 50  max-lines-per-function
+    23:31  warning  Arrow function has too many lines (82). Maximum allowed is 50   max-lines-per-function
+    24:31  warning  Arrow function has too many lines (59). Maximum allowed is 50   max-lines-per-function
+   127:30  warning  Arrow function has too many lines (129). Maximum allowed is 50  max-lines-per-function
+   143:31  warning  Arrow function has too many lines (59). Maximum allowed is 50   max-lines-per-function
+   285:30  warning  Arrow function has too many lines (64). Maximum allowed is 50   max-lines-per-function
+   569:29  warning  Arrow function has too many lines (272). Maximum allowed is 50  max-lines-per-function
+   610:28  warning  Arrow function has too many lines (111). Maximum allowed is 50  max-lines-per-function
+   908:33  warning  Arrow function has too many lines (81). Maximum allowed is 50   max-lines-per-function
+  1011:38  warning  Arrow function has too many lines (76). Maximum allowed is 50   max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/utils/validationTypeSafety.test.ts
+    6:10  warning  'z' is defined but never used                                   @typescript-eslint/no-unused-vars
+    9:42  warning  Arrow function has too many lines (364). Maximum allowed is 50  max-lines-per-function
+   10:38  warning  Arrow function has too many lines (135). Maximum allowed is 50  max-lines-per-function
+   11:39  warning  Arrow function has too many lines (74). Maximum allowed is 50   max-lines-per-function
+  166:38  warning  Arrow function has too many lines (62). Maximum allowed is 50   max-lines-per-function
+  240:43  warning  Arrow function has too many lines (142). Maximum allowed is 50  max-lines-per-function
+
+/Users/adammanuel/Projects/Agents/mcp-kanban/tests/unit/websocket/auth.test.ts
+   28:27  warning  Arrow function has too many lines (478). Maximum allowed is 50  max-lines-per-function
+   66:38  warning  Arrow function has too many lines (157). Maximum allowed is 50  max-lines-per-function
+   67:36  warning  Arrow function has too many lines (60). Maximum allowed is 50   max-lines-per-function
+  262:33  warning  Arrow function has too many lines (111). Maximum allowed is 50  max-lines-per-function
+  443:36  warning  Arrow function has too many lines (67). Maximum allowed is 50   max-lines-per-function
+  563:46  warning  Arrow function has too many lines (51). Maximum allowed is 50   max-lines-per-function
+
+✖ 298 problems (14 errors, 284 warnings)
+

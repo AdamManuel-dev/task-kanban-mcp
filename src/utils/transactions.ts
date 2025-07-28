@@ -447,7 +447,7 @@ export class TransactionManager {
       const originalMethod = descriptor.value;
 
       descriptor.value = async function wrappedTransactionMethod(...args: any[]) {
-        const transactionManager = new TransactionManager(this.db);
+        const transactionManager = new TransactionManager((this as any).db);
         return transactionManager.executeTransaction(
           async _context => originalMethod.apply(this, args),
           options

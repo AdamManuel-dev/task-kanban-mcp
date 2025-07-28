@@ -9,7 +9,8 @@
  */
 
 import type { Command } from 'commander';
-import type { CliComponents, CreateTaskRequest } from '../../types';
+import type { CliComponents, CreateTaskRequest as CLICreateTaskRequest } from '../../types';
+import type { CreateTaskRequest as ServiceCreateTaskRequest } from '../../../services/TaskService';
 import type { CreateTaskOptions } from './types';
 import { TaskServiceResult } from '../../../services/TaskServiceResult';
 import { Ok, Err, isOk, match, andThen, map, createServiceError } from '../../../utils/result';
@@ -89,7 +90,7 @@ async function createTaskWithResult(options: CreateTaskOptions): Promise<Service
     return createRequestResult;
   }
 
-  // Step 3: Create task (can fail)
+  // Step 3: Create task (data already in correct format)
   const createResult = await taskService.createTaskSafe(createRequestResult.data);
   if (!isOk(createResult)) {
     return createResult;
@@ -169,7 +170,7 @@ async function gatherTaskData(
 function buildCreateRequest(
   taskData: Record<string, unknown>,
   config: any
-): ServiceResult<CreateTaskRequest> {
+): ServiceResult<ServiceCreateTaskRequest> {
   try {
     // Validate required fields
     if (!taskData.title || typeof taskData.title !== 'string') {
@@ -179,16 +180,16 @@ function buildCreateRequest(
     // Get board ID
     const boardId = ensureBoardId(taskData.boardId as string);
 
-    const createRequest: CreateTaskRequest = {
+    const createRequest: ServiceCreateTaskRequest = {
       title: taskData.title,
       description: (taskData.description as string) || '',
-      boardId,
-      columnId: (taskData.columnId as string) || '',
+      board_id: boardId,
+      column_id: (taskData.columnId as string) || 'default',
       priority: (taskData.priority as number) || 5,
       status: 'todo',
       assignee: (taskData.assignee as string) || undefined,
-      dueDate: (taskData.dueDate as string) || undefined,
-      tags: (taskData.tags as string[]) || [],
+      due_date: (taskData.dueDate as string) ? new Date(taskData.dueDate as string) : undefined,
+      // tags handled separately in service layer
     };
 
     // Validate priority range
@@ -225,12 +226,14 @@ async function demonstrateResultChaining(taskId: string): Promise<ServiceResult<
   if (!isOk(taskResult)) {
     return taskResult;
   }
-  
-  const updateResult = await taskService.updateTaskSafe(taskResult.data.id, { status: 'in_progress' });
+
+  const updateResult = await taskService.updateTaskSafe(taskResult.data.id, {
+    status: 'in_progress',
+  });
   if (!isOk(updateResult)) {
     return updateResult;
   }
-  
+
   return Ok(`Task ${(updateResult.data as any).title} is now in progress`);
 }
 

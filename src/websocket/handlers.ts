@@ -801,6 +801,7 @@ export class MessageHandler {
 
       // Broadcast update to subscribers
       this.webSocketManager.getSubscriptionManager().publishBoardUpdate(message.id, {
+        id: message.id,
         type: 'board:updated',
         data: {
           board: updatedBoard,
@@ -1071,6 +1072,7 @@ export class MessageHandler {
         String(payload?.taskId ?? 'unknown'),
         String(payload?.boardId ?? 'unknown'),
         {
+          id: message.id,
           type: 'typing:start',
           data: {
             userId: client.user.id,
@@ -1117,6 +1119,7 @@ export class MessageHandler {
         String(payload?.taskId ?? 'unknown'),
         String(payload?.boardId ?? 'unknown'),
         {
+          id: message.id,
           type: 'typing:stop',
           data: {
             userId: client.user.id,
