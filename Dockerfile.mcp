@@ -3,7 +3,7 @@
 # with minimal attack surface and optimized resource usage
 
 # Stage 1: Build environment
-FROM node:18-alpine AS builder
+FROM node:24-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache \
@@ -33,7 +33,7 @@ RUN npm run build
 RUN npm prune --production
 
 # Stage 2: Production runtime
-FROM node:18-alpine AS production
+FROM node:24-alpine AS production
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S mcpuser && \

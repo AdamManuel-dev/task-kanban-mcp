@@ -1,5 +1,5 @@
 # Multi-stage build for MCP Kanban Server - Optimized for minimal size
-FROM node:18-alpine AS base
+FROM node:24-alpine AS base
 
 # Install only essential packages and security updates
 RUN apk add --no-cache --update dumb-init ca-certificates && \
@@ -48,7 +48,7 @@ COPY . .
 RUN npm run build
 
 # Production stage - Ultra-lightweight
-FROM node:18-alpine AS production
+FROM node:24-alpine AS production
 
 # Install minimal packages and security updates
 RUN apk add --no-cache --update dumb-init ca-certificates && \
