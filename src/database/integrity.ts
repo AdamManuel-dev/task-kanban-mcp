@@ -844,9 +844,9 @@ export class DatabaseIntegrityChecker {
         WHERE rowid NOT IN (SELECT rowid FROM tasks)
       `);
 
-      if (orphanedTasksFts[0]?.count > 0) {
-        warnings.push(`Found ${orphanedTasksFts[0].count} orphaned entries in tasks FTS table`);
-        metadata.orphanedTasksFts = orphanedTasksFts[0].count;
+      if ((orphanedTasksFts[0] as any)?.count > 0) {
+        warnings.push(`Found ${(orphanedTasksFts[0] as any).count} orphaned entries in tasks FTS table`);
+        metadata.orphanedTasksFts = (orphanedTasksFts[0] as any).count;
       }
 
       const orphanedNotesFts = await this.db.query(`
@@ -855,9 +855,9 @@ export class DatabaseIntegrityChecker {
         WHERE rowid NOT IN (SELECT rowid FROM notes)
       `);
 
-      if (orphanedNotesFts[0]?.count > 0) {
-        warnings.push(`Found ${orphanedNotesFts[0].count} orphaned entries in notes FTS table`);
-        metadata.orphanedNotesFts = orphanedNotesFts[0].count;
+      if ((orphanedNotesFts[0] as any)?.count > 0) {
+        warnings.push(`Found ${(orphanedNotesFts[0] as any).count} orphaned entries in notes FTS table`);
+        metadata.orphanedNotesFts = (orphanedNotesFts[0] as any).count;
       }
 
       // Check for missing FTS entries
@@ -946,7 +946,7 @@ export class DatabaseIntegrityChecker {
         WHERE type='index' AND name NOT LIKE 'sqlite_%'
       `);
 
-      const existingIndexNames = existingIndexes.map(idx => idx.name);
+      const existingIndexNames = existingIndexes.map((idx: any) => idx.name);
       const missingIndexes = expectedIndexes.filter(idx => !existingIndexNames.includes(idx));
 
       if (missingIndexes.length > 0) {

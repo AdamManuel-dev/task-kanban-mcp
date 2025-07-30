@@ -41,7 +41,7 @@ export class TodoProcessor {
    * Process TODO.md file with the given options
    */
   async process(filePath: string, options: TodoProcessorOptions): Promise<void> {
-    const todos = await this.parseTodoFile(filePath);
+    const todos = await TodoProcessor.parseTodoFile(filePath);
 
     if (options.groupByPhase) {
       await this.processGroupedByPhase(todos, options);
@@ -50,7 +50,7 @@ export class TodoProcessor {
     }
 
     if (options.generateReport) {
-      await this.generateReport(todos, filePath);
+      await TodoProcessor.generateReport(todos, filePath);
     }
   }
 
@@ -157,19 +157,19 @@ export class TodoProcessor {
     todos: Map<string, TodoItem>,
     options: TodoProcessorOptions
   ): Promise<void> {
-    const phases = this.groupByPhase(todos);
+    const phases = TodoProcessor.groupByPhase(todos);
     const taskGroups: TaskGroup[] = [];
 
     for (const [phaseName, phaseTodos] of phases) {
       if (!phaseTodos) continue;
-      const completedCount = phaseTodos.filter(t => t.completed).length;
+      const completedCount = phaseTodos.filter((t: TodoItem) => t.completed).length;
       const totalCount = phaseTodos.length;
 
       taskGroups.push({
         title: `${phaseName} [${completedCount}/${totalCount}]`,
         tasks: phaseTodos
-          .filter(t => !t.completed)
-          .map(todo => ({
+          .filter((t: TodoItem) => !t.completed)
+          .map((todo: TodoItem) => ({
             id: todo.id,
             title: `${todo.id}: ${todo.text}`,
             action: async () => {
@@ -182,7 +182,7 @@ export class TodoProcessor {
             },
             skip: () => {
               if (todo.dependencies.length > 0) {
-                const unmet = todo.dependencies.filter(dep => !todos.get(dep)?.completed);
+                const unmet = todo.dependencies.filter((dep: string) => !todos.get(dep)?.completed);
                 if (unmet.length > 0) {
                   return `Waiting for: ${unmet.join(', ')}`;
                 }
@@ -209,10 +209,10 @@ export class TodoProcessor {
     const groups = TodoProcessor.createExecutionGroups(todos);
 
     const listr = new Listr(
-      groups.map((group, index) => ({
+      groups.map((group: any, index: number) => ({
         title: `Execution Group ${index + 1} (${group.length} tasks)`,
         task: (_ctx: unknown, _task: unknown) => {
-          const subtasks = group.map(todo => ({
+          const subtasks = group.map((todo: TodoItem) => ({
             title: `${todo.id}: ${todo.text}`,
             task: async () => {
               if (!options.dryRun) {
@@ -227,7 +227,7 @@ export class TodoProcessor {
             concurrent: options.concurrent ?? true,
             rendererOptions: {
               showSubtasks: true,
-            } as unknown,
+            } as any,
           });
         },
       })) as unknown,

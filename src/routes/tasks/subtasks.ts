@@ -10,6 +10,7 @@
 
 import { Router } from 'express';
 import { TaskService } from '@/services/TaskService';
+import { dbConnection } from '@/database/connection';
 import { logger } from '@/utils/logger';
 import { createServiceErrorHandler } from '@/utils/errors';
 
@@ -23,13 +24,13 @@ taskSubtaskRoutes.get('/', async (req, res) => {
 
   try {
     const taskId = req.params.id;
-    const taskService = new TaskService();
+    const taskService = new TaskService(dbConnection);
     const result = await taskService.getSubtasks(taskId);
 
-    if (result.success) {
-      res.json({ success: true, data: result.data });
+    if ((result as any).success) {
+      res.json({ success: true, data: (result as any).data });
     } else {
-      res.status(400).json(result);
+      res.status(400).json(result as any);
     }
   } catch (error) {
     errorHandler(error, req, res);
@@ -46,13 +47,13 @@ taskSubtaskRoutes.post('/', async (req, res) => {
     const parentTaskId = req.params.id;
     const subtaskData = { ...req.body, parent_task_id: parentTaskId };
 
-    const taskService = new TaskService();
-    const result = await taskService.createTask(subtaskData);
+    const taskService = new TaskService(dbConnection);
+    const result = await taskService.createTask(subtaskData as any);
 
-    if (result.success) {
-      res.status(201).json({ success: true, data: result.data });
+    if ((result as any).success) {
+      res.status(201).json({ success: true, data: (result as any).data });
     } else {
-      res.status(400).json(result);
+      res.status(400).json(result as any);
     }
   } catch (error) {
     errorHandler(error, req, res);
@@ -69,13 +70,13 @@ taskSubtaskRoutes.put('/:subtaskId', async (req, res) => {
     const { subtaskId } = req.params;
     const updates = req.body;
 
-    const taskService = new TaskService();
-    const result = await taskService.updateTask(subtaskId, updates);
+    const taskService = new TaskService(dbConnection);
+    const result = await taskService.updateTask(subtaskId, updates as any);
 
-    if (result.success) {
-      res.json({ success: true, data: result.data });
+    if ((result as any).success) {
+      res.json({ success: true, data: (result as any).data });
     } else {
-      res.status(400).json(result);
+      res.status(400).json(result as any);
     }
   } catch (error) {
     errorHandler(error, req, res);
@@ -90,13 +91,13 @@ taskSubtaskRoutes.delete('/:subtaskId', async (req, res) => {
 
   try {
     const { subtaskId } = req.params;
-    const taskService = new TaskService();
+    const taskService = new TaskService(dbConnection);
     const result = await taskService.deleteTask(subtaskId);
 
-    if (result.success) {
+    if ((result as any).success) {
       res.json({ success: true, message: 'Subtask deleted successfully' });
     } else {
-      res.status(400).json(result);
+      res.status(400).json(result as any);
     }
   } catch (error) {
     errorHandler(error, req, res);

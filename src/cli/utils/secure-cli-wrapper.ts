@@ -333,7 +333,7 @@ export class SecureCliWrapper {
    */
   secureCommand(command: Command): Command {
     // Store original action handler using the public API
-    const originalAction = (command as unknown)._actionHandler;
+    const originalAction = (command as any)._actionHandler;
 
     if (originalAction) {
       command.action(async (...args: unknown[]) => {

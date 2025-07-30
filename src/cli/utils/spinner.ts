@@ -19,11 +19,11 @@ export class SpinnerError extends Error {
  * Manages loading spinners for CLI operations with comprehensive error handling
  */
 export class SpinnerManager {
-  private readonly _spinner: Ora | null = null; // eslint-disable-line @typescript-eslint/no-unused-vars
+  private _spinner: Ora | null = null;
 
-  private readonly isSpinning = false;
+  private isSpinning = false;
 
-  private readonly destroyed = false;
+  private destroyed = false;
 
   private readonly maxTextLength = 200;
 
@@ -75,7 +75,7 @@ export class SpinnerManager {
         this.stop();
       }
 
-      (this as unknown).spinner = SpinnerManager.safeOperation(
+      this._spinner = SpinnerManager.safeOperation(
         () =>
           ora({
             text: validatedText,
@@ -86,8 +86,8 @@ export class SpinnerManager {
         null
       );
 
-      if ((this as unknown).spinner) {
-        (this as unknown).isSpinning = true;
+      if (this._spinner) {
+        this.isSpinning = true;
       } else {
         throw new SpinnerError('Failed to create spinner instance', 'CREATION_FAILED');
       }
@@ -109,16 +109,18 @@ export class SpinnerManager {
     try {
       const validatedText = this.validateText(text);
 
-      if (!(this as unknown).spinner) {
+      if (!this._spinner) {
         throw new SpinnerError('No active spinner to update', 'NO_SPINNER');
       }
 
-      if (!(this as unknown).isSpinning) {
+      if (!this.isSpinning) {
         throw new SpinnerError('Spinner is not currently running', 'NOT_RUNNING');
       }
 
       SpinnerManager.safeOperation(() => {
-        (this as unknown).spinner.text = validatedText;
+        if (this._spinner) {
+          this._spinner.text = validatedText;
+        }
         return true;
       }, false);
     } catch (error) {
@@ -140,23 +142,25 @@ export class SpinnerManager {
     text?: string
   ): void {
     try {
-      if ((this as unknown).destroyed) {
+      if (this.destroyed) {
         logger.warn('Attempted to stop destroyed spinner');
         return;
       }
 
-      if (!(this as unknown).spinner || !(this as unknown).isSpinning) {
+      if (!this._spinner || !this.isSpinning) {
         // Silently ignore - not an error condition
         return;
       }
 
-      const finalText = text ? this.validateText(text) : (this as unknown).spinner.text;
+      const finalText = text ? this.validateText(text) : this._spinner?.text ?? '';
 
       SpinnerManager.safeOperation(() => {
-        if (method === 'stop') {
-          (this as unknown).spinner.stop();
-        } else {
-          (this as unknown).spinner[method](finalText);
+        if (this._spinner) {
+          if (method === 'stop') {
+            this._spinner.stop();
+          } else {
+            (this._spinner as any)[method](finalText);
+          }
         }
         return true;
       }, false);
@@ -174,8 +178,8 @@ export class SpinnerManager {
    * Clean up spinner state
    */
   private cleanupInstance(): void {
-    (this as unknown).isSpinning = false;
-    (this as unknown).spinner = null;
+    this.isSpinning = false;
+    this._spinner = null;
   }
 
   /**
@@ -183,8 +187,8 @@ export class SpinnerManager {
    */
   private forceCleanupInstance(): void {
     try {
-      if ((this as unknown).spinner) {
-        (this as unknown).spinner.stop();
+      if (this._spinner) {
+        this._spinner.stop();
       }
     } catch {
       // Ignore errors during force cleanup
@@ -231,7 +235,7 @@ export class SpinnerManager {
    * Check if spinner is currently active
    */
   isActive(): boolean {
-    return (this as unknown).isSpinning && !(this as unknown).destroyed;
+    return this.isSpinning && !this.destroyed;
   }
 
   /**
@@ -239,7 +243,7 @@ export class SpinnerManager {
    */
   destroy(): void {
     this.forceCleanupInstance();
-    (this as unknown).destroyed = true;
+    this.destroyed = true;
   }
 
   /**

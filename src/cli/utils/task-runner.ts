@@ -52,7 +52,7 @@ export class TaskRunner {
       rendererOptions: {
         showSubtasks: true,
         showTimer: true,
-      } as unknown,
+      } as any,
     });
 
     try {
@@ -74,7 +74,7 @@ export class TaskRunner {
   ): Promise<void> {
     const mainTasks = groups.map(group => ({
       title: group.title,
-      task: (_ctx: unknown, task: unknown): unknown => {
+      task: (_ctx: any, task: any): any => {
         const subtasks = group.tasks.map(item => ({
           title: item.title,
           task: item.action,
@@ -96,7 +96,7 @@ export class TaskRunner {
       rendererOptions: {
         showSubtasks: true,
         showTimer: true,
-      } as unknown,
+      } as any,
     });
 
     try {
@@ -158,7 +158,7 @@ export class TaskRunner {
         rendererOptions: {
           showSubtasks: true,
           showTimer: true,
-        } as unknown,
+        } as any,
       }
     );
 
@@ -202,7 +202,7 @@ export class TaskRunner {
         }
 
         throw new Error(
-          `Failed after ${String(maxRetries)} attempts: ${String(String(lastError?.message ?? 'Unknown error'))}`
+          `Failed after ${String(maxRetries)} attempts: ${(lastError as { message?: string })?.message ?? 'Unknown error'}`
         );
       },
     };

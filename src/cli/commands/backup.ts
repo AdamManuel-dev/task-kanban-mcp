@@ -411,7 +411,7 @@ export function registerBackupCommands(program: Command): void {
               name: 'targetTime',
               message: 'Target restoration time (ISO format):',
               default: defaultTime,
-              validate: (input: string): string | boolean => {
+              validate: (input: string): string | true => {
                 const date = new Date(input);
                 if (Number.isNaN(date.getTime())) {
                   return 'Invalid date format. Use ISO format (e.g., 2025-07-26T10:30:00Z)';
@@ -553,18 +553,18 @@ export function registerBackupCommands(program: Command): void {
               name: 'name',
               message: 'Schedule name:',
               default: name ?? `schedule-${String(String(Date.now()))}`,
-              validate: (input: string): string | boolean =>
-                input.trim().length > 0 || 'Name is required',
+              validate: (input: string): string | true =>
+                input.trim().length > 0 ? true : 'Name is required',
             },
             {
               type: 'input',
               name: 'cronExpression',
               message: 'Cron expression (e.g., "0 2 * * *" for daily at 2 AM):',
               default: options.cron ?? '0 2 * * *',
-              validate: (input: string): string | boolean => {
+              validate: (input: string): string | true => {
                 // Basic validation - in production you'd want more thorough validation
                 const parts = input.trim().split(' ');
-                return parts.length === 5 || 'Invalid cron expression format (should have 5 parts)';
+                return parts.length === 5 ? true : 'Invalid cron expression format (should have 5 parts)';
               },
             },
             {
@@ -585,8 +585,8 @@ export function registerBackupCommands(program: Command): void {
               name: 'retentionDays',
               message: 'Retention period (days):',
               default: parseInt(options.retention ?? '30', 10),
-              validate: (input: number): string | boolean =>
-                input > 0 || 'Retention days must be positive',
+              validate: (input: number): string | true =>
+                input > 0 ? true : 'Retention days must be positive',
             },
             {
               type: 'confirm',

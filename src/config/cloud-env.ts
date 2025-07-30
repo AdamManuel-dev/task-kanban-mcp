@@ -308,7 +308,7 @@ export function getCloudEnvironmentConfig(cloudEnv: CloudEnvironmentInfo): Recor
         memoryCheckInterval: 15000,
       };
       config.websocket = {
-        ...config.websocket,
+        ...(config.websocket || {}),
         enabled: false, // WebSockets may not work reliably
       };
       config.backup = {
@@ -322,7 +322,7 @@ export function getCloudEnvironmentConfig(cloudEnv: CloudEnvironmentInfo): Recor
         memoryCheckInterval: 30000,
       };
       config.websocket = {
-        ...config.websocket,
+        ...(config.websocket || {}),
         maxConnections: 50, // Lower limit
       };
       break;

@@ -302,7 +302,7 @@ export class EnvironmentManager {
   get<T>(key: string, defaultValue?: T): T {
     // Check cache first
     if (this.cache.has(key)) {
-      return this.cache.get(key);
+      return this.cache.get(key) as T;
     }
 
     const rule = ENV_RULES.find(r => r.key === key);

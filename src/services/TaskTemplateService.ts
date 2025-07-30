@@ -60,7 +60,7 @@ export class TaskTemplateService {
       query += ' ORDER BY is_system DESC, category, name';
 
       const rows = await dbConnection.query(query, params);
-      return rows.map(row => this.mapRowToTemplate(row));
+      return rows.map(row => this.mapRowToTemplate(row as any));
     } catch (error) {
       logger.error('Failed to get templates:', error);
       throw new Error(
@@ -75,7 +75,7 @@ export class TaskTemplateService {
   async getTemplate(id: string): Promise<TaskTemplate | null> {
     try {
       const row = await dbConnection.queryOne('SELECT * FROM task_templates WHERE id = ?', [id]);
-      return row ? this.mapRowToTemplate(row) : null;
+      return row ? this.mapRowToTemplate(row as any) : null;
     } catch (error) {
       logger.error(`Failed to get template ${id}:`, error);
       throw new Error(
@@ -250,7 +250,7 @@ export class TaskTemplateService {
       const { dbConnection } = await import('@/database/connection');
       const taskService = new TaskService(dbConnection);
 
-      const taskData = {
+      const taskData: any = {
         title,
         description,
         board_id: request.board_id,
@@ -261,7 +261,7 @@ export class TaskTemplateService {
         tags: template.tags,
       };
 
-      const task = await taskService.createTask(taskData);
+      const task = await taskService.createTask(taskData as any);
 
       // Update template usage count
       await this.incrementUsageCount(request.template_id);
@@ -307,7 +307,7 @@ export class TaskTemplateService {
         ORDER BY usage_count DESC
       `);
 
-      return rows.map(row => ({
+      return rows.map((row: any) => ({
         template_id: row.template_id,
         template_name: row.template_name,
         usage_count: row.usage_count,
@@ -413,7 +413,7 @@ export class TaskTemplateService {
 
   // Private methods
 
-  private mapRowToTemplate(row: unknown): TaskTemplate {
+  private mapRowToTemplate(row: any): TaskTemplate {
     return {
       id: row.id,
       name: row.name,
@@ -435,7 +435,7 @@ export class TaskTemplateService {
     };
   }
 
-  private processTemplate(template: string, variables: Record<string, unknown>): string {
+  private processTemplate(template: string, variables: Record<string, any>): string {
     let result = template;
 
     // Replace variables in format {{variable_name}}

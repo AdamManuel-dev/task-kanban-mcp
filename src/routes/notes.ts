@@ -24,7 +24,7 @@ export function noteRoutes(): Router {
         return;
       }
 
-      const options: unknown = {
+      const options: any = {
         query: query as string,
         limit: parseInt(limit as string, 10),
         offset: parseInt(offset as string, 10),
@@ -37,7 +37,7 @@ export function noteRoutes(): Router {
       if (pinned === 'true') options.pinned_only = true;
       else if (pinned === 'false') options.pinned_only = false;
 
-      const searchResults = await noteService.searchNotes(options);
+      const searchResults = await noteService.searchNotes(options as any);
 
       res.apiPagination({
         data: searchResults,
@@ -55,7 +55,7 @@ export function noteRoutes(): Router {
     try {
       const { task_id, board_id } = req.query;
 
-      const filters = {
+      const filters: any = {
         task_id: task_id as string,
         board_id: board_id as string,
       };
@@ -72,7 +72,7 @@ export function noteRoutes(): Router {
     try {
       const { limit = 20, task_id, board_id, days = 7 } = req.query;
 
-      const options = {
+      const options: any = {
         limit: parseInt(limit as string, 10),
         task_id: task_id as string,
         board_id: board_id as string,
@@ -91,11 +91,11 @@ export function noteRoutes(): Router {
     try {
       const { limit = 50, task_id, board_id, category } = req.query;
 
-      const options = {
+      const options: any = {
         limit: parseInt(limit as string, 10),
         task_id: task_id as string,
         board_id: board_id as string,
-        category: category as unknown,
+        category: category as any,
         pinned: true,
       };
 
@@ -121,7 +121,7 @@ export function noteRoutes(): Router {
         search,
       } = req.query;
 
-      const options: unknown = {
+      const options: any = {
         limit: parseInt(limit as string, 10),
         offset: parseInt(offset as string, 10),
         sortBy: sortBy as string,
@@ -135,11 +135,11 @@ export function noteRoutes(): Router {
       if (pinned === 'true') options.pinned = true;
       else if (pinned === 'false') options.pinned = false;
 
-      const notes = await noteService.getNotes(options);
+      const notes = await noteService.getNotes(options as any);
 
       // Get total count for pagination
       const { limit: _, offset: __, ...countOptions } = options;
-      const totalNotes = await noteService.getNotes(countOptions);
+      const totalNotes = await noteService.getNotes(countOptions as any);
       const total = totalNotes.length;
 
       res.apiPagination({
@@ -157,7 +157,7 @@ export function noteRoutes(): Router {
   router.post('/', requirePermission('write'), async (req, res, next): Promise<void> => {
     try {
       const rawNoteData = validateInput(NoteValidation.create, req.body);
-      const noteData: unknown = {
+      const noteData: any = {
         task_id: rawNoteData.task_id,
         content: rawNoteData.content,
       };
@@ -166,7 +166,7 @@ export function noteRoutes(): Router {
       if (rawNoteData.category) noteData.category = rawNoteData.category;
       if (rawNoteData.pinned !== undefined) noteData.pinned = rawNoteData.pinned;
 
-      const note = await noteService.createNote(noteData);
+      const note = await noteService.createNote(noteData as any);
       res.status(201).apiSuccess(note);
     } catch (error) {
       next(error);
@@ -210,7 +210,7 @@ export function noteRoutes(): Router {
       const updateData = Object.fromEntries(
         Object.entries(rawUpdateData).filter(([, value]) => value !== undefined)
       );
-      const note = await noteService.updateNote(id, updateData);
+      const note = await noteService.updateNote(id, updateData as any);
       res.apiSuccess(note);
     } catch (error) {
       next(error);

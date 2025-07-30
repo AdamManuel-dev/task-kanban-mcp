@@ -151,7 +151,7 @@ export class DatabaseConnection {
     DatabaseConnection.instance?.close().catch(() => {
       // Ignore errors during cleanup
     });
-    DatabaseConnection.instance = null as unknown;
+    DatabaseConnection.instance = undefined;
   }
 
   /**

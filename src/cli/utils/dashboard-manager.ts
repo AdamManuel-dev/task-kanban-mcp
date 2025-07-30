@@ -50,7 +50,7 @@ export class DashboardManager {
 
   private isFullscreen = false;
 
-  // private readonly debugMode = false;
+  private debugMode = false;
 
   constructor(config: Partial<DashboardConfig> = {}, apiClient?: ApiClient) {
     this.config = {
@@ -904,9 +904,9 @@ Press any key to close...
    * Toggle debug mode
    */
   private toggleDebugMode(): void {
-    (this as unknown).debugMode = !(this as unknown).debugMode;
+    this.debugMode = !this.debugMode;
 
-    if ((this as unknown).debugMode) {
+    if (this.debugMode) {
       this.showNotification('Debug mode enabled - showing widget info');
       this.showDebugOverlay();
     } else {
@@ -920,7 +920,9 @@ Press any key to close...
    */
   private showDebugOverlay(): void {
     const debugInfo = Array.from(this.widgets.entries())
-      .map(([name, widget]) => `${String(name)}: ${String(String(widget.constructor.name))}`)
+      .map(([name, widget]) => `${String(name)}: ${widget && typeof widget === 'object' && 'constructor' in widget 
+        ? (widget as { constructor: { name: string } }).constructor.name 
+        : 'Unknown'}`)
       .join('\n');
 
     const debugBox = blessed.box({
@@ -954,8 +956,8 @@ ${String(debugInfo)}
    */
   private hideDebugOverlay(): void {
     const debugWidget = this.widgets.get('debug');
-    if (debugWidget) {
-      this.screen.remove(debugWidget);
+    if (debugWidget && typeof debugWidget === 'object' && 'detach' in debugWidget) {
+      this.screen.remove(debugWidget as any);
       this.widgets.delete('debug');
       this.screen.render();
     }
@@ -967,7 +969,7 @@ ${String(debugInfo)}
   private resetView(): void {
     this.isFullscreen = false;
     this.focusedWidget = null;
-    (this as unknown).debugMode = false;
+    this.debugMode = false;
     this.hideDebugOverlay();
     void this.refreshData();
     this.showNotification('View reset to default state');
@@ -982,7 +984,7 @@ ${String(debugInfo)}
       left: 'center',
       width: '50%',
       height: 3,
-      border: { type: 'line' as unknown, fg: this.themeHelper.getColor('info') as unknown },
+      border: { type: 'line', fg: 4 }, // blue color for info
       style: {
         fg: this.themeHelper.getColor('foreground'),
         bg: this.themeHelper.getColor('secondary'),

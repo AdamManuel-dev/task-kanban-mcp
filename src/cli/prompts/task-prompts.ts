@@ -167,7 +167,7 @@ export async function createTaskPrompt(defaults?: Partial<TaskInput>): Promise<T
           message: 'Due date (optional):',
           initial: defaults?.dueDate,
           hint: 'Format: YYYY-MM-DD',
-          validate: (value: unknown): string | boolean => {
+          validate: (value: unknown): string | true => {
             if (typeof value !== 'string') return 'Invalid date format';
             return validateDate(value);
           },
@@ -178,7 +178,7 @@ export async function createTaskPrompt(defaults?: Partial<TaskInput>): Promise<T
           message: 'Estimated hours (optional):',
           initial: defaults?.estimatedHours,
           float: true,
-          validate: (value: unknown): string | boolean => {
+          validate: (value: unknown): string | true => {
             if (!value) return true;
             if (typeof value !== 'string') return 'Invalid time estimate';
             return validateTimeEstimate(value);
@@ -542,7 +542,7 @@ export async function taskFilterPrompt(): Promise<{
           type: 'input',
           name: 'start',
           message: 'Start date (YYYY-MM-DD):',
-          validate: (value: unknown): string | boolean => {
+          validate: (value: unknown): string | true => {
             if (typeof value !== 'string') return 'Invalid date format';
             return validateDate(value);
           },
@@ -551,7 +551,7 @@ export async function taskFilterPrompt(): Promise<{
           type: 'input',
           name: 'end',
           message: 'End date (YYYY-MM-DD):',
-          validate: (value: unknown): string | boolean => {
+          validate: (value: unknown): string | true => {
             if (typeof value !== 'string') return 'Invalid date format';
             return validateDate(value);
           },

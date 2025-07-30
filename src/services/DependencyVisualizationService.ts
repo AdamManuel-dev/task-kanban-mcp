@@ -69,7 +69,7 @@ export class DependencyVisualizationService {
 
       // Build the graph
       const nodes = new Map<string, DependencyNode>();
-      const edges: TaskDependency[] = dependencies.map((dep: unknown) => ({
+      const edges: TaskDependency[] = dependencies.map((dep: any) => ({
         id: dep.id,
         task_id: dep.task_id,
         depends_on_task_id: dep.depends_on_task_id,
@@ -79,26 +79,26 @@ export class DependencyVisualizationService {
 
       // Initialize nodes
       for (const task of tasks) {
-        nodes.set(task.id, {
+        nodes.set((task as any).id, {
           task: {
-            id: task.id,
-            title: task.title,
-            description: task.description,
-            board_id: task.board_id,
-            column_id: task.column_id,
-            position: task.position,
-            priority: task.priority,
-            status: task.status,
-            assignee: task.assignee,
-            due_date: task.due_date ? new Date(task.due_date) : undefined,
-            estimated_hours: task.estimated_hours,
-            actual_hours: task.actual_hours,
-            parent_task_id: task.parent_task_id,
-            created_at: new Date(task.created_at),
-            updated_at: new Date(task.updated_at),
-            completed_at: task.completed_at ? new Date(task.completed_at) : undefined,
-            archived: Boolean(task.archived),
-            metadata: task.metadata ? JSON.parse(task.metadata) : null,
+            id: (task as any).id,
+            title: (task as any).title,
+            description: (task as any).description,
+            board_id: (task as any).board_id,
+            column_id: (task as any).column_id,
+            position: (task as any).position,
+            priority: (task as any).priority,
+            status: (task as any).status,
+            assignee: (task as any).assignee,
+            due_date: (task as any).due_date ? new Date((task as any).due_date) : undefined,
+            estimated_hours: (task as any).estimated_hours,
+            actual_hours: (task as any).actual_hours,
+            parent_task_id: (task as any).parent_task_id,
+            created_at: new Date((task as any).created_at),
+            updated_at: new Date((task as any).updated_at),
+            completed_at: (task as any).completed_at ? new Date((task as any).completed_at) : undefined,
+            archived: Boolean((task as any).archived),
+            metadata: (task as any).metadata ? JSON.parse((task as any).metadata) : null,
           },
           dependencies: [],
           dependents: [],

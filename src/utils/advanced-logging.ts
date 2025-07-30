@@ -108,23 +108,23 @@ export class ContextLogger {
   /**
    * Enhanced logging methods that include context
    */
-  error(message: string, meta: unknown = {}): void {
+  error(message: string, meta: any = {}): void {
     this.log('error', message, meta);
   }
 
-  warn(message: string, meta: unknown = {}): void {
+  warn(message: string, meta: any = {}): void {
     this.log('warn', message, meta);
   }
 
-  info(message: string, meta: unknown = {}): void {
+  info(message: string, meta: any = {}): void {
     this.log('info', message, meta);
   }
 
-  debug(message: string, meta: unknown = {}): void {
+  debug(message: string, meta: any = {}): void {
     this.log('debug', message, meta);
   }
 
-  private log(level: string, message: string, meta: unknown = {}): void {
+  private log(level: string, message: string, meta: any = {}): void {
     const context = ContextLogger.getContext();
     const enhancedMeta = {
       ...meta,
@@ -209,7 +209,7 @@ export class AuditLogger {
   /**
    * Log user authentication events
    */
-  logAuthentication(userId: string, outcome: 'success' | 'failure', details?: unknown): void {
+  logAuthentication(userId: string, outcome: 'success' | 'failure', details?: any): void {
     this.logEvent({
       action: 'authenticate',
       resource: 'user',
@@ -238,7 +238,7 @@ export class AuditLogger {
   /**
    * Log administrative actions
    */
-  logAdminAction(action: string, userId: string, details: unknown): void {
+  logAdminAction(action: string, userId: string, details: any): void {
     this.logEvent({
       action,
       resource: 'system',
@@ -255,7 +255,7 @@ export class AuditLogger {
   logSecurityEvent(
     event: string,
     severity: 'low' | 'medium' | 'high' | 'critical',
-    details: unknown
+    details: any
   ): void {
     const logLevel = severity === 'critical' || severity === 'high' ? 'warn' : 'info';
 
@@ -311,7 +311,7 @@ export class PerformanceLogger {
   /**
    * Start tracking a performance operation
    */
-  startOperation(operationId: string, operation: string, metadata?: unknown): void {
+  startOperation(operationId: string, operation: string, metadata?: any): void {
     this.activeOperations.set(operationId, {
       startTime: process.hrtime(),
       startMemory: process.memoryUsage(),
@@ -332,7 +332,7 @@ export class PerformanceLogger {
   endOperation(
     operationId: string,
     operation: string,
-    metadata?: unknown
+    metadata?: any
   ): PerformanceMetrics | null {
     const tracking = this.activeOperations.get(operationId);
     if (!tracking) {
@@ -381,7 +381,7 @@ export class PerformanceLogger {
   /**
    * Track function execution performance
    */
-  trackFunction<T>(operationName: string, fn: () => T, metadata?: unknown): T {
+  trackFunction<T>(operationName: string, fn: () => T, metadata?: any): T {
     const operationId = this.generateOperationId();
     this.startOperation(operationId, operationName, metadata);
 
@@ -407,11 +407,11 @@ export class PerformanceLogger {
    * Create a performance tracking decorator
    */
   createDecorator(operationName?: string) {
-    return (target: unknown, propertyKey: string, descriptor: PropertyDescriptor) => {
+    return (target: any, propertyKey: string, descriptor: PropertyDescriptor) => {
       const originalMethod = descriptor.value;
       const operation = operationName || `${target.constructor.name}.${propertyKey}`;
 
-      descriptor.value = async function (this: unknown, ...args: unknown[]) {
+      descriptor.value = async function (this: any, ...args: any[]) {
         return performanceLogger.trackFunction(operation, () => originalMethod.apply(this, args), {
           args: args.length,
         });
@@ -461,12 +461,12 @@ export class StructuredLogger {
     req: {
       method: string;
       url: string;
-      headers?: unknown;
-      body?: unknown;
+      headers?: any;
+      body?: any;
     },
     res?: {
       statusCode: number;
-      headers?: unknown;
+      headers?: any;
       duration?: number;
     }
   ): void {
@@ -512,7 +512,7 @@ export class StructuredLogger {
   /**
    * Log business events
    */
-  logBusinessEvent(event: string, details: unknown): void {
+  logBusinessEvent(event: string, details: any): void {
     this.logger.info('Business Event', {
       business: {
         event,
@@ -539,7 +539,7 @@ export class StructuredLogger {
     });
   }
 
-  private sanitizeHeaders(headers: unknown): unknown {
+  private sanitizeHeaders(headers: any): any {
     if (!headers) return undefined;
 
     const sanitized = { ...headers };
@@ -565,7 +565,7 @@ export class LogAnalytics {
     timestamp: Date;
     level: string;
     message: string;
-    meta: unknown;
+    meta: any;
   }> = [];
 
   constructor() {
@@ -576,7 +576,7 @@ export class LogAnalytics {
   /**
    * Add log entry for analysis
    */
-  addLogEntry(level: string, message: string, meta: unknown): void {
+  addLogEntry(level: string, message: string, meta: any): void {
     this.logs.push({
       timestamp: new Date(),
       level,
@@ -593,7 +593,7 @@ export class LogAnalytics {
   /**
    * Query logs with filters
    */
-  queryLogs(filter: LogFilter, limit = 100): unknown[] {
+  queryLogs(filter: LogFilter, limit = 100): any[] {
     let filtered = this.logs;
 
     if (filter.level) {
@@ -602,13 +602,13 @@ export class LogAnalytics {
 
     if (filter.component) {
       filtered = filtered.filter(
-        log => log.meta.context?.component && filter.component!.includes(log.meta.context.component)
+        log => (log.meta as any).context?.component && filter.component!.includes((log.meta as any).context.component)
       );
     }
 
     if (filter.userId) {
       filtered = filtered.filter(
-        log => log.meta.context?.userId && filter.userId!.includes(log.meta.context.userId)
+        log => (log.meta as any).context?.userId && filter.userId!.includes((log.meta as any).context.userId)
       );
     }
 
@@ -620,7 +620,7 @@ export class LogAnalytics {
 
     if (filter.tags) {
       filtered = filtered.filter(log => {
-        const logTags = log.meta.context?.tags || {};
+        const logTags = (log.meta as any).context?.tags || {};
         return Object.entries(filter.tags!).every(([key, value]) => logTags[key] === value);
       });
     }
@@ -652,7 +652,7 @@ export class LogAnalytics {
       levelDistribution[log.level] = (levelDistribution[log.level] ?? 0) + 1;
 
       // Component distribution
-      const component = log.meta.context?.component || 'unknown';
+      const component = (log.meta as any).context?.component || 'unknown';
       componentCounts[component] = (componentCounts[component] ?? 0) + 1;
 
       // Error count
@@ -699,10 +699,10 @@ export const TrackPerformance = (operationName?: string) =>
  */
 export const AuditAction =
   (action: string, resource: string) =>
-  (target: unknown, propertyKey: string, descriptor: PropertyDescriptor) => {
+  (target: any, propertyKey: string, descriptor: PropertyDescriptor) => {
     const originalMethod = descriptor.value;
 
-    descriptor.value = async function (this: unknown, ...args: unknown[]) {
+    descriptor.value = async function (this: any, ...args: any[]) {
       const context = ContextLogger.getContext();
 
       try {
@@ -711,7 +711,7 @@ export const AuditAction =
         auditLogger.logEvent({
           action,
           resource,
-          resourceId: args[0], // Assume first argument is resource ID
+          resourceId: args[0] as string, // Assume first argument is resource ID
           userId: context.userId,
           timestamp: new Date(),
           outcome: 'success',
@@ -722,7 +722,7 @@ export const AuditAction =
         auditLogger.logEvent({
           action,
           resource,
-          resourceId: args[0],
+          resourceId: args[0] as string,
           userId: context.userId,
           timestamp: new Date(),
           outcome: 'failure',
@@ -739,13 +739,13 @@ export const AuditAction =
 /**
  * Enhanced logging function with context
  */
-export const logWithContext = (level: string, message: string, meta: unknown = {}) => {
+export const logWithContext = (level: string, message: string, meta: any = {}) => {
   contextLogger[level as keyof ContextLogger](message, meta);
 };
 
 // Hook into Winston to capture logs for analytics
 const originalLog = logger.log;
-(logger as unknown).log = function (level: unknown, message: unknown, meta: unknown = {}) {
+(logger as any).log = function (level: any, message: any, meta: any = {}) {
   logAnalytics.addLogEntry(
     typeof level === 'string' ? level : level.level,
     typeof message === 'string' ? message : JSON.stringify(message),

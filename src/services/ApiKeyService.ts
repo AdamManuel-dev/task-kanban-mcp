@@ -136,7 +136,7 @@ export class ApiKeyService {
       const row = await this.db.queryOne(
         `SELECT * FROM api_keys WHERE key_hash = ? AND is_active = 1`,
         [keyHash]
-      );
+      ) as any;
 
       if (!row) {
         return { isValid: false, reason: 'API key not found' };
@@ -299,7 +299,7 @@ export class ApiKeyService {
    */
   async getApiKeyById(keyId: string): Promise<ApiKey | null> {
     try {
-      const row = await this.db.queryOne(`SELECT * FROM api_keys WHERE id = ?`, [keyId]);
+      const row = await this.db.queryOne(`SELECT * FROM api_keys WHERE id = ?`, [keyId]) as any;
 
       return row ? this.deserializeApiKey(row) : null;
     } catch (error) {
@@ -351,7 +351,7 @@ export class ApiKeyService {
       }
 
       const rows = await this.db.query(query, params);
-      return rows.map(row => this.deserializeApiKey(row));
+      return rows.map((row: any) => this.deserializeApiKey(row));
     } catch (error) {
       logger.error('Failed to list API keys', { error, options });
       return [];
@@ -438,7 +438,7 @@ export class ApiKeyService {
         expiredKeys: stats?.expiredKeys || 0,
         revokedKeys: stats?.revokedKeys || 0,
         totalUsage: stats?.totalUsage || 0,
-        topUsedKeys: topUsedRows.map(row => ({
+        topUsedKeys: topUsedRows.map((row: any) => ({
           id: row.id,
           name: row.name,
           usageCount: row.usage_count,
@@ -484,7 +484,7 @@ export class ApiKeyService {
     }
   }
 
-  private deserializeApiKey(row: unknown): ApiKey {
+  private deserializeApiKey(row: any): ApiKey {
     return {
       id: row.id,
       keyHash: row.key_hash,

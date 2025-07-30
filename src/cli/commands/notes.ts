@@ -132,7 +132,7 @@ export function registerNoteCommands(program: Command): void {
             type: string;
             name: string;
             message: string;
-            validate?: (input: string) => boolean | string;
+            validate?: (input: string) => true | string;
             choices?: string[];
             default?: string | boolean;
           }> = [];

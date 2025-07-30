@@ -214,8 +214,8 @@ const cloudConfig = getCloudEnvironmentConfig(cloudEnv);
 // Build configuration from environment variables with cloud overrides
 const rawConfig = {
   server: {
-    port: envManager.get('PORT', cloudConfig.server?.port ?? 3000),
-    host: envManager.get('HOST', cloudConfig.server?.host ?? 'localhost'),
+    port: envManager.get('PORT', (cloudConfig.server as any)?.port ?? 3000),
+    host: envManager.get('HOST', (cloudConfig.server as any)?.host ?? 'localhost'),
     nodeEnv: envManager.get('NODE_ENV', 'development'),
   },
   database: {
@@ -238,10 +238,10 @@ const rawConfig = {
     skipSuccessfulRequests: parseEnvVar(getEnv('RATE_LIMIT_SKIP_SUCCESSFUL_REQUESTS'), false),
   },
   websocket: {
-    port: envManager.get('WEBSOCKET_PORT', cloudConfig.websocket?.port ?? 3001),
-    host: envManager.get('WEBSOCKET_HOST', cloudConfig.websocket?.host ?? 'localhost'),
-    path: envManager.get('WEBSOCKET_PATH', cloudConfig.websocket?.path ?? '/socket.io'),
-    corsOrigin: envManager.get('WEBSOCKET_CORS_ORIGIN', cloudConfig.websocket?.corsOrigin ?? '*'),
+    port: envManager.get('WEBSOCKET_PORT', (cloudConfig.websocket as any)?.port ?? 3001),
+    host: envManager.get('WEBSOCKET_HOST', (cloudConfig.websocket as any)?.host ?? 'localhost'),
+    path: envManager.get('WEBSOCKET_PATH', (cloudConfig.websocket as any)?.path ?? '/socket.io'),
+    corsOrigin: envManager.get('WEBSOCKET_CORS_ORIGIN', (cloudConfig.websocket as any)?.corsOrigin ?? '*'),
     heartbeatInterval: parseEnvVar(getEnv('WEBSOCKET_HEARTBEAT_INTERVAL'), 25000),
     heartbeatTimeout: parseEnvVar(getEnv('WEBSOCKET_HEARTBEAT_TIMEOUT'), 60000),
     authRequired: parseEnvVar(getEnv('WEBSOCKET_AUTH_REQUIRED'), false),

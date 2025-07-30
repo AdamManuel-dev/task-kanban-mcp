@@ -50,7 +50,20 @@ export function registerNextCommand(taskCmd: Command): void {
           if (options.includeBlocked) params.exclude_blocked = 'false';
 
           // Call the API endpoint for next task recommendation
-          const response = await apiClient.request('GET', '/api/tasks/next', undefined, params);
+          const response = await apiClient.request('GET', '/api/tasks/next', undefined, params) as {
+            next_task?: {
+              id: string;
+              title: string;
+              description?: string;
+              priority: string;
+              status: string;
+              board_id: string;
+              created_at: string;
+              updated_at: string;
+              due_date?: string;
+            };
+            reasoning?: string;
+          };
 
           if (!response?.next_task) {
             formatter.info('No tasks available matching your criteria');

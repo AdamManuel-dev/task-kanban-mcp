@@ -30,15 +30,15 @@ export interface SanitizationResult {
 export class InputSanitizer {
   private static instance: InputSanitizer;
 
-  private readonly purify: unknown;
+  private readonly purify: any;
 
   constructor() {
     // Initialize DOMPurify with JSDOM for server-side sanitization
     const { window } = new JSDOM('');
-    this.purify = DOMPurify(window as unknown);
+    this.purify = DOMPurify(window as any);
 
     // Configure DOMPurify for strict sanitization
-    this.purify.addHook('beforeSanitizeElements', (node: unknown) => {
+    this.purify.addHook('beforeSanitizeElements', (node: any) => {
       // Remove all script tags and event handlers
       if (node.nodeName === 'SCRIPT' || node.nodeName === 'IFRAME') {
         node.remove();
@@ -56,7 +56,7 @@ export class InputSanitizer {
   /**
    * Sanitize text input with comprehensive security checks
    */
-  sanitizeText(input: unknown, options: SanitizationOptions = {}): SanitizationResult {
+  sanitizeText(input: any, options: SanitizationOptions = {}): SanitizationResult {
     const {
       allowHtml = false,
       maxLength = 1000,
@@ -140,9 +140,9 @@ export class InputSanitizer {
 
     // 6. HTML sanitization
     if (!allowHtml) {
-      sanitized = this.purify.sanitize(sanitized, { ALLOWED_TAGS: [] });
+      sanitized = this.purify.sanitize(sanitized, { ALLOWED_TAGS: [] }) as string;
     } else {
-      sanitized = this.purify.sanitize(sanitized);
+      sanitized = this.purify.sanitize(sanitized) as string;
     }
 
     // 7. Escape special characters for CLI safety
@@ -166,7 +166,7 @@ export class InputSanitizer {
     if (options.allowedCharacters) {
       const beforeFilter = sanitized;
       sanitized = sanitized.replace(
-        new RegExp(`[^${String(String(options.allowedCharacters.source))}]`, 'g'),
+        new RegExp(`[^${options.allowedCharacters.source}]`, 'g'),
         ''
       );
       if (beforeFilter !== sanitized) {
@@ -245,7 +245,7 @@ export class InputSanitizer {
 
     let escaped = input;
     Object.entries(escapeMap).forEach(([char, replacement]) => {
-      escaped = escaped.replace(new RegExp(`\\${String(char)}`, 'g'), replacement);
+      escaped = escaped.replace(new RegExp(`\\${char}`, 'g'), replacement);
     });
 
     if (beforeEscape !== escaped) {
@@ -473,7 +473,7 @@ export class InputSanitizer {
     const suspiciousCheck = InputSanitizer.detectSuspiciousPatterns(input);
     if (suspiciousCheck.suspicious) {
       issues.push(
-        `Suspicious patterns detected: ${String(String(suspiciousCheck.patterns.join(', ')))}`
+        `Suspicious patterns detected: ${suspiciousCheck.patterns.join(', ')}`
       );
       recommendations.push('Remove or escape suspicious content');
       score -= 30;
@@ -555,7 +555,7 @@ export function createSafePromptValidator(
   sanitizeFunction: (input: string) => SanitizationResult,
   additionalValidation?: (input: string) => true | string
 ) {
-  return (input: unknown): string | boolean => {
+  return (input: unknown): string | true => {
     // Convert unknown input to string
     const stringInput = typeof input === 'string' ? input : String(input);
     // First, sanitize the input
@@ -563,13 +563,13 @@ export function createSafePromptValidator(
 
     // Check if input was modified significantly
     if (sanitized.modified && sanitized.warnings.length > 0) {
-      return `Input modified during sanitization: ${String(String(sanitized.warnings.join(', ')))}. Please try again.`;
+      return `Input modified during sanitization: ${sanitized.warnings.join(', ')}. Please try again.`;
     }
 
     // Check security score
     const securityReport = inputSanitizer.generateSecurityReport(stringInput);
     if (!securityReport.safe) {
-      return `Security issues detected: ${String(String(securityReport.issues.join(', ')))}`;
+      return `Security issues detected: ${securityReport.issues.join(', ')}`;
     }
 
     // Run additional validation if provided

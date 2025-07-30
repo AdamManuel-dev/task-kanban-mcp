@@ -261,8 +261,8 @@ export class MCPToolRegistry {
           const error = new Error(`Unknown tool: ${name}`);
           logger.error('Unknown MCP tool requested', { toolName: name, error });
           return {
-            isError: true,
-            content: `Unknown tool: ${name}. Available tools: ${(await this.listTools())
+            success: false,
+            message: `Unknown tool: ${name}. Available tools: ${(await this.listTools())
               .map(t => t.name)
               .join(', ')}`,
           };
@@ -271,12 +271,146 @@ export class MCPToolRegistry {
       logger.error(`MCP tool execution failed: ${name}`, { error, args });
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       return {
-        isError: true,
-        content: `Tool execution failed: ${errorMessage}`,
+        success: false,
+        message: `Tool execution failed: ${errorMessage}`,
       };
     }
   }
 
-  // Private method implementations follow...
-  // (All existing private methods like createTask, updateTask, etc. remain unchanged)
+  // Private method implementations
+  private async createTask(args: CreateTaskArgs): Promise<ToolResponse> {
+    try {
+      const result = await this.services.taskService.createTask(args as any);
+      return { success: true, data: result as any };
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : 'Create task failed' };
+    }
+  }
+
+  private async updateTask(args: UpdateTaskArgs): Promise<ToolResponse> {
+    try {
+      const { task_id, ...updates } = args;
+      const result = await this.services.taskService.updateTask(task_id, updates as any);
+      return { success: true, data: result as any };
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : 'Update task failed' };
+    }
+  }
+
+  private async getTask(args: GetTaskArgs): Promise<ToolResponse> {
+    try {
+      const result = await this.services.taskService.getTaskById(args.task_id);
+      return { success: true, data: result as any };
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : 'Get task failed' };
+    }
+  }
+
+  private async listTasks(args: ListTasksArgs): Promise<ToolResponse> {
+    try {
+      const result = await this.services.taskService.getTasks(args as any);
+      return { success: true, data: result as any };
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : 'List tasks failed' };
+    }
+  }
+
+  private async searchTasks(args: SearchTasksArgs): Promise<ToolResponse> {
+    try {
+      const result = await this.services.taskService.searchTasks(args.query, args as any);
+      return { success: true, data: result as any };
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : 'Search tasks failed' };
+    }
+  }
+
+  private async deleteTask(args: DeleteTaskArgs): Promise<ToolResponse> {
+    try {
+      await this.services.taskService.deleteTask(args.task_id);
+      return { success: true, data: { deleted: true } };
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : 'Delete task failed' };
+    }
+  }
+
+  private async createBoard(args: CreateBoardArgs): Promise<ToolResponse> {
+    try {
+      const result = await this.services.boardService.createBoard(args as any);
+      return { success: true, data: result as any };
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : 'Create board failed' };
+    }
+  }
+
+  private async getBoard(args: GetBoardArgs): Promise<ToolResponse> {
+    try {
+      const result = await this.services.boardService.getBoardById(args.board_id);
+      return { success: true, data: result as any };
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : 'Get board failed' };
+    }
+  }
+
+  private async listBoards(args: ListBoardsArgs): Promise<ToolResponse> {
+    try {
+      const result = await this.services.boardService.getBoards();
+      return { success: true, data: result as any };
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : 'List boards failed' };
+    }
+  }
+
+  private async addNote(args: AddNoteArgs): Promise<ToolResponse> {
+    try {
+      const result = await this.services.noteService.createNote(args as any);
+      return { success: true, data: result as any };
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : 'Add note failed' };
+    }
+  }
+
+  private async searchNotes(args: SearchNotesArgs): Promise<ToolResponse> {
+    try {
+      const result = await this.services.noteService.searchNotes(args.query as any);
+      return { success: true, data: result as any };
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : 'Search notes failed' };
+    }
+  }
+
+  private async createTag(args: CreateTagArgs): Promise<ToolResponse> {
+    try {
+      const result = await this.services.tagService.createTag(args as any);
+      return { success: true, data: result as any };
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : 'Create tag failed' };
+    }
+  }
+
+  private async assignTag(args: AssignTagArgs): Promise<ToolResponse> {
+    try {
+      const result = await (this.services.tagService as any).assignTagsToTask(args.task_id, args.tag_ids || []);
+      return { success: true, data: result as any };
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : 'Assign tag failed' };
+    }
+  }
+
+  private async getProjectContext(args: GetProjectContextArgs): Promise<ToolResponse> {
+    try {
+      const result = await this.services.contextService.getProjectContext((args as any).board_id);
+      return { success: true, data: result as any };
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : 'Get project context failed' };
+    }
+  }
+
+  private async getTaskContext(args: GetTaskContextArgs): Promise<ToolResponse> {
+    try {
+      const result = await this.services.contextService.getTaskContext(args.task_id);
+      return { success: true, data: result as any };
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : 'Get task context failed' };
+    }
+  }
 }

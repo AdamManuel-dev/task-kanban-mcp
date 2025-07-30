@@ -18,7 +18,7 @@ export interface PromptConfig {
   name: string;
   message: string;
   initial?: unknown;
-  validate?: (value: unknown) => string | boolean;
+  validate?: (value: unknown) => string | true;
   choices?: Array<{ name: string; value: unknown; hint?: string }>;
   hint?: string;
   multiline?: boolean;

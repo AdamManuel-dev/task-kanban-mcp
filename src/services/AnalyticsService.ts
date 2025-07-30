@@ -165,7 +165,7 @@ export class AnalyticsService {
       // Top performers
       const performerStats = AnalyticsService.calculatePerformerStats(tasks);
       const topPerformers = Object.entries(performerStats)
-        .map(([assignee, stats]: [string, unknown]) => ({
+        .map(([assignee, stats]: [string, any]) => ({
           assignee,
           completedTasks: stats.completed,
           averageTime: stats.averageTime,
@@ -320,8 +320,8 @@ export class AnalyticsService {
     );
   }
 
-  private static calculatePerformerStats(tasks: Task[]): Record<string, unknown> {
-    const stats: Record<string, unknown> = {};
+  private static calculatePerformerStats(tasks: Task[]): Record<string, any> {
+    const stats: Record<string, any> = {};
 
     tasks.forEach(task => {
       if (!task.assignee) return;
@@ -335,21 +335,21 @@ export class AnalyticsService {
         };
       }
 
-      stats[task.assignee].total++;
+      (stats[task.assignee] as any).total++;
 
       if (task.status === 'done') {
-        stats[task.assignee].completed++;
+        (stats[task.assignee] as any).completed++;
 
         if (task.created_at && task.completed_at) {
           const timeToComplete =
             new Date(task.completed_at).getTime() - new Date(task.created_at).getTime();
-          stats[task.assignee].totalTime += timeToComplete / (1000 * 60 * 60); // Convert to hours
+          (stats[task.assignee] as any).totalTime += timeToComplete / (1000 * 60 * 60); // Convert to hours
         }
       }
     });
 
     // Calculate averages
-    Object.values(stats).forEach((stat: unknown) => {
+    Object.values(stats).forEach((stat: any) => {
       if (stat.completed > 0) {
         stat.averageTime = stat.totalTime / stat.completed;
       }
@@ -386,7 +386,7 @@ export class AnalyticsService {
 
     const dailyData = await dbConnection.query(query, params);
 
-    const dailyCompletions = dailyData.map((row: unknown) => ({
+    const dailyCompletions = dailyData.map((row: any) => ({
       date: row.completion_date,
       count: row.count,
     }));
@@ -402,7 +402,7 @@ export class AnalyticsService {
     };
   }
 
-  private async calculateSprintMetrics(_sprintStart: Date, _boardId?: string): Promise<unknown> {
+  private async calculateSprintMetrics(_sprintStart: Date, _boardId?: string): Promise<any> {
     // Implementation for current sprint metrics
     const plannedPoints = 100; // This would come from sprint planning
     const completedPoints = 60; // Calculate from completed tasks
@@ -418,7 +418,7 @@ export class AnalyticsService {
     };
   }
 
-  private async calculateHistoricalVelocity(_boardId?: string): Promise<unknown> {
+  private async calculateHistoricalVelocity(_boardId?: string): Promise<any> {
     // Implementation for historical velocity calculation
     return {
       last7Days: 25,
@@ -429,21 +429,21 @@ export class AnalyticsService {
     };
   }
 
-  private async calculateTeamVelocity(_boardId?: string): Promise<unknown[]> {
+  private async calculateTeamVelocity(_boardId?: string): Promise<any[]> {
     // Implementation for team velocity analysis
     return [];
   }
 
-  private async generateBurndownData(_sprintStart: Date, _boardId?: string): Promise<unknown[]> {
+  private async generateBurndownData(_sprintStart: Date, _boardId?: string): Promise<any[]> {
     // Implementation for burndown chart data
     return [];
   }
 
   private async calculatePredictiveAnalytics(
-    _currentSprint: unknown,
-    _historicalVelocity: unknown,
-    _burndownData: unknown[]
-  ): Promise<unknown> {
+    _currentSprint: any,
+    _historicalVelocity: any,
+    _burndownData: any[]
+  ): Promise<any> {
     // Implementation for predictive analytics
     return {
       projectedSprintCompletion: null,
@@ -455,27 +455,27 @@ export class AnalyticsService {
   private async getCompletedTasksWithDetails(
     _cutoffDate: Date,
     _boardId?: string
-  ): Promise<unknown[]> {
+  ): Promise<any[]> {
     // Implementation to get completed tasks with timestamp details
     return [];
   }
 
-  private analyzePeakHours(_tasks: unknown[]): Array<{ hour: number; completions: number }> {
+  private analyzePeakHours(_tasks: any[]): Array<{ hour: number; completions: number }> {
     // Implementation for peak hours analysis
     return [];
   }
 
-  private analyzePeakDays(_tasks: unknown[]): Array<{ day: string; completions: number }> {
+  private analyzePeakDays(_tasks: any[]): Array<{ day: string; completions: number }> {
     // Implementation for peak days analysis
     return [];
   }
 
-  private async identifyBottlenecks(_boardId?: string): Promise<unknown[]> {
+  private async identifyBottlenecks(_boardId?: string): Promise<any[]> {
     // Implementation for bottleneck identification
     return [];
   }
 
-  private async calculateEfficiencyMetrics(_boardId?: string): Promise<unknown> {
+  private async calculateEfficiencyMetrics(_boardId?: string): Promise<any> {
     // Implementation for efficiency metrics
     return {
       averageTaskAge: 0,
@@ -489,7 +489,7 @@ export class AnalyticsService {
     completion: CompletionAnalytics,
     velocity: VelocityMetrics,
     _productivity: ProductivityInsights
-  ): unknown {
+  ): any {
     // Implementation for summary generation
     return {
       keyMetrics: {
