@@ -13,7 +13,7 @@ import inquirer from 'inquirer';
 import type { CliComponents } from '../../types';
 import type { Task, Board } from '../../../types';
 import { isSuccessResponse } from '../../api-client-wrapper';
-import { hasValidBoardData, extractErrorMessage } from '../../../utils/type-guards';
+import { extractErrorMessage } from '../../../utils/type-guards';
 import {
   withErrorHandling,
   validateBoardsResponse,
@@ -48,10 +48,6 @@ interface DeleteBoardOptions {
   force?: boolean;
 }
 
-interface ConfirmPromptResult {
-  confirm: boolean;
-}
-
 interface BoardData {
   id: string;
   name: string;
@@ -66,7 +62,12 @@ interface BoardData {
  * Register list and basic board management commands
  */
 export function registerListCommands(boardCmd: Command): void {
-  const getComponents = (): CliComponents => global.cliComponents;
+  const getComponents = (): CliComponents => {
+    if (!global.cliComponents) {
+      throw new Error('CLI components not initialized. Please initialize the CLI first.');
+    }
+    return global.cliComponents;
+  };
 
   /**
    * List all boards with optional filtering.
@@ -88,14 +89,14 @@ export function registerListCommands(boardCmd: Command): void {
         const { apiClient } = getComponents();
 
         const response = await apiClient.getBoards();
-        const boards = validateBoardsResponse(response);
+        const boards: Board[] = validateBoardsResponse(response);
 
         // Filter based on options
         let filteredBoards = boards;
         if (options.active) {
-          filteredBoards = boards.filter(board => !board.archived);
+          filteredBoards = boards.filter((board: Board) => !board.archived);
         } else if (options.archived) {
-          filteredBoards = boards.filter(board => board.archived);
+          filteredBoards = boards.filter((board: Board) => board.archived);
         }
 
         formatOutput(filteredBoards, {

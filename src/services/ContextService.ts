@@ -678,9 +678,13 @@ export class ContextService {
 
     const [dependsOnResults, blocksResults] = await Promise.all([
       Promise.all(
-        taskWithDeps.dependencies.map(dep => this.taskService.getTaskById(dep.depends_on_task_id))
+        taskWithDeps.dependencies.map(async dep =>
+          this.taskService.getTaskById(dep.depends_on_task_id)
+        )
       ),
-      Promise.all(taskWithDeps.dependents.map(dep => this.taskService.getTaskById(dep.task_id))),
+      Promise.all(
+        taskWithDeps.dependents.map(async dep => this.taskService.getTaskById(dep.task_id))
+      ),
     ]);
 
     const dependsOn = dependsOnResults.filter((task): task is Task => task !== null);

@@ -4,6 +4,29 @@ import type { CliComponents, CreateTagRequest } from '../types';
 import type { OutputFormatter } from '../formatter';
 import { logger } from '../../utils/logger';
 
+/**
+ * @fileoverview Tag management CLI commands
+ * @lastmodified 2025-07-28T10:30:00Z
+ *
+ * Features: Tag CRUD operations, hierarchical structures, search, merge capabilities
+ * Main APIs: registerTagCommands() - comprehensive tag CLI command suite
+ * Constraints: Requires API client, handles hierarchical relationships
+ * Patterns: Interactive prompts, tree display, confirmation dialogs, type guards
+ */
+
+/**
+ * Type guard to check if an unknown value is a Tag
+ */
+function isTag(value: unknown): value is { id: string; name: string; color: string } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as Record<string, unknown>).id === 'string' &&
+    typeof (value as Record<string, unknown>).name === 'string' &&
+    typeof (value as Record<string, unknown>).color === 'string'
+  );
+}
+
 // Helper function to display tag tree (declared first to avoid hoisting issues)
 function displayTagTree(
   tags: Array<{ id: string; name: string; parentId?: string; color?: string }>,
@@ -13,10 +36,8 @@ function displayTagTree(
 ): void {
   tags.forEach(tag => {
     const indent = '  '.repeat(depth);
-    const name = tag.color ? `${String(tag.name)} (${String(tag.color)})` : tag.name;
-    logger.info(
-      `${String(indent)}${String(depth > 0 ? '└─ ' : '')}${String(name)} (${String(tag.id)})`
-    );
+    const coloredName = tag.color ? `${tag.name} (${tag.color})` : tag.name;
+    logger.info(`${indent}${depth > 0 ? '└─ ' : ''}${coloredName} (${tag.id})`);
 
     // Find and display children
     const children = allTags.filter(t => t.parentId === tag.id);
@@ -72,7 +93,12 @@ interface TagApiResponse {
 // Removed unused interfaces
 
 export function registerTagCommands(program: Command): void {
-  const getComponents = (): CliComponents => global.cliComponents;
+  const getComponents = (): CliComponents => {
+    if (!global.cliComponents) {
+      throw new Error('CLI components not initialized. Please initialize the CLI first.');
+    }
+    return global.cliComponents;
+  };
 
   const tagCmd = program.command('tags').alias('tag').description('Manage tags');
 
@@ -104,11 +130,11 @@ export function registerTagCommands(program: Command): void {
           const displayTags = options.usage
             ? tags.map((tag: TagData) => ({
                 ...tag,
-                usage: `${String(String(tag.taskCount || 0))} tasks`,
+                usage: `${tag.taskCount ?? 0} tasks`,
               }))
             : tags;
 
-          formatter.output(displayTags.slice(0, parseInt(options.limit || '50', 10)), {
+          formatter.output(displayTags.slice(0, parseInt(options.limit ?? '50', 10)), {
             fields: options.usage
               ? ['id', 'name', 'color', 'usage', 'description']
               : ['id', 'name', 'color', 'description'],
@@ -227,9 +253,10 @@ export function registerTagCommands(program: Command): void {
       }
 
       try {
-        const tag = (await apiClient.createTag(tagData as CreateTagRequest)) as any;
-        formatter.success(`Tag created successfully: ${String(tag.id)}`);
-        formatter.output(tag);
+        const createdTag = await apiClient.createTag(tagData as CreateTagRequest);
+        const tagWithId = createdTag as { id: string; name: string };
+        formatter.success(`Tag created successfully: ${tagWithId.id}`);
+        formatter.output(createdTag);
       } catch (error) {
         formatter.error(
           `Failed to create tag: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -251,11 +278,12 @@ export function registerTagCommands(program: Command): void {
 
       try {
         // Get current tag data
-        const currentTag = (await apiClient.getTag(id)) as any;
-        if (!currentTag) {
-          formatter.error(`Tag ${String(id)} not found`);
+        const currentTagResponse = await apiClient.getTag(id);
+        if (!isTag(currentTagResponse)) {
+          formatter.error(`Tag ${String(id)} not found or invalid`);
           process.exit(1);
         }
+        const currentTag = currentTagResponse;
 
         let updates: Partial<{
           name: string;
@@ -270,19 +298,19 @@ export function registerTagCommands(program: Command): void {
               type: 'input',
               name: 'name',
               message: 'Tag name:',
-              default: currentTag.name,
+              default: (currentTag as { name: string }).name,
             },
             {
               type: 'input',
               name: 'description',
               message: 'Tag description:',
-              default: currentTag.description || '',
+              default: (currentTag as { description?: string }).description || '',
             },
             {
               type: 'input',
               name: 'color',
               message: 'Tag color (hex code):',
-              default: currentTag.color || '#007acc',
+              default: (currentTag as { color?: string }).color || '#007acc',
               validate: (input: string) => {
                 if (!input) return true;
                 return /^#[0-9A-Fa-f]{6}$/.test(input) || 'Invalid hex color format (use #RRGGBB)';
@@ -303,7 +331,12 @@ export function registerTagCommands(program: Command): void {
           return;
         }
 
-        const updatedTag = (await apiClient.updateTag(id, updates)) as any;
+        const updatedTagResponse = await apiClient.updateTag(id, updates);
+        if (!isTag(updatedTagResponse)) {
+          formatter.error(`Failed to update tag ${String(id)}`);
+          process.exit(1);
+        }
+        const updatedTag = updatedTagResponse;
         formatter.success('Tag updated successfully');
         formatter.output(updatedTag);
       } catch (error) {
@@ -324,17 +357,18 @@ export function registerTagCommands(program: Command): void {
 
       try {
         if (!options.force) {
-          const tag = (await apiClient.getTag(id)) as any;
-          if (!tag) {
+          const tagResponse = await apiClient.getTag(id);
+          if (!isTag(tagResponse)) {
             formatter.error(`Tag ${String(id)} not found`);
             process.exit(1);
           }
+          const tag = tagResponse;
 
           const { confirm } = await inquirer.prompt([
             {
               type: 'confirm',
               name: 'confirm',
-              message: `Delete tag "${String(tag.name)}"?`,
+              message: `Delete tag "${(tag as { name: string }).name}"?`,
               default: false,
             },
           ]);
@@ -346,7 +380,7 @@ export function registerTagCommands(program: Command): void {
         }
 
         await apiClient.deleteTag(id);
-        formatter.success(`Tag ${String(id)} deleted successfully`);
+        formatter.success(`Tag ${id} deleted successfully`);
       } catch (error) {
         formatter.error(
           `Failed to delete tag: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -364,14 +398,16 @@ export function registerTagCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const tags = (await apiClient.searchTags(query)) as any;
+        const tags = await apiClient.searchTags(query);
 
-        if (!tags || tags.length === 0) {
-          formatter.info(`No tags found matching "${String(query)}"`);
+        const searchResults = tags as TagData[];
+        if (!searchResults || searchResults.length === 0) {
+          formatter.info(`No tags found matching "${query}"`);
           return;
         }
 
-        formatter.output(tags.slice(0, parseInt(String(options.limit || '20'), 10)), {
+        const limitNumber = parseInt(options.limit ?? '20', 10);
+        formatter.output(searchResults.slice(0, limitNumber), {
           fields: ['id', 'name', 'color', 'description'],
           headers: ['ID', 'Name', 'Color', 'Description'],
         });
@@ -392,19 +428,22 @@ export function registerTagCommands(program: Command): void {
 
       try {
         if (!options.force) {
-          const fromTag = (await apiClient.getTag(fromId)) as any;
-          const toTag = (await apiClient.getTag(toId)) as any;
-
-          if (!fromTag || !toTag) {
+          const fromTagResponse = await apiClient.getTag(fromId);
+          const toTagResponse = await apiClient.getTag(toId);
+          
+          if (!isTag(fromTagResponse) || !isTag(toTagResponse)) {
             formatter.error('One or both tags not found');
             process.exit(1);
           }
+          
+          const fromTag = fromTagResponse;
+          const toTag = toTagResponse;
 
           const { confirm } = await inquirer.prompt([
             {
               type: 'confirm',
               name: 'confirm',
-              message: `Merge tag "${String(fromTag.name)}" into "${String(toTag.name)}"? This will delete "${String(fromTag.name)}".`,
+              message: `Merge tag "${fromTag.name}" into "${toTag.name}"? This will delete "${fromTag.name}".`,
               default: false,
             },
           ]);
@@ -416,7 +455,7 @@ export function registerTagCommands(program: Command): void {
         }
 
         await apiClient.mergeTags(fromId, toId);
-        formatter.success(`Merged tag ${String(fromId)} into ${String(toId)}`);
+        formatter.success(`Merged tag ${fromId} into ${toId}`);
       } catch (error) {
         formatter.error(
           `Failed to merge tags: ${error instanceof Error ? error.message : 'Unknown error'}`

@@ -18,7 +18,7 @@ function getEventIcon(eventType: string): string {
     'subtask:completed': '✓',
     default: '📋',
   };
-  return icons[eventType] ?? icons.default ?? '📋';
+  return icons[eventType] ?? icons.default;
 }
 
 function getEventColor(_eventType: string): (text: string) => string {
@@ -32,28 +32,36 @@ function formatEventMessage(event: {
   timestamp?: string;
   [key: string]: unknown;
 }): string {
-  const eventData = event.data as any;
+  const eventData = event.data as Record<string, unknown> | undefined;
+
+  const getDataProperty = (key: string): string => {
+    if (eventData && typeof eventData === 'object' && key in eventData) {
+      return String(eventData[key] || 'Unknown');
+    }
+    return 'Unknown';
+  };
+
   switch (event.type) {
     case 'task:created':
-      return `Task "${String(eventData?.title || 'Unknown')}" created`;
+      return `Task "${getDataProperty('title')}" created`;
     case 'task:updated':
-      return `Task "${String(eventData?.title || 'Unknown')}" updated`;
+      return `Task "${getDataProperty('title')}" updated`;
     case 'task:moved':
-      return `Task "${String(eventData?.title || 'Unknown')}" moved to ${String(eventData?.columnName || 'Unknown')}`;
+      return `Task "${getDataProperty('title')}" moved to ${getDataProperty('columnName')}`;
     case 'task:deleted':
-      return `Task "${String(eventData?.title || 'Unknown')}" deleted`;
+      return `Task "${getDataProperty('title')}" deleted`;
     case 'task:completed':
-      return `Task "${String(eventData?.title || 'Unknown')}" completed`;
+      return `Task "${getDataProperty('title')}" completed`;
     case 'note:added':
-      return `Note "${String(eventData?.title || 'Unknown')}" added to task ${String(eventData?.taskId || 'Unknown')}`;
+      return `Note "${getDataProperty('title')}" added to task ${getDataProperty('taskId')}`;
     case 'note:updated':
-      return `Note "${String(eventData?.title || 'Unknown')}" updated`;
+      return `Note "${getDataProperty('title')}" updated`;
     case 'priority:changed':
-      return `Task "${String(eventData?.title || 'Unknown')}" priority changed to ${String(eventData?.newPriority || 'Unknown')}`;
+      return `Task "${getDataProperty('title')}" priority changed to ${getDataProperty('newPriority')}`;
     case 'dependency:blocked':
-      return `Task "${String(eventData?.title || 'Unknown')}" blocked by dependency`;
+      return `Task "${getDataProperty('title')}" blocked by dependency`;
     case 'subtask:completed':
-      return `Subtask "${String(eventData?.title || 'Unknown')}" completed`;
+      return `Subtask "${getDataProperty('title')}" completed`;
     default:
       return eventData ? JSON.stringify(eventData) : 'Unknown event';
   }
@@ -61,7 +69,12 @@ function formatEventMessage(event: {
 
 export function registerRealtimeCommands(program: Command): void {
   // Get global components with proper typing
-  const getComponents = (): CliComponents => global.cliComponents;
+  const getComponents = (): CliComponents => {
+    if (!global.cliComponents) {
+      throw new Error('CLI components not initialized. Please initialize the CLI first.');
+    }
+    return global.cliComponents;
+  };
 
   program
     .command('watch')
@@ -192,17 +205,17 @@ export function registerRealtimeCommands(program: Command): void {
     .option('--level <level>', 'minimum log level (debug|info|warn|error)', 'info')
     .option('--component <name>', 'filter by component')
     .option('--since <time>', 'show logs since time (e.g., "1h", "30m", "2024-01-01")')
-    .action(async options => {
+    .action(async (options: Record<string, unknown>) => {
       const { apiClient, formatter } = getComponents();
 
       try {
         const params: Record<string, string> = {
-          lines: options.lines,
-          level: options.level,
+          lines: String(options.lines || '50'),
+          level: String(options.level || 'info'),
         };
 
-        if (options.component) params.component = options.component;
-        if (options.since) params.since = options.since;
+        if (options.component) params.component = String(options.component);
+        if (options.since) params.since = String(options.since);
 
         if (options.follow) {
           // Stream logs in real-time
@@ -210,14 +223,9 @@ export function registerRealtimeCommands(program: Command): void {
 
           const streamLogs = async (): Promise<void> => {
             try {
-              const logs = (await apiClient.request(
-                'GET',
-                '/api/logs/stream',
-                undefined,
-                params
-              )) as any;
+              const logs = await apiClient.request('GET', '/api/logs/stream', undefined, params);
 
-              if (logs && logs.length > 0) {
+              if (Array.isArray(logs) && logs.length > 0) {
                 logs.forEach(
                   (log: {
                     timestamp: string;
@@ -227,9 +235,9 @@ export function registerRealtimeCommands(program: Command): void {
                   }) => {
                     const timestamp = new Date(log.timestamp).toLocaleTimeString();
                     const level = log.level.toUpperCase().padEnd(5);
-                    const component = log.component ? `[${String(String(log.component))}]` : '';
+                    const component = log.component ? `[${String(log.component)}]` : '';
                     logger.info(
-                      `${String(timestamp)} ${String(level)} ${String(component)} ${String(String(log.message))}`
+                      `${String(timestamp)} ${String(level)} ${String(component)} ${String(log.message)}`
                     );
                   }
                 );
@@ -241,7 +249,7 @@ export function registerRealtimeCommands(program: Command): void {
 
           // Poll for new logs every second
           const interval = setInterval(() => {
-            streamLogs().catch(error => console.error('Failed to stream logs:', error));
+            streamLogs().catch(error => logger.error('Failed to stream logs:', error));
           }, 1000);
 
           // Handle graceful shutdown
@@ -255,9 +263,9 @@ export function registerRealtimeCommands(program: Command): void {
           await streamLogs();
         } else {
           // One-time log fetch
-          const logs = (await apiClient.request('GET', '/api/logs', undefined, params)) as any;
+          const logs = await apiClient.request('GET', '/api/logs', undefined, params);
 
-          if (!logs || logs.length === 0) {
+          if (!Array.isArray(logs) || logs.length === 0) {
             formatter.info('No logs found');
             return;
           }
@@ -269,7 +277,7 @@ export function registerRealtimeCommands(program: Command): void {
         }
       } catch (error) {
         formatter.error(
-          `Failed to get logs: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
+          `Failed to get logs: ${String(error instanceof Error ? error.message : 'Unknown error')}`
         );
         process.exit(1);
       }

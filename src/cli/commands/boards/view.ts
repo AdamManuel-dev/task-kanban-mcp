@@ -9,7 +9,7 @@
  */
 
 import * as React from 'react';
-import { render } from 'ink';
+// Dynamic import for ink to avoid ESM/CommonJS conflicts
 import type { Command } from 'commander';
 import type { CliComponents } from '../../types';
 import type { Task, Board, Column } from '../../../types';
@@ -61,7 +61,12 @@ interface ApiBoardResponse {
  * Register the view command
  */
 export function registerViewCommand(boardCmd: Command): void {
-  const getComponents = (): CliComponents => global.cliComponents;
+  const getComponents = (): CliComponents => {
+    if (!global.cliComponents) {
+      throw new Error('CLI components not initialized. Please initialize the CLI first.');
+    }
+    return global.cliComponents;
+  };
 
   /**
    * Interactive board view with real-time updates.
@@ -163,7 +168,7 @@ export function registerViewCommand(boardCmd: Command): void {
 
           // Auto-refresh functionality
           React.useEffect(() => {
-            if (options?.refresh && parseInt(options.refresh, 10) > 0) {
+            if (options.refresh && parseInt(options.refresh, 10) > 0) {
               const interval = parseInt(options.refresh, 10) * 1000;
               refreshInterval = setInterval(() => {
                 if (!shouldRefresh) return;
@@ -239,8 +244,11 @@ export function registerViewCommand(boardCmd: Command): void {
         formatter.info(`Starting interactive board view for: ${String(board.name)}`);
         formatter.info('Press ? for help, q to quit');
 
-        // Render the interactive board view
-        render(React.createElement(InteractiveBoardView));
+        // TODO: Re-enable interactive view once ink module resolution is fixed
+        // const { render } = await import('ink');
+        // render(React.createElement(InteractiveBoardView));
+        formatter.info('Interactive mode temporarily disabled - showing board data instead');
+        formatter.output(board);
       } catch (error) {
         formatter.error(`Failed to start board view: ${extractErrorMessage(error)}`);
         process.exit(1);

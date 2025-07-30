@@ -174,7 +174,7 @@ export function createApiResponseHandler<T>(schema: z.ZodType<T>) {
     const result = validateApiResponse(data, schema);
 
     if (!result.success) {
-      throw new Error(result.error);
+      throw new Error((result as { success: false; error: string }).error);
     }
 
     return result.data;

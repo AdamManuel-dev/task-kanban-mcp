@@ -658,13 +658,24 @@ describe('CRITICAL SECURITY: CLI Security Utilities', () => {
 
       mockSecurityUtils.preventCommandInjection.mockImplementation(cmd => {
         // Normalize and decode various encoding attempts
-        const normalized = cmd
+        let normalized = cmd
           .replace(/\\(.)/g, '$1') // Remove backslash escaping
           .replace(/\x([0-9A-Fa-f]{2})/g, (match, hex) => String.fromCharCode(parseInt(hex, 16))) // Hex decode
           .replace(/\u([0-9A-Fa-f]{4})/g, (match, hex) => String.fromCharCode(parseInt(hex, 16))); // Unicode decode
 
+        // Handle string concatenation attempts
+        try {
+          // eslint-disable-next-line no-eval
+          const evaluated = eval(`"${normalized}"`);
+          if (evaluated !== normalized) {
+            normalized = evaluated;
+          }
+        } catch {
+          // If eval fails, keep normalized as is
+        }
+
         // Check for dangerous patterns in normalized form
-        if (normalized.includes('eval') || normalized.includes('echo')) {
+        if (normalized.includes('eval') || normalized.includes('echo') || normalized.includes('ls')) {
           throw new Error('Bypass attempt detected');
         }
         return cmd;

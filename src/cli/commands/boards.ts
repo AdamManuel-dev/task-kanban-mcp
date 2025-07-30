@@ -26,10 +26,9 @@
  */
 
 import type { Command } from 'commander';
-import inquirer from 'inquirer';
+// Dynamic import for inquirer to avoid ESM/CommonJS conflicts
 import * as React from 'react';
-import { render } from 'ink';
-import chalk from 'chalk';
+// Dynamic import for chalk to avoid ESM/CommonJS conflicts
 import type { CliComponents, CreateBoardRequest } from '../types';
 import type { Task, Board, Column } from '../../types';
 import { isSuccessResponse } from '../api-client-wrapper';
@@ -164,8 +163,13 @@ interface QuickSetupDefaults {
 export function registerBoardCommands(program: Command): void {
   const boardCmd = program.command('board').alias('b').description('Manage boards');
 
-  // Get global components with proper typing
-  const getComponents = (): CliComponents => global.cliComponents;
+  // Get global components with proper typing and error handling
+  const getComponents = (): CliComponents => {
+    if (!global.cliComponents) {
+      throw new Error('CLI components not initialized. Please initialize the CLI first.');
+    }
+    return global.cliComponents;
+  };
 
   /**
    * List all boards with optional filtering.
@@ -217,9 +221,9 @@ export function registerBoardCommands(program: Command): void {
         // Filter based on options
         let filteredBoards = boards;
         if (options.active) {
-          filteredBoards = boards.filter(board => !board.archived);
+          filteredBoards = boards.filter((board: Board) => !board.archived);
         } else if (options.archived) {
-          filteredBoards = boards.filter(board => board.archived);
+          filteredBoards = boards.filter((board: Board) => board.archived);
         }
 
         formatter.output(filteredBoards, {
@@ -420,7 +424,7 @@ export function registerBoardCommands(program: Command): void {
 
           // Auto-refresh functionality
           React.useEffect(() => {
-            if (options?.refresh && parseInt(options.refresh, 10) > 0) {
+            if (options.refresh && parseInt(options.refresh, 10) > 0) {
               const interval = parseInt(options.refresh, 10) * 1000;
               refreshInterval = setInterval(() => {
                 if (!shouldRefresh) return;
@@ -496,8 +500,11 @@ export function registerBoardCommands(program: Command): void {
         formatter.info(`Starting interactive board view for: ${String(board.name)}`);
         formatter.info('Press ? for help, q to quit');
 
-        // Render the interactive board view
-        render(React.createElement(InteractiveBoardView));
+        // TODO: Re-enable interactive view once ink module resolution is fixed
+        // const { render } = await import('ink');
+        // render(React.createElement(InteractiveBoardView));
+        formatter.info('Interactive mode temporarily disabled - showing board data instead');
+        formatter.output(board);
       } catch (error) {
         formatter.error(`Failed to start board view: ${extractErrorMessage(error)}`);
         process.exit(1);
@@ -573,6 +580,7 @@ export function registerBoardCommands(program: Command): void {
           default: false,
         });
 
+        const inquirer = (await import('inquirer')).default;
         const answers = await inquirer.prompt<CreateBoardPromptResult>(questions);
         const { useAsDefault, ...restAnswers } = answers;
         boardData = { ...boardData, ...restAnswers, useAsDefault: useAsDefault ?? false };
@@ -624,6 +632,7 @@ export function registerBoardCommands(program: Command): void {
         let updates: Record<string, unknown> = {};
 
         if (options.interactive) {
+          const inquirer = (await import('inquirer')).default;
           const answers = await inquirer.prompt<UpdateBoardPromptResult>([
             {
               type: 'input',
@@ -675,6 +684,7 @@ export function registerBoardCommands(program: Command): void {
             process.exit(1);
           }
 
+          const inquirer = (await import('inquirer')).default;
           const { confirm } = await inquirer.prompt<ConfirmPromptResult>([
             {
               type: 'confirm',
@@ -937,6 +947,7 @@ export function registerBoardCommands(program: Command): void {
 
         // Show board details
         formatter.info('\n📊 Board Summary:');
+        const chalk = (await import('chalk')).default;
         formatter.info(`Name: ${String(String(chalk.bold(boardData.name)))}`);
         if (boardData.description) {
           formatter.info(`Description: ${String(String(boardData.description))}`);

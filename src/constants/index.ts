@@ -46,35 +46,35 @@ export const PRIORITY_ORDER = {
  * Priority scoring thresholds for task classification
  */
 export const PRIORITY_THRESHOLDS = {
-  CRITICAL: 8,    // Tasks with priority >= 8 are critical
-  HIGH: 6,        // Tasks with priority >= 6 are high priority
-  MEDIUM: 4,      // Tasks with priority >= 4 are medium priority
-  LOW: 1,         // Tasks with priority >= 1 are low priority
+  CRITICAL: 8, // Tasks with priority >= 8 are critical
+  HIGH: 6, // Tasks with priority >= 6 are high priority
+  MEDIUM: 4, // Tasks with priority >= 4 are medium priority
+  LOW: 1, // Tasks with priority >= 1 are low priority
 } as const;
 
 /**
  * Priority scoring bonuses for various conditions
  */
 export const PRIORITY_SCORING = {
-  BASE_MULTIPLIER: 10,        // Base priority * 10 for initial score
-  OVERDUE_BONUS: 50,          // Bonus for overdue tasks 
-  DUE_SOON_BONUS: 30,         // Bonus for tasks due within 24 hours
-  DUE_THIS_WEEK_BONUS: 15,    // Bonus for tasks due within 7 days
-  IN_PROGRESS_BONUS: 20,      // Bonus for tasks already in progress
-  SKILL_MATCH_BONUS: 10,      // Bonus for skill context matches
-  AGE_MULTIPLIER: 0.5,        // Task age multiplier for older tasks
-  MAX_AGE_BONUS: 10,          // Maximum bonus for task age
+  BASE_MULTIPLIER: 10, // Base priority * 10 for initial score
+  OVERDUE_BONUS: 50, // Bonus for overdue tasks
+  DUE_SOON_BONUS: 30, // Bonus for tasks due within 24 hours
+  DUE_THIS_WEEK_BONUS: 15, // Bonus for tasks due within 7 days
+  IN_PROGRESS_BONUS: 20, // Bonus for tasks already in progress
+  SKILL_MATCH_BONUS: 10, // Bonus for skill context matches
+  AGE_MULTIPLIER: 0.5, // Task age multiplier for older tasks
+  MAX_AGE_BONUS: 10, // Maximum bonus for task age
 } as const;
 
 /**
  * Time thresholds for priority calculations
  */
 export const TIME_THRESHOLDS = {
-  OVERDUE_DAYS: 0,         // Tasks overdue (negative due date)
-  DUE_SOON_DAYS: 1,        // Due within 24 hours
-  DUE_THIS_WEEK_DAYS: 7,   // Due within a week
-  OLD_TASK_DAYS: 7,        // Tasks older than 7 days get age bonus
-  STALE_TASK_DAYS: 14,     // Tasks older than 14 days get priority boost
+  OVERDUE_DAYS: 0, // Tasks overdue (negative due date)
+  DUE_SOON_DAYS: 1, // Due within 24 hours
+  DUE_THIS_WEEK_DAYS: 7, // Due within a week
+  OLD_TASK_DAYS: 7, // Tasks older than 7 days get age bonus
+  STALE_TASK_DAYS: 14, // Tasks older than 14 days get priority boost
 } as const;
 
 /**
@@ -202,6 +202,45 @@ export const PLATFORM_DEFAULTS = {
     port: 3000,
     host: 'localhost',
   },
+} as const;
+
+// ============================================================================
+// HTTP METHOD CONSTANTS
+// ============================================================================
+
+/**
+ * HTTP methods for API requests
+ */
+export const HTTP_METHODS = {
+  GET: 'GET',
+  POST: 'POST',  
+  PUT: 'PUT',
+  PATCH: 'PATCH',
+  DELETE: 'DELETE',
+  HEAD: 'HEAD',
+  OPTIONS: 'OPTIONS',
+} as const;
+
+/**
+ * Common HTTP headers
+ */
+export const HTTP_HEADERS = {
+  CONTENT_TYPE: 'Content-Type',
+  AUTHORIZATION: 'Authorization',
+  USER_AGENT: 'User-Agent',
+  X_API_KEY: 'X-API-Key',
+  ACCEPT: 'Accept',
+  CACHE_CONTROL: 'Cache-Control',
+} as const;
+
+/**
+ * Content-Type values
+ */
+export const CONTENT_TYPES = {
+  JSON: 'application/json',
+  FORM_DATA: 'multipart/form-data',
+  URL_ENCODED: 'application/x-www-form-urlencoded',
+  TEXT_PLAIN: 'text/plain',
 } as const;
 
 // ============================================================================

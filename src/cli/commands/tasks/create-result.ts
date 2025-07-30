@@ -12,6 +12,7 @@ import type { Command } from 'commander';
 import type { CliComponents, CreateTaskRequest as CLICreateTaskRequest } from '../../types';
 import type { CreateTaskRequest as ServiceCreateTaskRequest } from '../../../services/TaskService';
 import type { CreateTaskOptions } from './types';
+import type { Task } from '../../../types';
 import { TaskServiceResult } from '../../../services/TaskServiceResult';
 import { Ok, Err, isOk, match, andThen, map, createServiceError } from '../../../utils/result';
 import type { Result, ServiceResult } from '../../../utils/result';
@@ -24,7 +25,12 @@ import { logger } from '../../../utils/logger';
  * Register the create command with Result pattern
  */
 export function registerCreateTaskResultCommand(taskCmd: Command): void {
-  const getComponents = (): CliComponents => global.cliComponents;
+  const getComponents = (): CliComponents => {
+    if (!global.cliComponents) {
+      throw new Error('CLI components not initialized. Please initialize the CLI first.');
+    }
+    return global.cliComponents;
+  };
 
   taskCmd
     .command('create-safe')
@@ -68,14 +74,17 @@ export function registerCreateTaskResultCommand(taskCmd: Command): void {
 /**
  * Create task using Result pattern - demonstrates railway-oriented programming
  */
-async function createTaskWithResult(options: CreateTaskOptions): Promise<ServiceResult<any>> {
+async function createTaskWithResult(options: CreateTaskOptions): Promise<ServiceResult<Task>> {
+  if (!global.cliComponents) {
+    return Err(createServiceError('CONFIG_ERROR', 'CLI components not initialized'));
+  }
   const { config, services } = global.cliComponents;
 
   // Initialize task service with Result pattern
   // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   const { CLIServiceContainer } = await import('@/cli/services/ServiceContainer');
   const container = CLIServiceContainer.getInstance();
-  const { db } = container as any; // Access the db property
+  const db = container.getDatabase(); // Access the db property properly
   const taskService = new TaskServiceResult(db);
 
   // Step 1: Gather task data (can fail)
@@ -117,9 +126,9 @@ async function gatherTaskData(
     if (options.interactive || !options.title) {
       // Interactive mode
       const defaults = {
-        title: options.title || '',
-        description: options.description || '',
-        dueDate: options.due || '',
+        title: options.title ?? '',
+        description: options.description ?? '',
+        dueDate: options.due ?? '',
         tags: options.tags ? options.tags.split(',').map(t => t.trim()) : [],
       };
 
@@ -145,7 +154,7 @@ async function gatherTaskData(
       taskData = {
         title: options.title,
         description: options.description,
-        priority: parseInt(options.priority || '5', 10),
+        priority: parseInt(options.priority ?? '5', 10),
         dueDate: options.due,
         tags: options.tags ? options.tags.split(',').map(t => t.trim()) : [],
       };
@@ -169,7 +178,7 @@ async function gatherTaskData(
  */
 function buildCreateRequest(
   taskData: Record<string, unknown>,
-  config: any
+  config: unknown
 ): ServiceResult<ServiceCreateTaskRequest> {
   try {
     // Validate required fields
@@ -214,11 +223,14 @@ function buildCreateRequest(
  * Example of chaining Result operations
  */
 async function demonstrateResultChaining(taskId: string): Promise<ServiceResult<string>> {
+  if (!global.cliComponents) {
+    return Err(createServiceError('CONFIG_ERROR', 'CLI components not initialized'));
+  }
   const { services } = global.cliComponents;
   // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   const { CLIServiceContainer } = await import('@/cli/services/ServiceContainer');
   const container = CLIServiceContainer.getInstance();
-  const { db } = container as any; // Access the db property
+  const db = container.getDatabase(); // Access the db property properly
   const taskService = new TaskServiceResult(db);
 
   // Chain operations using andThen (flatMap)
@@ -234,12 +246,12 @@ async function demonstrateResultChaining(taskId: string): Promise<ServiceResult<
     return updateResult;
   }
 
-  return Ok(`Task ${(updateResult.data as any).title} is now in progress`);
+  return Ok(`Task ${(updateResult.data as Task).title} is now in progress`);
 }
 
 /**
  * Example of mapping over Result values
  */
-function formatTaskForDisplay(taskResult: ServiceResult<any>): ServiceResult<string> {
+function formatTaskForDisplay(taskResult: ServiceResult<Task>): ServiceResult<string> {
   return map(taskResult, task => `${task.title} (${task.status}) - Priority: ${task.priority}`);
 }

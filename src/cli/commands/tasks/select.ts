@@ -9,6 +9,7 @@
  */
 
 import type { Command } from 'commander';
+import React from 'react';
 import inquirer from 'inquirer';
 import type { CliComponents } from '../../types';
 import type { Task } from '../../../types';
@@ -29,7 +30,12 @@ import { hasValidTaskData } from '../../../utils/type-guards';
  * Register the select command
  */
 export function registerSelectCommand(taskCmd: Command): void {
-  const getComponents = (): CliComponents => global.cliComponents;
+  const getComponents = (): CliComponents => {
+    if (!global.cliComponents) {
+      throw new Error('CLI components not initialized. Please initialize the CLI first.');
+    }
+    return global.cliComponents;
+  };
 
   taskCmd
     .command('select')
@@ -74,23 +80,25 @@ export function registerSelectCommand(taskCmd: Command): void {
 
         const taskResponse = tasks as unknown as TaskListResponse;
 
-        // Start interactive task selection
-        const React = await import('react');
-        const { render } = await import('ink');
+        // TODO: Re-enable interactive task selection once ink module resolution is fixed
+        // const React = await import('react');
+        // const { render } = await import('ink');
         const TaskList = (await import('../../ui/components/TaskList')).default;
 
         // Transform API tasks to component format with required Task properties
-        const taskList: (Task & { tags?: string[] })[] = taskResponse.data.map(
+        const taskList: Array<Task & { tags?: string[] }> = taskResponse.data.map(
           (item: TaskListItem) => ({
             id: item.id,
             title: item.title,
-            description: item.description || '',
+            description: item.description ?? '',
             board_id: '', // Not available in TaskListItem, using empty string
             column_id: '', // Not available in TaskListItem, using empty string
             position: 0, // Not available in TaskListItem, using default
             status: item.status as Task['status'],
             priority:
-              typeof item.priority === 'string' ? parseInt(item.priority, 10) : item.priority || 0,
+              typeof item.priority === 'string'
+                ? parseInt(item.priority, 10)
+                : (item.priority ?? 0),
             assignee: item.assignee,
             due_date: item.due_date ? new Date(item.due_date) : undefined,
             estimated_hours: undefined,
@@ -102,7 +110,7 @@ export function registerSelectCommand(taskCmd: Command): void {
             completed_at: undefined,
             archived: false,
             metadata: undefined,
-            tags: item.tags || [], // Extended property for UI
+            tags: item.tags ?? [], // Extended property for UI
           })
         );
 
@@ -251,11 +259,11 @@ export function registerSelectCommand(taskCmd: Command): void {
                 try {
                   const refreshedTasks = await apiClient.getTasks(params);
                   const refreshedResponse = refreshedTasks as TaskListResponse;
-                  const refreshedTaskList: (Task & { tags?: string[] })[] =
+                  const refreshedTaskList: Array<Task & { tags?: string[] }> =
                     refreshedResponse.data.map((item: TaskListItem) => ({
                       id: item.id,
                       title: item.title,
-                      description: item.description || '',
+                      description: item.description ?? '',
                       board_id: '',
                       column_id: '',
                       position: 0,
@@ -263,7 +271,7 @@ export function registerSelectCommand(taskCmd: Command): void {
                       priority:
                         typeof item.priority === 'string'
                           ? parseInt(item.priority, 10)
-                          : item.priority || 0,
+                          : (item.priority ?? 0),
                       assignee: item.assignee,
                       due_date: item.due_date ? new Date(item.due_date) : undefined,
                       estimated_hours: undefined,
@@ -275,7 +283,7 @@ export function registerSelectCommand(taskCmd: Command): void {
                       completed_at: undefined,
                       archived: false,
                       metadata: undefined,
-                      tags: item.tags || [],
+                      tags: item.tags ?? [],
                     }));
                   setCurrentTasks(refreshedTaskList);
                   formatter.info('\n🔄 Tasks refreshed');
@@ -328,7 +336,13 @@ export function registerSelectCommand(taskCmd: Command): void {
         formatter.info('Use ↑/↓ to navigate, Enter to select, ? for help, q to quit');
 
         // Render the interactive task selector
-        render(React.createElement(InteractiveTaskSelector));
+        // render(React.createElement(InteractiveTaskSelector));
+        formatter.info('Interactive task selector temporarily disabled - showing task list instead');
+        const taskListOutput = TaskList({
+          tasks: taskList,
+          maxHeight: 15,
+        });
+        formatter.output(taskListOutput);
       } catch (error) {
         formatter.error(
           `Failed to start task selection: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`

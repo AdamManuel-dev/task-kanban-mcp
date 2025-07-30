@@ -55,7 +55,7 @@ export class DependencyVisualizationService {
         JOIN tasks t2 ON td.depends_on_task_id = t2.id
       `;
 
-      const params: any[] = [];
+      const params: unknown[] = [];
       if (boardId) {
         tasksQuery += ' AND board_id = ?';
         dependenciesQuery += ' WHERE t1.board_id = ? AND t2.board_id = ?';
@@ -329,7 +329,7 @@ export class DependencyVisualizationService {
 
     // Generate tree representation
     for (let depth = 0; depth <= Math.max(...levels.keys()); depth++) {
-      const nodesAtDepth = levels.get(depth) || [];
+      const nodesAtDepth = levels.get(depth) ?? [];
       if (nodesAtDepth.length === 0) continue;
 
       output += `Level ${depth}:\n`;

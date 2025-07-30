@@ -64,7 +64,12 @@ function processTemplate(template: string, variables: Record<string, unknown>): 
  * Register the create command
  */
 export function registerCreateCommand(taskCmd: Command): void {
-  const getCliComponents = (): CliComponents => global.cliComponents;
+  const getCliComponents = (): CliComponents => {
+    if (!global.cliComponents) {
+      throw new Error('CLI components not initialized');
+    }
+    return global.cliComponents;
+  };
 
   taskCmd
     .command('create')

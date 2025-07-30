@@ -40,6 +40,10 @@ import type {
   PaginationOptions,
   FilterOptions,
 } from '@/types';
+import type { CacheService } from './CacheService';
+import { boardCache } from './CacheService';
+import { TrackPerformance } from '../utils/service-metrics';
+import { validatePagination } from '../utils/sql-security';
 
 /**
  * Board Service - Manages kanban board operations and lifecycle
@@ -64,13 +68,19 @@ import type {
  * ```
  */
 export class BoardService {
+  private readonly cache: CacheService<string, unknown>;
+
   /**
    * Initialize BoardService with database connection
    *
    * @param {DatabaseConnection} db - Database connection instance
+   * @param cache Optional cache service for performance optimization
    */
-  constructor(private readonly db: DatabaseConnection) {
-    // Constructor intentionally empty - dependency injection only
+  constructor(
+    private readonly db: DatabaseConnection,
+    cache?: CacheService<string, unknown>
+  ) {
+    this.cache = cache ?? boardCache;
   }
 
   /**
@@ -93,6 +103,7 @@ export class BoardService {
    * logger.log(`Created board: ${String(String(board.name))} with ID: ${String(String(board.id))}`);
    * ```
    */
+  @TrackPerformance('BoardService')
   async createBoard(data: CreateBoardRequest): Promise<Board> {
     // Validate required fields
     if (!data.name || data.name.trim().length === 0) {
@@ -175,7 +186,17 @@ export class BoardService {
    * }
    * ```
    */
+  @TrackPerformance('BoardService')
   async getBoardById(id: string): Promise<Board | null> {
+    const cacheKey = `board:${id}`;
+
+    // Try to get from cache first
+    const cached = this.cache.get(cacheKey);
+    if (cached !== undefined) {
+      logger.debug('Board retrieved from cache', { boardId: id });
+      return cached;
+    }
+
     try {
       const board = await this.db.queryOne<Board>(
         `
@@ -189,6 +210,13 @@ export class BoardService {
         boardData.created_at = new Date(boardData.created_at);
         boardData.updated_at = new Date(boardData.updated_at);
         Object.assign(board, boardData);
+
+        // Cache the board for 5 minutes
+        this.cache.set(cacheKey, board, 300000);
+        logger.debug('Board cached', { boardId: id });
+      } else {
+        // Cache null result for 1 minute to avoid repeated queries
+        this.cache.set(cacheKey, null, 60000);
       }
 
       return board ?? null;
@@ -345,6 +373,7 @@ export class BoardService {
    * });
    * ```
    */
+  @TrackPerformance('BoardService')
   async getBoards(options: PaginationOptions & FilterOptions = {}): Promise<Board[]> {
     const {
       limit = 50,
@@ -364,7 +393,9 @@ export class BoardService {
         params.push(`%${String(search)}%`, `%${String(search)}%`);
       }
 
-      query += ` ORDER BY ${String(sortBy)} ${String(String(sortOrder.toUpperCase()))} LIMIT ? OFFSET ?`;
+      // Use secure pagination to prevent ORDER BY injection
+      const paginationClause = validatePagination(sortBy, sortOrder, 'boards');
+      query += ` ${paginationClause} LIMIT ? OFFSET ?`;
       params.push(limit, offset);
 
       const boards = await this.db.query<Board>(query, params);
@@ -660,7 +691,7 @@ export class BoardService {
         INSERT INTO columns (id, board_id, name, position, wip_limit, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?)
       `,
-        [columnId, data.board_id, data.name, data.position, data.wip_limit || null, now, now]
+        [columnId, data.board_id, data.name, data.position, data.wip_limit ?? null, now, now]
       );
 
       const columnResult = await this.db.query<Column>('SELECT * FROM columns WHERE id = ?', [
@@ -718,14 +749,15 @@ export class BoardService {
   ): Promise<Column> {
     try {
       // Verify column exists
-      const existingColumnResults = await this.db.query<Column>('SELECT * FROM columns WHERE id = ?', [
-        id,
-      ]);
+      const existingColumnResults = await this.db.query<Column>(
+        'SELECT * FROM columns WHERE id = ?',
+        [id]
+      );
 
       if (!existingColumnResults.length) {
         throw BoardService.createError('COLUMN_NOT_FOUND', 'Column not found', { id });
       }
-      
+
       const existingColumn = existingColumnResults[0];
 
       const updateFields: string[] = [];
@@ -757,10 +789,13 @@ export class BoardService {
 
       await this.db.query(
         `UPDATE columns SET ${updateFields.join(', ')} WHERE id = ?`,
-        updateValues as any[]
+        updateValues
       );
 
-      const updatedColumnResults = await this.db.query<Column>('SELECT * FROM columns WHERE id = ?', [id]);
+      const updatedColumnResults = await this.db.query<Column>(
+        'SELECT * FROM columns WHERE id = ?',
+        [id]
+      );
 
       if (!updatedColumnResults.length) {
         throw BoardService.createError('COLUMN_UPDATE_FAILED', 'Failed to retrieve updated column');

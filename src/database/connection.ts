@@ -105,7 +105,7 @@ export interface DatabaseExecutionResult {
  * ```
  */
 export class DatabaseConnection {
-  private static instance: DatabaseConnection;
+  private static instance: DatabaseConnection | undefined;
 
   private db: Database<sqlite3.Database, sqlite3.Statement> | null = null;
 
@@ -148,12 +148,10 @@ export class DatabaseConnection {
    * Reset the singleton instance (for testing purposes)
    */
   public static resetInstance(): void {
-    if (DatabaseConnection.instance) {
-      DatabaseConnection.instance.close().catch(() => {
-        // Ignore errors during cleanup
-      });
-    }
-    DatabaseConnection.instance = null as any;
+    DatabaseConnection.instance?.close().catch(() => {
+      // Ignore errors during cleanup
+    });
+    DatabaseConnection.instance = null as unknown;
   }
 
   /**
@@ -196,17 +194,16 @@ export class DatabaseConnection {
       this.schemaManager = new SchemaManager(this);
 
       // Initialize migration runner
-      if (this.db) {
-        this.migrationRunner = new MigrationRunner(this.db.getDatabaseInstance(), {
-          migrationsPath: path.join(__dirname, 'migrations'),
-          validateChecksums: true,
-        });
+      // this.db is guaranteed to be non-null at this point since initialize() sets it
+      this.migrationRunner = new MigrationRunner(this.db.getDatabaseInstance(), {
+        migrationsPath: path.join(__dirname, 'migrations'),
+        validateChecksums: true,
+      });
 
-        // Initialize seed runner
-        this.seedRunner = new SeedRunner(this.db, {
-          seedsPath: path.join(__dirname, 'seeds'),
-        });
-      }
+      // Initialize seed runner
+      this.seedRunner = new SeedRunner(this.db, {
+        seedsPath: path.join(__dirname, 'seeds'),
+      });
 
       // Ensure schema exists (unless skipped for testing)
       if (!options.skipSchema) {
@@ -329,7 +326,7 @@ export class DatabaseConnection {
    * const users = await db.query<User>('SELECT * FROM users WHERE active = ?', [true]);
    * ```
    */
-  public async query<T = any>(sql: string, params: QueryParameters = []): Promise<T[]> {
+  public async query<T = unknown>(sql: string, params: QueryParameters = []): Promise<T[]> {
     const db = this.getDatabase();
     try {
       logger.debug('Executing query', { sql, params });
@@ -363,7 +360,7 @@ export class DatabaseConnection {
    * }
    * ```
    */
-  public async queryOne<T = any>(
+  public async queryOne<T = unknown>(
     sql: string,
     params: QueryParameters = []
   ): Promise<T | undefined> {

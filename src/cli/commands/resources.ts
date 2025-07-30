@@ -49,7 +49,12 @@ function formatDuration(ms: number): string {
  * Register resource monitoring commands
  */
 export function registerResourceCommands(program: Command): void {
-  const getComponents = (): CliComponents => global.cliComponents;
+  const getComponents = (): CliComponents => {
+    if (!global.cliComponents) {
+      throw new Error('CLI components not initialized. Please initialize the CLI first.');
+    }
+    return global.cliComponents;
+  };
 
   const resourceCmd = program
     .command('resources')
@@ -142,7 +147,7 @@ export function registerResourceCommands(program: Command): void {
     .option('-l, --limit <number>', 'limit number of history entries', '20')
     .action(
       withErrorHandling('show resource history', async (options: { limit?: string } = {}) => {
-        const limit = Math.min(parseInt(options.limit || '20', 10), 100);
+        const limit = Math.min(parseInt(options.limit ?? '20', 10), 100);
         const history = resourceMonitor.getHistory().slice(-limit);
         const summary = resourceMonitor.getSummary();
 
@@ -158,10 +163,10 @@ export function registerResourceCommands(program: Command): void {
           {
             summary: {
               memoryTrend: summary.memoryTrend,
-              averageMemory: formatBytes(summary.average.memory?.heapUsed || 0),
-              peakMemory: formatBytes(summary.peak.memory?.heapUsed || 0),
-              averageCpu: `${(summary.average.cpu?.utilization || 0).toFixed(1)}%`,
-              peakCpu: `${(summary.peak.cpu?.utilization || 0).toFixed(1)}%`,
+              averageMemory: formatBytes(summary.average.memory?.heapUsed ?? 0),
+              peakMemory: formatBytes(summary.peak.memory?.heapUsed ?? 0),
+              averageCpu: `${(summary.average.cpu?.utilization ?? 0).toFixed(1)}%`,
+              peakCpu: `${(summary.peak.cpu?.utilization ?? 0).toFixed(1)}%`,
               historyEntries: history.length,
             },
           },
@@ -214,11 +219,11 @@ export function registerResourceCommands(program: Command): void {
           const { formatter } = getComponents();
 
           const config: ResourceMonitorConfig = {
-            memoryThreshold: parseInt(options.memoryThreshold || '512', 10),
-            cpuThreshold: parseInt(options.cpuThreshold || '80', 10),
-            heapThreshold: parseInt(options.heapThreshold || '90', 10),
-            monitoringInterval: parseInt(options.interval || '5000', 10),
-            enableLogging: options.enableLogging || false,
+            memoryThreshold: parseInt(options.memoryThreshold ?? '512', 10),
+            cpuThreshold: parseInt(options.cpuThreshold ?? '80', 10),
+            heapThreshold: parseInt(options.heapThreshold ?? '90', 10),
+            monitoringInterval: parseInt(options.interval ?? '5000', 10),
+            enableLogging: options.enableLogging ?? false,
             enableAlerts: options.alerts !== false,
           };
 
@@ -325,12 +330,12 @@ export function registerResourceCommands(program: Command): void {
     .description('Show current monitoring configuration')
     .action(
       withErrorHandling('show resource config', async () => {
-        const { config } = resourceMonitor as any;
+        const config = resourceMonitor.config;
 
         formatOutput(
           {
             monitoring: {
-              status: (resourceMonitor as any).monitoringTimer ? 'Running' : 'Stopped',
+              status: resourceMonitor.isMonitoring() ? 'Running' : 'Stopped',
               interval: `${config.monitoringInterval}ms`,
               historySize: config.historySize,
             },
@@ -360,7 +365,7 @@ export function registerResourceCommands(program: Command): void {
     .action(
       withErrorHandling('show resource dashboard', async (options: { refresh?: string } = {}) => {
         const { formatter } = getComponents();
-        const refreshInterval = Math.max(1, parseInt(options.refresh || '2', 10)) * 1000;
+        const refreshInterval = Math.max(1, parseInt(options.refresh ?? '2', 10)) * 1000;
 
         formatter.info('📊 Resource Dashboard (Press Ctrl+C to exit)');
         formatter.info(`Refresh interval: ${refreshInterval / 1000}s`);
@@ -371,43 +376,43 @@ export function registerResourceCommands(program: Command): void {
           if (!isRunning) return;
 
           // Clear screen (basic implementation)
-          console.clear();
+          process.stdout.write('\x1Bc');
 
           const stats = resourceMonitor.getCurrentStats();
           const summary = resourceMonitor.getSummary();
           const memUsage = getMemoryUsage();
 
-          console.log('📊 Real-time Resource Dashboard');
-          console.log('='.repeat(50));
-          console.log(`Last updated: ${new Date().toLocaleTimeString()}`);
-          console.log('');
+          process.stdout.write('📊 Real-time Resource Dashboard\n');
+          process.stdout.write('='.repeat(50) + '\n');
+          process.stdout.write(`Last updated: ${new Date().toLocaleTimeString()}\n`);
+          process.stdout.write('\n');
 
           // Current usage
-          console.log('🖥️  Current Usage:');
-          console.log(`  Memory (RSS): ${memUsage.rss}`);
-          console.log(
-            `  Heap Usage:   ${memUsage.heap} (${stats.memory.heapUtilization.toFixed(1)}%)`
+          process.stdout.write('🖥️  Current Usage:\n');
+          process.stdout.write(`  Memory (RSS): ${memUsage.rss}\n`);
+          process.stdout.write(
+            `  Heap Usage:   ${memUsage.heap} (${stats.memory.heapUtilization.toFixed(1)}%)\n`
           );
-          console.log(`  CPU Usage:    ${stats.cpu.utilization.toFixed(2)}%`);
-          console.log(`  Event Loop:   ${stats.eventLoopDelay.toFixed(1)}ms`);
-          console.log(`  Uptime:       ${formatDuration(stats.uptime * 1000)}`);
-          console.log('');
+          process.stdout.write(`  CPU Usage:    ${stats.cpu.utilization.toFixed(2)}%\n`);
+          process.stdout.write(`  Event Loop:   ${stats.eventLoopDelay.toFixed(1)}ms\n`);
+          process.stdout.write(`  Uptime:       ${formatDuration(stats.uptime * 1000)}\n`);
+          process.stdout.write('\n');
 
           // Trends
-          console.log('📈 Trends:');
-          console.log(`  Memory Trend: ${summary.memoryTrend}`);
-          console.log(`  History Size: ${resourceMonitor.getHistory().length} entries`);
-          console.log('');
+          process.stdout.write('📈 Trends:\n');
+          process.stdout.write(`  Memory Trend: ${summary.memoryTrend}\n`);
+          process.stdout.write(`  History Size: ${resourceMonitor.getHistory().length} entries\n`);
+          process.stdout.write('\n');
 
           // Status indicators
           const memoryStatus = stats.memory.rss > 512 * 1024 * 1024 ? '🔴' : '🟢';
           const cpuStatus = stats.cpu.utilization > 80 ? '🔴' : '🟢';
           const heapStatus = stats.memory.heapUtilization > 90 ? '🔴' : '🟢';
 
-          console.log('🚦 Status:');
-          console.log(`  ${memoryStatus} Memory  ${cpuStatus} CPU  ${heapStatus} Heap`);
-          console.log('');
-          console.log('Press Ctrl+C to exit dashboard');
+          process.stdout.write('🚦 Status:\n');
+          process.stdout.write(`  ${memoryStatus} Memory  ${cpuStatus} CPU  ${heapStatus} Heap\n`);
+          process.stdout.write('\n');
+          process.stdout.write('Press Ctrl+C to exit dashboard\n');
         };
 
         updateDashboard();
@@ -417,7 +422,7 @@ export function registerResourceCommands(program: Command): void {
         process.on('SIGINT', () => {
           isRunning = false;
           clearInterval(dashboardTimer);
-          console.log('\n\n📊 Dashboard stopped');
+          formatter.info('\n\n📊 Dashboard stopped');
           process.exit(0);
         });
       })

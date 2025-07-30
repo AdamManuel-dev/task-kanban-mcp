@@ -1,83 +1,207 @@
 version: '3.8'
 
 services:
-  mcp-kanban-dev:
+  # Main API server for development
+  mcp-kanban-api:
     build:
       context: .
       dockerfile: Dockerfile
       target: development
-    container_name: mcp-kanban-dev
+    container_name: mcp-kanban-api-dev
     ports:
       - '3000:3000' # HTTP API
       - '3001:3001' # WebSocket
+      - '9229:9229' # Node.js debugging port
     volumes:
-      - ./data:/app/data # Database persistence
-      - ./logs:/app/logs # Log persistence
-      - ./backups:/app/backups # Backup persistence
-      - ./src:/app/src # Source code for development
-      - ./dist:/app/dist # Built files
+      - ./data:/app/data:delegated # Database persistence
+      - ./logs:/app/logs:delegated # Log persistence
+      - ./backups:/app/backups:delegated # Backup persistence
+      - ./src:/app/src:cached # Source code for development (cached for performance)
+      - ./dist:/app/dist:delegated # Built files
+      - ./node_modules:/app/node_modules:cached # Dependencies cache
+      - /app/node_modules # Anonymous volume for node_modules
     environment:
       - NODE_ENV=development
       - PORT=3000
-      - MCP_KANBAN_DB_FOLDER_PATH=/app/data/db
+      - WEBSOCKET_PORT=3001
+      - DATABASE_URL=sqlite:///app/data/kanban.db
       - LOG_LEVEL=debug
+      - LOG_FILE=/app/logs/api-server.log
+      - BACKUP_DIR=/app/backups
+      - CORS_ORIGIN=http://localhost:3000,http://localhost:8080
+      - JWT_SECRET=dev-secret-key-change-in-production
+      - RATE_LIMIT_WINDOW_MS=900000
+      - RATE_LIMIT_MAX_REQUESTS=1000
     command: npm run dev:server
     restart: unless-stopped
+    networks:
+      - mcp-kanban-network
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:3000/health']
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+    depends_on:
+      - mcp-database
 
+  # Isolated MCP server for development and testing
   mcp-kanban-mcp:
     build:
       context: .
       dockerfile: Dockerfile.mcp
-    container_name: mcp-kanban-mcp
+    container_name: mcp-kanban-mcp-dev
     volumes:
-      - ./data:/app/data # Shared database
-      - ./logs:/app/logs # Shared logs
+      - mcp-kanban-data:/app/data:rw # Persistent database
+      - mcp-kanban-logs:/app/logs:rw # Persistent logs
+      - mcp-kanban-backups:/app/backups:rw # Persistent backups
     environment:
-      - NODE_ENV=production
-      - MCP_KANBAN_DB_FOLDER_PATH=/app/data/db
+      - NODE_ENV=development
+      - MCP_SERVER_PORT=3001
+      - MCP_SERVER_HOST=0.0.0.0
+      - DATABASE_URL=sqlite:///app/data/kanban.db
       - LOG_LEVEL=info
-    command: node dist/mcp/server.js
+      - LOG_FILE=/app/logs/mcp-server.log
+      - BACKUP_DIR=/app/backups
+      - MAX_MEMORY=256
+      - NODE_OPTIONS=--max-old-space-size=256
     restart: unless-stopped
+    networks:
+      - mcp-kanban-network
     healthcheck:
-      test: ['CMD', 'node', '-e', 'process.exit(0)']
+      test: ['CMD', '/usr/local/bin/healthcheck.sh']
       interval: 30s
-      timeout: 3s
+      timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 40s
+    depends_on:
+      - mcp-database
 
+  # Interactive CLI for development
   mcp-kanban-cli:
     build:
       context: .
       dockerfile: Dockerfile
       target: development
-    container_name: mcp-kanban-cli
+    container_name: mcp-kanban-cli-dev
     volumes:
-      - ./data:/app/data # Shared database
-      - ./logs:/app/logs # Shared logs
+      - mcp-kanban-data:/app/data:rw # Shared database
+      - mcp-kanban-logs:/app/logs:rw # Shared logs
+      - ./src:/app/src:cached # Source code for development
     environment:
       - NODE_ENV=development
-      - MCP_KANBAN_DB_FOLDER_PATH=/app/data/db
+      - DATABASE_URL=sqlite:///app/data/kanban.db
       - LOG_LEVEL=info
+      - API_BASE_URL=http://mcp-kanban-api:3000
     command: npm run dev:cli
     stdin_open: true
     tty: true
+    networks:
+      - mcp-kanban-network
     depends_on:
-      - mcp-kanban-dev
+      - mcp-kanban-api
+      - mcp-database
 
+  # Database initialization and maintenance
+  mcp-database:
+    image: alpine:3.18
+    container_name: mcp-kanban-db-init
+    volumes:
+      - mcp-kanban-data:/data:rw
+      - mcp-kanban-backups:/backups:rw
+    environment:
+      - DATABASE_PATH=/data/kanban.db
+      - BACKUP_PATH=/backups
+    command: >
+      sh -c "
+        echo 'Initializing database directory...';
+        mkdir -p /data /backups;
+        chmod 755 /data /backups;
+        touch /data/kanban.db;
+        chmod 644 /data/kanban.db;
+        echo 'Database initialization complete';
+        tail -f /dev/null
+      "
+    restart: unless-stopped
+    networks:
+      - mcp-kanban-network
+
+  # Development tools and monitoring
+  mcp-dev-tools:
+    image: node:18-alpine
+    container_name: mcp-kanban-dev-tools
+    volumes:
+      - .:/workspace:cached
+      - mcp-kanban-logs:/workspace/logs:rw
+    working_dir: /workspace
+    environment:
+      - NODE_ENV=development
+    command: >
+      sh -c "
+        echo 'Development tools container ready';
+        echo 'Available commands:';
+        echo '  docker-compose exec mcp-dev-tools npm run test';
+        echo '  docker-compose exec mcp-dev-tools npm run lint';
+        echo '  docker-compose exec mcp-dev-tools npm run typecheck';
+        echo '  docker-compose exec mcp-dev-tools npm run build';
+        tail -f /dev/null
+      "
+    networks:
+      - mcp-kanban-network
+    profiles:
+      - tools
+
+  # Log aggregation and monitoring (optional)
+  mcp-logs:
+    image: alpine:3.18
+    container_name: mcp-kanban-logs
+    volumes:
+      - mcp-kanban-logs:/logs:ro
+    command: >
+      sh -c "
+        echo 'Log monitoring started...';
+        while true; do
+          if [ -f /logs/api-server.log ]; then
+            echo '=== API Server Logs ===';
+            tail -n 5 /logs/api-server.log 2>/dev/null || echo 'No API logs yet';
+          fi;
+          if [ -f /logs/mcp-server.log ]; then
+            echo '=== MCP Server Logs ===';
+            tail -n 5 /logs/mcp-server.log 2>/dev/null || echo 'No MCP logs yet';
+          fi;
+          sleep 30;
+        done
+      "
+    networks:
+      - mcp-kanban-network
+    profiles:
+      - monitoring
+
+# Named volumes for data persistence
 volumes:
   mcp-kanban-data:
     driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data
   mcp-kanban-logs:
     driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./logs
   mcp-kanban-backups:
     driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./backups
 
+# Dedicated network for service communication
 networks:
-  default:
-    name: mcp-kanban-network
+  mcp-kanban-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

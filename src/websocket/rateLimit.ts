@@ -26,11 +26,11 @@ export class RateLimiter {
 
   constructor() {
     this.config = {
-      windowMs: config.rateLimit?.windowMs ?? 60000, // 1 minute
-      maxRequests: config.rateLimit?.maxRequests ?? 100,
-      maxConnections: config.websocket?.maxConnections ?? 1000,
-      maxMessagesPerMinute: config.websocket?.maxMessagesPerMinute ?? 120,
-      maxSubscriptionsPerClient: config.websocket?.maxSubscriptionsPerClient ?? 50,
+      windowMs: config.rateLimit.windowMs ?? 60000, // 1 minute
+      maxRequests: config.rateLimit.maxRequests ?? 100,
+      maxConnections: config.websocket.maxConnections ?? 1000,
+      maxMessagesPerMinute: config.websocket.maxMessagesPerMinute ?? 120,
+      maxSubscriptionsPerClient: config.websocket.maxSubscriptionsPerClient ?? 50,
     };
 
     this.startCleanup();
@@ -260,7 +260,7 @@ export class RateLimiter {
   }
 
   // Enhanced rate limiting with burst detection
-  detectBurst(clientId: string, threshold: number = 10, timeWindow: number = 1000): boolean {
+  detectBurst(clientId: string, threshold = 10, timeWindow = 1000): boolean {
     const now = Date.now();
     const windowStart = now - timeWindow;
 

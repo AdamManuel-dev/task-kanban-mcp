@@ -7,7 +7,7 @@ import { isSuccessResponse } from '../api-client-wrapper';
 
 // Type guard to check if response has data property
 function hasDataProperty<T>(response: AnyApiResponse): response is { data: T } {
-  return response && typeof response === 'object' && 'data' in response && !('error' in response);
+  return typeof response === 'object' && 'data' in response && !('error' in response);
 }
 
 interface CreateBackupOptions {
@@ -84,8 +84,13 @@ interface ListScheduleOptions {
 export function registerBackupCommands(program: Command): void {
   const backupCmd = program.command('backup').alias('bak').description('Manage database backups');
 
-  // Get global components with proper typing
-  const getComponents = (): CliComponents => global.cliComponents;
+  // Get global components with proper typing and error handling
+  const getComponents = (): CliComponents => {
+    if (!global.cliComponents) {
+      throw new Error('CLI components not initialized. Please initialize the CLI first.');
+    }
+    return global.cliComponents;
+  };
 
   backupCmd
     .command('create [name]')
@@ -608,7 +613,7 @@ export function registerBackupCommands(program: Command): void {
           scheduleData = {
             ...(name && { name }),
             ...(options.cron && { cronExpression: options.cron }),
-            backupType: (options.type as 'full' | 'incremental') ?? 'full',
+            backupType: options.type as 'full' | 'incremental',
             ...(options.description && { description: options.description }),
             retentionDays: parseInt(options.retention ?? '30', 10),
             compressionEnabled: !options['no-compression'],

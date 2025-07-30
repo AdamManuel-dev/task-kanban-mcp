@@ -93,7 +93,7 @@ export const isValidPriority = (value: unknown): value is number => isValidNumbe
  */
 export const hasRequiredProperties = <T extends Record<string, unknown>>(
   obj: unknown,
-  requiredKeys: (keyof T)[]
+  requiredKeys: Array<keyof T>
 ): obj is T => {
   if (!obj || typeof obj !== 'object') {
     return false;
@@ -161,3 +161,28 @@ export const extractErrorMessage = (error: unknown): string => {
 
   return 'Unknown error occurred';
 };
+
+/**
+ * Format error message with context for CLI commands
+ */
+export const formatErrorMessage = (prefix: string, error: unknown): string => {
+  const errorMessage = extractErrorMessage(error);
+  return `${prefix}: ${errorMessage}`;
+};
+
+/**
+ * Type guard for checking if an error is an Error instance
+ */
+export const isError = (value: unknown): value is Error => 
+  value instanceof Error;
+
+/**
+ * Type guard for checking if value is a record (object with string keys)
+ */
+export const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+
+/**
+ * Get error message with fallback - replaces redundant String(String(...)) pattern
+ */
+export const getErrorMessage = (error: unknown): string => extractErrorMessage(error);

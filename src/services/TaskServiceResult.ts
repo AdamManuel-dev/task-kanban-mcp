@@ -55,12 +55,12 @@ export class TaskServiceResult {
           const newTask: Task = {
             id: taskId,
             title: data.title,
-            description: data.description || '',
+            description: data.description ?? '',
             board_id: data.board_id,
-            column_id: data.column_id || 'default',
+            column_id: data.column_id ?? 'default',
             position: 0,
             priority: data.priority || 5,
-            status: data.status || 'todo',
+            status: data.status ?? 'todo',
             assignee: data.assignee,
             due_date: data.due_date,
             estimated_hours: undefined,
@@ -166,13 +166,25 @@ export class TaskServiceResult {
         const fieldsValidation = validateAll(updates, [
           data =>
             data.title
-              ? isOk(validateWith(data.title, (t: string) => t.trim().length > 0, 'Title cannot be empty'))
+              ? isOk(
+                  validateWith(
+                    data.title,
+                    (t: string) => t.trim().length > 0,
+                    'Title cannot be empty'
+                  )
+                )
                 ? Ok(data)
                 : Err('Title cannot be empty')
               : Ok(data),
           data =>
             data.priority !== undefined
-              ? isOk(validateWith(data.priority, (p: number) => p >= 1 && p <= 10, 'Priority must be between 1-10'))
+              ? isOk(
+                  validateWith(
+                    data.priority,
+                    (p: number) => p >= 1 && p <= 10,
+                    'Priority must be between 1-10'
+                  )
+                )
                 ? Ok(data)
                 : Err('Priority must be between 1-10')
               : Ok(data),
@@ -279,26 +291,46 @@ export class TaskServiceResult {
   private validateCreateTaskRequest(data: CreateTaskRequest): Result<CreateTaskRequest, string[]> {
     return validateAll(data, [
       req =>
-        isOk(validateWith(req.title, (t: string) => Boolean(t && t.trim().length > 0), 'Title is required'))
+        isOk(
+          validateWith(
+            req.title,
+            (t: string) => Boolean(t && t.trim().length > 0),
+            'Title is required'
+          )
+        )
           ? Ok(req)
           : Err('Title is required'),
       req =>
-        isOk(validateWith(req.board_id, (b: string) => Boolean(b && b.trim().length > 0), 'Board ID is required'))
+        isOk(
+          validateWith(
+            req.board_id,
+            (b: string) => Boolean(b && b.trim().length > 0),
+            'Board ID is required'
+          )
+        )
           ? Ok(req)
           : Err('Board ID is required'),
       req =>
         req.priority !== undefined
-          ? isOk(validateWith(req.priority, (p: number) => p >= 1 && p <= 10, 'Priority must be between 1-10'))
+          ? isOk(
+              validateWith(
+                req.priority,
+                (p: number) => p >= 1 && p <= 10,
+                'Priority must be between 1-10'
+              )
+            )
             ? Ok(req)
             : Err('Priority must be between 1-10')
           : Ok(req),
       req =>
         req.status
-          ? isOk(validateWith(
-              req.status,
-              s => ['todo', 'in_progress', 'done', 'blocked'].includes(s),
-              'Invalid status'
-            ))
+          ? isOk(
+              validateWith(
+                req.status,
+                s => ['todo', 'in_progress', 'done', 'blocked'].includes(s),
+                'Invalid status'
+              )
+            )
             ? Ok(req)
             : Err('Invalid status')
           : Ok(req),
@@ -328,7 +360,7 @@ export class TaskServiceResult {
     return {
       id: String(row.id),
       title: String(row.title),
-      description: String(row.description || ''),
+      description: String(row.description ?? ''),
       board_id: String(row.board_id),
       column_id: String(row.column_id),
       position: Number(row.position),

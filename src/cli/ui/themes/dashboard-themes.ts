@@ -309,7 +309,7 @@ export function getThemeNames(): string[] {
 export class ThemeHelper {
   private readonly theme: DashboardTheme;
 
-  constructor(themeName: string = 'dark') {
+  constructor(themeName = 'dark') {
     this.theme = getTheme(themeName);
   }
 
@@ -317,7 +317,7 @@ export class ThemeHelper {
    * Update theme
    */
   setTheme(themeName: string): void {
-    (this as any).theme = getTheme(themeName);
+    (this as unknown).theme = getTheme(themeName);
   }
 
   /**

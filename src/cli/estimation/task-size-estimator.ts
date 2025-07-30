@@ -151,7 +151,7 @@ export class TaskSizeEstimator {
       console.log('\n📊 Task Size Estimates\n');
     }
 
-    const sizes: (TaskSize | 'Unknown')[] = ['XS', 'S', 'M', 'L', 'XL', 'Unknown'];
+    const sizes: Array<TaskSize | 'Unknown'> = ['XS', 'S', 'M', 'L', 'XL', 'Unknown'];
 
     sizes.forEach(size => {
       const tasks = taskGroups[size];

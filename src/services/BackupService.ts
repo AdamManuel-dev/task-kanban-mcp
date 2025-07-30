@@ -27,6 +27,7 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import { gunzip, gzip } from 'zlib';
 import { promisify } from 'util';
+import { EventEmitter } from 'events';
 import { BaseServiceError } from '../utils/errors';
 import type { DatabaseConnection, QueryParameters } from '../database/connection';
 import { logger } from '../utils/logger';
@@ -35,7 +36,7 @@ const gzipAsync = promisify(gzip);
 const gunzipAsync = promisify(gunzip);
 
 export class BackupError extends BaseServiceError {
-  constructor(message: string, code: string, statusCode: number = 400) {
+  constructor(message: string, code: string, statusCode = 400) {
     super(code, message, statusCode);
   }
 }
@@ -114,15 +115,300 @@ export interface RestoreProgress {
   updatedAt: string;
 }
 
-export class BackupService {
+export interface BackupNotification {
+  id: string;
+  type:
+    | 'backup_started'
+    | 'backup_completed'
+    | 'backup_failed'
+    | 'restore_started'
+    | 'restore_completed'
+    | 'restore_failed'
+    | 'backup_scheduled'
+    | 'backup_reminder'
+    | 'storage_warning'
+    | 'health_status_changed';
+  backupId: string;
+  message: string;
+  timestamp: string;
+  details?: Record<string, unknown>;
+}
+
+export interface NotificationConfig {
+  enabled: boolean;
+  webhookUrl?: string;
+  emailConfig?: {
+    host: string;
+    port: number;
+    secure: boolean;
+    auth: {
+      user: string;
+      pass: string;
+    };
+    from: string;
+    to: string[];
+  };
+  slackConfig?: {
+    webhookUrl: string;
+    channel?: string;
+    username?: string;
+  };
+}
+
+export class BackupService extends EventEmitter {
   private readonly backupDir: string;
 
   private readonly algorithm = 'aes-256-gcm';
 
   private readonly ivLength = 16; // 128 bits
 
-  constructor(private readonly db: DatabaseConnection) {
+  private readonly notificationConfig: NotificationConfig;
+
+  constructor(
+    private readonly db: DatabaseConnection,
+    notificationConfig: Partial<NotificationConfig> = {}
+  ) {
+    super();
     this.backupDir = path.join(process.cwd(), 'backups');
+    this.notificationConfig = {
+      enabled: notificationConfig.enabled ?? true,
+      webhookUrl: notificationConfig.webhookUrl ?? process.env.BACKUP_WEBHOOK_URL,
+      emailConfig: notificationConfig.emailConfig,
+      slackConfig: notificationConfig.slackConfig,
+    };
+  }
+
+  /**
+   * Valid table names in the database schema
+   */
+  private static readonly VALID_TABLES = [
+    'boards',
+    'columns',
+    'tasks',
+    'tags',
+    'task_tags',
+    'notes',
+    'attachments',
+    'comments',
+    'task_dependencies',
+    'user_preferences',
+    'backup_metadata',
+  ];
+
+  /**
+   * Validates table name to prevent SQL injection
+   */
+  private validateTableName(tableName: string): void {
+    if (!BackupService.VALID_TABLES.includes(tableName)) {
+      throw new Error(
+        `Invalid table name: ${tableName}. Must be one of: ${BackupService.VALID_TABLES.join(', ')}`
+      );
+    }
+  }
+
+  /**
+   * Send backup notification
+   */
+  private async sendNotification(notification: BackupNotification): Promise<void> {
+    if (!this.notificationConfig.enabled) {
+      return;
+    }
+
+    logger.info('Sending backup notification', {
+      type: notification.type,
+      backupId: notification.backupId,
+      message: notification.message,
+    });
+
+    // Emit event for listeners
+    this.emit('notification', notification);
+
+    try {
+      // Send webhook notification
+      if (this.notificationConfig.webhookUrl) {
+        await this.sendWebhookNotification(notification);
+      }
+
+      // Send Slack notification
+      if (this.notificationConfig.slackConfig?.webhookUrl) {
+        await this.sendSlackNotification(notification);
+      }
+
+      // Send email notification (placeholder - would need email library)
+      if (this.notificationConfig.emailConfig) {
+        await this.sendEmailNotification(notification);
+      }
+    } catch (error) {
+      logger.error('Failed to send backup notification', {
+        notificationId: notification.id,
+        type: notification.type,
+        error,
+      });
+    }
+  }
+
+  /**
+   * Send webhook notification
+   */
+  private async sendWebhookNotification(notification: BackupNotification): Promise<void> {
+    try {
+      const response = await fetch(this.notificationConfig.webhookUrl!, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          notification,
+          timestamp: notification.timestamp,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Webhook request failed: ${response.status} ${response.statusText}`);
+      }
+
+      logger.debug('Webhook notification sent successfully', {
+        notificationId: notification.id,
+        webhookUrl: this.notificationConfig.webhookUrl,
+      });
+    } catch (error) {
+      logger.error('Failed to send webhook notification', {
+        notificationId: notification.id,
+        error,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Send Slack notification
+   */
+  private async sendSlackNotification(notification: BackupNotification): Promise<void> {
+    try {
+      const emoji = this.getNotificationEmoji(notification.type);
+      const color = this.getNotificationColor(notification.type);
+
+      const slackPayload = {
+        channel: this.notificationConfig.slackConfig!.channel || '#general',
+        username: this.notificationConfig.slackConfig!.username || 'Backup Service',
+        attachments: [
+          {
+            color,
+            title: `${emoji} ${notification.message}`,
+            fields: [
+              {
+                title: 'Backup ID',
+                value: notification.backupId,
+                short: true,
+              },
+              {
+                title: 'Type',
+                value: notification.type.replace('_', ' ').toUpperCase(),
+                short: true,
+              },
+              {
+                title: 'Timestamp',
+                value: new Date(notification.timestamp).toLocaleString(),
+                short: false,
+              },
+            ],
+            footer: 'MCP Kanban Backup Service',
+            ts: Math.floor(new Date(notification.timestamp).getTime() / 1000),
+          },
+        ],
+      };
+
+      const response = await fetch(this.notificationConfig.slackConfig!.webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(slackPayload),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Slack webhook request failed: ${response.status} ${response.statusText}`);
+      }
+
+      logger.debug('Slack notification sent successfully', {
+        notificationId: notification.id,
+      });
+    } catch (error) {
+      logger.error('Failed to send Slack notification', {
+        notificationId: notification.id,
+        error,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Send email notification (placeholder implementation)
+   */
+  private async sendEmailNotification(notification: BackupNotification): Promise<void> {
+    // This is a placeholder - in production, you'd use nodemailer or similar
+    logger.info('Email notification would be sent here', {
+      notificationId: notification.id,
+      to: this.notificationConfig.emailConfig!.to,
+      subject: `Backup Notification: ${notification.message}`,
+    });
+  }
+
+  /**
+   * Get emoji for notification type
+   */
+  private getNotificationEmoji(type: BackupNotification['type']): string {
+    const emojiMap = {
+      backup_started: '🚀',
+      backup_completed: '✅',
+      backup_failed: '❌',
+      restore_started: '🔄',
+      restore_completed: '✅',
+      restore_failed: '❌',
+      backup_scheduled: '📅',
+      backup_reminder: '⏰',
+      storage_warning: '⚠️',
+      health_status_changed: '🏥',
+    };
+    return emojiMap[type] || '📋';
+  }
+
+  /**
+   * Get color for notification type
+   */
+  private getNotificationColor(type: BackupNotification['type']): string {
+    const colorMap = {
+      backup_started: '#36a64f',
+      backup_completed: '#36a64f',
+      backup_failed: '#ff0000',
+      restore_started: '#ffaa00',
+      restore_completed: '#36a64f',
+      restore_failed: '#ff0000',
+      backup_scheduled: '#0099cc',
+      backup_reminder: '#ffaa00',
+      storage_warning: '#ff6600',
+      health_status_changed: '#9933cc',
+    };
+    return colorMap[type] || '#cccccc';
+  }
+
+  /**
+   * Create backup notification
+   */
+  private createNotification(
+    type: BackupNotification['type'],
+    backupId: string,
+    message: string,
+    details?: Record<string, unknown>
+  ): BackupNotification {
+    return {
+      id: uuidv4(),
+      type,
+      backupId,
+      message,
+      timestamp: new Date().toISOString(),
+      details,
+    };
   }
 
   /**
@@ -149,7 +435,7 @@ export class BackupService {
    */
   private _encryptData(data: Buffer, key: Buffer): Buffer {
     const iv = crypto.randomBytes(this.ivLength);
-    const cipher = crypto.createCipher(this.algorithm, key);
+    const cipher = crypto.createCipheriv(this.algorithm, key, iv);
     cipher.setAutoPadding(true);
 
     const encrypted = Buffer.concat([cipher.update(data), cipher.final()]);
@@ -167,7 +453,7 @@ export class BackupService {
     const authTag = encryptedData.subarray(this.ivLength, this.ivLength + 16);
     const encrypted = encryptedData.subarray(this.ivLength + 16);
 
-    const decipher = crypto.createDecipher(this.algorithm, key);
+    const decipher = crypto.createDecipheriv(this.algorithm, key, iv);
     decipher.setAuthTag(authTag);
 
     return Buffer.concat([decipher.update(encrypted), decipher.final()]);
@@ -182,6 +468,15 @@ export class BackupService {
     const name = options.name ?? `full-backup-${timestamp}`;
 
     logger.info('Starting full backup', { backupId, name });
+
+    // Send backup started notification
+    const startNotification = this.createNotification(
+      'backup_started',
+      backupId,
+      `Starting full backup: ${name}`,
+      { type: 'full', name, options }
+    );
+    await this.sendNotification(startNotification);
 
     const metadata: BackupMetadata = {
       id: backupId,
@@ -243,12 +538,39 @@ export class BackupService {
 
       await this.updateBackupMetadata(metadata);
 
+      // Send backup completed notification
+      const completedNotification = this.createNotification(
+        'backup_completed',
+        backupId,
+        `Full backup completed successfully: ${name}`,
+        {
+          size: metadata.size,
+          compressed: metadata.compressed,
+          verified: metadata.verified,
+          duration: Date.parse(metadata.completedAt) - Date.parse(metadata.createdAt),
+        }
+      );
+      await this.sendNotification(completedNotification);
+
       logger.info('Full backup completed', { backupId, size: metadata.size });
       return metadata;
     } catch (error) {
       metadata.status = 'failed';
       metadata.error = error instanceof Error ? error.message : String(error);
       await this.updateBackupMetadata(metadata);
+
+      // Send backup failed notification
+      const failedNotification = this.createNotification(
+        'backup_failed',
+        backupId,
+        `Full backup failed: ${name}`,
+        {
+          error: error instanceof Error ? error.message : String(error),
+          type: 'full',
+          name,
+        }
+      );
+      await this.sendNotification(failedNotification);
 
       logger.error('Full backup failed', { backupId, error });
       throw new BaseServiceError('BACKUP_FAILED', 'Failed to create full backup');
@@ -275,6 +597,15 @@ export class BackupService {
       name,
       parentBackupId: options.parentBackupId,
     });
+
+    // Send backup started notification
+    const startNotification = this.createNotification(
+      'backup_started',
+      backupId,
+      `Starting incremental backup: ${name}`,
+      { type: 'incremental', name, parentBackupId: options.parentBackupId, options }
+    );
+    await this.sendNotification(startNotification);
 
     const metadata: BackupMetadata = {
       id: backupId,
@@ -343,12 +674,41 @@ export class BackupService {
 
       await this.updateBackupMetadata(metadata);
 
+      // Send backup completed notification
+      const completedNotification = this.createNotification(
+        'backup_completed',
+        backupId,
+        `Incremental backup completed successfully: ${name}`,
+        {
+          size: metadata.size,
+          compressed: metadata.compressed,
+          verified: metadata.verified,
+          parentBackupId: metadata.parentBackupId,
+          duration: Date.parse(metadata.completedAt) - Date.parse(metadata.createdAt),
+        }
+      );
+      await this.sendNotification(completedNotification);
+
       logger.info('Incremental backup completed', { backupId, size: metadata.size });
       return metadata;
     } catch (error) {
       metadata.status = 'failed';
       metadata.error = error instanceof Error ? error.message : String(error);
       await this.updateBackupMetadata(metadata);
+
+      // Send backup failed notification
+      const failedNotification = this.createNotification(
+        'backup_failed',
+        backupId,
+        `Incremental backup failed: ${name}`,
+        {
+          error: error instanceof Error ? error.message : String(error),
+          type: 'incremental',
+          name,
+          parentBackupId: options.parentBackupId,
+        }
+      );
+      await this.sendNotification(failedNotification);
 
       logger.error('Incremental backup failed', { backupId, error });
       throw new BaseServiceError('BACKUP_FAILED', 'Failed to create incremental backup');
@@ -360,6 +720,15 @@ export class BackupService {
    */
   async restoreFromBackup(backupId: string, options: RestoreOptions = {}): Promise<void> {
     logger.info('Starting restore from backup', { backupId, options });
+
+    // Send restore started notification
+    const startNotification = this.createNotification(
+      'restore_started',
+      backupId,
+      `Starting restore from backup: ${backupId}`,
+      { options }
+    );
+    await this.sendNotification(startNotification);
 
     const metadata = await this.getBackupMetadata(backupId);
     if (!metadata) {
@@ -380,8 +749,36 @@ export class BackupService {
 
     try {
       await this.applyBackupContent(metadata, !options.preserveExisting);
+
+      // Send restore completed notification
+      const completedNotification = this.createNotification(
+        'restore_completed',
+        backupId,
+        `Restore completed successfully from backup: ${metadata.name}`,
+        {
+          backupName: metadata.name,
+          backupSize: metadata.size,
+          backupType: metadata.type,
+          preserveExisting: options.preserveExisting ?? false,
+        }
+      );
+      await this.sendNotification(completedNotification);
+
       logger.info('Restore completed successfully', { backupId });
     } catch (error) {
+      // Send restore failed notification
+      const failedNotification = this.createNotification(
+        'restore_failed',
+        backupId,
+        `Restore failed from backup: ${metadata.name || backupId}`,
+        {
+          error: error instanceof Error ? error.message : String(error),
+          backupName: metadata.name,
+          options,
+        }
+      );
+      await this.sendNotification(failedNotification);
+
       logger.error('Restore failed', { backupId, error });
       throw new BackupError('Failed to restore from backup', 'RESTORE_FAILED');
     }
@@ -471,6 +868,7 @@ export class BackupService {
       try {
         // Clear existing data if not preserving
         if (!options.preserveExisting) {
+          this.validateTableName(tableName);
           await this.db.execute(`DELETE FROM ${tableName}`);
         }
 
@@ -623,7 +1021,7 @@ export class BackupService {
       params.push(options.offset);
     }
 
-    const rows = await this.db.query<any>(query, params as QueryParameters);
+    const rows = await this.db.query<unknown>(query, params as QueryParameters);
     return rows.map(row => BackupService.deserializeBackupMetadata(row));
   }
 
@@ -975,7 +1373,7 @@ export class BackupService {
           message: info.message,
         };
 
-        (result.tableChecks as any[]).push(check);
+        (result.tableChecks as unknown[]).push(check);
 
         if (!info.isValid) {
           result.isValid = false;
@@ -1095,9 +1493,9 @@ export class BackupService {
       );
 
       const totalOrphaned =
-        (orphanedTasks?.count || 0) +
-        (orphanedTaskTags?.count || 0) +
-        (orphanedDependencies?.count || 0);
+        (orphanedTasks?.count ?? 0) +
+        (orphanedTaskTags?.count ?? 0) +
+        (orphanedDependencies?.count ?? 0);
       const isPassed = totalOrphaned === 0;
 
       return {
@@ -1105,7 +1503,7 @@ export class BackupService {
         passed: isPassed,
         message: isPassed
           ? 'All foreign key relationships are valid'
-          : `Found ${totalOrphaned} orphaned records (${orphanedTasks?.count || 0} tasks, ${orphanedTaskTags?.count || 0} task_tags, ${orphanedDependencies?.count || 0} dependencies)`,
+          : `Found ${totalOrphaned} orphaned records (${orphanedTasks?.count ?? 0} tasks, ${orphanedTaskTags?.count ?? 0} task_tags, ${orphanedDependencies?.count ?? 0} dependencies)`,
       };
     } catch (error) {
       return {
@@ -1279,7 +1677,7 @@ export class BackupService {
         WHERE d1.task_id != d1.depends_on_id
       `);
 
-      return result?.count || 0;
+      return result?.count ?? 0;
     } catch (error) {
       logger.error('Circular dependency check failed', error);
       return 0; // Assume no circular dependencies if check fails
@@ -1336,7 +1734,7 @@ export class BackupService {
     let match;
     while ((match = tableRegex.exec(sqlContent)) !== null) {
       const tableName = match[1];
-      tableCounts.set(tableName, (tableCounts.get(tableName) || 0) + 1);
+      tableCounts.set(tableName, (tableCounts.get(tableName) ?? 0) + 1);
     }
 
     // Validate each table
@@ -1414,10 +1812,7 @@ export class BackupService {
     return this.exportDatabaseToSQL();
   }
 
-  private async applyBackupContent(
-    backup: BackupMetadata,
-    clearFirst: boolean = false
-  ): Promise<void> {
+  private async applyBackupContent(backup: BackupMetadata, clearFirst = false): Promise<void> {
     // Read backup content
     let content: Buffer;
     if (backup.compressed) {
@@ -1452,7 +1847,7 @@ export class BackupService {
       "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
     );
 
-    await Promise.all(tables.map(table => this.db.execute(`DELETE FROM ${table.name}`)));
+    await Promise.all(tables.map(async table => this.db.execute(`DELETE FROM ${table.name}`)));
   }
 
   private async storeBackupMetadata(metadata: BackupMetadata): Promise<void> {
@@ -1828,5 +2223,89 @@ export class BackupService {
       retentionPolicy: row.retention_policy,
       error: row.error,
     };
+  }
+
+  /**
+   * Send backup scheduled notification
+   */
+  async sendBackupScheduledNotification(
+    backupId: string,
+    scheduledTime: Date,
+    backupType: 'full' | 'incremental'
+  ): Promise<void> {
+    const notification = this.createNotification(
+      'backup_scheduled',
+      backupId,
+      `Backup scheduled for ${scheduledTime.toLocaleString()}`,
+      {
+        scheduledTime: scheduledTime.toISOString(),
+        backupType,
+      }
+    );
+    await this.sendNotification(notification);
+  }
+
+  /**
+   * Send backup reminder notification
+   */
+  async sendBackupReminderNotification(
+    backupId: string,
+    lastBackupTime: Date,
+    hoursOverdue: number
+  ): Promise<void> {
+    const notification = this.createNotification(
+      'backup_reminder',
+      backupId,
+      `Backup is overdue by ${hoursOverdue.toFixed(1)} hours. Last backup: ${lastBackupTime.toLocaleString()}`,
+      {
+        lastBackupTime: lastBackupTime.toISOString(),
+        hoursOverdue,
+      }
+    );
+    await this.sendNotification(notification);
+  }
+
+  /**
+   * Send storage warning notification
+   */
+  async sendStorageWarningNotification(
+    backupId: string,
+    currentUsage: number,
+    maxUsage: number,
+    usagePercent: number
+  ): Promise<void> {
+    const notification = this.createNotification(
+      'storage_warning',
+      backupId,
+      `Storage usage at ${usagePercent.toFixed(1)}% (${currentUsage}MB of ${maxUsage}MB)`,
+      {
+        currentUsage,
+        maxUsage,
+        usagePercent,
+      }
+    );
+    await this.sendNotification(notification);
+  }
+
+  /**
+   * Send health status changed notification
+   */
+  async sendHealthStatusChangedNotification(
+    backupId: string,
+    oldStatus: string,
+    newStatus: string,
+    reason: string
+  ): Promise<void> {
+    const notification = this.createNotification(
+      'health_status_changed',
+      backupId,
+      `Backup health status changed from ${oldStatus} to ${newStatus}: ${reason}`,
+      {
+        oldStatus,
+        newStatus,
+        reason,
+      }
+    );
+    await this.sendNotification(notification);
   }
 }

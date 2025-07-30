@@ -34,7 +34,7 @@ export class DashboardDataService {
   /**
    * Fetch tasks from API
    */
-  private async fetchTasks(): Promise<any[]> {
+  private async fetchTasks(): Promise<unknown[]> {
     try {
       const response = await this.apiClient.get('/tasks', {
         // include_archived: false, // Not supported in RequestOptions type
@@ -65,7 +65,7 @@ export class DashboardDataService {
   /**
    * Fetch activity from API
    */
-  private async fetchActivity(): Promise<any[]> {
+  private async fetchActivity(): Promise<unknown[]> {
     try {
       const response = await this.apiClient.get('/activity', {
         // limit: 20, // Not supported in RequestOptions type
@@ -82,7 +82,7 @@ export class DashboardDataService {
   /**
    * Transform task data for dashboard display
    */
-  private static transformTaskData(tasks: any[]): DashboardData['tasks'] {
+  private static transformTaskData(tasks: unknown[]): DashboardData['tasks'] {
     const total = tasks.length;
     const byStatus: Record<string, number> = {};
     const byPriority: Record<string, number> = {};
@@ -136,8 +136,8 @@ export class DashboardDataService {
       });
 
       return (
-        ('data' in response && Array.isArray(response.data) ? response.data : [])?.map(
-          (item: any, index: number) => ({
+        ('data' in response && Array.isArray(response.data) ? response.data : []).map(
+          (item: unknown, index: number) => ({
             period: `W${String(index + 1)}`,
             completed: item.completed_count ?? 0,
           })
@@ -156,8 +156,8 @@ export class DashboardDataService {
       const response = await this.apiClient.get('/analytics/team-workload');
 
       return (
-        ('data' in response && Array.isArray(response.data) ? response.data : [])?.map(
-          (member: any) => ({
+        ('data' in response && Array.isArray(response.data) ? response.data : []).map(
+          (member: unknown) => ({
             name: member.name ?? member.username,
             taskCount: member.active_tasks ?? 0,
             load: member.workload_percentage ?? 0,
@@ -177,8 +177,8 @@ export class DashboardDataService {
       const response = await this.apiClient.get('/analytics/burndown');
 
       return (
-        ('data' in response && Array.isArray(response.data) ? response.data : [])?.map(
-          (item: any) => ({
+        ('data' in response && Array.isArray(response.data) ? response.data : []).map(
+          (item: unknown) => ({
             day: item.day,
             remaining: item.remaining_tasks ?? 0,
             ideal: item.ideal_remaining ?? 0,
@@ -193,7 +193,7 @@ export class DashboardDataService {
   /**
    * Transform activity data for display
    */
-  private static transformActivityData(activities: any[]): DashboardData['activity'] {
+  private static transformActivityData(activities: unknown[]): DashboardData['activity'] {
     return activities.slice(0, 10).map(activity => ({
       timestamp: new Date(activity.created_at).toLocaleTimeString('en-US', {
         hour: '2-digit',
@@ -207,7 +207,7 @@ export class DashboardDataService {
   /**
    * Format activity event for display
    */
-  private static formatActivityEvent(activity: any): string {
+  private static formatActivityEvent(activity: unknown): string {
     const action = activity.action ?? 'updated';
     const entityType = activity.entity_type ?? 'task';
     const entityName =

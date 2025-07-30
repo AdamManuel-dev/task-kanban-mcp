@@ -14,7 +14,7 @@ export class MCPPromptRegistry {
     this.services = services;
   }
 
-  listPrompts(): Promise<Prompt[]> {
+  async listPrompts(): Promise<Prompt[]> {
     return Promise.resolve([
       {
         name: 'task_planning',
@@ -274,7 +274,7 @@ export class MCPPromptRegistry {
     ]);
   }
 
-  async getPrompt(name: string, args: Record<string, any>): Promise<PromptContent> {
+  async getPrompt(name: string, args: Record<string, unknown>): Promise<PromptContent> {
     logger.info('MCP prompt request', { promptName: name, args });
 
     try {
@@ -282,13 +282,13 @@ export class MCPPromptRegistry {
         case 'task_planning':
           return await this.generateTaskPlanningPrompt(args);
         case 'task_breakdown':
-          return await this.generateTaskBreakdownBasicPrompt(args);
+          return await PromptService.generateTaskBreakdownBasicPrompt(args);
         case 'sprint_planning':
           return await this.generateSprintPlanningBasicPrompt(args);
         case 'analyze_project_status':
           return await this.generateProjectStatusPrompt(args);
         case 'task_breakdown_assistant':
-          return await this.generateTaskBreakdownPrompt(args);
+          return await PromptService.generateTaskBreakdownPrompt(args);
         case 'blocker_resolution_helper':
           return await this.generateBlockerResolutionPrompt(args);
         case 'sprint_planning_assistant':
@@ -315,7 +315,7 @@ export class MCPPromptRegistry {
   }
 
   // Prompt generators
-  private async generateProjectStatusPrompt(args: any): Promise<PromptContent> {
+  private async generateProjectStatusPrompt(args: unknown): Promise<PromptContent> {
     const { board_id: boardId, focus_area: focusArea } = args;
 
     if (!boardId) {
@@ -368,7 +368,7 @@ Format your response in a clear, actionable manner suitable for stakeholders.`,
     };
   }
 
-  private generateTaskBreakdownPrompt(args: any): PromptContent {
+  private static generateTaskBreakdownPrompt(args: unknown): PromptContent {
     const { task_description: taskDescription, context, timeline } = args;
 
     if (!taskDescription) {
@@ -415,7 +415,7 @@ Format the subtasks in a way that can be easily added to a kanban board.`,
     };
   }
 
-  private async generateBlockerResolutionPrompt(args: any): Promise<PromptContent> {
+  private async generateBlockerResolutionPrompt(args: unknown): Promise<PromptContent> {
     const { board_id: boardId, task_id: taskId } = args;
 
     let blockedTasks;
@@ -484,7 +484,7 @@ Also provide:
     };
   }
 
-  private async generateSprintPlanningPrompt(args: any): Promise<PromptContent> {
+  private async generateSprintPlanningPrompt(args: unknown): Promise<PromptContent> {
     const {
       board_id: boardId,
       sprint_duration: sprintDuration,
@@ -543,7 +543,7 @@ Format the recommendations in a way that can guide sprint planning meetings.`,
     };
   }
 
-  private async generatePriorityRecommendationPrompt(args: any): Promise<PromptContent> {
+  private async generatePriorityRecommendationPrompt(args: unknown): Promise<PromptContent> {
     const { board_id: boardId, criteria } = args;
 
     if (!boardId) {
@@ -595,7 +595,7 @@ Consider factors like:
     };
   }
 
-  private async generateProgressReportPrompt(args: any): Promise<PromptContent> {
+  private async generateProgressReportPrompt(args: unknown): Promise<PromptContent> {
     const { board_id: boardId, timeframe, audience } = args;
 
     if (!boardId) {
@@ -666,7 +666,7 @@ Tailor the language and detail level for the specified audience.`,
     };
   }
 
-  private async generateTaskEstimationPrompt(args: any): Promise<PromptContent> {
+  private async generateTaskEstimationPrompt(args: unknown): Promise<PromptContent> {
     const { task_description: taskDescription, board_id: boardId, complexity } = args;
 
     if (!taskDescription) {
@@ -732,7 +732,7 @@ Base your estimates on the historical data provided and industry best practices.
     };
   }
 
-  private async generateWorkflowOptimizationPrompt(args: any): Promise<PromptContent> {
+  private async generateWorkflowOptimizationPrompt(args: unknown): Promise<PromptContent> {
     const { board_id: boardId, optimization_goal: optimizationGoal } = args;
 
     if (!boardId) {
@@ -802,7 +802,7 @@ Focus on the specified optimization goal while considering overall workflow effi
     };
   }
 
-  private async generateStandupPreparationPrompt(args: any): Promise<PromptContent> {
+  private async generateStandupPreparationPrompt(args: unknown): Promise<PromptContent> {
     const { board_id: boardId, team_member: teamMember, since_date: sinceDate } = args;
 
     if (!boardId) {
@@ -875,7 +875,7 @@ Format the content to be concise and suitable for a brief standup meeting (2-3 m
     };
   }
 
-  private async generateRetrospectiveInsightsPrompt(args: any): Promise<PromptContent> {
+  private async generateRetrospectiveInsightsPrompt(args: unknown): Promise<PromptContent> {
     const { board_id: boardId, timeframe, focus_areas: focusAreas } = args;
 
     if (!boardId) {
@@ -953,7 +953,7 @@ Format the insights to encourage constructive discussion and actionable outcomes
     };
   }
 
-  private async generateTaskPlanningPrompt(args: any): Promise<PromptContent> {
+  private async generateTaskPlanningPrompt(args: unknown): Promise<PromptContent> {
     const boardId = args.board_id ?? args.boardId;
     const planningHorizon = args.planning_horizon ?? args.planningHorizon;
     const focusArea = args.focus_area ?? args.focusArea;
@@ -997,7 +997,7 @@ Focus on actionable recommendations that will improve team productivity and proj
     };
   }
 
-  private generateTaskBreakdownBasicPrompt(args: any): PromptContent {
+  private static generateTaskBreakdownBasicPrompt(args: unknown): PromptContent {
     // Handle both task_description and taskId (if taskId is provided, create a generic description)
     const taskDescription =
       args.task_description ||
@@ -1040,7 +1040,7 @@ Make sure each subtask is:
     };
   }
 
-  private async generateSprintPlanningBasicPrompt(args: any): Promise<PromptContent> {
+  private async generateSprintPlanningBasicPrompt(args: unknown): Promise<PromptContent> {
     const boardId = args.board_id ?? args.boardId;
     const sprintDuration = args.sprint_duration ?? args.sprintDuration;
     const teamCapacity = args.team_capacity ?? args.teamCapacity;

@@ -11,7 +11,6 @@
 import type { Command } from 'commander';
 import type { CliComponents } from '../../types';
 import { buildSearchTasksParams } from '../../utils/parameter-builder';
-import { hasValidTaskData } from '../../../utils/type-guards';
 import {
   withErrorHandling,
   ensureBoardId,
@@ -25,7 +24,12 @@ import {
  * Register the list command
  */
 export function registerListCommand(taskCmd: Command): void {
-  const getComponents = (): CliComponents => global.cliComponents;
+  const getComponents = (): CliComponents => {
+    if (!global.cliComponents) {
+      throw new Error('CLI components not initialized. Please initialize the CLI first.');
+    }
+    return global.cliComponents;
+  };
 
   taskCmd
     .command('list')

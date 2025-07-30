@@ -1,0 +1,212 @@
+{
+  "TypeScript Interface": {
+    "scope": "typescript",
+    "prefix": "interface",
+    "body": [
+      "interface ${1:InterfaceName} {",
+      "  ${2:property}: ${3:type};",
+      "}"
+    ],
+    "description": "Create a TypeScript interface"
+  },
+  "TypeScript Type": {
+    "scope": "typescript",
+    "prefix": "type",
+    "body": [
+      "type ${1:TypeName} = ${2:type};"
+    ],
+    "description": "Create a TypeScript type alias"
+  },
+  "Async Function": {
+    "scope": "typescript",
+    "prefix": "afn",
+    "body": [
+      "async function ${1:functionName}(${2:params}): Promise<${3:returnType}> {",
+      "  ${4:// implementation}",
+      "  return ${5:result};",
+      "}"
+    ],
+    "description": "Create an async function with return type"
+  },
+  "Arrow Function": {
+    "scope": "typescript",
+    "prefix": "af",
+    "body": [
+      "const ${1:functionName} = (${2:params}): ${3:returnType} => {",
+      "  ${4:// implementation}",
+      "  return ${5:result};",
+      "};"
+    ],
+    "description": "Create an arrow function with type annotations"
+  },
+  "Class with Constructor": {
+    "scope": "typescript",
+    "prefix": "class",
+    "body": [
+      "class ${1:ClassName} {",
+      "  private ${2:property}: ${3:type};",
+      "",
+      "  constructor(${4:params}) {",
+      "    this.${2:property} = ${5:value};",
+      "  }",
+      "",
+      "  public ${6:methodName}(): ${7:returnType} {",
+      "    ${8:// implementation}",
+      "    return ${9:result};",
+      "  }",
+      "}"
+    ],
+    "description": "Create a TypeScript class with constructor and method"
+  },
+  "Try-Catch Block": {
+    "scope": "typescript",
+    "prefix": "try",
+    "body": [
+      "try {",
+      "  ${1:// implementation}",
+      "} catch (error) {",
+      "  logger.error('${2:Error message}', { error });",
+      "  ${3:// error handling}",
+      "}"
+    ],
+    "description": "Create a try-catch block with logging"
+  },
+  "Jest Test": {
+    "scope": "typescript",
+    "prefix": "test",
+    "body": [
+      "describe('${1:TestSuite}', () => {",
+      "  beforeEach(() => {",
+      "    ${2:// setup}",
+      "  });",
+      "",
+      "  afterEach(() => {",
+      "    ${3:// cleanup}",
+      "  });",
+      "",
+      "  it('should ${4:description}', async () => {",
+      "    ${5:// arrange}",
+      "    const ${6:variable} = ${7:value};",
+      "",
+      "    ${8:// act}",
+      "    const result = await ${9:functionCall}(${6:variable});",
+      "",
+      "    ${10:// assert}",
+      "    expect(result).toBe(${11:expected});",
+      "  });",
+      "});"
+    ],
+    "description": "Create a Jest test suite with setup and teardown"
+  },
+  "Express Route Handler": {
+    "scope": "typescript",
+    "prefix": "route",
+    "body": [
+      "export const ${1:handlerName} = async (",
+      "  req: Request,",
+      "  res: Response,",
+      "  next: NextFunction",
+      "): Promise<void> => {",
+      "  try {",
+      "    ${2:// implementation}",
+      "    res.status(200).json({ ${3:data} });",
+      "  } catch (error) {",
+      "    logger.error('${4:Error in handler}', { error });",
+      "    next(error);",
+      "  }",
+      "};"
+    ],
+    "description": "Create an Express route handler with error handling"
+  },
+  "Service Method": {
+    "scope": "typescript",
+    "prefix": "service",
+    "body": [
+      "public async ${1:methodName}(${2:params}): Promise<${3:returnType}> {",
+      "  try {",
+      "    logger.debug('${4:Starting operation}', { ${5:params} });",
+      "    ",
+      "    ${6:// implementation}",
+      "    ",
+      "    logger.debug('${7:Operation completed}', { result });",
+      "    return ${8:result};",
+      "  } catch (error) {",
+      "    logger.error('${9:Error in service method}', { error, ${5:params} });",
+      "    throw error;",
+      "  }",
+      "}"
+    ],
+    "description": "Create a service method with logging and error handling"
+  },
+  "Database Query": {
+    "scope": "typescript",
+    "prefix": "query",
+    "body": [
+      "const ${1:result} = await this.db.prepare(`",
+      "  ${2:SELECT * FROM table}",
+      "  WHERE ${3:condition} = ?",
+      "`).all(${4:params});"
+    ],
+    "description": "Create a database query with prepared statement"
+  },
+  "Zod Schema": {
+    "scope": "typescript",
+    "prefix": "zod",
+    "body": [
+      "const ${1:schemaName} = z.object({",
+      "  ${2:property}: z.${3:string}()${4:.min(1)},",
+      "});"
+    ],
+    "description": "Create a Zod validation schema"
+  },
+  "JSDoc Comment": {
+    "scope": "typescript",
+    "prefix": "doc",
+    "body": [
+      "/**",
+      " * ${1:Description}",
+      " * ",
+      " * @param ${2:paramName} ${3:Parameter description}",
+      " * @returns ${4:Return description}",
+      " * @throws ${5:Error description}",
+      " * @example",
+      " * ```typescript",
+      " * ${6:example usage}",
+      " * ```",
+      " */"
+    ],
+    "description": "Create a JSDoc comment block"
+  },
+  "Logger Statement": {
+    "scope": "typescript",
+    "prefix": "log",
+    "body": [
+      "logger.${1|debug,info,warn,error|}('${2:message}', { ${3:context} });"
+    ],
+    "description": "Create a logger statement with context"
+  },
+  "Import Statement": {
+    "scope": "typescript",
+    "prefix": "imp",
+    "body": [
+      "import ${1:{ export \\}} from '${2:module}';"
+    ],
+    "description": "Create an import statement"
+  },
+  "Type Import": {
+    "scope": "typescript",
+    "prefix": "timp",
+    "body": [
+      "import type { ${1:Type} } from '${2:module}';"
+    ],
+    "description": "Create a type-only import statement"
+  },
+  "Export Statement": {
+    "scope": "typescript",
+    "prefix": "exp",
+    "body": [
+      "export { ${1:export} } from '${2:module}';"
+    ],
+    "description": "Create an export statement"
+  }
+}

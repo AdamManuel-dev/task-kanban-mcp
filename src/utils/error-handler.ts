@@ -384,8 +384,8 @@ export interface ServiceError extends Error {
  */
 export const withRetry = async <T>(
   operation: () => Promise<T>,
-  maxRetries: number = 3,
-  baseDelay: number = 1000
+  maxRetries = 3,
+  baseDelay = 1000
 ): Promise<T> => {
   let lastError: unknown;
 
@@ -433,6 +433,6 @@ export const setupGracefulShutdown = (cleanup?: () => Promise<void>): void => {
     }
   };
 
-  process.on('SIGTERM', () => handleShutdown('SIGTERM'));
-  process.on('SIGINT', () => handleShutdown('SIGINT'));
+  process.on('SIGTERM', async () => handleShutdown('SIGTERM'));
+  process.on('SIGINT', async () => handleShutdown('SIGINT'));
 };

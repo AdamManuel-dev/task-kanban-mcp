@@ -390,7 +390,7 @@ export class SubscriptionManager {
     // - userId: message.data.userId
 
     const keys = path.split('.');
-    let current: any = obj;
+    let current: unknown = obj;
 
     for (const key of keys) {
       if (current && typeof current === 'object' && key in current) {

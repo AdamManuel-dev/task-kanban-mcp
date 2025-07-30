@@ -18,7 +18,12 @@ export function registerConfigCommands(program: Command): void {
   const configCmd = program.command('config').alias('c').description('Manage configuration');
 
   // Get global components with proper typing
-  const getComponents = (): CliComponents => global.cliComponents;
+  const getComponents = (): CliComponents => {
+    if (!global.cliComponents) {
+      throw new Error('CLI components not initialized. Please initialize the CLI first.');
+    }
+    return global.cliComponents;
+  };
 
   configCmd
     .command('show')

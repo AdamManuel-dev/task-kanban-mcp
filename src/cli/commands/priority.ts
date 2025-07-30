@@ -6,6 +6,31 @@ import { dbConnection } from '@/database/connection';
 import chalk from 'chalk';
 import type { CliComponents } from '../types';
 
+// Interfaces for priority command responses
+interface TaskWithPriority {
+  id: string;
+  title: string;
+  priority: number;
+  status: string;
+  dueDate?: string;
+  priorityReasoning?: string;
+}
+
+interface PriorityUpdateResult {
+  message?: string;
+  updated?: boolean;
+}
+
+interface PriorityAnalysisOptions {
+  reason?: string;
+  priority?: number;
+  limit?: string;
+  json?: boolean;
+  board?: string;
+  days?: string;
+  task?: string;
+}
+
 // Helper functions (declared first to avoid hoisting issues)
 function getTimeAgo(date: Date): string {
   const now = new Date();
@@ -27,8 +52,8 @@ function getTimeAgo(date: Date): string {
 }
 
 function getPriorityChangeIcon(oldPriority: string, newPriority: string): string {
-  const oldNum = parseInt(oldPriority, 10) || 0;
-  const newNum = parseInt(newPriority, 10) || 0;
+  const oldNum = parseInt(oldPriority, 10) ?? 0;
+  const newNum = parseInt(newPriority, 10) ?? 0;
 
   if (newNum > oldNum) {
     return '📈'; // Increasing priority
@@ -40,8 +65,8 @@ function getPriorityChangeIcon(oldPriority: string, newPriority: string): string
 }
 
 function getPriorityChangeColor(oldPriority: string, newPriority: string): typeof chalk.red {
-  const oldNum = parseInt(oldPriority, 10) || 0;
-  const newNum = parseInt(newPriority, 10) || 0;
+  const oldNum = parseInt(oldPriority, 10) ?? 0;
+  const newNum = parseInt(newPriority, 10) ?? 0;
 
   if (newNum > oldNum) {
     return chalk.red; // Increasing priority (red = urgent)
@@ -110,8 +135,13 @@ function getScoreColor(score: number): typeof chalk.red {
 export function registerPriorityCommands(program: Command): void {
   const priorityCmd = program.command('priority').alias('p').description('Manage task priorities');
 
-  // Get global components with proper typing
-  const getComponents = (): CliComponents => global.cliComponents;
+  // Get global components with proper typing and error handling
+  const getComponents = (): CliComponents => {
+    if (!global.cliComponents) {
+      throw new Error('CLI components not initialized. Please initialize the CLI first.');
+    }
+    return global.cliComponents;
+  };
 
   priorityCmd
     .command('next')
@@ -123,7 +153,7 @@ export function registerPriorityCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const count = parseInt(String(options.count || '1'), 10);
+        const count = parseInt(String(options.count ?? '1'), 10);
 
         if (count === 1) {
           const nextTask = await apiClient.getNextTask();
@@ -136,9 +166,9 @@ export function registerPriorityCommands(program: Command): void {
           formatter.success('Next prioritized task:');
           formatter.output(nextTask);
 
-          if (options.explain && (nextTask as any).priorityReasoning) {
+          if (options.explain && (nextTask as TaskWithPriority).priorityReasoning) {
             formatter.info('\n--- Priority Reasoning ---');
-            formatter.info(String((nextTask as any).priorityReasoning));
+            formatter.info(String((nextTask as TaskWithPriority).priorityReasoning));
           }
         } else {
           const priorities = await apiClient.getPriorities();
@@ -187,7 +217,7 @@ export function registerPriorityCommands(program: Command): void {
           );
         }
 
-        const limitedTasks = filteredTasks.slice(0, parseInt(String(options.limit || '20'), 10));
+        const limitedTasks = filteredTasks.slice(0, parseInt(String(options.limit ?? '20'), 10));
 
         formatter.output(limitedTasks, {
           fields: ['id', 'title', 'priority', 'status', 'dueDate', 'dependencies'],
@@ -213,12 +243,14 @@ export function registerPriorityCommands(program: Command): void {
         const result = await apiClient.recalculatePriorities();
 
         formatter.success('Priority recalculation completed');
-        if ((result as any).message) {
-          formatter.info(String((result as any).message));
-        }
-
-        if ((result as any).updated) {
-          formatter.info(`Updated ${String((result as any).updated)} task priorities`);
+        if ('data' in result && result.data && typeof result.data === 'object') {
+          const data = result.data as Record<string, unknown>;
+          if ('message' in data && typeof data.message === 'string') {
+            formatter.info(data.message);
+          }
+          if ('updated' in data && typeof data.updated === 'number') {
+            formatter.info(`Updated ${data.updated} task priorities`);
+          }
         }
       } catch (error) {
         formatter.error(
@@ -232,7 +264,7 @@ export function registerPriorityCommands(program: Command): void {
     .command('set <taskId> <priority>')
     .description('Set task priority (1-10)')
     .option('--reason <reason>', 'reason for priority change')
-    .action(async (taskId: string, priority: string, options) => {
+    .action(async (taskId: string, priority: string, options: Record<string, unknown>) => {
       const { apiClient, formatter } = getComponents();
 
       try {
@@ -245,14 +277,14 @@ export function registerPriorityCommands(program: Command): void {
 
         const updateData: { priority: number; reason?: string } = { priority: priorityNum };
         if (options.reason) {
-          updateData.reason = options.reason;
+          updateData.reason = String(options.reason);
         }
 
         await apiClient.updateTaskPriority(taskId, priorityNum);
         formatter.success(`Task ${String(taskId)} priority set to ${String(priorityNum)}`);
 
         if (options.reason) {
-          formatter.info(`Reason: ${String(String(options.reason))}`);
+          formatter.info(`Reason: ${String(options.reason)}`);
         }
       } catch (error) {
         formatter.error(
@@ -269,13 +301,14 @@ export function registerPriorityCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const task = (await apiClient.getTask(taskId)) as any;
-        if (!task) {
-          formatter.error(`Task ${String(taskId)} not found`);
+        const taskResponse = await apiClient.getTask(taskId);
+        if (!('data' in taskResponse) || !taskResponse.data) {
+          formatter.error(`Task ${taskId} not found`);
           process.exit(1);
         }
 
-        const currentPriority = Number(task.priority) || 5;
+        const task = taskResponse.data as Record<string, unknown>;
+        const currentPriority = typeof task.priority === 'number' ? task.priority : 5;
         const newPriority = Math.min(currentPriority + 1, 10);
 
         await apiClient.updateTaskPriority(taskId, newPriority);
@@ -297,13 +330,14 @@ export function registerPriorityCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const task = (await apiClient.getTask(taskId)) as any;
-        if (!task) {
-          formatter.error(`Task ${String(taskId)} not found`);
+        const taskResponse = await apiClient.getTask(taskId);
+        if (!('data' in taskResponse) || !taskResponse.data) {
+          formatter.error(`Task ${taskId} not found`);
           process.exit(1);
         }
 
-        const currentPriority = task.priority ?? 5;
+        const task = taskResponse.data as Record<string, unknown>;
+        const currentPriority = typeof task.priority === 'number' ? task.priority : 5;
         const newPriority = Math.max(currentPriority - 1, 1);
 
         await apiClient.updateTaskPriority(taskId, newPriority);
@@ -324,7 +358,7 @@ export function registerPriorityCommands(program: Command): void {
     .description('Show priority change history for a task')
     .option('--json', 'Output as JSON')
     .option('-l, --limit <number>', 'Limit number of changes to show', '10')
-    .action(async (taskId: string, options) => {
+    .action(async (taskId: string, options: Record<string, unknown>) => {
       const { formatter } = getComponents();
 
       try {
@@ -339,7 +373,7 @@ export function registerPriorityCommands(program: Command): void {
         }
 
         const priorityHistory = await historyService.getPriorityHistory(taskId);
-        const limitNum = parseInt(String(options.limit || '10'), 10);
+        const limitNum = parseInt(String(options.limit ?? '10'), 10);
         const limitedHistory = priorityHistory.slice(0, limitNum);
 
         if (options.json) {
@@ -359,8 +393,8 @@ export function registerPriorityCommands(program: Command): void {
         limitedHistory.forEach((change, index) => {
           const isLatest = index === 0;
           const timeAgo = getTimeAgo(change.changed_at);
-          const oldPriority = change.old_value || 'none';
-          const newPriority = change.new_value || 'none';
+          const oldPriority = change.old_value ?? 'none';
+          const newPriority = change.new_value ?? 'none';
 
           const priorityChange = getPriorityChangeIcon(oldPriority, newPriority);
           const changeColor = getPriorityChangeColor(oldPriority, newPriority);
@@ -399,7 +433,7 @@ export function registerPriorityCommands(program: Command): void {
     .command('analytics <taskId>')
     .description('Show priority analytics and patterns for a task')
     .option('--json', 'Output as JSON')
-    .action(async (taskId: string, options) => {
+    .action(async (taskId: string, options: Record<string, unknown>) => {
       const { formatter } = getComponents();
 
       try {
@@ -442,8 +476,8 @@ export function registerPriorityCommands(program: Command): void {
           console.log(`${chalk.bold('Recent Changes:')}`);
           analytics.recent_changes.forEach((change, index) => {
             const timeAgo = getTimeAgo(change.changed_at);
-            const oldPriority = change.old_value || 'none';
-            const newPriority = change.new_value || 'none';
+            const oldPriority = change.old_value ?? 'none';
+            const newPriority = change.new_value ?? 'none';
             const changeIcon = getPriorityChangeIcon(oldPriority, newPriority);
 
             console.log(
@@ -476,13 +510,13 @@ export function registerPriorityCommands(program: Command): void {
     .description('Show priority change patterns across tasks')
     .option('-b, --board <board-id>', 'Filter by board ID')
     .option('--json', 'Output as JSON')
-    .action(async options => {
+    .action(async (options: Record<string, unknown>) => {
       const { formatter } = getComponents();
 
       try {
         const historyService = TaskHistoryService.getInstance();
         const patterns = await historyService.getPriorityChangePatterns(
-          String(options.board || '')
+          String(options.board ?? '')
         );
 
         if (options.json) {
@@ -553,16 +587,16 @@ export function registerPriorityCommands(program: Command): void {
     .option('-b, --board <boardId>', 'Filter by board ID')
     .option('--days <days>', 'Time range in days (default: 30)', '30')
     .option('--json', 'Output as JSON')
-    .action(async options => {
+    .action(async (options: Record<string, unknown>) => {
       const { formatter } = getComponents();
 
       try {
         const priorityHistoryService = PriorityHistoryService.getInstance();
-        const days = parseInt(String(options.days || '30'), 10);
+        const days = parseInt(String(options.days ?? '30'), 10);
         const endDate = new Date();
         const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
 
-        const stats = await priorityHistoryService.getPriorityStats(String(options.board || ''), {
+        const stats = await priorityHistoryService.getPriorityStats(String(options.board ?? ''), {
           start: startDate,
           end: endDate,
         });
@@ -639,14 +673,14 @@ export function registerPriorityCommands(program: Command): void {
     .option('-t, --task <taskId>', 'Analyze patterns for specific task')
     .option('-b, --board <boardId>', 'Analyze patterns for board')
     .option('--json', 'Output as JSON')
-    .action(async options => {
+    .action(async (options: Record<string, unknown>) => {
       const { formatter } = getComponents();
 
       try {
         const priorityHistoryService = PriorityHistoryService.getInstance();
         const patterns = await priorityHistoryService.analyzePriorityPatterns(
-          String(options.task || ''),
-          String(options.board || '')
+          String(options.task ?? ''),
+          String(options.board ?? '')
         );
 
         if (options.json) {
@@ -695,18 +729,18 @@ export function registerPriorityCommands(program: Command): void {
     .option('--days <days>', 'Time range in days (default: 7)', '7')
     .option('-b, --board <boardId>', 'Filter by board ID')
     .option('--json', 'Output as JSON')
-    .action(async options => {
+    .action(async (options: Record<string, unknown>) => {
       const { formatter } = getComponents();
 
       try {
         const priorityHistoryService = PriorityHistoryService.getInstance();
-        const days = parseInt(String(options.days || '7'), 10);
+        const days = parseInt(String(options.days ?? '7'), 10);
         const endDate = new Date();
         const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
 
         const summary = await priorityHistoryService.getPriorityChangeSummary(
           { start: startDate, end: endDate },
-          String(options.board || '')
+          String(options.board ?? '')
         );
 
         if (options.json) {

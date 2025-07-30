@@ -9,7 +9,7 @@ export function requestValidationMiddleware(
   next: NextFunction
 ): void {
   // Validate request size
-  const contentLength = parseInt(req.get('Content-Length') || '0', 10);
+  const contentLength = parseInt(req.get('Content-Length') ?? '0', 10);
   const maxSize = 10 * 1024 * 1024; // 10MB
 
   if (contentLength > maxSize) {
@@ -97,7 +97,7 @@ export function validateRequest<T>(
       }
 
       // Merge validated data back
-      req.body = result.data as any;
+      req.body = result.data as unknown;
       next();
     } catch (error) {
       next(new ValidationError('Invalid request data'));

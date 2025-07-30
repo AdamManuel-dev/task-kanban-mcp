@@ -46,6 +46,18 @@ import type {
   SubtaskHierarchy,
 } from '../types';
 import { TaskHistoryService } from './TaskHistoryService';
+import { PriorityHistoryService } from './PriorityHistoryService';
+import type { CacheService } from './CacheService';
+import { taskCache } from './CacheService';
+import { TrackPerformance } from '../utils/service-metrics';
+import { validatePagination } from '../utils/sql-security';
+
+// Cache duration constants for improved readability
+const CACHE_DURATIONS = {
+  TASK_CACHE_MS: 2 * 60 * 1000, // 2 minutes
+  NULL_RESULT_CACHE_MS: 30 * 1000, // 30 seconds  
+  BATCH_OPERATIONS_CACHE_MS: 5 * 60 * 1000, // 5 minutes
+} as const;
 
 /**
  * Request interface for creating new tasks
@@ -90,6 +102,7 @@ export interface UpdateTaskRequest {
   metadata?: string | undefined;
   progress?: number | undefined;
   change_reason?: string | undefined; // Optional reason for the change
+  changed_by?: string | undefined; // Optional user identifier who made the change
 }
 
 /**
@@ -145,12 +158,20 @@ export interface TaskWithDependencies extends Task {
  * with proper transaction handling and error recovery.
  */
 export class TaskService {
+  private readonly cache: CacheService<string, unknown>;
+
   /**
    * Creates a new TaskService instance
    *
    * @param db Database connection instance for task operations
+   * @param cache Optional cache service for performance optimization
    */
-  constructor(private readonly db: DatabaseConnection) {}
+  constructor(
+    private readonly db: DatabaseConnection,
+    cache?: CacheService<string, unknown>
+  ) {
+    this.cache = cache ?? taskCache;
+  }
 
   /**
    * Creates a new task with proper positioning and validation
@@ -174,27 +195,28 @@ export class TaskService {
    * });
    * ```
    */
+  @TrackPerformance('TaskService')
   async createTask(data: CreateTaskRequest): Promise<Task> {
     // Validate required fields
     if (!data.title || data.title.trim().length === 0) {
       throw TaskService.createError('INVALID_TITLE', 'Task title is required and cannot be empty');
     }
 
-    // Validate board_id exists
-    const boardExists = await this.db.queryOne('SELECT id FROM boards WHERE id = ?', [
-      data.board_id,
-    ]);
-    if (!boardExists) {
+    // Validate board_id and column_id exist in a single query for better performance
+    const validationResult = await this.db.queryOne(
+      `SELECT 
+        (SELECT COUNT(*) FROM boards WHERE id = ?) as board_exists,
+        (SELECT COUNT(*) FROM columns WHERE id = ?) as column_exists`,
+      [data.board_id, data.column_id]
+    );
+
+    if (!validationResult?.board_exists) {
       throw TaskService.createError('INVALID_BOARD_ID', 'Board not found', {
         board_id: data.board_id,
       });
     }
 
-    // Validate column_id exists
-    const columnExists = await this.db.queryOne('SELECT id FROM columns WHERE id = ?', [
-      data.column_id,
-    ]);
-    if (!columnExists) {
+    if (!validationResult?.column_exists) {
       throw TaskService.createError('INVALID_COLUMN_ID', 'Column not found', {
         column_id: data.column_id,
       });
@@ -295,7 +317,17 @@ export class TaskService {
    * }
    * ```
    */
+  @TrackPerformance('TaskService')
   async getTaskById(id: string): Promise<Task | null> {
+    const cacheKey = `task:${id}`;
+
+    // Try to get from cache first
+    const cached = this.cache.get(cacheKey);
+    if (cached !== undefined) {
+      logger.debug('Task retrieved from cache', { taskId: id });
+      return cached;
+    }
+
     try {
       const task = await this.db.queryOne<Task>(
         `
@@ -306,6 +338,12 @@ export class TaskService {
 
       if (task) {
         TaskService.convertTaskDates(task);
+        // Cache the task for readability-optimized duration
+        this.cache.set(cacheKey, task, CACHE_DURATIONS.TASK_CACHE_MS);
+        logger.debug('Task cached', { taskId: id });
+      } else {
+        // Cache null result to avoid repeated queries for non-existent tasks
+        this.cache.set(cacheKey, null, CACHE_DURATIONS.NULL_RESULT_CACHE_MS);
       }
 
       return task ?? null;
@@ -442,6 +480,7 @@ export class TaskService {
    * });
    * ```
    */
+  @TrackPerformance('TaskService')
   async getTasks(options: PaginationOptions & TaskFilters = {}): Promise<Task[]> {
     const {
       limit = 50,
@@ -527,7 +566,10 @@ export class TaskService {
       }
 
       query += ` WHERE ${conditions.join(' AND ')}`;
-      query += ` ORDER BY t.${sortBy} ${sortOrder.toUpperCase()} LIMIT ? OFFSET ?`;
+
+      // Use secure pagination to prevent ORDER BY injection
+      const paginationClause = validatePagination(sortBy, sortOrder, 'tasks', 't');
+      query += ` ${paginationClause} LIMIT ? OFFSET ?`;
       params.push(limit, offset);
 
       const tasks = await this.db.query<Task>(query, params);
@@ -565,6 +607,7 @@ export class TaskService {
    * });
    * ```
    */
+  @TrackPerformance('TaskService')
   async updateTask(id: string, data: UpdateTaskRequest): Promise<Task> {
     try {
       const existingTask = await this.getTaskById(id);
@@ -675,8 +718,37 @@ export class TaskService {
         throw TaskService.createError('TASK_UPDATE_FAILED', 'Task disappeared after update');
       }
 
+      // Invalidate cache for this task
+      this.cache.delete(`task:${id}`);
+
+      // If parent task exists, invalidate its cache too
+      if (existingTask.parent_task_id) {
+        this.cache.delete(`task:${existingTask.parent_task_id}`);
+      }
+
       // Record history for changed fields
       await this.recordTaskHistory(existingTask, data);
+
+      // Record priority change if priority was updated
+      if (data.priority !== undefined && data.priority !== existingTask.priority) {
+        try {
+          await PriorityHistoryService.getInstance().recordPriorityChange(
+            id,
+            existingTask.priority,
+            data.priority,
+            data.change_reason, // Use the correct field name from UpdateTaskRequest
+            data.changed_by
+          );
+        } catch (error) {
+          logger.error('Failed to record priority change:', {
+            taskId: id,
+            oldPriority: existingTask.priority,
+            newPriority: data.priority,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
+          // Don't fail the task update if priority history recording fails
+        }
+      }
 
       // Auto-update parent task progress if this is a subtask and status changed
       if (
@@ -1092,7 +1164,7 @@ export class TaskService {
             td.depends_on_task_id, 
             td.task_id, 
             dp.level + 1,
-            dp.path || ' -> ' || td.depends_on_task_id
+            dp.path ?? ' -> ' || td.depends_on_task_id
           FROM task_dependencies td
           JOIN dependency_path dp ON td.task_id = dp.depends_on_task_id
           WHERE dp.level < 50  -- Prevent infinite recursion in malformed data
@@ -1789,7 +1861,7 @@ export class TaskService {
     const direct: Task[] = [];
     const indirect: Task[] = [];
 
-    const findDownstream = async (currentTaskId: string, depth: number = 0): Promise<void> => {
+    const findDownstream = async (currentTaskId: string, depth = 0): Promise<void> => {
       if (visited.has(currentTaskId)) return;
       visited.add(currentTaskId);
 
@@ -2073,7 +2145,7 @@ export class TaskService {
    */
   async calculateHierarchicalProgress(
     rootTaskId: string,
-    maxDepth: number = 10
+    maxDepth = 10
   ): Promise<ProgressCalculationResult> {
     try {
       const result = await this.calculateHierarchicalProgressRecursive(

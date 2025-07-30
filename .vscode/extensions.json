@@ -1,0 +1,78 @@
+{
+  "recommendations": [
+    // Essential TypeScript Extensions
+    "ms-vscode.vscode-typescript-next",
+    "bradlc.vscode-tailwindcss",
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint",
+
+    // Code Quality & Analysis
+    "sonarsource.sonarlint-vscode",
+    "streetsidesoftware.code-spell-checker",
+    "usernamehw.errorlens",
+    "oderwat.indent-rainbow",
+    "mechatroner.rainbow-csv",
+
+    // Git & Version Control
+    "eamodio.gitlens",
+    "mhutchie.git-graph",
+    "github.vscode-pull-request-github",
+
+    // Development Productivity
+    "christian-kohler.path-intellisense",
+    "formulahendry.auto-rename-tag",
+    "bradlc.vscode-tailwindcss",
+    "ms-vscode.vscode-json",
+    "redhat.vscode-yaml",
+
+    // Testing & Debugging
+    "ms-vscode.test-adapter-converter",
+    "hbenl.vscode-test-explorer",
+    "kavod-io.vscode-jest-test-adapter",
+    "orta.vscode-jest",
+
+    // Database & API Tools
+    "rangav.vscode-thunder-client",
+    "qwtel.sqlite-viewer",
+    "mtxr.sqltools",
+    "mtxr.sqltools-driver-sqlite",
+
+    // Documentation & Comments
+    "aaron-bond.better-comments",
+    "naumovs.color-highlight",
+    "shardulm94.trailing-spaces",
+
+    // Theme & UI
+    "pkief.material-icon-theme",
+    "zhuangtongfa.material-theme",
+    "github.github-vscode-theme",
+
+    // Markdown & Documentation
+    "yzhang.markdown-all-in-one",
+    "davidanson.vscode-markdownlint",
+    "mushan.vscode-paste-image",
+
+    // Node.js & NPM
+    "eg2.vscode-npm-script",
+    "christian-kohler.npm-intellisense",
+    "mskelton.npm-outdated",
+
+    // REST & API Development
+    "humao.rest-client",
+    "42crunch.vscode-openapi",
+
+    // Docker & DevOps
+    "ms-vscode-remote.remote-containers",
+    "ms-azuretools.vscode-docker",
+
+    // MCP & Claude Development
+    "anthropic.claude-dev"
+  ],
+  "unwantedRecommendations": [
+    "ms-vscode.vscode-typescript-tslint-plugin",
+    "hookyqr.beautify",
+    "HookyQR.beautify",
+    "esbenp.prettier-vscode-angular",
+    "formulahendry.code-runner"
+  ]
+}

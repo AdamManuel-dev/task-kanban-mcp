@@ -1,0 +1,32 @@
+# Alertmanager configuration for MCP Kanban monitoring
+
+global:
+  smtp_smarthost: 'localhost:587'
+  smtp_from: 'alerts@mcp-kanban.local'
+
+route:
+  group_by: ['alertname']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 1h
+  receiver: 'web.hook'
+
+receivers:
+- name: 'web.hook'
+  webhook_configs:
+  - url: 'http://health-monitor:3000/alerts'
+    send_resolved: true
+
+- name: 'slack'
+  slack_configs:
+  - api_url: '${SLACK_WEBHOOK_URL}'
+    channel: '#mcp-kanban-alerts'
+    title: 'MCP Kanban Alert'
+    text: '{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'dev', 'instance']

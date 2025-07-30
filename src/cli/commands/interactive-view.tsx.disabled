@@ -1,0 +1,351 @@
+/// <reference types="react" />
+import React, { useState } from 'react';
+import { useApp, useInput, render } from 'ink';
+// Dynamic imports to avoid ESM/CommonJS conflicts
+import { Command } from 'commander';
+import chalk from 'chalk';
+import { type Task, type BoardWithColumns, type Board, type Column } from '@/types';
+import BoardView from '../ui/components/BoardView';
+import { createTaskList } from '../ui/components/TaskList';
+import { StatusIndicatorFormatter } from '../ui/components/StatusIndicator';
+
+interface InteractiveViewData {
+  tasks: Task[];
+  boards: Board[];
+  columns: Column[];
+  board?: BoardWithColumns;
+}
+
+interface InteractiveViewProps {
+  mode: 'tasks' | 'board';
+  data: InteractiveViewData;
+}
+
+interface InteractiveOptions {
+  mode: 'tasks' | 'board';
+  sampleData?: boolean;
+}
+
+const InteractiveView: React.FC<InteractiveViewProps> = ({ mode, data }) => {
+  const [currentView, setCurrentView] = useState<'tasks' | 'board' | 'help'>(mode);
+  const [statusMessage, setStatusMessage] = useState<string>('');
+  const [statusType, setStatusType] = useState<'info' | 'success' | 'error' | 'loading'>('info');
+  const { exit } = useApp();
+
+  useInput(
+    (
+      input: string,
+      key: {
+        name: string;
+        ctrl: boolean;
+        meta: boolean;
+        shift: boolean;
+      }
+    ) => {
+      if (input === 'q' && !key.ctrl) {
+        exit();
+      } else if (input === '1') {
+        setCurrentView('tasks');
+        setStatusMessage('Switched to Task List view');
+        setStatusType('info');
+      } else if (input === '2') {
+        setCurrentView('board');
+        setStatusMessage('Switched to Board view');
+        setStatusType('info');
+      } else if (input === '?' || input === 'h') {
+        setCurrentView('help');
+        setStatusMessage('Showing help');
+        setStatusType('info');
+      } else if (input === 'r') {
+        setStatusMessage('Refreshing data...');
+        setStatusType('loading');
+        // In a real app, this would fetch fresh data
+        setTimeout(() => {
+          setStatusMessage('Data refreshed');
+          setStatusType('success');
+        }, 1000);
+      }
+    }
+  );
+
+  const renderHelp = (): React.ReactElement => (
+    <div>
+      <h2>{chalk.cyan('🎮 Interactive View Help')}</h2>
+      <br />
+
+      <h3>{chalk.yellow('Global Controls:')}</h3>
+      <p>
+        • <strong>1</strong> - Switch to Task List view
+      </p>
+      <p>
+        • <strong>2</strong> - Switch to Board view
+      </p>
+      <p>
+        • <strong>h</strong> or <strong>?</strong> - Show this help
+      </p>
+      <p>
+        • <strong>r</strong> - Refresh data
+      </p>
+      <p>
+        • <strong>q</strong> - Quit
+      </p>
+      <br />
+
+      <h3>{chalk.yellow('Task List Controls:')}</h3>
+      <p>
+        • <strong>↑/↓</strong> or <strong>j/k</strong> - Navigate tasks
+      </p>
+      <p>
+        • <strong>Enter</strong> - Select task
+      </p>
+      <br />
+
+      <h3>{chalk.yellow('Board Controls:')}</h3>
+      <p>
+        • <strong>←/→</strong> or <strong>h/l</strong> - Switch columns
+      </p>
+      <p>
+        • <strong>↑/↓</strong> or <strong>j/k</strong> - Navigate tasks
+      </p>
+      <p>
+        • <strong>Enter</strong> - Select task or column
+      </p>
+      <br />
+
+      <p>{chalk.gray('Press any key to return to previous view')}</p>
+    </div>
+  );
+
+  const renderCurrentView = (): React.ReactElement => {
+    switch (currentView) {
+      case 'tasks': {
+        const taskListOutput = createTaskList({
+          tasks: data.tasks ?? [],
+          maxHeight: 15,
+          showDetails: true,
+        });
+        return <div>{taskListOutput}</div>;
+      }
+
+      case 'board': {
+        const board = data.board || {
+          id: '1',
+          name: 'Sample Board',
+          color: '#2196F3',
+          created_at: new Date(),
+          updated_at: new Date(),
+          archived: false,
+        };
+        const columns = data.columns ?? [];
+        const tasks = data.tasks ?? [];
+        return <BoardView board={board} columns={columns} tasks={tasks} showDetails={true} />;
+      }
+
+      case 'help':
+        return renderHelp();
+
+      default:
+        return <div>Unknown view</div>;
+    }
+  };
+
+  return (
+    <div>
+      {/* Header */}
+      <div>
+        <h1>{chalk.bold.cyan('🚀 Kanban CLI Interactive Mode')}</h1>
+        <p>
+          {chalk.gray(
+            `Current view: ${String(currentView)} | Press 'h' for help | Press 'q' to quit`
+          )}
+        </p>
+      </div>
+
+      {/* Status message */}
+      {statusMessage && (
+        <div>
+          <div>
+            {
+              StatusIndicatorFormatter.renderStatus({
+                status: statusType,
+                message: statusMessage,
+              })
+                .split('\n')
+                .map((line, index) => <div key={index}>{line}</div>) as React.ReactNode
+            }
+          </div>
+        </div>
+      )}
+
+      {/* Main content */}
+      {renderCurrentView()}
+
+      {/* Footer */}
+      <div>
+        <p>{chalk.gray('─'.repeat(80))}</p>
+        <p>{chalk.gray('Interactive Kanban CLI - Press h for help, q to quit')}</p>
+      </div>
+    </div>
+  );
+};
+
+// Sample data generator
+const generateSampleData = (): InteractiveViewData => {
+  const now = new Date();
+  const sampleTasks: Task[] = [
+    {
+      id: 'TASK-001',
+      title: 'Implement user authentication',
+      board_id: 'board-1',
+      column_id: 'col-2',
+      position: 0,
+      status: 'in_progress',
+      priority: 5,
+      assignee: 'alice',
+      due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      created_at: now,
+      updated_at: now,
+      archived: false,
+    },
+    {
+      id: 'TASK-002',
+      title: 'Design landing page',
+      board_id: 'board-1',
+      column_id: 'col-1',
+      position: 0,
+      status: 'todo',
+      priority: 3,
+      assignee: 'bob',
+      created_at: now,
+      updated_at: now,
+      archived: false,
+    },
+    {
+      id: 'TASK-003',
+      title: 'Set up CI/CD pipeline',
+      board_id: 'board-1',
+      column_id: 'col-4',
+      position: 0,
+      status: 'done',
+      priority: 5,
+      assignee: 'charlie',
+      created_at: now,
+      updated_at: now,
+      archived: false,
+    },
+    {
+      id: 'TASK-004',
+      title: 'Write API documentation',
+      board_id: 'board-1',
+      column_id: 'col-3',
+      position: 0,
+      status: 'blocked',
+      priority: 1,
+      assignee: 'diana',
+      created_at: now,
+      updated_at: now,
+      archived: false,
+    },
+    {
+      id: 'TASK-005',
+      title: 'Optimize database queries',
+      board_id: 'board-1',
+      column_id: 'col-1',
+      position: 1,
+      status: 'todo',
+      priority: 3,
+      assignee: 'eve',
+      created_at: now,
+      updated_at: now,
+      archived: false,
+    },
+  ];
+
+  const sampleBoard: BoardWithColumns = {
+    id: 'board-1',
+    name: 'Development Sprint',
+    description: 'Current sprint board for the development team',
+    color: '#2196F3',
+    created_at: new Date(),
+    updated_at: new Date(),
+    archived: false,
+    columns: [
+      {
+        id: 'col-1',
+        board_id: 'board-1',
+        name: 'Backlog',
+        position: 0,
+        wip_limit: 5,
+        created_at: new Date(),
+        updated_at: new Date(),
+      },
+      {
+        id: 'col-2',
+        board_id: 'board-1',
+        name: 'In Progress',
+        position: 1,
+        wip_limit: 3,
+        created_at: new Date(),
+        updated_at: new Date(),
+      },
+      {
+        id: 'col-3',
+        board_id: 'board-1',
+        name: 'Blocked',
+        position: 2,
+        wip_limit: 2,
+        created_at: new Date(),
+        updated_at: new Date(),
+      },
+      {
+        id: 'col-4',
+        board_id: 'board-1',
+        name: 'Done',
+        position: 3,
+        created_at: new Date(),
+        updated_at: new Date(),
+      },
+    ],
+  };
+
+  return {
+    tasks: sampleTasks,
+    boards: [sampleBoard],
+    columns: sampleBoard.columns,
+  };
+};
+
+// Placeholder for real data fetching
+function fetchRealData(): InteractiveViewData {
+  // This would connect to the actual API
+  // For now, return sample data
+  return generateSampleData();
+}
+
+// CLI command implementation
+export const interactiveViewCommand = new Command('interactive')
+  .alias('ui')
+  .description('Launch interactive UI for tasks and boards')
+  .option('-m, --mode <mode>', 'Initial view mode: tasks or board', 'tasks')
+  .option('--sample-data', 'Use sample data for demo', false)
+  .action((options: InteractiveOptions) => {
+    try {
+      // In a real implementation, this would fetch data from the API
+      const data = (options.sampleData as boolean) ? generateSampleData() : fetchRealData();
+
+      if ((options.mode as string) !== 'tasks' && (options.mode as string) !== 'board') {
+        console.error(chalk.red('Error: Mode must be either "tasks" or "board"'));
+        process.exit(1);
+      }
+
+      console.log(chalk.cyan('\n🚀 Starting interactive mode...\n'));
+      console.log(chalk.gray('Press h for help, q to quit\n'));
+
+      render(<InteractiveView mode={options.mode as 'tasks' | 'board'} data={data} />);
+    } catch (error) {
+      console.error(chalk.red('Error starting interactive mode:'), error);
+      process.exit(1);
+    }
+  });
+
+export default interactiveViewCommand;

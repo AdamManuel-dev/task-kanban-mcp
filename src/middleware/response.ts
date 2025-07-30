@@ -1,12 +1,12 @@
 import type { Request, Response, NextFunction } from 'express';
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: {
     code: string;
     message: string;
-    details?: any;
+    details?: unknown;
   };
   meta?: {
     timestamp: string;
@@ -25,7 +25,7 @@ export interface ApiErrorConfig {
   code: string;
   message: string;
   statusCode?: number;
-  details?: any;
+  details?: unknown;
 }
 
 export interface ApiPaginationConfig<T> {
@@ -133,7 +133,7 @@ export function formatSuccessResponse<T>(data: T, message?: string): ApiResponse
 /**
  * Format error response
  */
-export function formatErrorResponse(message: string, details?: any): ApiResponse {
+export function formatErrorResponse(message: string, details?: unknown): ApiResponse {
   return {
     success: false,
     error: {

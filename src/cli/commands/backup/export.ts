@@ -14,7 +14,12 @@ import type { ExportBackupOptions } from './types';
 import { withErrorHandling, withSpinner, showSuccess } from '../../utils/command-helpers';
 
 export function registerExportCommand(backupCmd: Command): void {
-  const getComponents = (): CliComponents => global.cliComponents;
+  const getComponents = (): CliComponents => {
+    if (!global.cliComponents) {
+      throw new Error('CLI components not initialized. Please initialize the CLI first.');
+    }
+    return global.cliComponents;
+  };
 
   backupCmd
     .command('export <id> <path>')
@@ -30,7 +35,7 @@ export function registerExportCommand(backupCmd: Command): void {
             `Exporting backup ${id} to ${path}`,
             'Backup exported successfully',
             async () => {
-              const result = await apiClient.exportBackup(id, options.format || 'sql');
+              const result = await apiClient.exportBackup(id, options.format ?? 'sql');
               return result;
             }
           );

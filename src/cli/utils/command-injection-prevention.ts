@@ -290,6 +290,14 @@ export class CommandInjectionPrevention {
 
     const sanitizedCommand = commandSanitized.sanitized;
 
+    // Check if command was modified during sanitization (indicates injection attempt)
+    if (command !== sanitizedCommand) {
+      safe = false;
+      blockedPatterns.push(
+        `Command was modified during sanitization: "${command}" -> "${sanitizedCommand}"`
+      );
+    }
+
     // Check if command is in dangerous list
     if (this.dangerousCommands.has(sanitizedCommand.toLowerCase())) {
       safe = false;
@@ -350,7 +358,12 @@ export class CommandInjectionPrevention {
       // Validate flags if specified
       if (options.allowedFlags && arg.startsWith('-')) {
         const flag = arg.replace(/^-+/, '');
-        if (!options.allowedFlags.includes(flag)) {
+        // Handle combined flags like -la (both -l and -a must be allowed)
+        const isValidFlag =
+          flag.split('').every(char => options.allowedFlags!.includes(char)) ||
+          options.allowedFlags.includes(flag);
+
+        if (!isValidFlag) {
           safe = false;
           blockedPatterns.push(`Flag not allowed: ${String(arg)}`);
         }
@@ -470,11 +483,11 @@ export class CommandInjectionPrevention {
       let stdout = '';
       let stderr = '';
 
-      child.stdout?.on('data', (data: Buffer) => {
+      child.stdout.on('data', (data: Buffer) => {
         stdout += data.toString();
       });
 
-      child.stderr?.on('data', (data: Buffer) => {
+      child.stderr.on('data', (data: Buffer) => {
         stderr += data.toString();
       });
 
@@ -507,10 +520,10 @@ export class CommandInjectionPrevention {
   }
 
   /**
-   * Creates a safe command wrapper with predefined flags
+   * Creates a safe command wrapper with predefined subcommands
    *
    * @param {string} baseCommand - The base command to wrap
-   * @param {string[]} [allowedFlags=[]] - Allowed flags for this command
+   * @param {string[]} [allowedSubcommands=[]] - Allowed subcommands for this command
    * @returns {Object} Command wrapper with validate and execute methods
    *
    * @description Creates a reusable command wrapper that enforces consistent
@@ -529,28 +542,39 @@ export class CommandInjectionPrevention {
    */
   createSafeCommand(
     baseCommand: string,
-    allowedFlags: string[] = []
+    allowedSubcommands: string[] = []
   ): {
     validate: (args: string[], options?: CommandExecutionOptions) => string;
     execute: (args: string[], options?: CommandExecutionOptions) => Promise<ExecutionResult>;
   } {
     return {
       validate: (args: string[], options: CommandExecutionOptions = {}): string => {
+        // Additional validation for allowed subcommands
+        if (allowedSubcommands.length > 0 && args.length > 0) {
+          const firstArg = args[0];
+          if (!firstArg.startsWith('-') && !allowedSubcommands.includes(firstArg)) {
+            throw new Error(`Invalid argument: Subcommand '${firstArg}' not allowed`);
+          }
+        }
+
         const validation = this.validateCommand(baseCommand, args, {
           ...options,
-          allowedFlags,
+          allowedFlags: options.allowedFlags,
         });
 
         if (!validation.safe) {
           throw new Error(`Invalid argument: ${validation.blockedPatterns.join(', ')}`);
         }
-        return validation.sanitizedArgs[0] || '';
+        return validation.sanitizedArgs.join(' ');
       },
 
-      execute: (args: string[], options: CommandExecutionOptions = {}): Promise<ExecutionResult> =>
+      execute: async (
+        args: string[],
+        options: CommandExecutionOptions = {}
+      ): Promise<ExecutionResult> =>
         this.safeExecute(baseCommand, args, {
           ...options,
-          allowedFlags,
+          allowedFlags: options.allowedFlags,
           logExecution: true,
         }),
     };
@@ -663,39 +687,177 @@ export class CommandInjectionPrevention {
     const warnings: string[] = [];
     let safe = true;
 
+    // Initial safety check for null bytes and control characters
+    if (/[\x00-\x1f\x7f-\x9f]/.test(filePath)) {
+      safe = false;
+      warnings.push('Control characters detected in path');
+    }
+
+    // Decode various encodings that could hide path traversal
+    let decodedPath = filePath;
+
+    // URL decode multiple times to catch double encoding
+    for (let i = 0; i < 3; i++) {
+      try {
+        const decoded = decodeURIComponent(decodedPath);
+        if (decoded === decodedPath) break;
+        decodedPath = decoded;
+        warnings.push('URL encoded path detected');
+      } catch {
+        break;
+      }
+    }
+
+    // Decode hex sequences
+    if (decodedPath.includes('\\x')) {
+      decodedPath = decodedPath.replace(/\\x([0-9A-Fa-f]{2})/g, (match, hex) =>
+        String.fromCharCode(parseInt(hex, 16))
+      );
+      warnings.push('Hex encoded path detected');
+    }
+
+    // Decode unicode sequences
+    if (decodedPath.includes('\\u')) {
+      decodedPath = decodedPath.replace(/\\u([0-9A-Fa-f]{4})/g, (match, hex) =>
+        String.fromCharCode(parseInt(hex, 16))
+      );
+      warnings.push('Unicode encoded path detected');
+    }
+
     // Sanitize the file path
-    const sanitized = inputSanitizer.sanitizeFilePath(filePath);
+    const sanitized = inputSanitizer.sanitizeFilePath(decodedPath);
     if (sanitized.modified) {
       warnings.push('File path was sanitized');
     }
 
     const normalizedPath = path.normalize(sanitized.sanitized);
 
-    // Check for path traversal
-    if (normalizedPath.includes('../') || normalizedPath.includes('..\\')) {
+    // Comprehensive path traversal detection
+    const traversalPatterns = [
+      /\.\.[\/\\]/, // Basic ../
+      /\.\.\\/g, // ..\ pattern
+      /\.\.\//g, // ../ pattern
+      /\.\.$/, // Ends with ..
+      /\/\.\./, // Contains /..
+      /\\\.\./, // Contains \..
+      /\.\.[^\/\\]*[\/\\]/, // .. followed by chars then separator
+      /[\/\\]\.\.[\/\\]/, // Separator .. separator
+      /\.[\.]+[\/\\]/, // Multiple dots with separator
+      /\.(\.)+/, // Multiple consecutive dots
+    ];
+
+    const pathsToCheck = [filePath, decodedPath, sanitized.sanitized, normalizedPath];
+
+    for (const pathToCheck of pathsToCheck) {
+      if (traversalPatterns.some(pattern => pattern.test(pathToCheck))) {
+        safe = false;
+        warnings.push('Path traversal detected');
+        break;
+      }
+    }
+
+    // Check for absolute paths trying to access system directories
+    const systemPaths = [
+      /^\/etc\//i,
+      /^\/root\//i,
+      /^\/var\/log\//i,
+      /^\/proc\//i,
+      /^\/sys\//i,
+      /^\/dev\//i,
+      /^\/tmp\//i,
+      /^\/usr\/bin\//i,
+      /^\/bin\//i,
+      /^\/sbin\//i,
+      /^[A-Z]:\\windows\\/i,
+      /^[A-Z]:\\users\\/i,
+      /^[A-Z]:\\program\s*files/i,
+      /^[A-Z]:\\system32/i,
+      /^\\\\/, // UNC paths
+    ];
+
+    if (systemPaths.some(pattern => pattern.test(normalizedPath))) {
       safe = false;
-      warnings.push('Path traversal detected');
+      warnings.push('Attempt to access system directory');
+    }
+
+    // Check for hidden/sensitive files
+    const sensitivePatterns = [
+      /\/\.[a-z]/i, // Hidden files starting with .
+      /\.ssh/i, // SSH files
+      /\.bash_history/i, // Bash history
+      /\.env/i, // Environment files
+      /config[\/\\]secret/i, // Secret config files
+      /database[\/\\]config/i, // Database config
+      /backup/i, // Backup files
+      /\.htaccess/i, // Apache config
+      /web\.config/i, // IIS config
+      /\.git/i, // Git directory
+    ];
+
+    if (sensitivePatterns.some(pattern => pattern.test(normalizedPath))) {
+      safe = false;
+      warnings.push('Attempt to access sensitive file/directory');
     }
 
     // Check if path is within allowed directories
     if (allowedDirectories.length > 0) {
-      const resolved = path.resolve(normalizedPath);
-      const isInAllowedDir = allowedDirectories.some(dir => {
-        const allowedDir = path.resolve(dir);
-        return resolved.startsWith(allowedDir);
-      });
+      try {
+        const resolved = path.resolve(normalizedPath);
+        const isInAllowedDir = allowedDirectories.some(dir => {
+          const allowedDir = path.resolve(dir);
+          return resolved.startsWith(allowedDir + path.sep) || resolved === allowedDir;
+        });
 
-      if (!isInAllowedDir) {
+        if (!isInAllowedDir) {
+          safe = false;
+          warnings.push('Path outside allowed directories');
+        }
+      } catch (error) {
         safe = false;
-        warnings.push('Path outside allowed directories');
+        warnings.push('Invalid path format');
       }
     }
 
     // Check for dangerous file extensions
-    const dangerousExtensions = ['.sh', '.bat', '.cmd', '.ps1', '.py', '.rb', '.pl', '.php'];
+    const dangerousExtensions = [
+      '.sh',
+      '.bat',
+      '.cmd',
+      '.ps1',
+      '.py',
+      '.rb',
+      '.pl',
+      '.php',
+      '.jsp',
+      '.asp',
+      '.aspx',
+      '.exe',
+      '.com',
+      '.scr',
+      '.pif',
+      '.vbs',
+      '.js',
+      '.jar',
+      '.war',
+      '.ear',
+      '.deb',
+      '.rpm',
+    ];
     const ext = path.extname(normalizedPath).toLowerCase();
     if (dangerousExtensions.includes(ext)) {
       warnings.push(`Potentially dangerous file extension: ${String(ext)}`);
+    }
+
+    // Additional security check for very long paths (potential buffer overflow)
+    if (normalizedPath.length > 1024) {
+      safe = false;
+      warnings.push('Path exceeds maximum length');
+    }
+
+    // Check for repeated separators or suspicious patterns
+    if (/[\/\\]{3,}/.test(normalizedPath) || /\.{4,}/.test(normalizedPath)) {
+      safe = false;
+      warnings.push('Suspicious path pattern detected');
     }
 
     return {
@@ -726,7 +888,7 @@ export const commandInjectionPrevention = CommandInjectionPrevention.getInstance
  * const result = await safeExecute('ls', ['-la']);
  * ```
  */
-export const safeExecute = (
+export const safeExecute = async (
   command: string,
   args: string[] = [],
   options: CommandExecutionOptions = {}
@@ -757,7 +919,7 @@ export const validateCommand = (
  *
  * @function createSafeCommand
  * @param {string} baseCommand - Base command name
- * @param {string[]} [allowedFlags=[]] - Allowed flags
+ * @param {string[]} [allowedSubcommands=[]] - Allowed subcommands
  * @returns {Object} Command wrapper
  *
  * @example
@@ -767,11 +929,11 @@ export const validateCommand = (
  */
 export const createSafeCommand = (
   baseCommand: string,
-  allowedFlags: string[] = []
+  allowedSubcommands: string[] = []
 ): {
   validate: (args: string[], options?: CommandExecutionOptions) => string;
   execute: (args: string[], options?: CommandExecutionOptions) => Promise<ExecutionResult>;
-} => commandInjectionPrevention.createSafeCommand(baseCommand, allowedFlags);
+} => commandInjectionPrevention.createSafeCommand(baseCommand, allowedSubcommands);
 
 /**
  * Convenience function for file path validation

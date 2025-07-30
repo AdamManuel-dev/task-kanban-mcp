@@ -18,36 +18,36 @@
     "strictBindCallApply": false,
     "strictPropertyInitialization": false,
     "noImplicitThis": false,
-    
+    "useUnknownInCatchVariables": false,
+    "noEmitOnError": false,
+
     /* JSX Configuration */
     "jsx": "react-jsx",
     "jsxImportSource": "react",
-    
+
     /* Module resolution for React/Ink */
     "moduleResolution": "node",
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "allowJs": true,
-    
+
     /* Production optimizations */
     "removeComments": true,
     "declaration": false,
     "declarationMap": false,
     "sourceMap": false,
     "inlineSources": false,
-    
+
     /* Performance improvements */
     "incremental": true,
     "tsBuildInfoFile": "./dist/.tsbuildinfo",
-    
+
     /* Handle new dependencies */
     "lib": ["ES2022", "DOM"],
     "types": ["node", "jest", "react"],
     "resolveJsonModule": true
   },
-  "include": [
-    "src/**/*"
-  ],
+  "include": ["src/**/*"],
   "exclude": [
     "node_modules",
     "dist",
@@ -57,6 +57,8 @@
     "**/*.spec.ts",
     "**/__tests__/**/*",
     "tests/**/*",
-    "src/services/TagService.kysely-poc.ts"
+    "src/services/TagService.kysely-poc.ts",
+    "src/cli/commands/interactive-view.tsx",
+    "src/cli/commands/migrate-safe.ts"
   ]
 }

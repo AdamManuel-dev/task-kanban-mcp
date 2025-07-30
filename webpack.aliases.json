@@ -1,0 +1,16 @@
+{
+  "resolve": {
+    "alias": {
+      "@": "/Users/adammanuel/Projects/Agents/mcp-kanban/src",
+      "@config": "/Users/adammanuel/Projects/Agents/mcp-kanban/src/config",
+      "@services": "/Users/adammanuel/Projects/Agents/mcp-kanban/src/services",
+      "@repositories": "/Users/adammanuel/Projects/Agents/mcp-kanban/src/repositories",
+      "@controllers": "/Users/adammanuel/Projects/Agents/mcp-kanban/src/controllers",
+      "@middleware": "/Users/adammanuel/Projects/Agents/mcp-kanban/src/middleware",
+      "@utils": "/Users/adammanuel/Projects/Agents/mcp-kanban/src/utils",
+      "@types": "/Users/adammanuel/Projects/Agents/mcp-kanban/src/types",
+      "@mcp": "/Users/adammanuel/Projects/Agents/mcp-kanban/src/mcp",
+      "@cli": "/Users/adammanuel/Projects/Agents/mcp-kanban/src/cli"
+    }
+  }
+}

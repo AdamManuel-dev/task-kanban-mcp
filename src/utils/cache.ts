@@ -135,7 +135,7 @@ export class CacheManager<T = unknown> {
     // Remove old entry if exists
     if (this.cache.has(key)) {
       const oldEntry = this.cache.get(key)!;
-      this.currentMemoryUsage -= oldEntry.size || 0;
+      this.currentMemoryUsage -= oldEntry.size ?? 0;
     }
 
     this.cache.set(key, entry);
@@ -158,7 +158,7 @@ export class CacheManager<T = unknown> {
   delete(key: string): boolean {
     const entry = this.cache.get(key);
     if (entry) {
-      this.currentMemoryUsage -= entry.size || 0;
+      this.currentMemoryUsage -= entry.size ?? 0;
     }
     return this.cache.delete(key);
   }
@@ -364,7 +364,7 @@ export const configCache = new CacheManager({
  * Generate cache key from components
  */
 export function cacheKey(
-  ...components: (string | number | boolean | undefined | null | unknown)[]
+  ...components: Array<string | number | boolean | undefined | null | unknown>
 ): string {
   return components
     .filter(c => c !== null && c !== undefined)
@@ -390,7 +390,7 @@ export function memoize<Args extends unknown[], Return>(
   return async (...args: Args): Promise<Return> => {
     const key = keyFn(...args);
 
-    return cache.getOrSet(key, () => fn(...args), ttl);
+    return cache.getOrSet(key, async () => fn(...args), ttl);
   };
 }
 
@@ -509,7 +509,7 @@ export const cacheWarming = {
   /**
    * Pre-populate cache with commonly accessed data
    */
-  async warmCommonQueries(apiClient: any): Promise<void> {
+  async warmCommonQueries(apiClient: unknown): Promise<void> {
     logger.info('Starting cache warming...');
 
     try {

@@ -11,12 +11,18 @@
 import type { Command } from 'commander';
 import type { CliComponents } from '../../types';
 import type { ShowTaskOptions } from './types';
+import { isSuccessResponse } from '../../api-client-wrapper';
 
 /**
  * Register the show command
  */
 export function registerShowCommand(taskCmd: Command): void {
-  const getComponents = (): CliComponents => global.cliComponents;
+  const getComponents = (): CliComponents => {
+    if (!global.cliComponents) {
+      throw new Error('CLI components not initialized. Please initialize the CLI first.');
+    }
+    return global.cliComponents;
+  };
 
   taskCmd
     .command('show <id>')
@@ -26,14 +32,14 @@ export function registerShowCommand(taskCmd: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const task = await apiClient.getTask(id);
+        const taskResponse = await apiClient.getTask(id);
 
-        if (!task) {
+        if (!isSuccessResponse(taskResponse)) {
           formatter.error(`Task ${String(id)} not found`);
           process.exit(1);
         }
 
-        formatter.output(task);
+        formatter.output(taskResponse.data);
 
         if (options.context) {
           formatter.info('Getting AI context...');

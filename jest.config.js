@@ -4,18 +4,8 @@ module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   
-  // TypeScript configuration
-  transform: {
-    '^.+\\.ts$': ['@swc/jest', {
-      jsc: {
-        target: 'es2022',
-        parser: {
-          syntax: 'typescript',
-          decorators: true,
-        },
-      },
-    }],
-  },
+  // TypeScript configuration - use ts-jest only for consistency
+  // transform: defined by preset
   
   // Module resolution
   roots: ['<rootDir>/src', '<rootDir>/tests'],
@@ -24,7 +14,7 @@ module.exports = {
     '**/?(*.)+(spec|test).ts'
   ],
   moduleFileExtensions: ['ts', 'js', 'json'],
-  extensionsToTreatAsEsm: ['.ts'],
+  // extensionsToTreatAsEsm: ['.ts'], // Disabled to avoid conflicts with ts-jest
   transformIgnorePatterns: [
     'node_modules/(?!(ink-testing-library|@testing-library)/)',
   ],
@@ -41,11 +31,11 @@ module.exports = {
     '^@cli/(.*)$': '<rootDir>/src/cli/$1',
   },
   
-  // Setup files
-  setupFilesAfterEnv: [
-    '<rootDir>/tests/jest.setup.ts',
-    '<rootDir>/tests/cli-setup.ts'
-  ],
+  // Setup files - temporarily disabled to diagnose cache issue
+  // setupFilesAfterEnv: [
+  //   '<rootDir>/tests/jest.setup.ts',
+  //   '<rootDir>/tests/cli-setup.ts'
+  // ],
   
   // Coverage configuration
   collectCoverage: false,
@@ -93,11 +83,11 @@ module.exports = {
   errorOnDeprecated: true,
   verbose: true,
   
-  // Global variables
-  globals: {
-    'ts-jest': {
+  // Transform configuration (modern ts-jest approach)
+  transform: {
+    '^.+\\.ts$': ['ts-jest', {
       useESM: false,
-    },
+    }],
   },
   
   // Watch mode

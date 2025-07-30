@@ -58,6 +58,12 @@ const UpdateTaskSchema = z.object({
   position: z.number().int().min(0).optional(),
 });
 
+const UpdateTaskPrioritySchema = z.object({
+  priority: z.number().int().min(1).max(10),
+  change_reason: z.string().optional(),
+  changed_by: z.string().optional(),
+});
+
 const ListTasksSchema = z.object({
   board_id: z.string().uuid().optional(),
   status: z.string().optional(),
@@ -410,6 +416,45 @@ export function taskRoutes(): Router {
   );
 
   /**
+   * Update task priority with change tracking
+   *
+   * @route PATCH /api/v1/tasks/:id/priority
+   * @auth Required - Write permission
+   *
+   * @param {string} id - Task ID to update
+   * @bodyparam {number} priority - New priority (1-10)
+   * @bodyparam {string} [change_reason] - Reason for priority change
+   * @bodyparam {string} [changed_by] - User who made the change
+   *
+   * @response {Task} Updated task object
+   */
+  router.patch(
+    '/:id/priority',
+    requirePermission('write'),
+    validateRequest(UpdateTaskPrioritySchema),
+    async (req, res, next): Promise<void> => {
+      try {
+        const { id } = req.params;
+        if (!id) {
+          throw new NotFoundError('Task', 'ID is required');
+        }
+
+        const { priority, change_reason, changed_by } = req.body;
+        const updateData = {
+          priority,
+          change_reason,
+          changed_by,
+        };
+
+        const task = await taskService.updateTask(id, updateData);
+        res.apiSuccess(task);
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
+
+  /**
    * Delete a task permanently.
    *
    * @route DELETE /api/v1/tasks/:id
@@ -579,8 +624,8 @@ export function taskRoutes(): Router {
         }
 
         res.apiSuccess({
-          dependencies: taskWithDeps.dependencies?.map(d => d.depends_on_task_id) || [],
-          dependents: taskWithDeps.dependents?.map(d => d.task_id) || [],
+          dependencies: taskWithDeps.dependencies.map(d => d.depends_on_task_id) || [],
+          dependents: taskWithDeps.dependents.map(d => d.task_id) || [],
           added: results.added,
           removed: results.removed,
           errors: results.errors.length > 0 ? results.errors : undefined,
@@ -718,7 +763,7 @@ export function taskRoutes(): Router {
           Object.entries(rawSubtaskData).filter(([, value]) => value !== undefined)
         );
 
-        const subtask = await taskService.createTask(subtaskData as any);
+        const subtask = await taskService.createTask(subtaskData as unknown);
         res.status(201).apiSuccess(subtask);
       } catch (error) {
         next(error);
@@ -772,7 +817,7 @@ export function taskRoutes(): Router {
           Object.entries(validatedBody).filter(([, value]) => value !== undefined)
         );
 
-        const updatedSubtask = await taskService.updateTask(id, updateData as any);
+        const updatedSubtask = await taskService.updateTask(id, updateData as unknown);
         res.apiSuccess(updatedSubtask);
       } catch (error) {
         next(error);
@@ -870,7 +915,7 @@ export function taskRoutes(): Router {
       const options = {
         limit: parseInt(limit as string, 10),
         offset: parseInt(offset as string, 10),
-        category: category as any,
+        category: category as unknown,
         pinned: (() => {
           if (pinned === 'true') return true;
           if (pinned === 'false') return false;
@@ -923,14 +968,18 @@ export function taskRoutes(): Router {
       const { tag_ids: tagIds } = req.body;
 
       if (!Array.isArray(tagIds)) {
-        res.apiError({ code: 'INVALID_INPUT', message: 'tag_ids must be an array', statusCode: 400 });
+        res.apiError({
+          code: 'INVALID_INPUT',
+          message: 'tag_ids must be an array',
+          statusCode: 400,
+        });
         return;
       }
 
       if (!id) {
         throw new ValidationError('Task ID is required');
       }
-      const assignedTags: any[] = [];
+      const assignedTags: unknown[] = [];
       await Promise.all(
         tagIds.map(async tagId => {
           await tagService.addTagToTask(id, tagId);

@@ -54,7 +54,7 @@ router.get(
       const exportService = new ExportService(db);
 
       // Build options object omitting undefined values
-      const options: any = {
+      const options: unknown = {
         format: validated.format,
       };
 
@@ -97,9 +97,11 @@ router.post(
   requirePermission('write'),
   (_req: Request, res: Response, next: NextFunction) => {
     try {
-      return res
-        .status(501)
-        .apiError({ message: 'Import functionality requires multer middleware', code: 'NOT_IMPLEMENTED', statusCode: 501 });
+      return res.status(501).apiError({
+        message: 'Import functionality requires multer middleware',
+        code: 'NOT_IMPLEMENTED',
+        statusCode: 501,
+      });
     } catch (error) {
       return next(error);
     }
@@ -112,9 +114,11 @@ router.post(
   requirePermission('read'),
   (_req: Request, res: Response, next: NextFunction) => {
     try {
-      return res
-        .status(501)
-        .apiError({ message: 'Import validation requires multer middleware', code: 'NOT_IMPLEMENTED', statusCode: 501 });
+      return res.status(501).apiError({
+        message: 'Import validation requires multer middleware',
+        code: 'NOT_IMPLEMENTED',
+        statusCode: 501,
+      });
     } catch (error) {
       return next(error);
     }
@@ -164,7 +168,7 @@ router.get(
       const exportService = new ExportService(db);
 
       // Force anonymization
-      const options: any = {
+      const options: unknown = {
         ...validated,
         anonymize: true,
         anonymizationOptions: validated.anonymizationOptions ?? {

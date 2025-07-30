@@ -210,7 +210,7 @@ export class TaskListFormatter {
   /**
    * Format detailed task view
    */
-  formatTaskDetail(task: TaskDetails): string {
+  static formatTaskDetail(task: TaskDetails): string {
     const output: string[] = [];
 
     // Header
@@ -225,8 +225,8 @@ export class TaskListFormatter {
     // Details section
     output.push(chalk.bold('Details:'));
     output.push(formatKeyValue('Priority', task.priority ? formatPriority(task.priority) : 'None'));
-    output.push(formatKeyValue('Assignee', task.assignee || 'Unassigned'));
-    output.push(formatKeyValue('Reporter', task.reporter || 'Unknown'));
+    output.push(formatKeyValue('Assignee', task.assignee ?? 'Unassigned'));
+    output.push(formatKeyValue('Reporter', task.reporter ?? 'Unknown'));
     output.push(formatKeyValue('Created', formatRelativeTime(task.created_at)));
     output.push(formatKeyValue('Updated', formatRelativeTime(task.updated_at)));
 
@@ -311,8 +311,8 @@ export class TaskListFormatter {
     return [...tasks].sort((a, b) => {
       switch (sortBy) {
         case 'priority':
-          const aPriority = PRIORITY_ORDER[a.priority as keyof typeof PRIORITY_ORDER] || 99;
-          const bPriority = PRIORITY_ORDER[b.priority as keyof typeof PRIORITY_ORDER] || 99;
+          const aPriority = PRIORITY_ORDER[a.priority as keyof typeof PRIORITY_ORDER] ?? 99;
+          const bPriority = PRIORITY_ORDER[b.priority as keyof typeof PRIORITY_ORDER] ?? 99;
           return aPriority - bPriority;
 
         case 'due_date':
@@ -350,10 +350,10 @@ export class TaskListFormatter {
           key = task.status;
           break;
         case 'priority':
-          key = task.priority || 'No Priority';
+          key = task.priority ?? 'No Priority';
           break;
         case 'assignee':
-          key = task.assignee || 'Unassigned';
+          key = task.assignee ?? 'Unassigned';
           break;
         default:
           key = 'All Tasks';
@@ -382,6 +382,6 @@ export class TaskListFormatter {
       Tags: 20,
     };
 
-    return headers.map(h => baseWidths[h as keyof typeof baseWidths] || 15);
+    return headers.map(h => baseWidths[h as keyof typeof baseWidths] ?? 15);
   }
 }

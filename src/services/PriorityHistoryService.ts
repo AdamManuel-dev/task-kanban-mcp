@@ -14,7 +14,7 @@ export interface PriorityChange {
   new_priority: number;
   reason?: string;
   changed_by?: string;
-  context?: Record<string, any>;
+  context?: Record<string, unknown>;
   timestamp: Date;
 }
 
@@ -100,7 +100,7 @@ export class PriorityHistoryService {
     newPriority: number,
     reason?: string,
     changedBy?: string,
-    context?: Record<string, any>
+    context?: Record<string, unknown>
   ): Promise<PriorityChange> {
     try {
       const id = `ph_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -115,8 +115,8 @@ export class PriorityHistoryService {
           taskId,
           oldPriority,
           newPriority,
-          reason || null,
-          changedBy || null,
+          reason ?? null,
+          changedBy ?? null,
           context ? JSON.stringify(context) : null,
           timestamp.toISOString(),
         ]
@@ -190,7 +190,7 @@ export class PriorityHistoryService {
         JOIN tasks t ON ph.task_id = t.id
         WHERE 1=1
       `;
-      const params: any[] = [];
+      const params: unknown[] = [];
 
       if (boardId) {
         baseQuery += ' AND t.board_id = ?';
@@ -213,11 +213,11 @@ export class PriorityHistoryService {
 
       // Find most changed tasks
       const taskChangeCounts = new Map<string, number>();
-      const taskDetails = new Map<string, any>();
+      const taskDetails = new Map<string, unknown>();
       const taskLatestReasons = new Map<string, string>();
 
       changes.forEach(change => {
-        taskChangeCounts.set(change.task_id, (taskChangeCounts.get(change.task_id) || 0) + 1);
+        taskChangeCounts.set(change.task_id, (taskChangeCounts.get(change.task_id) ?? 0) + 1);
         taskDetails.set(change.task_id, {
           id: change.task_id,
           title: change.title,
@@ -245,7 +245,7 @@ export class PriorityHistoryService {
       let unchanged = 0;
 
       changes.forEach(change => {
-        const oldPri = change.old_priority || 0;
+        const oldPri = change.old_priority ?? 0;
         const newPri = change.new_priority;
 
         if (newPri > oldPri) increases++;
@@ -257,7 +257,7 @@ export class PriorityHistoryService {
       const reasonCounts = new Map<string, number>();
       changes.forEach(change => {
         if (change.reason) {
-          reasonCounts.set(change.reason, (reasonCounts.get(change.reason) || 0) + 1);
+          reasonCounts.set(change.reason, (reasonCounts.get(change.reason) ?? 0) + 1);
         }
       });
 
@@ -296,7 +296,7 @@ export class PriorityHistoryService {
         JOIN tasks t ON ph.task_id = t.id
         WHERE 1=1
       `;
-      const params: any[] = [];
+      const params: unknown[] = [];
 
       if (taskId) {
         query += ' AND ph.task_id = ?';
@@ -312,7 +312,7 @@ export class PriorityHistoryService {
       const patterns: PriorityPattern[] = [];
 
       // Group changes by task
-      const taskChanges = new Map<string, any[]>();
+      const taskChanges = new Map<string, unknown[]>();
       changes.forEach(change => {
         if (!taskChanges.has(change.task_id)) {
           taskChanges.set(change.task_id, []);
@@ -364,7 +364,7 @@ export class PriorityHistoryService {
         // Pattern 3: Emergency bumps (sudden large increases)
         const emergencyBumps = taskChangeList.filter(
           (change, i) =>
-            i > 0 && change.new_priority - (taskChangeList[i - 1].new_priority || 0) >= 5
+            i > 0 && change.new_priority - (taskChangeList[i - 1].new_priority ?? 0) >= 5
         );
 
         if (emergencyBumps.length > 0) {
@@ -451,7 +451,7 @@ export class PriorityHistoryService {
       const dayChanges = new Map<string, number>();
       changes.forEach(change => {
         const day = new Date(change.timestamp).toISOString().split('T')[0];
-        dayChanges.set(day, (dayChanges.get(day) || 0) + 1);
+        dayChanges.set(day, (dayChanges.get(day) ?? 0) + 1);
       });
 
       const mostActiveDay = Array.from(dayChanges.entries()).sort((a, b) => b[1] - a[1])[0] || [
@@ -463,7 +463,7 @@ export class PriorityHistoryService {
       const hourChanges = new Map<number, number>();
       changes.forEach(change => {
         const hour = new Date(change.timestamp).getHours();
-        hourChanges.set(hour, (hourChanges.get(hour) || 0) + 1);
+        hourChanges.set(hour, (hourChanges.get(hour) ?? 0) + 1);
       });
 
       const busiestHours = Array.from(hourChanges.entries())
@@ -486,7 +486,7 @@ export class PriorityHistoryService {
 
   // Private helper methods
 
-  private calculatePriorityTrend(changes: any[]): number {
+  private calculatePriorityTrend(changes: unknown[]): number {
     if (changes.length < 3) return 0;
 
     const priorities = changes.map(c => c.new_priority);

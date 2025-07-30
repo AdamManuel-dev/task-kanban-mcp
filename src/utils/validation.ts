@@ -225,7 +225,7 @@ export class ValidationError extends Error implements ServiceError {
 
   public readonly statusCode = 400;
 
-  public readonly details: any;
+  public readonly details: unknown;
 
   /**
    * Create a validation error
@@ -233,7 +233,7 @@ export class ValidationError extends Error implements ServiceError {
    * @param {string} message - Error message
    * @param {any} [details] - Additional error details (e.g., Zod error array)
    */
-  constructor(message: string, details?: any) {
+  constructor(message: string, details?: unknown) {
     super(message);
     this.name = 'ValidationError';
     this.details = details;
@@ -433,7 +433,7 @@ export const BusinessRules = {
         archived: ['todo', 'in_progress', 'done', 'blocked'],
       };
 
-      if (!validTransitions[currentStatus]?.includes(newStatus)) {
+      if (!validTransitions[currentStatus].includes(newStatus)) {
         throw new ValidationError(
           `Invalid status transition from ${String(currentStatus)} to ${String(newStatus)}`
         );
@@ -617,7 +617,7 @@ export function createValidatedService<T extends object>(
 ): T {
   return new Proxy(service, {
     get(target, propKey) {
-      const originalMethod = (target as any)[propKey];
+      const originalMethod = (target as unknown)[propKey];
 
       if (typeof originalMethod !== 'function') {
         return originalMethod;
@@ -628,7 +628,7 @@ export function createValidatedService<T extends object>(
         return originalMethod;
       }
 
-      return function validatedMethod(this: any, ...args: any[]) {
+      return function validatedMethod(this: unknown, ...args: unknown[]) {
         // Validate the first argument (usually the data)
         if (args.length > 0 && args[0] !== undefined) {
           validateInput(validationSchema, args[0]);

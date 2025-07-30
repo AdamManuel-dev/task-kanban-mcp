@@ -114,7 +114,7 @@ export class ConfigManager {
     let current: unknown = this.config;
 
     for (const part of parts) {
-      if (current === null || current === undefined || part === undefined) {
+      if (current === null || current === undefined) {
         return undefined as T;
       }
       current = (current as Record<string, unknown>)[part];

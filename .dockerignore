@@ -3,11 +3,19 @@ node_modules
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+.npm
+.yarn
+.pnp
+.pnp.js
 
 # Build outputs
 dist
 build
 coverage
+*.tsbuildinfo
+webpack-stats.json
+bundle-analyze.html
+bundle-report.html
 
 # Development files
 .env

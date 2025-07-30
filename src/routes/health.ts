@@ -1,4 +1,5 @@
-import { Router, Request, Response } from 'express';
+import type { Request, Response } from 'express';
+import { Router } from 'express';
 import { dbConnection } from '@/database/connection';
 import { config } from '@/config';
 import { webSocketManager } from '@/websocket';
@@ -6,7 +7,7 @@ import '@/middleware/response';
 
 // Import the extended response types
 type ExtendedResponse = Response & {
-  apiSuccess<T>(data: T, meta?: any): void;
+  apiSuccess: <T>(data: T, meta?: unknown) => void;
 };
 
 export function healthRoutes(): Router {
@@ -25,11 +26,11 @@ export function healthRoutes(): Router {
       database: {
         connected: health.connected,
         responsive: health.responsive,
-        responseTime: health.stats?.responseTime,
+        responseTime: health.stats.responseTime,
       },
       websocket: {
         running: !!webSocketManager,
-        clients: webSocketManager?.getClientCount() || 0,
+        clients: webSocketManager.getClientCount() || 0,
       },
       uptime: process.uptime(),
     });
@@ -47,15 +48,15 @@ export function healthRoutes(): Router {
       database: {
         connected: health.connected,
         responsive: health.responsive,
-        responseTime: health.stats?.responseTime,
+        responseTime: health.stats.responseTime,
         size: stats.size,
         tables: stats.tables,
         walMode: stats.walMode,
       },
       websocket: {
         running: !!webSocketManager,
-        clients: webSocketManager?.getClientCount() || 0,
-        subscriptions: webSocketManager?.getSubscriptionManager().getStats() || null,
+        clients: webSocketManager.getClientCount() || 0,
+        subscriptions: webSocketManager.getSubscriptionManager().getStats() || null,
       },
       system: {
         uptime: process.uptime(),

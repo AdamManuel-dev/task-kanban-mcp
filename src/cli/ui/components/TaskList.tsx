@@ -38,17 +38,17 @@ export class TaskListFormatter {
       filterBy?: TaskFilter;
     } = {}
   ) {
-    this.maxHeight = options.maxHeight || 10;
-    this.selectedIndex = options.selectedIndex || 0;
+    this.maxHeight = options.maxHeight ?? 10;
+    this.selectedIndex = options.selectedIndex ?? 0;
 
     // Apply filters and sorting
-    this.tasks = this.processTaskList(tasks, options.sortBy, options.filterBy);
+    this.tasks = TaskListFormatter.processTaskList(tasks, options.sortBy, options.filterBy);
   }
 
   /**
    * Process and filter task list
    */
-  private processTaskList(
+  private static processTaskList(
     tasks: TaskListProps['tasks'],
     sortBy?: TaskListProps['sortBy'],
     filterBy?: TaskFilter
@@ -73,7 +73,7 @@ export class TaskListFormatter {
       processed.sort((a, b) => {
         switch (sortBy) {
           case 'priority':
-            return (b.priority || 0) - (a.priority || 0);
+            return (b.priority ?? 0) - (a.priority ?? 0);
           case 'due_date':
             if (!a.due_date && !b.due_date) return 0;
             if (!a.due_date) return 1;
@@ -95,14 +95,18 @@ export class TaskListFormatter {
   /**
    * Format a single task item with accessibility enhancements
    */
-  private formatTaskItem(task: TaskListProps['tasks'][0], isSelected: boolean, index: number): string {
+  private formatTaskItem(
+    task: TaskListProps['tasks'][0],
+    isSelected: boolean,
+    index: number
+  ): string {
     const prefix = isSelected ? '▶ ' : '  ';
     const priorityText = task.priority ? `P${task.priority}` : 'P0';
     const statusIcon = TaskListFormatter.getStatusIcon(task.status);
-    
+
     // Create accessible description
-    const accessibleTitle = this.formatTaskForAccessibility(task);
-    
+    const accessibleTitle = TaskListFormatter.formatTaskForAccessibility(task);
+
     let line = `${prefix}${statusIcon} ${task.title}`;
     if (task.assignee) {
       line += ` [@${task.assignee}]`;
@@ -122,7 +126,7 @@ export class TaskListFormatter {
   /**
    * Format task information for screen readers
    */
-  private formatTaskForAccessibility(task: TaskListProps['tasks'][0]): string {
+  private static formatTaskForAccessibility(task: TaskListProps['tasks'][0]): string {
     const parts = [
       `Task: ${task.title}`,
       `Status: ${task.status}`,
@@ -199,7 +203,9 @@ export class TaskListFormatter {
 
     // Navigation help with accessibility
     output.push('');
-    output.push('Controls: ↑↓ Navigate | Tab: Focus | Enter: Select | Space: Toggle | Q: Quit | A: Accessibility');
+    output.push(
+      'Controls: ↑↓ Navigate | Tab: Focus | Enter: Select | Space: Toggle | Q: Quit | A: Accessibility'
+    );
     output.push('Screen Reader: Use arrow keys in browse mode, Enter to interact');
 
     return output.join('\n');

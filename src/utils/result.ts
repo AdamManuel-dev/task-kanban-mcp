@@ -140,7 +140,7 @@ export async function fromPromise<T>(promise: Promise<T>): Promise<Result<T, Err
  * If all are successful, returns array of values
  * If any fail, returns the first error
  */
-export function combine<T, E>(results: Result<T, E>[]): Result<T[], E> {
+export function combine<T, E>(results: Array<Result<T, E>>): Result<T[], E> {
   const values: T[] = [];
 
   for (const result of results) {

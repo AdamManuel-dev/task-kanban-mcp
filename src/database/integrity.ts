@@ -56,7 +56,7 @@ export interface IntegrityCheckResult {
   /** Check execution time in milliseconds */
   executionTime: number;
   /** Additional metadata about the check */
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
 }
 
 /**
@@ -204,7 +204,7 @@ export class DatabaseIntegrityChecker {
     const startTime = Date.now();
     const errors: string[] = [];
     const warnings: string[] = [];
-    const metadata: Record<string, any> = {};
+    const metadata: Record<string, unknown> = {};
 
     try {
       logger.debug('Checking foreign key constraints');
@@ -372,7 +372,7 @@ export class DatabaseIntegrityChecker {
     const startTime = Date.now();
     const errors: string[] = [];
     const warnings: string[] = [];
-    const metadata: Record<string, any> = {};
+    const metadata: Record<string, unknown> = {};
 
     try {
       logger.debug('Checking for orphaned records');
@@ -466,7 +466,7 @@ export class DatabaseIntegrityChecker {
     const startTime = Date.now();
     const errors: string[] = [];
     const warnings: string[] = [];
-    const metadata: Record<string, any> = {};
+    const metadata: Record<string, unknown> = {};
 
     try {
       logger.debug('Checking for circular dependencies');
@@ -535,7 +535,7 @@ export class DatabaseIntegrityChecker {
         metadata.affectedTasks = Object.keys(taskGroups).length;
         metadata.sampleCircularPaths = Object.values(taskGroups)
           .slice(0, 3)
-          .map(group => (group as any[])[0].path);
+          .map(group => (group as unknown[])[0].path);
       }
 
       // Check for self-referencing tasks (parent_task_id = id)
@@ -632,7 +632,7 @@ export class DatabaseIntegrityChecker {
     const startTime = Date.now();
     const errors: string[] = [];
     const warnings: string[] = [];
-    const metadata: Record<string, any> = {};
+    const metadata: Record<string, unknown> = {};
 
     try {
       logger.debug('Checking data type constraints');
@@ -779,7 +779,7 @@ export class DatabaseIntegrityChecker {
     const startTime = Date.now();
     const errors: string[] = [];
     const warnings: string[] = [];
-    const metadata: Record<string, any> = {};
+    const metadata: Record<string, unknown> = {};
 
     try {
       logger.debug('Checking full-text search consistency');
@@ -905,7 +905,7 @@ export class DatabaseIntegrityChecker {
     const startTime = Date.now();
     const errors: string[] = [];
     const warnings: string[] = [];
-    const metadata: Record<string, any> = {};
+    const metadata: Record<string, unknown> = {};
 
     try {
       logger.debug('Checking index integrity');

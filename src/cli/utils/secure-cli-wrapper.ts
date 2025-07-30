@@ -68,7 +68,7 @@ export interface SecurityEvent {
  * ```
  */
 export class SecureCliWrapper {
-  private static instance: SecureCliWrapper;
+  private static instance: SecureCliWrapper | undefined;
 
   private securityEvents: SecurityEvent[] = [];
 
@@ -241,8 +241,8 @@ export class SecureCliWrapper {
 
     // Override the action method to add security checks
     const originalAction = command.action.bind(command);
-    command.action = (fn: (...args: any[]) => void | Promise<void>) =>
-      originalAction(async (...args: any[]) => {
+    command.action = (fn: (...args: unknown[]) => void | Promise<void>) =>
+      originalAction(async (...args: unknown[]) => {
         try {
           // Extract options and command arguments
           const options = args[args.length - 1];
@@ -333,10 +333,10 @@ export class SecureCliWrapper {
    */
   secureCommand(command: Command): Command {
     // Store original action handler using the public API
-    const originalAction = (command as any)._actionHandler;
+    const originalAction = (command as unknown)._actionHandler;
 
     if (originalAction) {
-      command.action(async (...args: any[]) => {
+      command.action(async (...args: unknown[]) => {
         try {
           // Apply security checks
           const sanitizedArgs = this.sanitizeArguments(args.filter(arg => typeof arg === 'string'));
@@ -433,7 +433,7 @@ export class SecureCliWrapper {
    * ```typescript
    * const stats = wrapper.getSecurityStats();
    * console.log(`Total security events: ${stats.totalEvents}`);
-   * console.log('High risk events:', stats.eventsByRisk.high || 0);
+   * console.log('High risk events:', stats.eventsByRisk.high ?? 0);
    * ```
    */
   getSecurityStats(): {
@@ -446,8 +446,8 @@ export class SecureCliWrapper {
     const eventsByRisk: Record<string, number> = {};
 
     this.securityEvents.forEach(event => {
-      eventsByType[event.type] = (eventsByType[event.type] || 0) + 1;
-      eventsByRisk[event.risk] = (eventsByRisk[event.risk] || 0) + 1;
+      eventsByType[event.type] = (eventsByType[event.type] ?? 0) + 1;
+      eventsByRisk[event.risk] = (eventsByRisk[event.risk] ?? 0) + 1;
     });
 
     const lastEvent = this.securityEvents[this.securityEvents.length - 1];
@@ -455,7 +455,7 @@ export class SecureCliWrapper {
       totalEvents: this.securityEvents.length,
       eventsByType,
       eventsByRisk,
-      ...(lastEvent && { lastEvent }),
+      ...(this.securityEvents.length > 0 && { lastEvent }),
     };
   }
 
@@ -728,7 +728,7 @@ export function addSecurityMiddleware(program: Command): Command {
   // Hook into the program's action handling
   const originalParse = program.parse.bind(program);
   // eslint-disable-next-line no-param-reassign
-  program.parse = function secureParse(argv?: readonly string[], options?: any) {
+  program.parse = function secureParse(argv?: readonly string[], options?: unknown) {
     const args = argv || process.argv;
 
     // Validate arguments before parsing

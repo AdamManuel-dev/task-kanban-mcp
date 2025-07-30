@@ -274,8 +274,8 @@ export class AIContextualPrioritizer {
     const reasons: string[] = [];
 
     // Task type preference
-    if (userContext.preferredTaskTypes && (task as any).category) {
-      if (userContext.preferredTaskTypes.includes((task as any).category)) {
+    if (userContext.preferredTaskTypes && (task as unknown).category) {
+      if (userContext.preferredTaskTypes.includes((task as unknown).category)) {
         score += 15;
         confidence += 0.3;
         reasons.push(`Preferred task type (+15 points)`);
@@ -495,11 +495,11 @@ export class AIContextualPrioritizer {
       if (!repo) return {};
 
       const branches = await this.gitService.getBranches(repo.path);
-      const currentBranch = branches.find(b => (b as any).current);
+      const currentBranch = branches.find(b => (b as unknown).current);
 
       return {
         currentBranch: currentBranch?.name,
-        recentCommits: (currentBranch as any)?.commitCount ?? 0,
+        recentCommits: (currentBranch as unknown)?.commitCount ?? 0,
         branchAge: currentBranch ? this.calculateBranchAge(currentBranch) : 0,
       };
     } catch (error) {
@@ -521,7 +521,7 @@ export class AIContextualPrioritizer {
     try {
       // Get recent priority adjustments
       // TODO: Implement getRecentPatterns method in PriorityHistoryService
-      const recentAdjustments: any[] = [];
+      const recentAdjustments: unknown[] = [];
 
       // Calculate task completion velocity (tasks per day)
       const recentTasks = await this.taskService.getTasks({
@@ -599,7 +599,7 @@ export class AIContextualPrioritizer {
     return intersection.length / union.length; // Jaccard similarity
   }
 
-  private calculateBranchAge(branch: any): number {
+  private calculateBranchAge(branch: unknown): number {
     // Calculate branch age in days - placeholder implementation
     return 5; // days
   }

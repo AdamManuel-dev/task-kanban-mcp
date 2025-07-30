@@ -71,7 +71,7 @@ export function jsonToCsv(
           board.id,
           escapeCsvValue(board.name),
           board.description ? escapeCsvValue(board.description) : '',
-          (board as any).is_active ? 'true' : 'false',
+          (board as unknown).is_active ? 'true' : 'false',
           board.created_at,
           board.updated_at,
         ];
@@ -303,27 +303,27 @@ export function csvToJson(csvData: string, options: FormatConverterOptions = {})
       switch (currentSection) {
         case 'boards':
           if (!data.boards) data.boards = [];
-          data.boards.push(item as any);
+          data.boards.push(item as unknown);
           break;
         case 'tasks':
           if (!data.tasks) data.tasks = [];
-          data.tasks.push(item as any);
+          data.tasks.push(item as unknown);
           break;
         case 'tags':
           if (!data.tags) data.tags = [];
-          data.tags.push(item as any);
+          data.tags.push(item as unknown);
           break;
         case 'notes':
           if (!data.notes) data.notes = [];
-          data.notes.push(item as any);
+          data.notes.push(item as unknown);
           break;
         case 'task_tags':
           if (!data.taskTags) data.taskTags = [];
-          data.taskTags.push(item as any);
+          data.taskTags.push(item as unknown);
           break;
         case 'metadata':
-          if (!data.metadata) data.metadata = {} as any;
-          (data.metadata as any)[item.key as string] = item.value;
+          if (!data.metadata) data.metadata = {} as unknown;
+          (data.metadata as unknown)[item.key as string] = item.value;
           break;
         default:
           result.warnings.push(`Unknown section: ${currentSection}`);
@@ -395,7 +395,7 @@ export function jsonToXml(
         if (board.description) {
           xmlLines.push(`      <description>${escapeXml(board.description)}</description>`);
         }
-        xmlLines.push(`      <is_active>${(board as any).is_active}</is_active>`);
+        xmlLines.push(`      <is_active>${(board as unknown).is_active}</is_active>`);
         xmlLines.push(`      <created_at>${board.created_at}</created_at>`);
         xmlLines.push(`      <updated_at>${board.updated_at}</updated_at>`);
         xmlLines.push('    </board>');

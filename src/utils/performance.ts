@@ -20,7 +20,7 @@ export class Timer {
 
   private readonly label: string;
 
-  constructor(label: string = 'operation') {
+  constructor(label = 'operation') {
     this.label = label;
     this.startTime = process.hrtime();
   }
@@ -74,7 +74,7 @@ export class PerformanceMonitor {
 
   private readonly maxMetrics: number = 1000;
 
-  private isEnabled: boolean = true;
+  private isEnabled = true;
 
   constructor(options?: { maxMetrics?: number; enabled?: boolean }) {
     this.maxMetrics = options?.maxMetrics ?? 1000;
@@ -137,7 +137,7 @@ export class PerformanceMonitor {
 
     const operationCounts = this.metrics.reduce(
       (counts, metric) => {
-        counts[metric.operationName] = (counts[metric.operationName] || 0) + 1;
+        counts[metric.operationName] = (counts[metric.operationName] ?? 0) + 1;
         return counts;
       },
       {} as Record<string, number>
@@ -169,7 +169,7 @@ export class PerformanceMonitor {
   /**
    * Get recent metrics
    */
-  getRecentMetrics(count: number = 10): PerformanceMetrics[] {
+  getRecentMetrics(count = 10): PerformanceMetrics[] {
     return this.metrics.slice(-count);
   }
 }
@@ -179,7 +179,7 @@ export class PerformanceMonitor {
  */
 export const performanceMonitor = new PerformanceMonitor({
   enabled: process.env.NODE_ENV !== 'test',
-  maxMetrics: parseInt(process.env.PERFORMANCE_MAX_METRICS || '1000', 10),
+  maxMetrics: parseInt(process.env.PERFORMANCE_MAX_METRICS ?? '1000', 10),
 });
 
 /**
@@ -410,7 +410,7 @@ export class Benchmark {
 export async function quickBenchmark<T>(
   operationName: string,
   fn: () => T | Promise<T>,
-  iterations: number = 10
+  iterations = 10
 ): Promise<{
   operationName: string;
   results: ReturnType<Benchmark['getResults']>;
@@ -420,7 +420,7 @@ export async function quickBenchmark<T>(
   for (let i = 0; i < iterations; i++) {
     const result = fn();
     if (result instanceof Promise) {
-      await benchmark.runAsync(() => result);
+      await benchmark.runAsync(async () => result);
     } else {
       benchmark.run(() => result);
     }

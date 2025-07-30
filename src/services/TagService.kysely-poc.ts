@@ -106,7 +106,7 @@ export class TagServiceKysely {
         .where('id', '=', id)
         .executeTakeFirst();
 
-      return tag || null;
+      return tag ?? null;
     } catch (error) {
       logger.error('Failed to get tag by ID', { error, id });
       throw new BaseServiceError('TAG_FETCH_FAILED', 'Failed to fetch tag');
@@ -330,23 +330,23 @@ export class TagServiceKysely {
       // Follow the parent chain to see if we eventually reach the original tag
       let currentParentId = parentId;
       const visited = new Set<string>();
-      
+
       while (currentParentId && currentParentId !== '' && !visited.has(currentParentId)) {
         if (currentParentId === tagId) {
           return true; // Circular reference detected
         }
-        
+
         visited.add(currentParentId);
-        
+
         const parent = await this.db
           .selectFrom('tags')
           .select(['parent_id'])
           .where('id', '=', currentParentId)
           .executeTakeFirst();
-          
+
         currentParentId = parent?.parent_id || '';
       }
-      
+
       return false;
     } catch (error) {
       logger.error('Failed to check circular reference', { error, tagId, parentId });

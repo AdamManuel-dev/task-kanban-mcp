@@ -19,7 +19,12 @@ import { isSuccessResponse } from '../../api-client-wrapper';
  * Register the delete command
  */
 export function registerDeleteCommand(taskCmd: Command): void {
-  const getComponents = (): CliComponents => global.cliComponents;
+  const getComponents = (): CliComponents => {
+    if (!global.cliComponents) {
+      throw new Error('CLI components not initialized. Please initialize the CLI first.');
+    }
+    return global.cliComponents;
+  };
 
   taskCmd
     .command('delete <id>')

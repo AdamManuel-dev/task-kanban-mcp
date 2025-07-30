@@ -1,0 +1,190 @@
+# Docker Compose for Container Health Checks and Monitoring
+# This extends the main docker-compose setup with comprehensive monitoring
+
+version: '3.8'
+
+services:
+  # Prometheus monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: mcp-kanban-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    ports:
+      - '9090:9090'
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      - mcp-kanban-network
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:9090/-/healthy']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Grafana dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: mcp-kanban-grafana
+    ports:
+      - '3003:3000'
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=kanban-admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+    networks:
+      - mcp-kanban-network
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -f http://localhost:3000/api/health || exit 1']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Node Exporter for system metrics
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: mcp-kanban-node-exporter
+    command:
+      - '--path.rootfs=/host'
+    ports:
+      - '9100:9100'
+    volumes:
+      - '/:/host:ro,rslave'
+    networks:
+      - mcp-kanban-network
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:9100/metrics']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # cAdvisor for container metrics
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: mcp-kanban-cadvisor
+    ports:
+      - '8080:8080'
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    networks:
+      - mcp-kanban-network
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - /dev/kmsg
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:8080/healthz']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Log aggregation with Loki
+  loki:
+    image: grafana/loki:latest
+    container_name: mcp-kanban-loki
+    ports:
+      - '3100:3100'
+    volumes:
+      - loki-data:/loki
+      - ./monitoring/loki-config.yml:/etc/loki/local-config.yaml:ro
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - mcp-kanban-network
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:3100/ready']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Promtail for log shipping
+  promtail:
+    image: grafana/promtail:latest
+    container_name: mcp-kanban-promtail
+    volumes:
+      - ./logs:/var/log/mcp-kanban:ro
+      - ./monitoring/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - mcp-kanban-network
+    restart: unless-stopped
+    depends_on:
+      - loki
+
+  # Health check dashboard
+  health-monitor:
+    image: node:18-alpine
+    container_name: mcp-kanban-health-monitor
+    volumes:
+      - ./monitoring/health-monitor.js:/app/health-monitor.js:ro
+    working_dir: /app
+    environment:
+      - NODE_ENV=development
+      - SERVICES=mcp-kanban-api,mcp-kanban-mcp,prometheus,grafana
+      - CHECK_INTERVAL=30000
+    command: node health-monitor.js
+    networks:
+      - mcp-kanban-network
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+      - grafana
+
+  # Alertmanager for notifications
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: mcp-kanban-alertmanager
+    ports:
+      - '9093:9093'
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    networks:
+      - mcp-kanban-network
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:9093/-/healthy']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  loki-data:
+    driver: local
+  alertmanager-data:
+    driver: local
+
+networks:
+  mcp-kanban-network:
+    external: true

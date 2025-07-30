@@ -18,7 +18,12 @@ import type { UpdateTaskOptions, UpdateTaskPromptResult } from './types';
  * Register the update command
  */
 export function registerUpdateCommand(taskCmd: Command): void {
-  const getComponents = (): CliComponents => global.cliComponents;
+  const getComponents = (): CliComponents => {
+    if (!global.cliComponents) {
+      throw new Error('CLI components not initialized. Please initialize the CLI first.');
+    }
+    return global.cliComponents;
+  };
 
   taskCmd
     .command('update <id>')

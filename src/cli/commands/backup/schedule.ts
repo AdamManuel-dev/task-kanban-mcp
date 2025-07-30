@@ -15,7 +15,12 @@ import { withErrorHandling, formatOutput, showSuccess } from '../../utils/comman
 
 export function registerScheduleCommands(backupCmd: Command): void {
   const scheduleCmd = backupCmd.command('schedule').description('Manage backup schedules');
-  const getComponents = (): CliComponents => global.cliComponents;
+  const getComponents = (): CliComponents => {
+    if (!global.cliComponents) {
+      throw new Error('CLI components not initialized. Please initialize the CLI first.');
+    }
+    return global.cliComponents;
+  };
 
   // List schedules
   scheduleCmd
@@ -58,7 +63,7 @@ export function registerScheduleCommands(backupCmd: Command): void {
             options?: Record<string, unknown>;
           } = {
             name,
-            cron: options.cron || '0 2 * * *', // Default to 2 AM daily
+            cron: options.cron ?? '0 2 * * *', // Default to 2 AM daily
           };
 
           if (options.enabled !== undefined) scheduleOptions.enabled = options.enabled;
@@ -72,7 +77,7 @@ export function registerScheduleCommands(backupCmd: Command): void {
 
           const schedule = await apiClient.createBackupSchedule(scheduleOptions);
 
-          if (schedule && typeof schedule === 'object' && 'data' in schedule) {
+          if (typeof schedule === 'object' && schedule && 'data' in schedule) {
             const scheduleData = schedule.data as { id: string };
             showSuccess(`Schedule created: ${scheduleData.id}`);
           } else {

@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "outDir": "./dist/mcp",
+    "rootDir": "./src",
+    "tsBuildInfoFile": "./dist/.tsbuildinfo-mcp",
+    "noEmit": false
+  },
+  "include": ["src/mcp/**/*"],
+  "exclude": ["src/**/*.test.ts", "src/**/*.spec.ts"],
+  "references": [{ "path": "./tsconfig.shared.json" }]
+}

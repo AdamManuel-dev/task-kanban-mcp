@@ -41,7 +41,12 @@ function formatFileSize(bytes: number): string {
  * Register the backup delete command
  */
 export function registerDeleteCommand(backupCmd: Command): void {
-  const getComponents = (): CliComponents => global.cliComponents;
+  const getComponents = (): CliComponents => {
+    if (!global.cliComponents) {
+      throw new Error('CLI components not initialized. Please initialize the CLI first.');
+    }
+    return global.cliComponents;
+  };
 
   // Delete single backup
   backupCmd
@@ -112,8 +117,8 @@ export function registerDeleteCommand(backupCmd: Command): void {
         ) => {
           const { apiClient, formatter } = getComponents();
 
-          const olderThanDays = parseInt(options.olderThan || '30', 10);
-          const keepMinimum = parseInt(options.keepMinimum || '5', 10);
+          const olderThanDays = parseInt(options.olderThan ?? '30', 10);
+          const keepMinimum = parseInt(options.keepMinimum ?? '5', 10);
 
           // Get all backups sorted by creation date
           const response = await apiClient.getBackups({

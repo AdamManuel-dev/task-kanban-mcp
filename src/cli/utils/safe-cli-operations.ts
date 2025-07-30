@@ -92,7 +92,7 @@ export class SafeCliOperations {
    * ```
    */
   static async safeDirectoryList(
-    dirPath: string = '.',
+    dirPath = '.',
     allowedDirectories: string[] = []
   ): Promise<string[]> {
     const pathValidation = CommandInjectionPrevention.validateFilePath(dirPath, allowedDirectories);

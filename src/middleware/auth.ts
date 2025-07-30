@@ -27,15 +27,21 @@ import crypto from 'crypto';
 import { config } from '@/config';
 import { logger } from '@/utils/logger';
 import { UnauthorizedError, ForbiddenError } from '@/utils/errors';
+import { ApiKeyService } from '../services/ApiKeyService';
+import { dbConnection } from '../database/connection';
 
 interface AuthenticatedRequest extends Request {
   apiKey?: string;
+  apiKeyId?: string;
   user?: {
     id: string;
     name: string;
     permissions: string[];
   };
 }
+
+// Initialize API key service
+const apiKeyService = new ApiKeyService(dbConnection);
 
 /**
  * Authentication middleware for API key validation.
@@ -52,11 +58,11 @@ interface AuthenticatedRequest extends Request {
  * router.use('/api', authenticationMiddleware);
  * ```
  */
-export function authenticationMiddleware(
+export async function authenticationMiddleware(
   req: AuthenticatedRequest,
   _res: Response,
   next: NextFunction
-): void {
+): Promise<void> {
   // Skip authentication for public endpoints
   const publicEndpoints = ['/health', '/docs'];
   const fullPath = req.originalUrl ?? req.url;
@@ -82,35 +88,46 @@ export function authenticationMiddleware(
     return;
   }
 
-  // Validate API key
-  const isValidKey = validateApiKey(apiKey);
-  if (!isValidKey) {
-    logger.warn('Invalid API key attempt', {
-      ip: req.ip,
-      userAgent: req.get('User-Agent'),
+  try {
+    // Validate API key using the service
+    const validationResult = await apiKeyService.validateApiKey(apiKey);
+
+    if (!validationResult.isValid || !validationResult.apiKey) {
+      logger.warn('Invalid API key attempt', {
+        ip: req.ip,
+        userAgent: req.get('User-Agent'),
+        requestId: req.requestId,
+        reason: validationResult.reason,
+      });
+      // Don't leak specific validation failure reasons to prevent enumeration attacks
+      next(new UnauthorizedError('Invalid API key'));
+      return;
+    }
+
+    // Attach API key info to request (don't store raw API key)
+    req.apiKeyId = validationResult.apiKey.id;
+
+    // Create user object from API key
+    req.user = {
+      id: validationResult.apiKey.userId || hashApiKey(apiKey),
+      name: validationResult.apiKey.name ?? 'API User',
+      permissions: validationResult.apiKey.permissions || ['read'], // Default to minimal permissions
+    };
+
+    logger.debug('Request authenticated', {
+      userId: req.user.id,
+      apiKeyId: req.apiKeyId,
+      apiKeyName: validationResult.apiKey.name,
       requestId: req.requestId,
+      permissions: req.user.permissions,
+      timestamp: new Date().toISOString(),
     });
-    next(new UnauthorizedError('Invalid API key'));
-    return;
+
+    next();
+  } catch (error) {
+    logger.error('Authentication error', { error, requestId: req.requestId });
+    next(new UnauthorizedError('Authentication failed'));
   }
-
-  // Attach API key to request
-  req.apiKey = apiKey;
-
-  // For now, create a basic user object
-  // In a real implementation, you'd look up the user associated with the API key
-  req.user = {
-    id: hashApiKey(apiKey),
-    name: 'API User',
-    permissions: ['read', 'write', 'admin'], // Full permissions for now
-  };
-
-  logger.debug('Request authenticated', {
-    userId: req.user.id,
-    requestId: req.requestId,
-  });
-
-  next();
 }
 
 /**
@@ -145,7 +162,17 @@ export function requirePermission(
       return;
     }
 
-    if (!req.user.permissions.includes(permission) && !req.user.permissions.includes('admin')) {
+    // Ensure permissions array exists and is valid
+    const userPermissions = req.user.permissions ?? [];
+    const hasPermission = userPermissions.includes(permission) || userPermissions.includes('admin');
+
+    if (!hasPermission) {
+      logger.warn('Permission denied', {
+        userId: req.user.id,
+        requiredPermission: permission,
+        userPermissions,
+        requestId: req.requestId,
+      });
       next(new ForbiddenError(`Permission '${String(permission)}' required`));
       return;
     }
@@ -172,7 +199,7 @@ export function requirePermission(
  */
 export function requirePermissions(
   permissions: string[],
-  requireAll: boolean = false
+  requireAll = false
 ): (req: AuthenticatedRequest, res: Response, next: NextFunction) => void {
   return (req: AuthenticatedRequest, _res: Response, next: NextFunction): void => {
     if (!req.user) {
@@ -211,9 +238,10 @@ export function requirePermissions(
  * @returns True if the API key is valid, false otherwise
  */
 function validateApiKey(apiKey: string): boolean {
-  // For now, accept any non-empty string
-  // In a real implementation, you'd validate against a database or external service
-  return apiKey.length > 0;
+  // Legacy validation function - DEPRECATED
+  // All API key validation should go through ApiKeyService
+  logger.warn('Using deprecated validateApiKey function - migrate to ApiKeyService');
+  return false; // Force migration to proper validation
 }
 
 /**
@@ -222,8 +250,25 @@ function validateApiKey(apiKey: string): boolean {
  * @param apiKey - The API key to hash
  * @returns A hash of the API key
  */
+/**
+ * Hash API key for secure user ID generation.
+ * Uses SHA-256 with additional security measures.
+ *
+ * @param apiKey - Raw API key to hash
+ * @returns Secure hash for user identification
+ */
 function hashApiKey(apiKey: string): string {
-  return crypto.createHash('sha256').update(apiKey).digest('hex').substring(0, 8);
+  if (!apiKey || typeof apiKey !== 'string') {
+    throw new Error('Invalid API key for hashing');
+  }
+
+  // Use SHA-256 with salt for better security
+  const salt = config.api.keySecret;
+  return crypto
+    .createHash('sha256')
+    .update(apiKey + salt)
+    .digest('hex')
+    .substring(0, 16); // Increased from 8 to 16 characters for better uniqueness
 }
 
 /**
@@ -259,11 +304,11 @@ export function revokeApiKey(apiKey: string): boolean {
  * @param res - The response object
  * @param next - The next function
  */
-export function authenticateApiKey(
+export async function authenticateApiKey(
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
-): void {
+): Promise<void> {
   const apiKey = req.get('X-API-Key') ?? req.get('Authorization')?.replace('Bearer ', '');
 
   if (!apiKey) {
@@ -276,13 +321,22 @@ export function authenticateApiKey(
     return;
   }
 
-  if (!validateApiKey(apiKey)) {
-    logger.warn('Authentication failed: Invalid API key provided', {
-      ip: req.ip,
-      userAgent: req.get('User-Agent'),
-      path: req.path,
-    });
-    res.status(401).json({ error: 'Invalid API key' });
+  // Use proper ApiKeyService validation instead of deprecated function
+  try {
+    const apiKeyService = new ApiKeyService();
+    const validationResult = await apiKeyService.validateApiKey(apiKey);
+    if (!validationResult.isValid) {
+      logger.warn('Authentication failed: Invalid API key provided', {
+        ip: req.ip,
+        userAgent: req.get('User-Agent'),
+        path: req.path,
+      });
+      res.status(401).json({ error: 'Invalid API key' });
+      return;
+    }
+  } catch (error) {
+    logger.error('API key validation error', { error });
+    res.status(500).json({ error: 'Authentication service error' });
     return;
   }
 

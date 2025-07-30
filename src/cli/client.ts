@@ -10,14 +10,16 @@ import type {
   CreateTagRequest,
   UpdateTagRequest,
   TaskResponse,
+  TasksResponse,
   BoardResponse,
   NoteResponse,
   TagResponse,
   AnyApiResponse,
 } from './types';
+import { HTTP_METHODS, HTTP_HEADERS, CONTENT_TYPES } from '../constants';
 
 interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method?: typeof HTTP_METHODS[keyof typeof HTTP_METHODS];
   body?: unknown;
   params?: Record<string, string> | undefined;
   timeout?: number;
@@ -40,10 +42,10 @@ export class ApiClient {
    * Make authenticated API request
    */
   async request<T = AnyApiResponse>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-    const { method = 'GET', body, params, timeout = 10000 } = options;
+    const { method = HTTP_METHODS.GET, body, params, timeout = 10000 } = options;
 
     // Build URL with query parameters
-    const url = new URL(`${String(String(this.baseUrl))}${String(endpoint)}`);
+    const url = new URL(`${this.baseUrl}${endpoint}`);
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         url.searchParams.set(key, value);
@@ -52,12 +54,12 @@ export class ApiClient {
 
     // Prepare headers
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'User-Agent': 'mcp-kanban-cli',
+      [HTTP_HEADERS.CONTENT_TYPE]: CONTENT_TYPES.JSON,
+      [HTTP_HEADERS.USER_AGENT]: 'mcp-kanban-cli',
     };
 
     if (this.apiKey) {
-      headers['X-API-Key'] = this.apiKey;
+      headers[HTTP_HEADERS.X_API_KEY] = this.apiKey;
     }
 
     // Prepare request options
@@ -67,7 +69,8 @@ export class ApiClient {
       signal: AbortSignal.timeout(timeout),
     };
 
-    if (body && ['POST', 'PATCH', 'PUT'].includes(method)) {
+    const methodsWithBody = [HTTP_METHODS.POST, HTTP_METHODS.PATCH, HTTP_METHODS.PUT] as const;
+    if (body && (methodsWithBody as readonly string[]).includes(method)) {
       requestOptions.body = JSON.stringify(body);
     }
 
@@ -108,7 +111,7 @@ export class ApiClient {
    */
   private static async handleErrorResponse(response: Response): Promise<never> {
     const contentType = response.headers.get('content-type');
-    let errorMessage = `HTTP ${String(String(response.status))}: ${String(String(response.statusText))}`;
+    let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
 
     try {
       if (contentType && contentType.includes('application/json')) {
@@ -178,8 +181,8 @@ export class ApiClient {
   }
 
   // Task API methods
-  async getTasks(params?: Record<string, string>): Promise<AnyApiResponse> {
-    return this.request('/api/tasks', params ? { params } : {});
+  async getTasks(params?: Record<string, string>): Promise<TasksResponse> {
+    return this.request<TasksResponse>('/api/tasks', params ? { params } : {});
   }
 
   async getTask(id: string): Promise<AnyApiResponse> {
@@ -187,20 +190,20 @@ export class ApiClient {
   }
 
   async createTask(task: CreateTaskRequest): Promise<TaskResponse> {
-    return this.request('/api/tasks', { method: 'POST', body: task });
+    return this.request('/api/tasks', { method: HTTP_METHODS.POST, body: task });
   }
 
   async updateTask(id: string, updates: UpdateTaskRequest): Promise<TaskResponse> {
-    return this.request(`/api/tasks/${String(id)}`, { method: 'PATCH', body: updates });
+    return this.request(`/api/tasks/${String(id)}`, { method: HTTP_METHODS.PATCH, body: updates });
   }
 
   async deleteTask(id: string): Promise<AnyApiResponse> {
-    return this.request(`/api/tasks/${String(id)}`, { method: 'DELETE' });
+    return this.request(`/api/tasks/${String(id)}`, { method: HTTP_METHODS.DELETE });
   }
 
   async moveTask(id: string, columnId: string, position?: number): Promise<AnyApiResponse> {
     return this.request(`/api/tasks/${String(id)}/move`, {
-      method: 'PATCH',
+      method: HTTP_METHODS.PATCH,
       body: { columnId, position },
     });
   }
@@ -215,15 +218,15 @@ export class ApiClient {
   }
 
   async createBoard(board: CreateBoardRequest): Promise<BoardResponse> {
-    return this.request('/api/boards', { method: 'POST', body: board });
+    return this.request('/api/boards', { method: HTTP_METHODS.POST, body: board });
   }
 
   async updateBoard(id: string, updates: UpdateBoardRequest): Promise<BoardResponse> {
-    return this.request(`/api/boards/${String(id)}`, { method: 'PATCH', body: updates });
+    return this.request(`/api/boards/${String(id)}`, { method: HTTP_METHODS.PATCH, body: updates });
   }
 
   async deleteBoard(id: string): Promise<AnyApiResponse> {
-    return this.request(`/api/boards/${String(id)}`, { method: 'DELETE' });
+    return this.request(`/api/boards/${String(id)}`, { method: HTTP_METHODS.DELETE });
   }
 
   async getBoardStats(id: string): Promise<AnyApiResponse> {

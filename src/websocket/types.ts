@@ -231,7 +231,7 @@ export interface CreateSubtaskMessage extends WebSocketMessage {
 export interface UpdateSubtaskMessage extends WebSocketMessage {
   type: 'update_subtask';
   payload: {
-    taskId: any;
+    taskId: unknown;
     subtaskId: string;
     updates: Record<string, unknown>;
   };

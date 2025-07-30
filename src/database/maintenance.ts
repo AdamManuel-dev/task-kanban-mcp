@@ -59,7 +59,7 @@ export interface MaintenanceResult {
   /** Error message if operation failed */
   error?: string;
   /** Additional details */
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 /**
@@ -509,7 +509,7 @@ export class MaintenanceManager {
   /**
    * Get maintenance recommendations based on database statistics
    *
-   * @returns {Promise<{recommendations: string[], stats: any}>} Maintenance recommendations
+   * @returns {Promise<{recommendations: string[], stats: unknown}>} Maintenance recommendations
    *
    * @example
    * ```typescript
@@ -519,7 +519,7 @@ export class MaintenanceManager {
    */
   public async getRecommendations(): Promise<{
     recommendations: string[];
-    stats: any;
+    stats: unknown;
   }> {
     const stats = await this.db.getStats();
     const recommendations: string[] = [];

@@ -35,6 +35,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { logger } from '@/utils/logger';
 import type { DatabaseConnection, QueryParameters } from '@/database/connection';
 import type { Tag, TaskTag, ServiceError, PaginationOptions, FilterOptions } from '@/types';
+import { validatePagination } from '../utils/sql-security';
 
 /**
  * Request interface for creating new tags
@@ -359,7 +360,9 @@ export class TagService {
         query += ` WHERE ${String(String(conditions.join(' AND ')))}`;
       }
 
-      query += ` ORDER BY ${String(sortBy)} ${String(String(sortOrder.toUpperCase()))} LIMIT ? OFFSET ?`;
+      // Use secure pagination to prevent ORDER BY injection
+      const paginationClause = validatePagination(sortBy, sortOrder, 'tags');
+      query += ` ${paginationClause} LIMIT ? OFFSET ?`;
       params.push(limit, offset);
 
       const tags = await this.db.query<Tag>(query, params);
@@ -636,7 +639,7 @@ export class TagService {
    * await tagService.deleteTag('tag-123', false);
    * ```
    */
-  async deleteTag(id: string, reassignToParent: boolean = true): Promise<void> {
+  async deleteTag(id: string, reassignToParent = true): Promise<void> {
     try {
       const tag = await this.getTagById(id);
       if (!tag) {
@@ -836,7 +839,7 @@ export class TagService {
    * const allBugTasks = await tagService.getTaggedTasks('bug-tag-id', true);
    * ```
    */
-  async getTaggedTasks(tagId: string, includeChildren: boolean = false): Promise<string[]> {
+  async getTaggedTasks(tagId: string, includeChildren = false): Promise<string[]> {
     try {
       let tagIds = [tagId];
 
@@ -1018,7 +1021,7 @@ export class TagService {
    * });
    * ```
    */
-  async getTagTree(includeUsageCount: boolean = false): Promise<TagHierarchy[]> {
+  async getTagTree(includeUsageCount = false): Promise<TagHierarchy[]> {
     try {
       const rootTags = await this.getRootTags();
 
@@ -1031,7 +1034,7 @@ export class TagService {
             node.task_count =
               usageStats.length > 0 && usageStats[0] ? usageStats[0].usage_count : 0;
 
-            await Promise.all(node.children.map(child => addUsageCount(child)));
+            await Promise.all(node.children.map(async child => addUsageCount(child)));
           };
 
           await addUsageCount(hierarchy);

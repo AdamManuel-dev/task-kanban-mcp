@@ -108,7 +108,7 @@ export class EnhancedRateLimiter {
   private checkGlobalLimit(ip: string, endpoint: string): RateLimitResult {
     const now = Date.now();
     const windowMs = 60000; // 1 minute
-    const maxRequests = config.rateLimit?.maxRequests || 1000;
+    const maxRequests = config.rateLimit.maxRequests || 1000;
 
     let entry = this.globalLimits.get(ip);
     if (!entry) {
@@ -249,8 +249,8 @@ export class EnhancedRateLimiter {
     if (!userConfig) {
       // Default configuration - could be customized per user tier
       userConfig = {
-        requestsPerMinute: config.rateLimit?.maxRequests || 100,
-        requestsPerHour: (config.rateLimit?.maxRequests || 100) * 60,
+        requestsPerMinute: config.rateLimit.maxRequests || 100,
+        requestsPerHour: (config.rateLimit.maxRequests || 100) * 60,
         burstLimit: 20,
         adaptiveEnabled: true,
       };
@@ -303,7 +303,7 @@ export class EnhancedRateLimiter {
       remaining: Math.max(0, effectiveLimit - requests),
       resetTime: entry.firstRequest + 60000,
       limit: effectiveLimit,
-      burstCount: entry.burstCount || 0,
+      burstCount: entry.burstCount ?? 0,
       adaptiveMultiplier: entry.adaptiveMultiplier || 1.0,
     };
   }
@@ -347,7 +347,7 @@ export class EnhancedRateLimiter {
    */
   private getClientIP(req: Request): string {
     return (
-      (req.headers['x-forwarded-for'] as string)?.split(',')[0] ||
+      (req.headers['x-forwarded-for'] as string).split(',')[0] ||
       (req.headers['x-real-ip'] as string) ||
       req.socket.remoteAddress ||
       'unknown'
@@ -358,7 +358,7 @@ export class EnhancedRateLimiter {
    * Extract user ID from request (from auth middleware)
    */
   private getUserId(req: Request): string | null {
-    return (req as any).user?.id || (req as any).userId || null;
+    return ((req as unknown).user?.id || (req as unknown).userId) ?? null;
   }
 
   /**
@@ -369,7 +369,7 @@ export class EnhancedRateLimiter {
       success: false,
       error: {
         code: 'RATE_LIMIT_EXCEEDED',
-        message: result.reason || 'Too many requests',
+        message: result.reason ?? 'Too many requests',
         details: {
           limit: result.limit,
           remaining: result.remaining,

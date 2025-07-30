@@ -84,7 +84,7 @@ export interface ProductivityInsights {
 }
 
 export class AnalyticsService {
-  private static instance: AnalyticsService;
+  private static instance: AnalyticsService | undefined;
 
   public static getInstance(): AnalyticsService {
     if (!AnalyticsService.instance) {
@@ -139,8 +139,8 @@ export class AnalyticsService {
           : 0;
 
       // Group completions by various dimensions
-      const completionsByStatus = this.groupBy(tasks, 'status');
-      const completionsByPriority = this.groupBy(tasks, 'priority');
+      const completionsByStatus = AnalyticsService.groupBy(tasks, 'status');
+      const completionsByPriority = AnalyticsService.groupBy(tasks, 'priority');
 
       // Timeframe analysis
       const now = new Date();
@@ -163,9 +163,9 @@ export class AnalyticsService {
       };
 
       // Top performers
-      const performerStats = this.calculatePerformerStats(tasks);
+      const performerStats = AnalyticsService.calculatePerformerStats(tasks);
       const topPerformers = Object.entries(performerStats)
-        .map(([assignee, stats]: [string, any]) => ({
+        .map(([assignee, stats]: [string, unknown]) => ({
           assignee,
           completedTasks: stats.completed,
           averageTime: stats.averageTime,
@@ -291,7 +291,7 @@ export class AnalyticsService {
         this.getProductivityInsights(boardId),
       ]);
 
-      const summary = this.generateSummary(completion, velocity, productivity);
+      const summary = AnalyticsService.generateSummary(completion, velocity, productivity);
 
       return {
         completion,
@@ -309,19 +309,19 @@ export class AnalyticsService {
 
   // Private helper methods
 
-  private groupBy<T>(array: T[], key: keyof T): Record<string, number> {
+  private static groupBy<T>(array: T[], key: keyof T): Record<string, number> {
     return array.reduce(
       (groups, item) => {
         const groupKey = String(item[key]);
-        groups[groupKey] = (groups[groupKey] || 0) + 1;
+        groups[groupKey] = (groups[groupKey] ?? 0) + 1;
         return groups;
       },
       {} as Record<string, number>
     );
   }
 
-  private calculatePerformerStats(tasks: Task[]): Record<string, any> {
-    const stats: Record<string, any> = {};
+  private static calculatePerformerStats(tasks: Task[]): Record<string, unknown> {
+    const stats: Record<string, unknown> = {};
 
     tasks.forEach(task => {
       if (!task.assignee) return;
@@ -349,7 +349,7 @@ export class AnalyticsService {
     });
 
     // Calculate averages
-    Object.values(stats).forEach((stat: any) => {
+    Object.values(stats).forEach((stat: unknown) => {
       if (stat.completed > 0) {
         stat.averageTime = stat.totalTime / stat.completed;
       }
@@ -360,7 +360,7 @@ export class AnalyticsService {
 
   private async calculateCompletionTrends(
     boardId?: string,
-    days: number = 30
+    days = 30
   ): Promise<{
     dailyCompletions: Array<{ date: string; count: number }>;
     weeklyCompletions: Array<{ week: string; count: number }>;
@@ -386,7 +386,7 @@ export class AnalyticsService {
 
     const dailyData = await dbConnection.query(query, params);
 
-    const dailyCompletions = dailyData.map((row: any) => ({
+    const dailyCompletions = dailyData.map((row: unknown) => ({
       date: row.completion_date,
       count: row.count,
     }));
@@ -402,7 +402,7 @@ export class AnalyticsService {
     };
   }
 
-  private async calculateSprintMetrics(_sprintStart: Date, _boardId?: string): Promise<any> {
+  private async calculateSprintMetrics(_sprintStart: Date, _boardId?: string): Promise<unknown> {
     // Implementation for current sprint metrics
     const plannedPoints = 100; // This would come from sprint planning
     const completedPoints = 60; // Calculate from completed tasks
@@ -418,7 +418,7 @@ export class AnalyticsService {
     };
   }
 
-  private async calculateHistoricalVelocity(_boardId?: string): Promise<any> {
+  private async calculateHistoricalVelocity(_boardId?: string): Promise<unknown> {
     // Implementation for historical velocity calculation
     return {
       last7Days: 25,
@@ -429,21 +429,21 @@ export class AnalyticsService {
     };
   }
 
-  private async calculateTeamVelocity(_boardId?: string): Promise<any[]> {
+  private async calculateTeamVelocity(_boardId?: string): Promise<unknown[]> {
     // Implementation for team velocity analysis
     return [];
   }
 
-  private async generateBurndownData(_sprintStart: Date, _boardId?: string): Promise<any[]> {
+  private async generateBurndownData(_sprintStart: Date, _boardId?: string): Promise<unknown[]> {
     // Implementation for burndown chart data
     return [];
   }
 
   private async calculatePredictiveAnalytics(
-    _currentSprint: any,
-    _historicalVelocity: any,
-    _burndownData: any[]
-  ): Promise<any> {
+    _currentSprint: unknown,
+    _historicalVelocity: unknown,
+    _burndownData: unknown[]
+  ): Promise<unknown> {
     // Implementation for predictive analytics
     return {
       projectedSprintCompletion: null,
@@ -452,27 +452,30 @@ export class AnalyticsService {
     };
   }
 
-  private async getCompletedTasksWithDetails(_cutoffDate: Date, _boardId?: string): Promise<any[]> {
+  private async getCompletedTasksWithDetails(
+    _cutoffDate: Date,
+    _boardId?: string
+  ): Promise<unknown[]> {
     // Implementation to get completed tasks with timestamp details
     return [];
   }
 
-  private analyzePeakHours(_tasks: any[]): Array<{ hour: number; completions: number }> {
+  private analyzePeakHours(_tasks: unknown[]): Array<{ hour: number; completions: number }> {
     // Implementation for peak hours analysis
     return [];
   }
 
-  private analyzePeakDays(_tasks: any[]): Array<{ day: string; completions: number }> {
+  private analyzePeakDays(_tasks: unknown[]): Array<{ day: string; completions: number }> {
     // Implementation for peak days analysis
     return [];
   }
 
-  private async identifyBottlenecks(_boardId?: string): Promise<any[]> {
+  private async identifyBottlenecks(_boardId?: string): Promise<unknown[]> {
     // Implementation for bottleneck identification
     return [];
   }
 
-  private async calculateEfficiencyMetrics(_boardId?: string): Promise<any> {
+  private async calculateEfficiencyMetrics(_boardId?: string): Promise<unknown> {
     // Implementation for efficiency metrics
     return {
       averageTaskAge: 0,
@@ -482,11 +485,11 @@ export class AnalyticsService {
     };
   }
 
-  private generateSummary(
+  private static generateSummary(
     completion: CompletionAnalytics,
     velocity: VelocityMetrics,
     _productivity: ProductivityInsights
-  ): any {
+  ): unknown {
     // Implementation for summary generation
     return {
       keyMetrics: {

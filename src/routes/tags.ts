@@ -46,7 +46,7 @@ export function tagRoutes(): Router {
         data: tags,
         page: Math.floor(options.offset / options.limit) + 1,
         limit: options.limit,
-        total
+        total,
       });
     } catch (error) {
       next(error);
@@ -233,7 +233,11 @@ export function tagRoutes(): Router {
       const { target_tag_id: targetTagId } = req.body;
 
       if (!targetTagId) {
-        res.apiError({ code: 'INVALID_INPUT', message: 'target_tag_id is required', statusCode: 400 });
+        res.apiError({
+          code: 'INVALID_INPUT',
+          message: 'target_tag_id is required',
+          statusCode: 400,
+        });
         return;
       }
 

@@ -50,7 +50,7 @@ export function withPerformanceTracking<T extends unknown[]>(
 /**
  * Monitor API client calls with performance tracking
  */
-export function monitoredApiCall<T>(
+export async function monitoredApiCall<T>(
   operationName: string,
   apiCall: () => Promise<T>,
   options?: { timeout?: number; retries?: number }
@@ -97,7 +97,7 @@ export function monitoredApiCall<T>(
 /**
  * Performance-aware database operation wrapper
  */
-export function withDatabaseTiming<T>(
+export async function withDatabaseTiming<T>(
   queryName: string,
   operation: () => Promise<T>,
   metadata?: Record<string, unknown>
@@ -229,7 +229,7 @@ export function withResourceTracking<Args extends unknown[], Return>(
     };
 
     try {
-      const result = await withAsyncTiming(operationName, async () => await operation(...args), {
+      const result = await withAsyncTiming(operationName, async () => operation(...args), {
         includeMemory: true,
         metadata: { type: 'resource-tracked' },
       })();

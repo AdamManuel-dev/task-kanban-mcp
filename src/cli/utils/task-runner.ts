@@ -5,7 +5,7 @@ import { logger } from '../../utils/logger';
 export interface TaskItem {
   id: string;
   title: string;
-  action: () => Promise<any>;
+  action: () => Promise<unknown>;
   skip?: () => boolean | string;
   enabled?: boolean;
   concurrent?: boolean;
@@ -52,7 +52,7 @@ export class TaskRunner {
       rendererOptions: {
         showSubtasks: true,
         showTimer: true,
-      } as any,
+      } as unknown,
     });
 
     try {
@@ -74,7 +74,7 @@ export class TaskRunner {
   ): Promise<void> {
     const mainTasks = groups.map(group => ({
       title: group.title,
-      task: (_ctx: any, task: any): any => {
+      task: (_ctx: unknown, task: unknown): unknown => {
         const subtasks = group.tasks.map(item => ({
           title: item.title,
           task: item.action,
@@ -96,7 +96,7 @@ export class TaskRunner {
       rendererOptions: {
         showSubtasks: true,
         showTimer: true,
-      } as any,
+      } as unknown,
     });
 
     try {
@@ -113,7 +113,7 @@ export class TaskRunner {
   async runWithProgress<T>(
     title: string,
     items: T[],
-    processor: (item: T, task: any) => Promise<void>,
+    processor: (item: T, task: unknown) => Promise<void>,
     options?: {
       concurrent?: boolean;
       concurrency?: number;
@@ -158,7 +158,7 @@ export class TaskRunner {
         rendererOptions: {
           showSubtasks: true,
           showTimer: true,
-        } as any,
+        } as unknown,
       }
     );
 
@@ -170,7 +170,7 @@ export class TaskRunner {
    */
   createRetryTask(
     title: string,
-    action: () => Promise<any>,
+    action: () => Promise<unknown>,
     options?: {
       retries?: number;
       retryDelay?: number;
@@ -183,7 +183,7 @@ export class TaskRunner {
       id: `retry-${String(String(Date.now()))}`,
       title,
       action: async () => {
-        let lastError: any;
+        let lastError: unknown;
 
         // eslint-disable-next-line no-await-in-loop
         for (let attempt = 1; attempt <= maxRetries; attempt += 1) {
@@ -248,7 +248,7 @@ export class TaskRunner {
           title: `Running ${String(String(ready.length))} task(s)`,
           tasks: ready.map(t => ({
             ...t,
-            action: () => runTask(t),
+            action: async () => runTask(t),
           })),
           concurrent: true,
         });

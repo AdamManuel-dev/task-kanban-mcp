@@ -70,7 +70,7 @@ export function createTemplatesCommand(): Command {
         const categories = templateService.getCategories();
         const groupedTemplates = templateList.reduce(
           (acc, template) => {
-            const category = template.category || 'general';
+            const category = template.category ?? 'general';
             if (!acc[category]) {
               acc[category] = [];
             }
@@ -133,9 +133,9 @@ export function createTemplatesCommand(): Command {
         console.log(chalk.blue.bold('\n📋 Template Details\n'));
         console.log(`${chalk.bold('Name:')} ${template.name}`);
         console.log(`${chalk.bold('Category:')} ${template.category}`);
-        console.log(`${chalk.bold('Description:')} ${template.description || 'No description'}`);
+        console.log(`${chalk.bold('Description:')} ${template.description ?? 'No description'}`);
         console.log(`${chalk.bold('Priority:')} ${template.priority}`);
-        console.log(`${chalk.bold('Estimated Hours:')} ${template.estimated_hours || 'Not set'}`);
+        console.log(`${chalk.bold('Estimated Hours:')} ${template.estimated_hours ?? 'Not set'}`);
         console.log(`${chalk.bold('System Template:')} ${template.is_system ? 'Yes' : 'No'}`);
         console.log(`${chalk.bold('Active:')} ${template.is_active ? 'Yes' : 'No'}`);
         console.log(`${chalk.bold('Usage Count:')} ${template.usage_count}`);
@@ -242,12 +242,12 @@ export function createTemplatesCommand(): Command {
 
         const createRequest: TaskTemplateCreateRequest = {
           name: answers.name,
-          description: answers.description || undefined,
+          description: answers.description ?? undefined,
           category: answers.category,
           title_template: answers.title_template,
-          description_template: answers.description_template || undefined,
+          description_template: answers.description_template ?? undefined,
           priority: answers.priority,
-          estimated_hours: answers.estimated_hours || undefined,
+          estimated_hours: answers.estimated_hours ?? undefined,
           tags: answers.tags ? answers.tags.split(',').map((tag: string) => tag.trim()) : [],
           checklist_items: answers.checklist_items
             ? answers.checklist_items.split(',').map((item: string) => item.trim())
@@ -316,10 +316,10 @@ export function createTemplatesCommand(): Command {
 
         // Extract variables from template
         const variables = extractTemplateVariables(
-          `${template.title_template} ${template.description_template || ''}`
+          `${template.title_template} ${template.description_template ?? ''}`
         );
 
-        let variableValues: Record<string, any> = {};
+        let variableValues: Record<string, unknown> = {};
         if (variables.length > 0) {
           logger.debug('Template requires variables', { templateId, variables });
           console.log(chalk.blue('\n📝 Template Variables\n'));

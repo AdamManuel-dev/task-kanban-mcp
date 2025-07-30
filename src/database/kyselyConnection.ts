@@ -198,17 +198,13 @@ export class KyselyConnection {
 
       const tableStats = await Promise.all(
         tables.map(async table => {
-          const countResult = await this._db!
-            .selectFrom(table as any)
+          const countResult = await this._db!.selectFrom(table as unknown)
             .select([this._db!.fn.count<number>('id').as('count')])
             .executeTakeFirst();
 
-          const sizeResult = this._sqliteDb!
-            .prepare<
-              unknown[],
-              { size: number }
-            >(`SELECT SUM(pgsize) as size FROM dbstat WHERE name = ?`)
-            .get(table);
+          const sizeResult = this._sqliteDb!.prepare<unknown[], { size: number }>(
+            `SELECT SUM(pgsize) as size FROM dbstat WHERE name = ?`
+          ).get(table);
 
           return {
             name: table,

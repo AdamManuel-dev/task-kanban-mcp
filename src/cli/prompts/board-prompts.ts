@@ -293,7 +293,7 @@ export async function selectFromList<T extends { id: string; name: string }>(
     return null;
   }
 
-  return items.find(item => item.id === response.selected) || null;
+  return items.find(item => item.id === response.selected) ?? null;
 }
 
 /**

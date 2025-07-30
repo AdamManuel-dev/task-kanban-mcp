@@ -53,7 +53,12 @@ interface QuickSetupDefaults {
  * Register the create and quick-setup commands
  */
 export function registerCreateCommand(boardCmd: Command): void {
-  const getComponents = (): CliComponents => global.cliComponents;
+  const getComponents = (): CliComponents => {
+    if (!global.cliComponents) {
+      throw new Error('CLI components not initialized. Please initialize the CLI first.');
+    }
+    return global.cliComponents;
+  };
 
   /**
    * Create a new board.

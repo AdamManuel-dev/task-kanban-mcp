@@ -20,7 +20,7 @@ export interface CliComponents {
 // Global type declaration to extend Node.js global
 declare global {
   // eslint-disable-next-line no-var, vars-on-top
-  var cliComponents: CliComponents;
+  var cliComponents: CliComponents | undefined;
 }
 
 // Health check response
@@ -530,7 +530,7 @@ export type SafeParams<T> = {
 };
 
 // Helper function for safe parameter building
-export function buildParams<T extends Record<string, any>>(
+export function buildParams<T extends Record<string, unknown>>(
   options: Partial<T>,
   mapping?: Partial<Record<keyof T, string>>
 ): SafeParams<T> {

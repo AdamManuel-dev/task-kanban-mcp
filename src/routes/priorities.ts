@@ -21,6 +21,7 @@ import {
   TIME_THRESHOLDS,
   MILLISECONDS_PER_DAY,
 } from '@/constants';
+import { PriorityHistoryService } from '@/services/PriorityHistoryService';
 
 const router = Router();
 
@@ -88,7 +89,7 @@ router.get(
       const taskService = new TaskService(dbConnection);
 
       // Build filter options
-      const filters: any = {
+      const filters: unknown = {
         status: ['todo', 'in_progress'],
         sortBy: 'priority',
         sortOrder: 'desc',
@@ -187,7 +188,7 @@ router.post(
 
       const taskService = new TaskService(dbConnection);
 
-      let tasksToRecalculate: any[] = [];
+      let tasksToRecalculate: unknown[] = [];
 
       if (recalculate_all) {
         // Get all tasks
@@ -213,7 +214,7 @@ router.post(
         throw new ValidationError('Must specify board_id, task_ids, or recalculate_all');
       }
 
-      const updatedTasks: any[] = [];
+      const updatedTasks: unknown[] = [];
 
       // Recalculate priorities
       for (const task of tasksToRecalculate) {
@@ -256,7 +257,7 @@ router.post(
  * Calculate the base priority score for a task.
  * Base score is the task priority multiplied by the base multiplier.
  */
-function calculateBaseScore(task: any): number {
+function calculateBaseScore(task: unknown): number {
   const basePriority = task.priority || PRIORITY_THRESHOLDS.LOW;
   return basePriority * PRIORITY_SCORING.BASE_MULTIPLIER;
 }
@@ -265,7 +266,7 @@ function calculateBaseScore(task: any): number {
  * Calculate due date bonus based on how soon the task is due.
  * Overdue tasks get the highest bonus, followed by tasks due soon.
  */
-function calculateDueDateBonus(task: any): number {
+function calculateDueDateBonus(task: unknown): number {
   if (!task.due_date) return 0;
 
   const daysUntilDue = calculateDaysUntilDue(task.due_date);
@@ -279,7 +280,7 @@ function calculateDueDateBonus(task: any): number {
   if (daysUntilDue <= TIME_THRESHOLDS.DUE_THIS_WEEK_DAYS) {
     return PRIORITY_SCORING.DUE_THIS_WEEK_BONUS;
   }
-  
+
   return 0;
 }
 
@@ -287,19 +288,19 @@ function calculateDueDateBonus(task: any): number {
  * Calculate status bonus for tasks already in progress.
  * In-progress tasks get a bonus to maintain momentum.
  */
-function calculateStatusBonus(task: any): number {
+function calculateStatusBonus(task: unknown): number {
   return task.status === 'in_progress' ? PRIORITY_SCORING.IN_PROGRESS_BONUS : 0;
 }
 
 /**
  * Calculate skill context bonus if task matches user's skill context.
  */
-function calculateSkillContextBonus(task: any, skillContext: any): number {
+function calculateSkillContextBonus(task: unknown, skillContext: unknown): number {
   if (!skillContext || !task.description) return 0;
 
   const contextString = String(skillContext).toLowerCase();
   const description = task.description.toLowerCase();
-  
+
   return description.includes(contextString) ? PRIORITY_SCORING.SKILL_MATCH_BONUS : 0;
 }
 
@@ -307,11 +308,11 @@ function calculateSkillContextBonus(task: any, skillContext: any): number {
  * Calculate task age bonus for older tasks.
  * Older tasks get a slight boost to prevent them from getting forgotten.
  */
-function calculateTaskAgeBonus(task: any): number {
+function calculateTaskAgeBonus(task: unknown): number {
   const ageInDays = calculateTaskAge(task.created_at);
-  
+
   if (ageInDays <= TIME_THRESHOLDS.OLD_TASK_DAYS) return 0;
-  
+
   const ageBonus = ageInDays * PRIORITY_SCORING.AGE_MULTIPLIER;
   return Math.min(ageBonus, PRIORITY_SCORING.MAX_AGE_BONUS);
 }
@@ -340,11 +341,11 @@ function calculateTaskAge(createdAt: string): number {
 /**
  * Generate human-readable reasoning for task priority calculation.
  */
-function generatePriorityReasoning(task: any, score: number, skillContext?: string): string {
+function generatePriorityReasoning(task: unknown, score: number, skillContext?: string): string {
   const reasons: string[] = [];
 
   reasons.push(getPriorityLevelDescription(task.priority));
-  
+
   const dueDateReason = getDueDateReasoning(task.due_date);
   if (dueDateReason) {
     reasons.push(dueDateReason);
@@ -367,7 +368,7 @@ function generatePriorityReasoning(task: any, score: number, skillContext?: stri
  */
 function getPriorityLevelDescription(priority: number): string {
   const basePriority = priority || PRIORITY_THRESHOLDS.LOW;
-  
+
   if (basePriority >= PRIORITY_THRESHOLDS.CRITICAL) return '🔥 Critical priority task';
   if (basePriority >= PRIORITY_THRESHOLDS.HIGH) return '⚡ High priority task';
   if (basePriority >= PRIORITY_THRESHOLDS.MEDIUM) return '📈 Medium priority task';
@@ -391,26 +392,26 @@ function getDueDateReasoning(dueDate: string | null): string | null {
   if (daysUntilDue <= TIME_THRESHOLDS.DUE_THIS_WEEK_DAYS) {
     return '📅 Due this week';
   }
-  
+
   return null;
 }
 
 /**
  * Get skill context reasoning if applicable.
  */
-function getSkillContextReasoning(task: any, skillContext?: string): string | null {
+function getSkillContextReasoning(task: unknown, skillContext?: string): string | null {
   if (!skillContext || !task.description) return null;
-  
+
   const taskDescription = task.description.toLowerCase();
   const contextKeyword = skillContext.toLowerCase();
-  
-  return taskDescription.includes(contextKeyword) 
+
+  return taskDescription.includes(contextKeyword)
     ? `🎯 Matches skill context: "${skillContext}"`
     : null;
 }
 
 function generatePriorityChangeReasoning(
-  task: any,
+  task: unknown,
   oldPriority: number,
   newPriority: number
 ): string {
@@ -448,7 +449,7 @@ function generatePriorityChangeReasoning(
  * Calculate AI-adjusted priority for a task based on various factors.
  * Uses constants for consistent scoring across the application.
  */
-function calculateAIPriority(task: any): number {
+function calculateAIPriority(task: unknown): number {
   let priority = task.priority || 5;
 
   priority += calculateDueDateAdjustment(task);
@@ -462,7 +463,7 @@ function calculateAIPriority(task: any): number {
 /**
  * Calculate due date adjustment for AI priority calculation.
  */
-function calculateDueDateAdjustment(task: any): number {
+function calculateDueDateAdjustment(task: unknown): number {
   if (!task.due_date) return 0;
 
   const daysUntilDue = calculateDaysUntilDue(task.due_date);
@@ -483,7 +484,7 @@ function calculateDueDateAdjustment(task: any): number {
 /**
  * Calculate age adjustment for AI priority calculation.
  */
-function calculateAgeAdjustment(task: any): number {
+function calculateAgeAdjustment(task: unknown): number {
   const ageInDays = calculateTaskAge(task.created_at);
   return ageInDays > TIME_THRESHOLDS.STALE_TASK_DAYS ? 1 : 0;
 }
@@ -491,8 +492,109 @@ function calculateAgeAdjustment(task: any): number {
 /**
  * Calculate status adjustment for AI priority calculation.
  */
-function calculateStatusAdjustment(task: any): number {
+function calculateStatusAdjustment(task: unknown): number {
   return task.status === 'blocked' ? -2 : 0;
 }
+
+// ============================================================================
+// Priority History Endpoints
+// ============================================================================
+
+/**
+ * Get priority history for a specific task
+ *
+ * @route GET /api/v1/priorities/history/:taskId
+ * @auth Required - Read permission
+ */
+router.get('/history/:taskId', requirePermission('read'), async (req, res, next) => {
+  try {
+    const { taskId } = req.params;
+
+    if (!taskId) {
+      throw new ValidationError('Task ID is required');
+    }
+
+    const priorityHistoryService = PriorityHistoryService.getInstance();
+    const history = await priorityHistoryService.getTaskPriorityHistory(taskId);
+
+    return res.apiSuccess({
+      task_id: taskId,
+      history,
+      total_changes: history.length,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Get priority statistics and trends
+ *
+ * @route GET /api/v1/priorities/stats
+ * @auth Required - Read permission
+ */
+router.get('/stats', requirePermission('read'), async (req, res, next) => {
+  try {
+    const { board_id, days = '30', task_id } = req.query;
+
+    const priorityHistoryService = PriorityHistoryService.getInstance();
+    const stats = await priorityHistoryService.getPriorityStats({
+      board_id: board_id as string,
+      days: parseInt(days as string, 10),
+      task_id: task_id as string,
+    });
+
+    return res.apiSuccess(stats);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Analyze priority patterns for tasks
+ *
+ * @route GET /api/v1/priorities/patterns
+ * @auth Required - Read permission
+ */
+router.get('/patterns', requirePermission('read'), async (req, res, next) => {
+  try {
+    const { board_id, task_id } = req.query;
+
+    const priorityHistoryService = PriorityHistoryService.getInstance();
+    const patterns = await priorityHistoryService.analyzePriorityPatterns(
+      task_id as string,
+      board_id as string
+    );
+
+    return res.apiSuccess({
+      patterns,
+      analysis_timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Get priority change summary
+ *
+ * @route GET /api/v1/priorities/summary
+ * @auth Required - Read permission
+ */
+router.get('/summary', requirePermission('read'), async (req, res, next) => {
+  try {
+    const { board_id, days = '7' } = req.query;
+
+    const priorityHistoryService = PriorityHistoryService.getInstance();
+    const summary = await priorityHistoryService.getPriorityChangeSummary({
+      board_id: board_id as string,
+      days: parseInt(days as string, 10),
+    });
+
+    return res.apiSuccess(summary);
+  } catch (error) {
+    next(error);
+  }
+});
 
 export default router;

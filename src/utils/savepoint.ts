@@ -1,5 +1,5 @@
 interface DatabaseLike {
-  exec(sql: string): Promise<void>;
+  exec: (sql: string) => Promise<void>;
 }
 
 export class Savepoint {

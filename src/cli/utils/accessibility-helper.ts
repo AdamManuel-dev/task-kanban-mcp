@@ -1,7 +1,7 @@
 /**
  * @fileoverview Accessibility utilities for CLI interface
  * @lastmodified 2025-07-28T10:30:00Z
- * 
+ *
  * Features: WCAG compliance, screen reader support, keyboard navigation
  * Main APIs: validateContrastRatio(), getAccessibleColors(), announceToScreenReader()
  * Constraints: Terminal-based, requires ANSI color support
@@ -31,8 +31,11 @@ export interface ScreenReaderAnnouncement {
  */
 export class AccessibilityHelper {
   private static readonly WCAG_AA_NORMAL = 4.5;
+
   private static readonly WCAG_AA_LARGE = 3.0;
+
   private static readonly WCAG_AAA_NORMAL = 7.0;
+
   private static readonly WCAG_AAA_LARGE = 4.5;
 
   /**
@@ -41,7 +44,7 @@ export class AccessibilityHelper {
   private static getRelativeLuminance(r: number, g: number, b: number): number {
     const [rs, gs, bs] = [r, g, b].map(c => {
       const sRGB = c / 255;
-      return sRGB <= 0.03928 ? sRGB / 12.92 : Math.pow((sRGB + 0.055) / 1.055, 2.4);
+      return sRGB <= 0.03928 ? sRGB / 12.92 : ((sRGB + 0.055) / 1.055) ** 2.4;
     });
     return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
   }
@@ -55,7 +58,7 @@ export class AccessibilityHelper {
   ): ContrastRatio {
     const l1 = this.getRelativeLuminance(foreground.r, foreground.g, foreground.b);
     const l2 = this.getRelativeLuminance(background.r, background.g, background.b);
-    
+
     const lighter = Math.max(l1, l2);
     const darker = Math.min(l1, l2);
     const ratio = (lighter + 0.05) / (darker + 0.05);
@@ -98,10 +101,7 @@ export class AccessibilityHelper {
         {
           foreground: '#00FF00', // Bright green text
           background: '#000000', // Black background
-          contrastRatio: this.calculateContrastRatio(
-            { r: 0, g: 255, b: 0 },
-            { r: 0, g: 0, b: 0 }
-          ),
+          contrastRatio: this.calculateContrastRatio({ r: 0, g: 255, b: 0 }, { r: 0, g: 0, b: 0 }),
         },
         {
           foreground: '#FFFF00', // Yellow text
@@ -208,7 +208,7 @@ export class AccessibilityHelper {
     // by writing to stderr with specific formatting
     const prefix = announcement.priority === 'assertive' ? '[URGENT]' : '[INFO]';
     const categoryPrefix = `[${announcement.category.toUpperCase()}]`;
-    
+
     process.stderr.write(`${prefix} ${categoryPrefix} ${announcement.message}\n`);
   }
 
@@ -243,11 +243,7 @@ export class AccessibilityHelper {
         'Shift+Tab: Previous field',
         'Enter: Submit form',
       ],
-      menu: [
-        '↑↓: Navigate menu items',
-        'Enter: Select menu item',
-        'Escape: Close menu',
-      ],
+      menu: ['↑↓: Navigate menu items', 'Enter: Select menu item', 'Escape: Close menu'],
     };
 
     return [...contextSpecific[context], ...commonCommands];
@@ -319,7 +315,7 @@ export class AccessibilityHelper {
    */
   static createFocusIndicator(text: string, isFocused: boolean): string {
     if (!isFocused) return text;
-    
+
     // Use high-contrast border for focus indication
     const border = '▶ ';
     const suffix = ' ◀';

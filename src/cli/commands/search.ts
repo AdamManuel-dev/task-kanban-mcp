@@ -1,3 +1,13 @@
+/**
+ * @fileoverview Search CLI commands for tasks and content
+ * @lastmodified 2025-07-28T10:30:00Z
+ *
+ * Features: Task search, content search, filtering, sorting, pagination
+ * Main APIs: registerSearchCommands() - comprehensive search command suite
+ * Constraints: Requires API client, handles various search parameters
+ * Patterns: Parameter validation, result formatting, error handling
+ */
+
 import { logger } from '@/utils/logger';
 import type { Command } from 'commander';
 import type { CliComponents } from '../types';
@@ -7,7 +17,12 @@ export function registerSearchCommands(program: Command): void {
   const searchCmd = program.command('search').alias('s').description('Search tasks and content');
 
   // Get global components with proper typing
-  const getComponents = (): CliComponents => global.cliComponents;
+  const getComponents = (): CliComponents => {
+    if (!global.cliComponents) {
+      throw new Error('CLI components not initialized. Please initialize the CLI first.');
+    }
+    return global.cliComponents;
+  };
 
   searchCmd
     .command('tasks <query>')
@@ -35,9 +50,9 @@ export function registerSearchCommands(program: Command): void {
         try {
           const params: Record<string, string> = {
             q: query,
-            limit: options.limit || '20',
-            sort: options.sort || 'relevance',
-            order: options.order || 'desc',
+            limit: options.limit ?? '20',
+            sort: options.sort ?? 'relevance',
+            order: options.order ?? 'desc',
           };
 
           if (options.board) params.board = options.board;
@@ -85,9 +100,9 @@ export function registerSearchCommands(program: Command): void {
         try {
           const params: Record<string, string> = {
             q: query,
-            limit: options.limit || '20',
-            sort: options.sort || 'relevance',
-            order: options.order || 'desc',
+            limit: options.limit ?? '20',
+            sort: options.sort ?? 'relevance',
+            order: options.order ?? 'desc',
           };
 
           if (options.category) params.category = options.category;
@@ -144,15 +159,17 @@ export function registerSearchCommands(program: Command): void {
     .option('--tasks-only', 'search only tasks')
     .option('--notes-only', 'search only notes')
     .option('--tags-only', 'search only tags')
-    .action(async (query: string, options) => {
+    .action(async (query: string, options: Record<string, unknown>) => {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const searchPromises: Promise<any>[] = [];
+        const searchPromises: Array<Promise<unknown>> = [];
         const searchTypes: string[] = [];
 
         if (!options.notesOnly && !options.tagsOnly) {
-          searchPromises.push(apiClient.searchTasks(query, { limit: options.limit }));
+          searchPromises.push(
+            apiClient.searchTasks(query, { limit: String(options.limit || '10') })
+          );
           searchTypes.push('tasks');
         }
 
@@ -171,7 +188,7 @@ export function registerSearchCommands(program: Command): void {
         let totalResults = 0;
         results.forEach((result, index) => {
           const type = searchTypes[index];
-          const count = result ? result.length : 0;
+          const count = result && Array.isArray(result) ? result.length : 0;
           totalResults += count;
 
           if (count > 0 && type) {
@@ -226,38 +243,35 @@ export function registerSearchCommands(program: Command): void {
     .option('--due-after <date>', 'due after date (YYYY-MM-DD)')
     .option('--due-before <date>', 'due before date (YYYY-MM-DD)')
     .option('-l, --limit <number>', 'limit number of results', '20')
-    .action(async options => {
+    .action(async (options: Record<string, unknown>) => {
       const { apiClient, formatter } = getComponents();
 
       try {
         const params: Record<string, string> = {
-          limit: options.limit,
+          limit: String(options.limit || '20'),
         };
 
-        if (options.title) params.title = options.title;
-        if (options.description) params.description = options.description;
-        if (options.tags) params.tags = options.tags;
-        if (options.status) params.status = options.status;
-        if (options.priorityMin) params.priorityMin = options.priorityMin;
-        if (options.priorityMax) params.priorityMax = options.priorityMax;
-        if (options.createdAfter) params.createdAfter = options.createdAfter;
-        if (options.createdBefore) params.createdBefore = options.createdBefore;
-        if (options.dueAfter) params.dueAfter = options.dueAfter;
-        if (options.dueBefore) params.dueBefore = options.dueBefore;
+        if (options.title) params.title = String(options.title);
+        if (options.description) params.description = String(options.description);
+        if (options.tags) params.tags = String(options.tags);
+        if (options.status) params.status = String(options.status);
+        if (options.priorityMin) params.priorityMin = String(options.priorityMin);
+        if (options.priorityMax) params.priorityMax = String(options.priorityMax);
+        if (options.createdAfter) params.createdAfter = String(options.createdAfter);
+        if (options.createdBefore) params.createdBefore = String(options.createdBefore);
+        if (options.dueAfter) params.dueAfter = String(options.dueAfter);
+        if (options.dueBefore) params.dueBefore = String(options.dueBefore);
 
-        const results = (await apiClient.request(
-          'GET',
-          '/api/search/advanced',
-          undefined,
-          params
-        )) as any;
+        const results = await apiClient.request('GET', '/api/search/advanced', undefined, params);
 
-        if (!results || results.length === 0) {
+        if (!results || !Array.isArray(results) || results.length === 0) {
           formatter.info('No results found with the specified filters');
           return;
         }
 
-        formatter.success(`Found ${String(String(results.length))} results with advanced filters`);
+        formatter.success(
+          `Found ${Array.isArray(results) ? results.length : 0} results with advanced filters`
+        );
         formatter.output(results, {
           fields: ['id', 'title', 'status', 'priority', 'dueDate', 'createdAt'],
           headers: ['ID', 'Title', 'Status', 'Priority', 'Due Date', 'Created'],

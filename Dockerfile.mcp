@@ -1,57 +1,126 @@
-# MCP Kanban Server - Isolated MCP Deployment
-# Optimized for MCP protocol usage with minimal footprint
+# Multi-stage Docker build for isolated MCP server deployment
+# This Dockerfile creates a production-ready MCP server container
+# with minimal attack surface and optimized resource usage
 
+# Stage 1: Build environment
 FROM node:18-alpine AS builder
+
+# Install build dependencies
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    sqlite-dev
 
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copy package files for dependency installation
 COPY package*.json ./
+COPY tsconfig*.json ./
 
-# Install dependencies
-RUN npm ci --only=production && npm cache clean --force
+# Install dependencies (including dev dependencies for build)
+RUN npm ci --ignore-scripts
 
 # Copy source code
-COPY . .
+COPY src/ ./src/
+COPY scripts/ ./scripts/
 
 # Build the application
 RUN npm run build
 
-# Production stage
+# Remove dev dependencies after build
+RUN npm prune --production
+
+# Stage 2: Production runtime
 FROM node:18-alpine AS production
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S mcp -u 1001
+# Create non-root user for security
+RUN addgroup -g 1001 -S mcpuser && \
+    adduser -S mcpuser -u 1001 -G mcpuser
+
+# Install runtime dependencies and security tools
+RUN apk add --no-cache \
+    sqlite \
+    dumb-init \
+    tini
 
 # Set working directory
 WORKDIR /app
 
 # Copy built application from builder stage
-COPY --from=builder --chown=mcp:nodejs /app/dist ./dist
-COPY --from=builder --chown=mcp:nodejs /app/package*.json ./
+COPY --from=builder --chown=mcpuser:mcpuser /app/dist ./dist
+COPY --from=builder --chown=mcpuser:mcpuser /app/node_modules ./node_modules
+COPY --from=builder --chown=mcpuser:mcpuser /app/package*.json ./
 
-# Install only production dependencies
-RUN npm ci --only=production && npm cache clean --force
+# Create directories for data and logs with proper permissions
+RUN mkdir -p /app/data /app/logs /app/backups && \
+    chown -R mcpuser:mcpuser /app/data /app/logs /app/backups && \
+    chmod 750 /app/data /app/logs /app/backups
 
-# Create necessary directories
-RUN mkdir -p /app/data/db /app/logs /app/backups && \
-    chown -R mcp:nodejs /app
+# Create health check script
+RUN echo '#!/bin/sh\n\
+# Health check for MCP server\n\
+if [ -f "/app/data/mcp-server.pid" ]; then\n\
+  PID=$(cat /app/data/mcp-server.pid)\n\
+  if kill -0 "$PID" 2>/dev/null; then\n\
+    exit 0\n\
+  fi\n\
+fi\n\
+# Fallback: check if process is running\n\
+pgrep -f "node.*mcp/server.js" > /dev/null\n\
+exit $?' > /usr/local/bin/healthcheck.sh && \
+    chmod +x /usr/local/bin/healthcheck.sh
 
 # Switch to non-root user
-USER mcp
+USER mcpuser
 
-# Expose MCP server port (stdio mode doesn't need port, but for HTTP mode)
-EXPOSE 3000
+# Environment variables for MCP server
+ENV NODE_ENV=production
+ENV MCP_SERVER_PORT=3001
+ENV MCP_SERVER_HOST=0.0.0.0
+ENV DATABASE_URL=sqlite:///app/data/kanban.db
+ENV LOG_LEVEL=info
+ENV LOG_FILE=/app/logs/mcp-server.log
+ENV BACKUP_DIR=/app/backups
+ENV MAX_MEMORY=512
+ENV NODE_OPTIONS="--max-old-space-size=512"
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD node -e "process.exit(0)" || exit 1
+# Expose MCP server port
+EXPOSE 3001
 
-# Default command (MCP stdio mode)
-CMD ["node", "dist/mcp/server.js"]
+# Health check with proper MCP server validation
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD /usr/local/bin/healthcheck.sh
 
-# Alternative commands for different modes:
-# HTTP mode: CMD ["node", "dist/server.js"]
-# CLI mode: CMD ["node", "dist/cli/index.js"] 
+# Create startup script for better process management
+RUN echo '#!/bin/sh\n\
+echo "Starting MCP Kanban Server..."\n\
+echo "Environment: $NODE_ENV"\n\
+echo "Database: $DATABASE_URL"\n\
+echo "Log Level: $LOG_LEVEL"\n\
+\n\
+# Create PID file directory\n\
+mkdir -p "$(dirname "$DATABASE_URL" | sed "s|sqlite://||")" 2>/dev/null || true\n\
+\n\
+# Start MCP server with process monitoring\n\
+exec node dist/mcp/server.js' > /app/start-mcp.sh && \
+    chmod +x /app/start-mcp.sh
+
+# Use tini for proper signal handling and zombie reaping
+ENTRYPOINT ["tini", "--"]
+
+# Start MCP server with enhanced process management
+CMD ["/app/start-mcp.sh"]
+
+# Metadata labels
+LABEL maintainer="MCP Kanban Team" \
+      description="Isolated MCP server for kanban operations" \
+      version="1.0" \
+      org.opencontainers.image.source="https://github.com/your-org/mcp-kanban" \
+      org.opencontainers.image.vendor="MCP Kanban Project" \
+      org.opencontainers.image.title="MCP Kanban Server" \
+      org.opencontainers.image.description="Production-ready MCP server container for kanban board operations"
+
+# Volume for persistent data
+VOLUME ["/app/data", "/app/logs", "/app/backups"] 

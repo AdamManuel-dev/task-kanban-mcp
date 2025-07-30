@@ -9,7 +9,7 @@ export interface TaskTemplate {
   estimated_hours?: number;
   tags: string[];
   checklist_items: string[];
-  custom_fields: Record<string, any>;
+  custom_fields: Record<string, unknown>;
   created_by?: string;
   is_system: boolean;
   is_active: boolean;
@@ -28,7 +28,7 @@ export interface TaskTemplateCreateRequest {
   estimated_hours?: number;
   tags?: string[];
   checklist_items?: string[];
-  custom_fields?: Record<string, any>;
+  custom_fields?: Record<string, unknown>;
   created_by?: string;
 }
 
@@ -42,7 +42,7 @@ export interface TaskTemplateUpdateRequest {
   estimated_hours?: number;
   tags?: string[];
   checklist_items?: string[];
-  custom_fields?: Record<string, any>;
+  custom_fields?: Record<string, unknown>;
   is_active?: boolean;
 }
 
@@ -51,7 +51,7 @@ export interface TemplateVariable {
   type: 'string' | 'number' | 'date' | 'select' | 'boolean';
   description: string;
   required: boolean;
-  default_value?: any;
+  default_value?: unknown;
   options?: string[]; // For select type
   validation?: {
     min_length?: number;
@@ -65,7 +65,7 @@ export interface TemplateVariable {
 export interface TaskFromTemplateRequest {
   template_id: string;
   board_id: string;
-  variables: Record<string, any>;
+  variables: Record<string, unknown>;
   assignee?: string;
   due_date?: string;
   parent_task_id?: string;
@@ -87,7 +87,7 @@ export interface TemplateUsageStats {
   last_used: string;
   success_rate: number;
   average_completion_time_hours?: number;
-  most_common_variables: Record<string, any>;
+  most_common_variables: Record<string, unknown>;
 }
 
 export interface TemplateCategory {

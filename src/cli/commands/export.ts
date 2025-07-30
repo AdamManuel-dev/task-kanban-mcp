@@ -38,7 +38,12 @@ export function registerExportCommands(program: Command): void {
   const exportCmd = program.command('export').alias('e').description('Export data');
 
   // Get global components with proper typing
-  const getComponents = (): CliComponents => global.cliComponents;
+  const getComponents = (): CliComponents => {
+    if (!global.cliComponents) {
+      throw new Error('CLI components not initialized. Please initialize the CLI first.');
+    }
+    return global.cliComponents;
+  };
   const importCmd = program.command('import').description('Import kanban data');
 
   // Export to JSON
@@ -298,7 +303,7 @@ export function registerExportCommands(program: Command): void {
         const fromFormat = (options.from ?? 'json').toLowerCase();
         const toFormat = (options.to ?? 'csv').toLowerCase();
         const supported = getSupportedConversions();
-        if (!supported.from?.includes(fromFormat) || !supported.to?.includes(toFormat)) {
+        if (!supported.from.includes(fromFormat) || !supported.to.includes(toFormat)) {
           formatter.error(`Unsupported conversion: ${fromFormat} → ${toFormat}`);
           process.exit(1);
         }

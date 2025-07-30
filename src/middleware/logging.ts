@@ -16,7 +16,7 @@ export function requestLoggingMiddleware(req: Request, res: Response, next: Next
 
   // Override res.end to log response
   const originalEnd = res.end.bind(res);
-  (res.end as any) = function logResponseEnd(this: Response, ...args: any[]) {
+  (res.end as unknown) = function logResponseEnd(this: Response, ...args: unknown[]) {
     const duration = Date.now() - startTime;
 
     logger.info('HTTP request completed', {
@@ -38,7 +38,7 @@ export function requestLoggingMiddleware(req: Request, res: Response, next: Next
       });
     }
 
-    return originalEnd.apply(this, args as [any, BufferEncoding, (() => void)?]);
+    return originalEnd.apply(this, args as [unknown, BufferEncoding, (() => void)?]);
   };
 
   next();

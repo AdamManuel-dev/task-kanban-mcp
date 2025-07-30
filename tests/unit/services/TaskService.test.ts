@@ -711,4 +711,102 @@ describe('TaskService', () => {
       ).rejects.toThrow();
     });
   });
+
+  describe('Priority Change Tracking', () => {
+    // Mock PriorityHistoryService
+    const mockRecordPriorityChange = jest.fn();
+    
+    beforeEach(() => {
+      jest.clearAllMocks();
+      // Mock PriorityHistoryService
+      jest.doMock('@/services/PriorityHistoryService', () => ({
+        PriorityHistoryService: {
+          getInstance: () => ({
+            recordPriorityChange: mockRecordPriorityChange,
+          }),
+        },
+      }));
+      mockRecordPriorityChange.mockResolvedValue({
+        id: 'ph_test_123',
+        task_id: 'test-task-id',
+        old_priority: 5,
+        new_priority: 8,
+        timestamp: new Date(),
+      });
+    });
+
+    it('should record priority change when task priority is updated', async () => {
+      const task = await taskService.createTask({
+        title: 'Test Priority Tracking',
+        board_id: boardId,
+        column_id: columnId,
+        priority: 5,
+      });
+
+      await taskService.updateTask(task.id, {
+        priority: 8,
+        change_reason: 'Urgent requirement',
+        changed_by: 'test-user',
+      });
+
+      expect(mockRecordPriorityChange).toHaveBeenCalledWith(
+        task.id,
+        5, // old priority
+        8, // new priority
+        'Urgent requirement',
+        'test-user'
+      );
+    });
+
+    it('should not record priority change when priority is not updated', async () => {
+      const task = await taskService.createTask({
+        title: 'Test No Priority Change',
+        board_id: boardId,
+        column_id: columnId,
+        priority: 5,
+      });
+
+      await taskService.updateTask(task.id, {
+        title: 'Updated Title',
+      });
+
+      expect(mockRecordPriorityChange).not.toHaveBeenCalled();
+    });
+
+    it('should not record priority change when priority remains the same', async () => {
+      const task = await taskService.createTask({
+        title: 'Test Same Priority',
+        board_id: boardId,
+        column_id: columnId,
+        priority: 5,
+      });
+
+      await taskService.updateTask(task.id, {
+        priority: 5, // Same priority
+        change_reason: 'No actual change',
+      });
+
+      expect(mockRecordPriorityChange).not.toHaveBeenCalled();
+    });
+
+    it('should handle priority change tracking failure gracefully', async () => {
+      const task = await taskService.createTask({
+        title: 'Test Priority Tracking Error',
+        board_id: boardId,
+        column_id: columnId,
+        priority: 3,
+      });
+
+      // Mock the service to throw an error
+      mockRecordPriorityChange.mockRejectedValue(new Error('Database error'));
+
+      // The update should still succeed even if priority history fails
+      const updatedTask = await taskService.updateTask(task.id, {
+        priority: 7,
+      });
+
+      expect(updatedTask.priority).toBe(7);
+      expect(mockRecordPriorityChange).toHaveBeenCalled();
+    });
+  });
 });

@@ -57,7 +57,7 @@ export class TodoProcessor {
   /**
    * Parse TODO.md file and extract tasks
    */
-  async parseTodoFile(filePath: string): Promise<Map<string, TodoItem>> {
+  static async parseTodoFile(filePath: string): Promise<Map<string, TodoItem>> {
     const content = await readFile(filePath, 'utf-8');
     const lines = content.split('\n');
     const todos = new Map<string, TodoItem>();
@@ -86,7 +86,7 @@ export class TodoProcessor {
 
     return {
       id,
-      text: text?.trim() || '',
+      text: text.trim() ?? '',
       completed: completed === 'x',
       priority: 'P3',
       size: 'M',
@@ -99,11 +99,11 @@ export class TodoProcessor {
   /**
    * Group todos by phase
    */
-  private groupByPhase(todos: Map<string, TodoItem>): Map<string, TodoItem[]> {
+  private static groupByPhase(todos: Map<string, TodoItem>): Map<string, TodoItem[]> {
     const phases = new Map<string, TodoItem[]>();
 
     for (const todo of todos.values()) {
-      const phase = todo.phase || 'Unknown';
+      const phase = todo.phase ?? 'Unknown';
       if (!phases.has(phase)) {
         phases.set(phase, []);
       }
@@ -116,7 +116,7 @@ export class TodoProcessor {
   /**
    * Create execution groups based on dependencies
    */
-  private createExecutionGroups(todos: Map<string, TodoItem>): TodoItem[][] {
+  private static createExecutionGroups(todos: Map<string, TodoItem>): TodoItem[][] {
     const groups: TodoItem[][] = [];
     const visited = new Set<string>();
     const inProgress = new Set<string>();
@@ -206,12 +206,12 @@ export class TodoProcessor {
     todos: Map<string, TodoItem>,
     options: TodoProcessorOptions
   ): Promise<void> {
-    const groups = this.createExecutionGroups(todos);
+    const groups = TodoProcessor.createExecutionGroups(todos);
 
     const listr = new Listr(
       groups.map((group, index) => ({
         title: `Execution Group ${index + 1} (${group.length} tasks)`,
-        task: (_ctx: any, _task: any) => {
+        task: (_ctx: unknown, _task: unknown) => {
           const subtasks = group.map(todo => ({
             title: `${todo.id}: ${todo.text}`,
             task: async () => {
@@ -227,16 +227,16 @@ export class TodoProcessor {
             concurrent: options.concurrent ?? true,
             rendererOptions: {
               showSubtasks: true,
-            } as any,
+            } as unknown,
           });
         },
-      })) as any,
+      })) as unknown,
       {
         concurrent: false,
         rendererOptions: {
           showSubtasks: true,
           showTimer: true,
-        } as any,
+        } as unknown,
       }
     );
 
@@ -246,7 +246,7 @@ export class TodoProcessor {
   /**
    * Generate implementation report
    */
-  private async generateReport(todos: Map<string, TodoItem>, todoFile: string): Promise<void> {
+  private static async generateReport(todos: Map<string, TodoItem>, todoFile: string): Promise<void> {
     const reportPath = todoFile.replace('.md', '-report.md');
     const completed = Array.from(todos.values()).filter(t => t.completed);
     const pending = Array.from(todos.values()).filter(t => !t.completed);

@@ -55,9 +55,7 @@ export interface ConfigValue {
 export type ConfigData = Record<string, ConfigValue>;
 
 // CLI-related types
-export interface CliOptions {
-  [key: string]: unknown;
-}
+export type CliOptions = Record<string, unknown>;
 
 export interface CliCommand {
   name: string;
@@ -104,7 +102,7 @@ export type SyncFunction<TArgs extends unknown[] = unknown[], TReturn = unknown>
 ) => TReturn;
 
 // Collection types
-export type ArrayElement<T> = T extends readonly (infer U)[] ? U : never;
+export type ArrayElement<T> = T extends ReadonlyArray<infer U> ? U : never;
 export type ObjectValues<T> = T[keyof T];
 
 // Type guards for common patterns
@@ -287,7 +285,7 @@ export async function mapAsync<T, U>(
   items: T[],
   transform: (item: T, index: number) => Promise<U>
 ): Promise<U[]> {
-  const promises = items.map((item, index) => transform(item, index));
+  const promises = items.map(async (item, index) => transform(item, index));
   return Promise.all(promises);
 }
 

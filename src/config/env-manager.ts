@@ -12,14 +12,35 @@ import { logger } from '../utils/logger';
 import { CLOUD_ENV } from './cloud-env';
 import { NETWORK_DEFAULTS, TIMING } from '../constants';
 
+// Pre-defined common schemas to reduce type complexity
+const portSchema = z
+  .string()
+  .transform(val => parseInt(val, 10))
+  .pipe(z.number().int().min(1).max(65535));
+const positiveIntSchema = z
+  .string()
+  .transform(val => parseInt(val, 10))
+  .pipe(z.number().int().positive());
+const booleanSchema = z
+  .string()
+  .transform(val => val === 'true')
+  .pipe(z.boolean());
+const arrayStringSchema = z
+  .string()
+  .transform(val => val.split(','))
+  .pipe(z.array(z.string().min(1)));
+const logLevelSchema = z.enum(['error', 'warn', 'info', 'debug']);
+const logFormatSchema = z.enum(['text', 'json']);
+const nodeEnvSchema = z.enum(['development', 'production', 'test']);
+
 export interface EnvValidationRule {
   key: string;
   schema: z.ZodSchema;
   required: boolean;
   sensitive: boolean;
   description: string;
-  defaultValue?: any;
-  cloudOverrides?: Record<string, any>;
+  defaultValue?: unknown;
+  cloudOverrides?: Record<string, unknown>;
 }
 
 export interface EnvValidationResult {
@@ -28,7 +49,7 @@ export interface EnvValidationResult {
   warnings: string[];
   missing: string[];
   invalid: string[];
-  values: Record<string, any>;
+  values: Record<string, unknown>;
 }
 
 /**
@@ -38,7 +59,7 @@ export const ENV_RULES: readonly EnvValidationRule[] = [
   // Server configuration
   {
     key: 'NODE_ENV',
-    schema: z.enum(['development', 'production', 'test']),
+    schema: nodeEnvSchema,
     required: false,
     sensitive: false,
     description: 'Node.js environment mode',
@@ -46,10 +67,7 @@ export const ENV_RULES: readonly EnvValidationRule[] = [
   },
   {
     key: 'PORT',
-    schema: z
-      .string()
-      .transform(val => parseInt(val, 10))
-      .pipe(z.number().int().min(1).max(65535)),
+    schema: portSchema,
     required: false,
     sensitive: false,
     description: 'Server port number',
@@ -87,10 +105,7 @@ export const ENV_RULES: readonly EnvValidationRule[] = [
   },
   {
     key: 'DATABASE_MEMORY_LIMIT',
-    schema: z
-      .string()
-      .transform(val => parseInt(val, 10))
-      .pipe(z.number().int().positive()),
+    schema: positiveIntSchema,
     required: false,
     sensitive: false,
     description: 'Database memory limit in bytes',
@@ -104,10 +119,28 @@ export const ENV_RULES: readonly EnvValidationRule[] = [
   // Security configuration
   {
     key: 'JWT_SECRET',
-    schema: z.string().min(32),
+    schema: z.string().min(32).refine(
+      (val) => {
+        // In production, reject default/weak secrets
+        if (process.env.NODE_ENV === 'production') {
+          const weakSecrets = [
+            'dev-jwt-secret-change-in-production-min-32-chars',
+            'dev-secret-key-change-in-production',
+            'default-jwt-secret',
+            'change-me',
+            'secret'
+          ];
+          if (weakSecrets.includes(val)) {
+            throw new Error('Production deployment requires strong JWT_SECRET. Default/weak secrets are not allowed.');
+          }
+        }
+        return true;
+      },
+      { message: 'Production requires strong, unique JWT_SECRET' }
+    ),
     required: false,
     sensitive: true,
-    description: 'JWT signing secret (minimum 32 characters)',
+    description: 'JWT signing secret (minimum 32 characters, must be unique in production)',
     defaultValue: 'dev-jwt-secret-change-in-production-min-32-chars',
   },
   {
@@ -120,10 +153,7 @@ export const ENV_RULES: readonly EnvValidationRule[] = [
   },
   {
     key: 'API_KEYS',
-    schema: z
-      .string()
-      .transform(val => val.split(','))
-      .pipe(z.array(z.string().min(1))),
+    schema: arrayStringSchema,
     required: false,
     sensitive: true,
     description: 'Comma-separated list of valid API keys',
@@ -133,10 +163,7 @@ export const ENV_RULES: readonly EnvValidationRule[] = [
   // Performance configuration
   {
     key: 'MAX_MEMORY_USAGE',
-    schema: z
-      .string()
-      .transform(val => parseInt(val, 10))
-      .pipe(z.number().int().positive()),
+    schema: positiveIntSchema,
     required: false,
     sensitive: false,
     description: 'Maximum memory usage in MB',
@@ -151,10 +178,7 @@ export const ENV_RULES: readonly EnvValidationRule[] = [
   },
   {
     key: 'REQUEST_TIMEOUT',
-    schema: z
-      .string()
-      .transform(val => parseInt(val, 10))
-      .pipe(z.number().int().positive()),
+    schema: positiveIntSchema,
     required: false,
     sensitive: false,
     description: 'Request timeout in milliseconds',
@@ -164,10 +188,7 @@ export const ENV_RULES: readonly EnvValidationRule[] = [
   // Feature flags
   {
     key: 'ENABLE_ANALYTICS',
-    schema: z
-      .string()
-      .transform(val => val.toLowerCase() === 'true')
-      .pipe(z.boolean()),
+    schema: booleanSchema,
     required: false,
     sensitive: false,
     description: 'Enable analytics and monitoring',
@@ -175,10 +196,7 @@ export const ENV_RULES: readonly EnvValidationRule[] = [
   },
   {
     key: 'ENABLE_WEBSOCKETS',
-    schema: z
-      .string()
-      .transform(val => val.toLowerCase() === 'true')
-      .pipe(z.boolean()),
+    schema: booleanSchema,
     required: false,
     sensitive: false,
     description: 'Enable WebSocket real-time features',
@@ -189,10 +207,7 @@ export const ENV_RULES: readonly EnvValidationRule[] = [
   },
   {
     key: 'ENABLE_BACKUP_SCHEDULING',
-    schema: z
-      .string()
-      .transform(val => val.toLowerCase() === 'true')
-      .pipe(z.boolean()),
+    schema: booleanSchema,
     required: false,
     sensitive: false,
     description: 'Enable automatic backup scheduling',
@@ -206,7 +221,7 @@ export const ENV_RULES: readonly EnvValidationRule[] = [
   // Logging configuration
   {
     key: 'LOG_LEVEL',
-    schema: z.enum(['error', 'warn', 'info', 'debug']),
+    schema: logLevelSchema,
     required: false,
     sensitive: false,
     description: 'Logging level',
@@ -214,7 +229,7 @@ export const ENV_RULES: readonly EnvValidationRule[] = [
   },
   {
     key: 'LOG_FORMAT',
-    schema: z.enum(['text', 'json']),
+    schema: logFormatSchema,
     required: false,
     sensitive: false,
     description: 'Log output format',
@@ -246,10 +261,7 @@ export const ENV_RULES: readonly EnvValidationRule[] = [
   // Rate limiting
   {
     key: 'RATE_LIMIT_WINDOW_MS',
-    schema: z
-      .string()
-      .transform(val => parseInt(val, 10))
-      .pipe(z.number().int().positive()),
+    schema: positiveIntSchema,
     required: false,
     sensitive: false,
     description: 'Rate limit window in milliseconds',
@@ -257,10 +269,7 @@ export const ENV_RULES: readonly EnvValidationRule[] = [
   },
   {
     key: 'RATE_LIMIT_MAX_REQUESTS',
-    schema: z
-      .string()
-      .transform(val => parseInt(val, 10))
-      .pipe(z.number().int().positive()),
+    schema: positiveIntSchema,
     required: false,
     sensitive: false,
     description: 'Maximum requests per window',
@@ -277,9 +286,10 @@ export const ENV_RULES: readonly EnvValidationRule[] = [
  * Environment variable manager class
  */
 export class EnvironmentManager {
-  private readonly cache: Map<string, any> = new Map();
+  private readonly cache: Map<string, unknown> = new Map();
 
-  private validated = false; // eslint-disable-line @typescript-eslint/no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Reserved for future validation state tracking
+  private validated = false;
 
   /**
    * Gets an environment variable with type conversion and validation
@@ -315,7 +325,7 @@ export class EnvironmentManager {
   /**
    * Sets an environment variable (runtime only)
    */
-  set(key: string, value: any): void {
+  set(key: string, value: unknown): void {
     process.env[key] = String(value);
     this.cache.delete(key); // Clear cache to force re-parsing
   }
@@ -394,7 +404,7 @@ export class EnvironmentManager {
   /**
    * Gets default value with cloud overrides
    */
-  private getDefaultValue(rule: EnvValidationRule): any {
+  private getDefaultValue(rule: EnvValidationRule): unknown {
     if (CLOUD_ENV.isCloud && rule.cloudOverrides?.[CLOUD_ENV.platform]) {
       return rule.cloudOverrides[CLOUD_ENV.platform];
     }
@@ -404,8 +414,8 @@ export class EnvironmentManager {
   /**
    * Gets all environment variables as a sanitized object
    */
-  getAll(includeSensitive = false): Record<string, any> {
-    const values: Record<string, any> = {};
+  getAll(includeSensitive = false): Record<string, unknown> {
+    const values: Record<string, unknown> = {};
 
     for (const rule of ENV_RULES) {
       if (!includeSensitive && rule.sensitive) {
@@ -546,6 +556,6 @@ export const ENV_VALIDATION = getEnvValidation();
 
 // Export helper functions
 export const getEnv = <T>(key: string, defaultValue?: T): T => envManager.get(key, defaultValue);
-export const setEnv = (key: string, value: any): void => envManager.set(key, value);
-export const getAllEnv = (includeSensitive = false): Record<string, any> =>
+export const setEnv = (key: string, value: unknown): void => envManager.set(key, value);
+export const getAllEnv = (includeSensitive = false): Record<string, unknown> =>
   envManager.getAll(includeSensitive);

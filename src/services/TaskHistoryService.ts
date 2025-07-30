@@ -36,14 +36,14 @@ export interface PriorityHistoryAnalytics {
   priority_trend: 'increasing' | 'decreasing' | 'stable';
   change_frequency_days: number;
   recent_changes: PriorityChangeEntry[];
-  change_reasons: { reason: string; count: number }[];
+  change_reasons: Array<{ reason: string; count: number }>;
 }
 
 export interface TaskHistoryRequest {
   task_id: string;
   field_name: string;
-  old_value: any;
-  new_value: any;
+  old_value: unknown;
+  new_value: unknown;
   changed_by?: string;
   reason?: string;
 }
@@ -72,7 +72,7 @@ export class TaskHistoryService {
         field_name: request.field_name,
         old_value: request.old_value ? String(request.old_value) : null,
         new_value: request.new_value ? String(request.new_value) : null,
-        changed_by: request.changed_by || null,
+        changed_by: request.changed_by ?? null,
         changed_at: now,
         reason: request.reason,
       };
@@ -89,7 +89,7 @@ export class TaskHistoryService {
           entry.new_value,
           entry.changed_by,
           entry.changed_at.toISOString(),
-          entry.reason || null,
+          entry.reason ?? null,
         ]
       );
 
@@ -115,7 +115,7 @@ export class TaskHistoryService {
   async getTaskHistory(taskId: string, fieldName?: string): Promise<TaskHistoryEntry[]> {
     try {
       let query = 'SELECT * FROM task_history WHERE task_id = ?';
-      const params: any[] = [taskId];
+      const params: unknown[] = [taskId];
 
       if (fieldName) {
         query += ' AND field_name = ?';
@@ -186,7 +186,7 @@ export class TaskHistoryService {
 
       // Calculate analytics
       const priorities = priorityHistory
-        .map(h => parseInt(h.new_value || '1'))
+        .map(h => parseInt(h.new_value ?? '1'))
         .filter(p => !isNaN(p));
 
       const averagePriority = priorities.reduce((sum, p) => sum + p, 0) / priorities.length;
@@ -196,7 +196,7 @@ export class TaskHistoryService {
       // Find most common priority
       const priorityCounts = priorities.reduce(
         (acc, p) => {
-          acc[p] = (acc[p] || 0) + 1;
+          acc[p] = (acc[p] ?? 0) + 1;
           return acc;
         },
         {} as Record<number, number>
@@ -239,7 +239,7 @@ export class TaskHistoryService {
         .reduce(
           (acc, h) => {
             const reason = h.reason!;
-            acc[reason] = (acc[reason] || 0) + 1;
+            acc[reason] = (acc[reason] ?? 0) + 1;
             return acc;
           },
           {} as Record<string, number>
@@ -273,9 +273,9 @@ export class TaskHistoryService {
    */
   async getPriorityChangePatterns(boardId?: string): Promise<{
     total_priority_changes: number;
-    most_active_tasks: { task_id: string; task_title: string; change_count: number }[];
-    common_change_reasons: { reason: string; count: number }[];
-    priority_distribution: { priority: number; count: number }[];
+    most_active_tasks: Array<{ task_id: string; task_title: string; change_count: number }>;
+    common_change_reasons: Array<{ reason: string; count: number }>;
+    priority_distribution: Array<{ priority: number; count: number }>;
     trend_analysis: {
       increasing_count: number;
       decreasing_count: number;
@@ -289,7 +289,7 @@ export class TaskHistoryService {
         JOIN tasks t ON th.task_id = t.id
         WHERE th.field_name = 'priority'
       `;
-      const params: any[] = [];
+      const params: unknown[] = [];
 
       if (boardId) {
         historyQuery += ' AND t.board_id = ?';
@@ -321,8 +321,8 @@ export class TaskHistoryService {
       );
 
       const mostActiveTasks = Object.values(taskChangeCounts)
-        .sort((a, b) => (b as any).change_count - (a as any).change_count)
-        .slice(0, 10) as { task_id: string; task_title: string; change_count: number }[];
+        .sort((a, b) => b.change_count - a.change_count)
+        .slice(0, 10) as Array<{ task_id: string; task_title: string; change_count: number }>;
 
       // Count common change reasons
       const reasonCounts = allPriorityChanges
@@ -330,7 +330,7 @@ export class TaskHistoryService {
         .reduce(
           (acc, change) => {
             const { reason } = change;
-            acc[reason] = (acc[reason] || 0) + 1;
+            acc[reason] = (acc[reason] ?? 0) + 1;
             return acc;
           },
           {} as Record<string, number>
@@ -339,16 +339,16 @@ export class TaskHistoryService {
       const commonChangeReasons = Object.entries(reasonCounts)
         .map(([reason, count]) => ({ reason, count: count as number }))
         .sort((a, b) => b.count - a.count)
-        .slice(0, 10) as { reason: string; count: number }[];
+        .slice(0, 10) as Array<{ reason: string; count: number }>;
 
       // Analyze priority distribution
       const priorityValues = allPriorityChanges
-        .map(change => parseInt(change.new_value || '1'))
+        .map(change => parseInt(change.new_value ?? '1'))
         .filter(p => !isNaN(p));
 
       const priorityCounts = priorityValues.reduce(
         (acc, priority) => {
-          acc[priority] = (acc[priority] || 0) + 1;
+          acc[priority] = (acc[priority] ?? 0) + 1;
           return acc;
         },
         {} as Record<number, number>
@@ -409,7 +409,7 @@ export class TaskHistoryService {
         JOIN tasks t ON th.task_id = t.id
         WHERE th.field_name = 'priority'
       `;
-      const params: any[] = [];
+      const params: unknown[] = [];
 
       if (boardId) {
         query += ' AND t.board_id = ?';
@@ -429,7 +429,7 @@ export class TaskHistoryService {
 
   // Private helper methods
 
-  private mapRowToHistoryEntry(row: any): TaskHistoryEntry {
+  private mapRowToHistoryEntry(row: unknown): TaskHistoryEntry {
     return {
       id: row.id,
       task_id: row.task_id,

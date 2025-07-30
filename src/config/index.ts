@@ -68,7 +68,7 @@ const configSchema = z.object({
   websocket: z.object({
     port: z.number().int().min(1).max(65535).default(3001),
     host: z.string().default('localhost'),
-    path: z.string().default('/socket.io'),
+    path: z.string().default('/ws'),
     corsOrigin: z.string().default('*'),
     heartbeatInterval: z.number().int().positive().default(25000),
     heartbeatTimeout: z.number().int().positive().default(60000),

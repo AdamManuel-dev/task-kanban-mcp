@@ -253,7 +253,9 @@ export class KeyboardHandler {
       description: 'Toggle accessibility announcements',
       action: () => {
         const isEnabled = this.toggleAccessibilityAnnouncements();
-        console.log(chalk.green(`♿ Accessibility announcements ${isEnabled ? 'enabled' : 'disabled'}`));
+        console.log(
+          chalk.green(`♿ Accessibility announcements ${isEnabled ? 'enabled' : 'disabled'}`)
+        );
       },
       global: true,
     });
@@ -326,12 +328,12 @@ export class KeyboardHandler {
    */
   private toggleAccessibilityAnnouncements(): boolean {
     this.accessibilityAnnouncementsEnabled = !this.accessibilityAnnouncementsEnabled;
-    
+
     if (this.accessibilityAnnouncementsEnabled) {
       // Announce the change to screen readers
       process.stderr.write('[ACCESSIBILITY] Screen reader announcements enabled\n');
     }
-    
+
     return this.accessibilityAnnouncementsEnabled;
   }
 
@@ -340,7 +342,7 @@ export class KeyboardHandler {
    */
   announceToScreenReader(message: string, priority: 'polite' | 'assertive' = 'polite'): void {
     if (!this.accessibilityAnnouncementsEnabled) return;
-    
+
     const prefix = priority === 'assertive' ? '[URGENT]' : '[INFO]';
     process.stderr.write(`${prefix} ${message}\n`);
   }

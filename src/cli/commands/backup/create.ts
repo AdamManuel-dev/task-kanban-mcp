@@ -35,7 +35,12 @@ function formatFileSize(bytes: number): string {
  * Register the backup create command
  */
 export function registerCreateCommand(backupCmd: Command): void {
-  const getComponents = (): CliComponents => global.cliComponents;
+  const getComponents = (): CliComponents => {
+    if (!global.cliComponents) {
+      throw new Error('CLI components not initialized. Please initialize the CLI first.');
+    }
+    return global.cliComponents;
+  };
 
   backupCmd
     .command('create [name]')

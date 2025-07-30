@@ -1,29 +1,31 @@
 #!/usr/bin/env node
 
+// Register path alias resolver for production
 // Load environment variables before other imports
 import { Command } from 'commander';
 import { config } from '../config';
 import { dbConnection } from '../database/connection';
-// import { registerTaskCommands } from './commands/tasks';
-// import { registerBoardCommands } from './commands/boards/index';
-// import { registerContextCommands } from './commands/context';
-// import { registerTagCommands } from './commands/tags';
-// import { registerNoteCommands } from './commands/notes';
-// import { registerExportCommands } from './commands/export';
-// import { registerBackupCommands } from './commands/backup';
-// import { registerRealtimeCommands } from './commands/realtime';
-// import { registerSearchCommands } from './commands/search';
-// import { registerPriorityCommands } from './commands/priority';
-// import { registerSubtaskCommands } from './commands/subtasks';
-// import { registerDatabaseCommands } from './commands/database';
-// import { registerConfigCommands } from './commands/config';
-// import { createTemplatesCommand } from './commands/templates';
-// import { createDependenciesCommand } from './commands/dependencies';
-// import { registerNextCommands } from './commands/next';
-// import { addEnvironmentCommands } from './commands/environment';
-// import { registerResourceCommands } from './commands/resources';
-// import { registerPerformanceCommands } from './commands/performance';
-import { CLIServiceContainer } from './services/ServiceContainer';
+import { registerTaskCommands } from './commands/tasks';
+import { registerBoardCommands } from './commands/boards/index';
+import { registerContextCommands } from './commands/context';
+import { registerTagCommands } from './commands/tags';
+import { registerNoteCommands } from './commands/notes';
+import { registerExportCommands } from './commands/export';
+import { registerBackupCommands } from './commands/backup';
+import { registerRealtimeCommands } from './commands/realtime';
+import { registerSearchCommands } from './commands/search';
+import { registerPriorityCommands } from './commands/priority';
+import { registerSubtaskCommands } from './commands/subtasks';
+import { registerDatabaseCommands } from './commands/database';
+import { registerConfigCommands } from './commands/config';
+import { createTemplatesCommand } from './commands/templates';
+import { createDependenciesCommand } from './commands/dependencies';
+import { registerNextCommands } from './commands/next';
+import { addEnvironmentCommands } from './commands/environment';
+import { registerResourceCommands } from './commands/resources';
+import { registerPerformanceCommands } from './commands/performance';
+import { recoveryCommand } from './commands/recovery';
+import { CLIServiceContainer, shutdownCLIServices } from './services/ServiceContainer';
 import { ApiClientWrapper } from './api-client-wrapper';
 import { logger } from '../utils/logger';
 import { OutputFormatter } from './formatter';
@@ -31,6 +33,10 @@ import { SpinnerManager } from './utils/spinner';
 import { ConfigManager } from './config';
 import { initializeResourceMonitoring } from '../utils/resource-monitor';
 import type { CliComponents } from './types';
+
+if (process.env.NODE_ENV === 'production') {
+  require('../../resolve-aliases.config.js');
+}
 
 require('dotenv').config();
 
@@ -94,13 +100,23 @@ const setupGlobalErrorHandler = (): void => {
   });
 
   // Graceful shutdown handling (Ctrl+C)
-  process.on('SIGINT', () => {
+  process.on('SIGINT', async () => {
     logger.info('👋 Shutting down gracefully...');
+    try {
+      await shutdownCLIServices();
+    } catch (error) {
+      logger.error('Error during shutdown', { error });
+    }
     process.exit(0);
   });
 
-  process.on('SIGTERM', () => {
+  process.on('SIGTERM', async () => {
     logger.info('👋 Shutting down gracefully...');
+    try {
+      await shutdownCLIServices();
+    } catch (error) {
+      logger.error('Error during shutdown', { error });
+    }
     process.exit(0);
   });
 };
@@ -117,14 +133,19 @@ program
       spinner.start('🔍 Checking system health...');
 
       // Check database connection
-      await dbConnection.initialize({ skipSchema: false });
-      spinner.succeed('Database connection: OK');
+      try {
+        await dbConnection.initialize({ skipSchema: false });
+        spinner.succeed('Database connection: OK');
+      } catch (error) {
+        spinner.fail('Database connection: Failed');
+        throw error;
+      }
 
       // Check API server
-      try {
-        await components.apiClient.getHealth();
+      const apiConnected = await components.apiClient.testConnection();
+      if (apiConnected) {
         spinner.succeed('API server: OK');
-      } catch (error) {
+      } else {
         spinner.warn('API server: Not available (running in standalone mode)');
       }
 
@@ -135,7 +156,6 @@ program
 
       logger.info('🎉 System is healthy!');
     } catch (error) {
-      logger.error('System health check failed', { error });
       logger.error('❌ System health check failed:', error);
       process.exit(1);
     }
@@ -155,25 +175,29 @@ const main = async (): Promise<void> => {
     logger.info('Components initialized successfully');
 
     // Register all command modules
-    // registerTaskCommands(program);
-    // registerBoardCommands(program);
-    // registerContextCommands(program);
-    // registerTagCommands(program);
-    // registerNoteCommands(program);
-    // registerExportCommands(program);
-    // registerBackupCommands(program);
-    // registerRealtimeCommands(program);
-    // registerSearchCommands(program);
-    // registerPriorityCommands(program);
-    // registerSubtaskCommands(program);
-    // registerDatabaseCommands(program);
-    // registerConfigCommands(program);
-    // registerNextCommands(program);
-    // addEnvironmentCommands(program);
-    // registerResourceCommands(program);
-    // registerPerformanceCommands(program);
-    // program.addCommand(createTemplatesCommand());
-    // program.addCommand(createDependenciesCommand());
+    registerTaskCommands(program);
+    registerBoardCommands(program);
+    registerContextCommands(program);
+    registerTagCommands(program);
+    registerNoteCommands(program);
+    registerExportCommands(program);
+    registerBackupCommands(program);
+    registerRealtimeCommands(program);
+    registerSearchCommands(program);
+    registerPriorityCommands(program);
+    registerSubtaskCommands(program);
+    registerDatabaseCommands(program);
+    registerConfigCommands(program);
+    registerNextCommands(program);
+    addEnvironmentCommands(program);
+    registerResourceCommands(program);
+    registerPerformanceCommands(program);
+    // Add templates and dependencies commands using createCommand pattern
+    const templatesCmd = createTemplatesCommand();
+    const dependenciesCmd = createDependenciesCommand();
+    (program as unknown).addCommand(templatesCmd);
+    (program as unknown).addCommand(dependenciesCmd);
+    (program as unknown).addCommand(recoveryCommand);
 
     // Parse command line arguments
     program.parse(process.argv);

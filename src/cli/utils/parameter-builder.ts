@@ -153,9 +153,9 @@ export function buildAdvancedSearchParams(options: {
 /**
  * Generic parameter builder for any type
  */
-export function buildParams<T extends Record<string, any>>(
+export function buildParams<T extends Record<string, unknown>>(
   options: Partial<T>,
-  transforms?: Partial<Record<keyof T, (value: any) => string>>
+  transforms?: Partial<Record<keyof T, (value: unknown) => string>>
 ): Record<string, string> {
   const params: Record<string, string> = {};
 

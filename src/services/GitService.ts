@@ -1,11 +1,8 @@
 import { promises as fs } from 'fs';
 import path from 'path';
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import type { GitRepository, GitBranch, GitCommit } from '../types/git';
 import { logger } from '../utils/logger';
-
-const execAsync = promisify(exec);
+import { safeExecute } from '../cli/utils/command-injection-prevention';
 
 export class GitService {
   /**
@@ -41,16 +38,16 @@ export class GitService {
 
     try {
       // Get remote URL
-      const remoteResult = await execAsync('git remote get-url origin', { cwd: repoPath });
-      const remoteUrl = remoteResult.stdout.trim() || undefined;
+      const remoteResult = await safeExecute('git', ['remote', 'get-url', 'origin']);
+      const remoteUrl = remoteResult.success ? remoteResult.stdout.trim() || undefined : undefined;
 
       // Get current branch
-      const branchResult = await execAsync('git branch --show-current', { cwd: repoPath });
-      const currentBranch = branchResult.stdout.trim() || undefined;
+      const branchResult = await safeExecute('git', ['branch', '--show-current']);
+      const currentBranch = branchResult.success ? branchResult.stdout.trim() || undefined : undefined;
 
       // Check if working directory is clean
-      const statusResult = await execAsync('git status --porcelain', { cwd: repoPath });
-      const isClean = statusResult.stdout.trim().length === 0;
+      const statusResult = await safeExecute('git', ['status', '--porcelain']);
+      const isClean = statusResult.success ? statusResult.stdout.trim().length === 0 : false;
 
       return {
         path: repoPath,
@@ -74,7 +71,11 @@ export class GitService {
    */
   static async getBranches(repoPath: string): Promise<GitBranch[]> {
     try {
-      const result = await execAsync('git branch -v', { cwd: repoPath });
+      const result = await safeExecute('git', ['branch', '-v']);
+      if (!result.success) {
+        logger.error('Failed to execute git branch command', { error: result.stderr });
+        return [];
+      }
       const lines = result.stdout.split('\n').filter(line => line.trim());
 
       return lines.map(line => {
@@ -99,12 +100,21 @@ export class GitService {
   /**
    * Get commit history for the current branch
    */
-  static async getCommitHistory(repoPath: string, limit: number = 10): Promise<GitCommit[]> {
+  static async getCommitHistory(repoPath: string, limit = 10): Promise<GitCommit[]> {
     try {
-      const result = await execAsync(
-        `git log --oneline --format="%H|%s|%an|%ad" --date=iso -n ${limit}`,
-        { cwd: repoPath }
-      );
+      const result = await safeExecute('git', [
+        'log',
+        '--oneline',
+        `--format=%H|%s|%an|%ad`,
+        '--date=iso',
+        `-n`,
+        String(limit)
+      ]);
+      
+      if (!result.success) {
+        logger.error('Failed to execute git log command', { error: result.stderr });
+        return [];
+      }
 
       return result.stdout
         .split('\n')

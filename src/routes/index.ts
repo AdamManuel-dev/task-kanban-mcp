@@ -13,6 +13,8 @@ import { contextRoutes } from './context';
 import analyticsRoutes from './analytics';
 import performanceRoutes from './performance';
 import prioritiesRoutes from './priorities';
+import metricsRoutes from './metrics';
+import apikeysRoutes from './apikeys';
 
 const router = Router();
 
@@ -33,5 +35,7 @@ router.use('/v1/context', contextRoutes());
 router.use('/v1/analytics', analyticsRoutes);
 router.use('/v1/performance', performanceRoutes);
 router.use('/v1/priorities', prioritiesRoutes);
+router.use('/v1/metrics', metricsRoutes);
+router.use('/v1/apikeys', apikeysRoutes);
 
 export default router;

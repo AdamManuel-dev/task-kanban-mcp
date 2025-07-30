@@ -27,7 +27,12 @@ export function registerPerformanceCommands(program: Command): void {
     .alias('performance')
     .description('Performance monitoring and analysis');
 
-  const getComponents = (): CliComponents => global.cliComponents;
+  const getComponents = (): CliComponents => {
+    if (!global.cliComponents) {
+      throw new Error('CLI components not initialized. Please initialize the CLI first.');
+    }
+    return global.cliComponents;
+  };
 
   // Show performance report
   perfCmd
@@ -186,7 +191,7 @@ export function registerPerformanceCommands(program: Command): void {
           } = {}
         ) => {
           const { formatter, apiClient } = getComponents();
-          const iterations = parseInt(options.iterations || '10', 10);
+          const iterations = parseInt(options.iterations ?? '10', 10);
 
           formatter.info(`🏃 Running benchmark with ${iterations} iterations...`);
 
@@ -198,7 +203,7 @@ export function registerPerformanceCommands(program: Command): void {
             try {
               const apiResult = await quickBenchmark(
                 'api-health-check',
-                () => apiClient.getHealth?.() || Promise.resolve({}),
+                async () => apiClient.getHealth() || Promise.resolve({}),
                 Math.min(iterations, 5) // Limit API calls
               );
               benchmarks.push(apiResult);
@@ -278,8 +283,8 @@ export function registerPerformanceCommands(program: Command): void {
           } = {}
         ) => {
           const { formatter } = getComponents();
-          const interval = parseInt(options.interval || '5', 10) * 1000;
-          const duration = parseInt(options.duration || '30', 10) * 1000;
+          const interval = parseInt(options.interval ?? '5', 10) * 1000;
+          const duration = parseInt(options.duration ?? '30', 10) * 1000;
 
           formatter.info(
             `🔍 Monitoring performance for ${duration / 1000}s (interval: ${interval / 1000}s)`

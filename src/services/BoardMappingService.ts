@@ -48,7 +48,7 @@ export class BoardMappingService {
     const config = await this.loadConfig(repo.path);
 
     if (!config?.git?.enabled) {
-      return config?.defaultBoard || null;
+      return config?.defaultBoard ?? null;
     }
 
     // Try to match using configured mapping rules
@@ -75,7 +75,7 @@ export class BoardMappingService {
       }
     }
 
-    return config.defaultBoard || null;
+    return config.defaultBoard ?? null;
   }
 
   /**
@@ -86,7 +86,7 @@ export class BoardMappingService {
     mappings: BoardMappingRule[]
   ): string | null {
     // Sort by priority (higher priority first)
-    const sortedMappings = [...mappings].sort((a, b) => (b.priority || 0) - (a.priority || 0));
+    const sortedMappings = [...mappings].sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
 
     for (const mapping of sortedMappings) {
       if (this.matchesRule(repo, mapping)) {
@@ -140,7 +140,7 @@ export class BoardMappingService {
   ): string | null {
     // Try exact repository name match
     if (boards[repo.name]) {
-      return boards[repo.name] || null;
+      return boards[repo.name] ?? null;
     }
 
     // Try remote URL matching
@@ -169,7 +169,7 @@ export class BoardMappingService {
     for (const pattern of patterns) {
       const match = url.match(pattern);
       if (match) {
-        return match[1] || null;
+        return match[1] ?? null;
       }
     }
 

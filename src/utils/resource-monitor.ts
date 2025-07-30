@@ -146,8 +146,8 @@ export class ResourceMonitor extends EventEmitter {
       cpu: this.getCpuStats(),
       uptime: process.uptime(),
       eventLoopDelay: this.getEventLoopDelay(),
-      activeHandles: (process as any)._getActiveHandles?.()?.length ?? 0,
-      activeRequests: (process as any)._getActiveRequests?.()?.length ?? 0,
+      activeHandles: (process as unknown)._getActiveHandles?.()?.length ?? 0,
+      activeRequests: (process as unknown)._getActiveRequests?.()?.length ?? 0,
     };
   }
 
@@ -442,6 +442,13 @@ export class ResourceMonitor extends EventEmitter {
     });
 
     return afterStats;
+  }
+
+  /**
+   * Check if monitoring is currently active
+   */
+  isMonitoring(): boolean {
+    return this.monitoringTimer !== undefined;
   }
 
   /**

@@ -122,7 +122,7 @@ export async function createServer(): Promise<express.Application> {
           filter: true,
           showRequestHeaders: true,
           tryItOutEnabled: true,
-          requestInterceptor: (req: any) => {
+          requestInterceptor: (req: unknown) => {
             // Add authentication header if available
             if (req.headers && !req.headers.Authorization) {
               const apiKey = req.headers['x-api-key'] || req.headers.authorization;
@@ -159,7 +159,7 @@ export async function createServer(): Promise<express.Application> {
       database: {
         connected: health.connected,
         responsive: health.responsive,
-        responseTime: health.stats?.responseTime,
+        responseTime: health.stats.responseTime,
       },
       uptime: process.uptime(),
       memory: process.memoryUsage(),
@@ -232,8 +232,8 @@ export async function createServer(): Promise<express.Application> {
 
 export async function startServer(): Promise<{
   app: express.Application;
-  server: any;
-  webSocketManager: any;
+  server: unknown;
+  webSocketManager: unknown;
 }> {
   try {
     // Initialize database
@@ -245,7 +245,7 @@ export async function startServer(): Promise<{
     const app = await createServer();
 
     // Start WebSocket server conditionally
-    let webSocketManager: any = null;
+    let webSocketManager: unknown = null;
     if (enableWebSockets) {
       logger.info('Starting WebSocket server...');
       const { webSocketManager: wsManager } = await import('@/websocket');
@@ -280,7 +280,7 @@ export async function startServer(): Promise<{
     server.keepAliveTimeout = config.performance.keepAliveTimeout;
 
     // Handle server errors
-    server.on('error', (error: any) => {
+    server.on('error', (error: unknown) => {
       logger.error('Server error:', {
         error: error.message,
         code: error.code,
@@ -342,7 +342,7 @@ export async function startServer(): Promise<{
       process.exit(1);
     });
 
-    return { app, server, webSocketManager: webSocketManager || null };
+    return { app, server, webSocketManager: webSocketManager ?? null };
   } catch (error) {
     logger.error('Failed to start server', { error });
     process.exit(1);

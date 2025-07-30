@@ -1,0 +1,20 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "outDir": "./dist/backend",
+    "rootDir": "./src",
+    "tsBuildInfoFile": "./dist/.tsbuildinfo-backend",
+    "noEmit": false
+  },
+  "include": [
+    "src/services/**/*",
+    "src/middleware/**/*",
+    "src/routes/**/*",
+    "src/websocket/**/*",
+    "src/index.ts",
+    "src/server.ts"
+  ],
+  "exclude": ["src/**/*.test.ts", "src/**/*.spec.ts"],
+  "references": [{ "path": "./tsconfig.shared.json" }]
+}

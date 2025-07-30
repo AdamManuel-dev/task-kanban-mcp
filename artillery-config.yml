@@ -1,0 +1,214 @@
+config:
+  target: 'http://localhost:3000'
+  phases:
+    # Ramp-up phase: 5 minutes to reach 100 concurrent users
+    - duration: 300
+      arrivalRate: 1
+      rampTo: 100
+      name: "Ramp-up phase"
+    
+    # Sustained load: 30 minutes at 100 concurrent users
+    - duration: 1800
+      arrivalRate: 100
+      name: "Sustained load phase"
+    
+    # Peak load: 15 minutes at 200 concurrent users  
+    - duration: 900
+      arrivalRate: 200
+      name: "Peak load phase"
+    
+    # Ramp-down: 5 minutes back to baseline
+    - duration: 300
+      arrivalRate: 200
+      rampTo: 1
+      name: "Ramp-down phase"
+
+  defaults:
+    headers:
+      X-API-Key: 'dev-key-1'
+      Content-Type: 'application/json'
+      User-Agent: 'Artillery Load Tester'
+
+  # Performance thresholds
+  ensure:
+    maxErrorRate: 5      # Max 5% error rate
+    maxVUsersPerSecond: 250
+    p95: 500            # 95th percentile response time < 500ms
+    p99: 1000           # 99th percentile response time < 1000ms
+
+  # Load testing plugins
+  plugins:
+    metrics-by-endpoint:
+      useOnlyRequestNames: true
+    publish-metrics:
+      type: json
+      output: 'artillery-report.json'
+
+# Test scenarios with realistic usage patterns
+scenarios:
+  # Scenario 1: Regular user browsing and task management (70% of traffic)
+  - name: "Regular User Operations"
+    weight: 70
+    flow:
+      # List tasks from dashboard
+      - get:
+          url: "/api/v1/tasks"
+          query:
+            limit: 20
+            sortBy: "created_at"
+            sortOrder: "desc"
+          capture:
+            - json: "$.data[0].id"
+              as: "taskId"
+            - json: "$.data[0].board_id"  
+              as: "boardId"
+          expect:
+            - statusCode: 200
+            - hasProperty: "data"
+
+      # View specific task details
+      - get:
+          url: "/api/v1/tasks/{{ taskId }}"
+          expect:
+            - statusCode: 200
+
+      # Update task status
+      - patch:
+          url: "/api/v1/tasks/{{ taskId }}"
+          json:
+            status: "{{ $pick(['todo', 'in_progress', 'done']) }}"
+            updated_at: "{{ $isoTimestamp() }}"
+          expect:
+            - statusCode: 200
+
+      # List boards
+      - get:
+          url: "/api/v1/boards"
+          query:
+            limit: 10
+          expect:
+            - statusCode: 200
+
+      # Search tasks
+      - get:
+          url: "/api/v1/tasks"
+          query:
+            search: "{{ $pick(['test', 'bug', 'feature', 'urgent', 'review']) }}"
+            limit: 15
+          expect:
+            - statusCode: 200
+
+  # Scenario 2: Power user with heavy task creation (20% of traffic)  
+  - name: "Power User Operations"
+    weight: 20
+    flow:
+      # Create new task
+      - post:
+          url: "/api/v1/tasks"
+          json:
+            title: "Load Test Task {{ $randomString() }}"
+            description: "Created during Artillery load test at {{ $isoTimestamp() }}"
+            status: "todo"
+            priority: "{{ $randomInt(1, 10) }}"
+            board_id: "{{ $pick([process.env.TEST_BOARD_ID, 'default-board']) }}"
+          capture:
+            - json: "$.data.id"
+              as: "newTaskId"
+          expect:
+            - statusCode: 201
+
+      # Immediately update the created task
+      - patch:
+          url: "/api/v1/tasks/{{ newTaskId }}"
+          json:
+            description: "Updated during load test"
+            priority: "{{ $randomInt(1, 10) }}"
+          expect:
+            - statusCode: 200
+
+      # Create multiple tasks in batch
+      - loop:
+        - post:
+            url: "/api/v1/tasks"
+            json:
+              title: "Batch Task {{ $loopCount }} - {{ $randomString() }}"
+              description: "Batch created task"
+              status: "{{ $pick(['todo', 'in_progress']) }}"
+              priority: "{{ $randomInt(1, 5) }}"
+        count: 3
+
+      # Bulk status update simulation
+      - get:
+          url: "/api/v1/tasks"
+          query:
+            status: "todo"
+            limit: 5
+          capture:
+            - json: "$.data[*].id"
+              as: "todoTaskIds"
+
+  # Scenario 3: Read-heavy analytics/reporting user (10% of traffic)
+  - name: "Analytics User Operations"  
+    weight: 10
+    flow:
+      # Complex filtering and sorting
+      - get:
+          url: "/api/v1/tasks"
+          query:
+            status: "done"
+            sortBy: "completed_at"
+            sortOrder: "desc"
+            limit: 50
+          expect:
+            - statusCode: 200
+
+      # Date range queries
+      - get:
+          url: "/api/v1/tasks"
+          query:
+            created_after: "{{ $isoTimestamp() | $dateOffset(-7, 'days') }}"
+            limit: 100
+          expect:
+            - statusCode: 200
+
+      # Board analytics
+      - get:
+          url: "/api/v1/boards"
+          query:
+            include_stats: true
+          expect:
+            - statusCode: 200
+
+      # Priority distribution analysis
+      - get:
+          url: "/api/v1/tasks"
+          query:
+            priority_min: 7
+            sortBy: "priority"
+            sortOrder: "desc"
+            limit: 25
+          expect:
+            - statusCode: 200
+
+      # Full-text search with complex terms
+      - get:
+          url: "/api/v1/tasks"
+          query:
+            search: "{{ $pick(['urgent AND bug', 'feature OR enhancement', 'test NOT automated']) }}"
+            limit: 30
+          expect:
+            - statusCode: 200
+
+# Custom functions for realistic data generation
+config:
+  processor: "./artillery-functions.js"
+
+# Performance monitoring during test
+before:
+  - log: "Starting Artillery load test"
+  - log: "Target: {{ target }}"
+  - log: "Test duration: ~{{ (phases[0].duration + phases[1].duration + phases[2].duration + phases[3].duration) / 60 }} minutes"
+
+after:
+  - log: "Artillery load test completed"
+  - log: "Check artillery-report.json for detailed results"

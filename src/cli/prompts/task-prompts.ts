@@ -81,7 +81,7 @@ export async function createTaskPrompt(defaults?: Partial<TaskInput>): Promise<T
             chalk.yellow(`  Suggested Size: ${suggestedSize} (${estimation.avgHours} hours)`)
           );
           formatter.info(chalk.gray(`  Confidence: ${Math.round(estimation.confidence * 100)}%`));
-          if (estimation.reasoning?.length > 0) {
+          if (estimation.reasoning.length > 0) {
             formatter.info(chalk.gray('  Reasoning:'));
             estimation.reasoning.forEach((reason: string) => {
               formatter.info(chalk.gray(`    • ${reason}`));

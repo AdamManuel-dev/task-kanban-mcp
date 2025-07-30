@@ -241,8 +241,8 @@ export function detectCloudEnvironment(): CloudEnvironmentInfo {
 /**
  * Gets cloud environment-specific configuration overrides
  */
-export function getCloudEnvironmentConfig(cloudEnv: CloudEnvironmentInfo): Record<string, any> {
-  const config: Record<string, any> = {
+export function getCloudEnvironmentConfig(cloudEnv: CloudEnvironmentInfo): Record<string, unknown> {
+  const config: Record<string, unknown> = {
     server: {
       host: cloudEnv.defaultHost,
       port: cloudEnv.defaultPort,

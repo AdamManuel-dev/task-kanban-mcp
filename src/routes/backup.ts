@@ -115,7 +115,7 @@ router.post('/create', validateRequest(CreateBackupSchema), (req, res) => {
         backup = await backupService.createFullBackup(options);
       }
 
-      logger.info(`Backup created via API: ${String((backup as any).id)}`);
+      logger.info(`Backup created via API: ${String((backup as unknown).id)}`);
       res.status(201).json(formatSuccessResponse(backup));
     } catch (error) {
       logger.error('Backup creation failed:', error);
@@ -442,13 +442,16 @@ router.post(
       // Get the most recent backup to restore from
       const backups = await backupService.listBackups({ limit: 1 });
       const latestBackup = backups[0];
-      
+
       if (!latestBackup) {
         res.status(404).json(formatErrorResponse('No backups available for restoration'));
         return;
       }
-      
-      await backupService.restoreToPointInTime(latestBackup.id, targetTime, { verify, preserveExisting });
+
+      await backupService.restoreToPointInTime(latestBackup.id, targetTime, {
+        verify,
+        preserveExisting,
+      });
 
       logger.info(`Point-in-time restoration completed to: ${String(targetTime)}`);
       res.json(
@@ -600,7 +603,7 @@ router.get(
           res.setHeader('Content-Type', 'application/json');
           res.setHeader(
             'Content-Disposition',
-            `attachment; filename="${String(String((backup as any).name))}.json"`
+            `attachment; filename="${String(String((backup as unknown).name))}.json"`
           );
           res.json(backup);
           break;
@@ -608,20 +611,20 @@ router.get(
           res.setHeader('Content-Type', 'application/sql');
           res.setHeader(
             'Content-Disposition',
-            `attachment; filename="${String(String((backup as any).name))}.sql"`
+            `attachment; filename="${String(String((backup as unknown).name))}.sql"`
           );
           res.send(
-            `-- Backup metadata for ${String(String((backup as any).name))}\n-- ID: ${String(String((backup as any).id))}\n-- Created: ${String(String((backup as any).createdAt))}`
+            `-- Backup metadata for ${String(String((backup as unknown).name))}\n-- ID: ${String(String((backup as unknown).id))}\n-- Created: ${String(String((backup as unknown).createdAt))}`
           );
           break;
         case 'csv':
           res.setHeader('Content-Type', 'text/csv');
           res.setHeader(
             'Content-Disposition',
-            `attachment; filename="${String(String((backup as any).name))}.csv"`
+            `attachment; filename="${String(String((backup as unknown).name))}.csv"`
           );
           res.send(
-            `id,name,type,status,size,created_at\n${String(String((backup as any).id))},${String(String((backup as any).name))},${String(String((backup as any).type))},${String(String((backup as any).status))},${String(String((backup as any).size))},${String(String((backup as any).createdAt))}`
+            `id,name,type,status,size,created_at\n${String(String((backup as unknown).id))},${String(String((backup as unknown).name))},${String(String((backup as unknown).type))},${String(String((backup as unknown).status))},${String(String((backup as unknown).size))},${String(String((backup as unknown).createdAt))}`
           );
           break;
         default:
@@ -785,7 +788,7 @@ router.post(
       const validation = await backupService.validateRestoreOptions(id, options);
 
       logger.info(`Restore validation completed for backup: ${id}`, {
-        isValid: (validation as any).isValid,
+        isValid: (validation as unknown).isValid,
       });
       res.json(formatSuccessResponse(validation, 'Validation completed'));
     } catch (error) {
@@ -847,7 +850,7 @@ router.post(
       const integrityCheck = await backupService.performDataIntegrityCheck();
 
       logger.info('Data integrity check completed', {
-        passed: (integrityCheck as any).isPassed,
+        passed: (integrityCheck as unknown).isPassed,
       });
       res.json(formatSuccessResponse(integrityCheck, 'Integrity check completed'));
     } catch (error) {

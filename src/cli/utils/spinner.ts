@@ -44,7 +44,7 @@ export class SpinnerManager {
     }
 
     if (text.length > this.maxTextLength) {
-      return `${String(String(text.substring(0, this.maxTextLength - 3)))}...`;
+      return `${text.substring(0, this.maxTextLength - 3)}...`;
     }
 
     return text.trim();
@@ -58,7 +58,7 @@ export class SpinnerManager {
       return operation();
     } catch (error) {
       logger.warn(
-        `Spinner operation failed: ${String(String(error instanceof Error ? error.message : String(error)))}`
+        `Spinner operation failed: ${error instanceof Error ? error.message : String(error)}`
       );
       return fallback;
     }
@@ -75,7 +75,7 @@ export class SpinnerManager {
         this.stop();
       }
 
-      (this as any).spinner = SpinnerManager.safeOperation(
+      (this as unknown).spinner = SpinnerManager.safeOperation(
         () =>
           ora({
             text: validatedText,
@@ -86,8 +86,8 @@ export class SpinnerManager {
         null
       );
 
-      if ((this as any).spinner) {
-        (this as any).isSpinning = true;
+      if ((this as unknown).spinner) {
+        (this as unknown).isSpinning = true;
       } else {
         throw new SpinnerError('Failed to create spinner instance', 'CREATION_FAILED');
       }
@@ -96,7 +96,7 @@ export class SpinnerManager {
         throw error;
       }
       throw new SpinnerError(
-        `Failed to start spinner: ${String(String(error instanceof Error ? error.message : String(error)))}`,
+        `Failed to start spinner: ${error instanceof Error ? error.message : String(error)}`,
         'START_FAILED'
       );
     }
@@ -109,16 +109,16 @@ export class SpinnerManager {
     try {
       const validatedText = this.validateText(text);
 
-      if (!(this as any).spinner) {
+      if (!(this as unknown).spinner) {
         throw new SpinnerError('No active spinner to update', 'NO_SPINNER');
       }
 
-      if (!(this as any).isSpinning) {
+      if (!(this as unknown).isSpinning) {
         throw new SpinnerError('Spinner is not currently running', 'NOT_RUNNING');
       }
 
       SpinnerManager.safeOperation(() => {
-        (this as any).spinner.text = validatedText;
+        (this as unknown).spinner.text = validatedText;
         return true;
       }, false);
     } catch (error) {
@@ -140,23 +140,23 @@ export class SpinnerManager {
     text?: string
   ): void {
     try {
-      if ((this as any).destroyed) {
+      if ((this as unknown).destroyed) {
         logger.warn('Attempted to stop destroyed spinner');
         return;
       }
 
-      if (!(this as any).spinner || !(this as any).isSpinning) {
+      if (!(this as unknown).spinner || !(this as unknown).isSpinning) {
         // Silently ignore - not an error condition
         return;
       }
 
-      const finalText = text ? this.validateText(text) : (this as any).spinner.text;
+      const finalText = text ? this.validateText(text) : (this as unknown).spinner.text;
 
       SpinnerManager.safeOperation(() => {
         if (method === 'stop') {
-          (this as any).spinner.stop();
+          (this as unknown).spinner.stop();
         } else {
-          (this as any).spinner[method](finalText);
+          (this as unknown).spinner[method](finalText);
         }
         return true;
       }, false);
@@ -174,8 +174,8 @@ export class SpinnerManager {
    * Clean up spinner state
    */
   private cleanupInstance(): void {
-    (this as any).isSpinning = false;
-    (this as any).spinner = null;
+    (this as unknown).isSpinning = false;
+    (this as unknown).spinner = null;
   }
 
   /**
@@ -183,8 +183,8 @@ export class SpinnerManager {
    */
   private forceCleanupInstance(): void {
     try {
-      if ((this as any).spinner) {
-        (this as any).spinner.stop();
+      if ((this as unknown).spinner) {
+        (this as unknown).spinner.stop();
       }
     } catch {
       // Ignore errors during force cleanup
@@ -231,7 +231,7 @@ export class SpinnerManager {
    * Check if spinner is currently active
    */
   isActive(): boolean {
-    return (this as any).isSpinning && !(this as any).destroyed;
+    return (this as unknown).isSpinning && !(this as unknown).destroyed;
   }
 
   /**
@@ -239,7 +239,7 @@ export class SpinnerManager {
    */
   destroy(): void {
     this.forceCleanupInstance();
-    (this as any).destroyed = true;
+    (this as unknown).destroyed = true;
   }
 
   /**
@@ -299,7 +299,7 @@ export class SpinnerManager {
   async withSteps(
     steps: Array<{
       text: string;
-      action: () => Promise<any>;
+      action: () => Promise<unknown>;
       successText?: string;
       failText?: string;
       timeout?: number;
@@ -309,13 +309,13 @@ export class SpinnerManager {
       stopOnError?: boolean;
       showProgress?: boolean;
     }
-  ): Promise<{ results: any[]; errors: Error[] }> {
+  ): Promise<{ results: unknown[]; errors: Error[] }> {
     if (!Array.isArray(steps) || steps.length === 0) {
       throw new SpinnerError('Steps must be a non-empty array', 'INVALID_STEPS');
     }
 
     const { stopOnError = true, showProgress = true } = options ?? {};
-    const results: any[] = [];
+    const results: unknown[] = [];
     const errors: Error[] = [];
 
     for (let i = 0; i < steps.length; i += 1) {
@@ -328,7 +328,7 @@ export class SpinnerManager {
         );
         errors.push(error);
 
-        if (stopOnError && !step?.skipOnError) {
+        if (stopOnError && !step.skipOnError) {
           throw error;
         }
         continue;
@@ -351,7 +351,7 @@ export class SpinnerManager {
         const stepError = error instanceof Error ? error : new Error(String(error));
         errors.push(stepError);
 
-        if (stopOnError && !step?.skipOnError) {
+        if (stopOnError && !step.skipOnError) {
           throw stepError;
         }
       }

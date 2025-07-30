@@ -182,8 +182,8 @@ router.get(
 
     // Calculate percentiles
     const sortedTimes = metrics.map(m => m.responseTime).sort((a, b) => a - b);
-    const p95 = totalRequests > 0 ? sortedTimes[Math.floor(totalRequests * 0.95)] || 0 : 0;
-    const p99 = totalRequests > 0 ? sortedTimes[Math.floor(totalRequests * 0.99)] || 0 : 0;
+    const p95 = totalRequests > 0 ? (sortedTimes[Math.floor(totalRequests * 0.95)] ?? 0) : 0;
+    const p99 = totalRequests > 0 ? (sortedTimes[Math.floor(totalRequests * 0.99)] ?? 0) : 0;
 
     logger.debug('Endpoint metrics requested', {
       endpoint,
@@ -267,7 +267,7 @@ router.get(
   '/alerts',
   asyncHandler(async (req, res, next): Promise<void> => {
     // Access private alertRules through a public method (would need to add this to the service)
-    const alertRules: any[] = []; // performanceMonitor.getAlertRules();
+    const alertRules: unknown[] = []; // performanceMonitor.getAlertRules();
 
     res.json({
       success: true,

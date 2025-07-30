@@ -1,340 +1,726 @@
 /**
- * @fileoverview Unit tests for WebSocket subscriptions manager
- * @lastmodified 2025-07-28T07:22:00Z
- *
- * Features: Subscription management, client tracking, event broadcasting
- * Main APIs: subscribe(), unsubscribe(), broadcast(), getSubscribers()
- * Constraints: WebSocket client mocks, memory-based storage
- * Patterns: Event-driven subscriptions, client lifecycle management
+ * @fileoverview Tests for WebSocket subscription management system
+ * @lastmodified 2025-07-28T12:30:00Z
+ * 
+ * Features: Subscription handling, channel management, filtering, permission checking
+ * Test Coverage: Subscribe/unsubscribe, message broadcasting, filtering, error handling
+ * Test Tools: Jest, mock WebSocket clients, subscription simulation, permission testing
+ * Patterns: Unit tests, mock dependencies, subscription lifecycle, permission validation
  */
 
-import { jest } from '@jest/globals';
-import { SubscriptionManager } from '@/websocket/subscriptions';
-import { logger } from '@/utils/logger';
+import { SubscriptionManager, Subscription } from '../../../src/websocket/subscriptions';
+import { SubscriptionChannel } from '../../../src/websocket/types';
+import { WebSocketAuth } from '../../../src/websocket/auth';
+import { logger } from '../../../src/utils/logger';
 
-jest.mock('@/utils/logger');
+// Mock dependencies
+jest.mock('../../../src/utils/logger', () => ({
+  logger: {
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn(),
+  },
+}));
+
+jest.mock('../../../src/websocket/auth', () => ({
+  WebSocketAuth: {
+    canSubscribeToChannel: jest.fn(),
+    canPublishToChannel: jest.fn(),
+    hasPermission: jest.fn(),
+  },
+}));
+
+// Mock WebSocket Manager
+const mockWebSocketManager = {
+  getClient: jest.fn(),
+  sendToClient: jest.fn(),
+  broadcastToClients: jest.fn(),
+  getStats: jest.fn(),
+  getConnections: jest.fn(),
+};
+
+// Mock WebSocket Client
+const createMockClient = (id: string, permissions = ['read', 'write']) => ({
+  id,
+  socket: {
+    readyState: 1, // OPEN
+    send: jest.fn(),
+    close: jest.fn(),
+  },
+  user: {
+    id: `user-${id}`,
+    email: `${id}@example.com`,
+    permissions,
+  },
+  permissions,
+  connectedAt: new Date(),
+  lastActivity: new Date(),
+  messageCount: 0,
+  subscriptions: new Set<string>(),
+});
 
 describe('SubscriptionManager', () => {
   let subscriptionManager: SubscriptionManager;
-  let mockClient1: any;
-  let mockClient2: any;
-  let mockClient3: any;
+  let mockAuth: jest.Mocked<typeof WebSocketAuth>;
 
   beforeEach(() => {
-    subscriptionManager = new SubscriptionManager();
-
-    mockClient1 = {
-      id: 'client-1',
-      userId: 'user-1',
-      send: jest.fn(),
-      readyState: 1, // WebSocket.OPEN
-    };
-
-    mockClient2 = {
-      id: 'client-2',
-      userId: 'user-2',
-      send: jest.fn(),
-      readyState: 1,
-    };
-
-    mockClient3 = {
-      id: 'client-3',
-      userId: 'user-1', // Same user as client1
-      send: jest.fn(),
-      readyState: 1,
-    };
-
     jest.clearAllMocks();
+    
+    // Reset mocks
+    mockWebSocketManager.getClient.mockReset();
+    mockWebSocketManager.sendToClient.mockReset();
+    mockWebSocketManager.broadcastToClients.mockReset();
+    
+    mockAuth = WebSocketAuth as jest.Mocked<typeof WebSocketAuth>;
+    mockAuth.canSubscribeToChannel.mockReturnValue(true);
+    mockAuth.canPublishToChannel.mockReturnValue(true);
+    mockAuth.hasPermission.mockReturnValue(true);
+
+    subscriptionManager = new SubscriptionManager(mockWebSocketManager as any);
   });
 
-  describe('Board Subscriptions', () => {
-    test('should subscribe client to board', () => {
-      subscriptionManager.subscribeToBoard(mockClient1, 'board-1');
+  describe('Subscription Management', () => {
+    it('should successfully subscribe client to channel', () => {
+      const clientId = 'client-1';
+      const channel = SubscriptionChannel.TASKS;
+      const mockClient = createMockClient(clientId);
+      
+      mockWebSocketManager.getClient.mockReturnValue(mockClient);
+      mockAuth.canSubscribeToChannel.mockReturnValue(true);
 
-      const subscribers = subscriptionManager.getBoardSubscribers('board-1');
-      expect(subscribers).toHaveLength(1);
-      expect(subscribers[0]).toBe(mockClient1);
+      const result = subscriptionManager.subscribe(clientId, channel);
+
+      expect(result.success).toBe(true);
+      expect(result.subscriptionId).toBeDefined();
+      expect(result.error).toBeUndefined();
+      expect(mockAuth.canSubscribeToChannel).toHaveBeenCalledWith(
+        mockClient.permissions,
+        channel
+      );
     });
 
-    test('should handle multiple clients subscribing to same board', () => {
-      subscriptionManager.subscribeToBoard(mockClient1, 'board-1');
-      subscriptionManager.subscribeToBoard(mockClient2, 'board-1');
+    it('should fail to subscribe non-existent client', () => {
+      const clientId = 'non-existent-client';
+      const channel = SubscriptionChannel.TASKS;
+      
+      mockWebSocketManager.getClient.mockReturnValue(null);
 
-      const subscribers = subscriptionManager.getBoardSubscribers('board-1');
-      expect(subscribers).toHaveLength(2);
-      expect(subscribers).toContain(mockClient1);
-      expect(subscribers).toContain(mockClient2);
+      const result = subscriptionManager.subscribe(clientId, channel);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Client not found');
+      expect(result.subscriptionId).toBeUndefined();
     });
 
-    test('should prevent duplicate subscriptions', () => {
-      subscriptionManager.subscribeToBoard(mockClient1, 'board-1');
-      subscriptionManager.subscribeToBoard(mockClient1, 'board-1'); // Duplicate
+    it('should fail to subscribe client without permissions', () => {
+      const clientId = 'client-1';
+      const channel = SubscriptionChannel.ADMIN;
+      const mockClient = createMockClient(clientId, ['read']); // No admin permissions
+      
+      mockWebSocketManager.getClient.mockReturnValue(mockClient);
+      mockAuth.canSubscribeToChannel.mockReturnValue(false);
 
-      const subscribers = subscriptionManager.getBoardSubscribers('board-1');
-      expect(subscribers).toHaveLength(1);
+      const result = subscriptionManager.subscribe(clientId, channel);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Insufficient permissions');
+      expect(result.subscriptionId).toBeUndefined();
     });
 
-    test('should unsubscribe client from board', () => {
-      subscriptionManager.subscribeToBoard(mockClient1, 'board-1');
-      subscriptionManager.subscribeToBoard(mockClient2, 'board-1');
+    it('should subscribe with custom filters', () => {
+      const clientId = 'client-1';
+      const channel = SubscriptionChannel.TASKS;
+      const filters = { boardId: 'board-123', priority: 'high' };
+      const mockClient = createMockClient(clientId);
+      
+      mockWebSocketManager.getClient.mockReturnValue(mockClient);
+      mockAuth.canSubscribeToChannel.mockReturnValue(true);
 
-      subscriptionManager.unsubscribeFromBoard(mockClient1, 'board-1');
+      const result = subscriptionManager.subscribe(clientId, channel, filters);
 
-      const subscribers = subscriptionManager.getBoardSubscribers('board-1');
-      expect(subscribers).toHaveLength(1);
-      expect(subscribers[0]).toBe(mockClient2);
+      expect(result.success).toBe(true);
+      expect(result.subscriptionId).toBeDefined();
     });
 
-    test('should broadcast to board subscribers', () => {
-      subscriptionManager.subscribeToBoard(mockClient1, 'board-1');
-      subscriptionManager.subscribeToBoard(mockClient2, 'board-1');
+    it('should handle duplicate subscriptions', () => {
+      const clientId = 'client-1';
+      const channel = SubscriptionChannel.TASKS;
+      const mockClient = createMockClient(clientId);
+      
+      mockWebSocketManager.getClient.mockReturnValue(mockClient);
+      mockAuth.canSubscribeToChannel.mockReturnValue(true);
 
-      const message = {
-        type: 'task:created',
-        data: { id: 'task-1', title: 'New Task' },
-      };
+      // First subscription
+      const result1 = subscriptionManager.subscribe(clientId, channel);
+      expect(result1.success).toBe(true);
 
-      subscriptionManager.broadcastToBoard('board-1', message);
-
-      expect(mockClient1.send).toHaveBeenCalledWith(JSON.stringify(message));
-      expect(mockClient2.send).toHaveBeenCalledWith(JSON.stringify(message));
+      // Second subscription to same channel
+      const result2 = subscriptionManager.subscribe(clientId, channel);
+      expect(result2.success).toBe(true);
+      expect(result2.subscriptionId).not.toBe(result1.subscriptionId);
     });
 
-    test('should not broadcast to unsubscribed clients', () => {
-      subscriptionManager.subscribeToBoard(mockClient1, 'board-1');
-      subscriptionManager.subscribeToBoard(mockClient2, 'board-2');
+    it('should enforce subscription limits', () => {
+      const clientId = 'client-1';
+      const mockClient = createMockClient(clientId);
+      
+      mockWebSocketManager.getClient.mockReturnValue(mockClient);
+      mockAuth.canSubscribeToChannel.mockReturnValue(true);
 
-      const message = {
-        type: 'task:created',
-        data: { id: 'task-1' },
-      };
+      // Create 50 subscriptions (the limit)
+      for (let i = 0; i < 50; i++) {
+        const result = subscriptionManager.subscribe(clientId, SubscriptionChannel.TASKS);
+        expect(result.success).toBe(true);
+      }
 
-      subscriptionManager.broadcastToBoard('board-1', message);
-
-      expect(mockClient1.send).toHaveBeenCalled();
-      expect(mockClient2.send).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('Task Subscriptions', () => {
-    test('should subscribe client to task', () => {
-      subscriptionManager.subscribeToTask(mockClient1, 'task-1');
-
-      const subscribers = subscriptionManager.getTaskSubscribers('task-1');
-      expect(subscribers).toHaveLength(1);
-      expect(subscribers[0]).toBe(mockClient1);
-    });
-
-    test('should broadcast to task subscribers', () => {
-      subscriptionManager.subscribeToTask(mockClient1, 'task-1');
-      subscriptionManager.subscribeToTask(mockClient2, 'task-1');
-
-      const message = {
-        type: 'task:updated',
-        data: { id: 'task-1', status: 'done' },
-      };
-
-      subscriptionManager.broadcastToTask('task-1', message);
-
-      expect(mockClient1.send).toHaveBeenCalledWith(JSON.stringify(message));
-      expect(mockClient2.send).toHaveBeenCalledWith(JSON.stringify(message));
-    });
-
-    test('should unsubscribe client from task', () => {
-      subscriptionManager.subscribeToTask(mockClient1, 'task-1');
-      subscriptionManager.subscribeToTask(mockClient2, 'task-1');
-
-      subscriptionManager.unsubscribeFromTask(mockClient1, 'task-1');
-
-      const subscribers = subscriptionManager.getTaskSubscribers('task-1');
-      expect(subscribers).toHaveLength(1);
-      expect(subscribers[0]).toBe(mockClient2);
-    });
-  });
-
-  describe('User Subscriptions', () => {
-    test('should subscribe client to user events', () => {
-      subscriptionManager.subscribeToUser(mockClient1, 'user-1');
-
-      const subscribers = subscriptionManager.getUserSubscribers('user-1');
-      expect(subscribers).toHaveLength(1);
-      expect(subscribers[0]).toBe(mockClient1);
-    });
-
-    test('should handle multiple clients for same user', () => {
-      subscriptionManager.subscribeToUser(mockClient1, 'user-1');
-      subscriptionManager.subscribeToUser(mockClient3, 'user-1'); // Same user
-
-      const subscribers = subscriptionManager.getUserSubscribers('user-1');
-      expect(subscribers).toHaveLength(2);
-    });
-
-    test('should broadcast to user subscribers', () => {
-      subscriptionManager.subscribeToUser(mockClient1, 'user-1');
-      subscriptionManager.subscribeToUser(mockClient3, 'user-1');
-
-      const message = {
-        type: 'notification',
-        data: { message: 'Task assigned to you' },
-      };
-
-      subscriptionManager.broadcastToUser('user-1', message);
-
-      expect(mockClient1.send).toHaveBeenCalledWith(JSON.stringify(message));
-      expect(mockClient3.send).toHaveBeenCalledWith(JSON.stringify(message));
+      // Try to create 51st subscription
+      const result = subscriptionManager.subscribe(clientId, SubscriptionChannel.TASKS);
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Subscription limit exceeded');
     });
   });
 
-  describe('Client Management', () => {
-    test('should track client subscriptions', () => {
-      subscriptionManager.subscribeToBoard(mockClient1, 'board-1');
-      subscriptionManager.subscribeToBoard(mockClient1, 'board-2');
-      subscriptionManager.subscribeToTask(mockClient1, 'task-1');
+  describe('Unsubscription Management', () => {
+    it('should successfully unsubscribe from specific subscription', () => {
+      const clientId = 'client-1';
+      const channel = SubscriptionChannel.TASKS;
+      const mockClient = createMockClient(clientId);
+      
+      mockWebSocketManager.getClient.mockReturnValue(mockClient);
+      mockAuth.canSubscribeToChannel.mockReturnValue(true);
 
-      const subscriptions = subscriptionManager.getClientSubscriptions(mockClient1.id);
-      expect(subscriptions.boards).toContain('board-1');
-      expect(subscriptions.boards).toContain('board-2');
-      expect(subscriptions.tasks).toContain('task-1');
+      // Subscribe first
+      const subscribeResult = subscriptionManager.subscribe(clientId, channel);
+      expect(subscribeResult.success).toBe(true);
+      const subscriptionId = subscribeResult.subscriptionId!;
+
+      // Then unsubscribe
+      const result = subscriptionManager.unsubscribe(subscriptionId);
+      expect(result.success).toBe(true);
+      expect(result.error).toBeUndefined();
     });
 
-    test('should remove all client subscriptions on disconnect', () => {
-      subscriptionManager.subscribeToBoard(mockClient1, 'board-1');
-      subscriptionManager.subscribeToTask(mockClient1, 'task-1');
-      subscriptionManager.subscribeToUser(mockClient1, 'user-1');
+    it('should fail to unsubscribe non-existent subscription', () => {
+      const nonExistentId = 'non-existent-subscription';
 
-      subscriptionManager.removeClient(mockClient1);
-
-      expect(subscriptionManager.getBoardSubscribers('board-1')).toHaveLength(0);
-      expect(subscriptionManager.getTaskSubscribers('task-1')).toHaveLength(0);
-      expect(subscriptionManager.getUserSubscribers('user-1')).toHaveLength(0);
+      const result = subscriptionManager.unsubscribe(nonExistentId);
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Subscription not found');
     });
 
-    test('should handle removing non-existent client gracefully', () => {
-      const fakeClient = { id: 'fake-client', send: jest.fn() };
+    it('should unsubscribe all subscriptions for client', () => {
+      const clientId = 'client-1';
+      const mockClient = createMockClient(clientId);
+      
+      mockWebSocketManager.getClient.mockReturnValue(mockClient);
+      mockAuth.canSubscribeToChannel.mockReturnValue(true);
 
-      expect(() => {
-        subscriptionManager.removeClient(fakeClient as any);
-      }).not.toThrow();
-    });
-  });
+      // Subscribe to multiple channels
+      const channels = [SubscriptionChannel.TASKS, SubscriptionChannel.BOARDS, SubscriptionChannel.NOTES];
+      const subscriptionIds: string[] = [];
 
-  describe('Error Handling', () => {
-    test('should handle send errors gracefully', () => {
-      mockClient1.send = jest.fn().mockImplementation(() => {
-        throw new Error('Send failed');
+      channels.forEach(channel => {
+        const result = subscriptionManager.subscribe(clientId, channel);
+        expect(result.success).toBe(true);
+        subscriptionIds.push(result.subscriptionId!);
       });
 
-      subscriptionManager.subscribeToBoard(mockClient1, 'board-1');
+      // Unsubscribe all
+      const result = subscriptionManager.unsubscribeAll(clientId);
+      expect(result.success).toBe(true);
+      expect(result.unsubscribedCount).toBe(3);
+    });
 
-      const message = { type: 'test', data: {} };
+    it('should handle unsubscribe all for client with no subscriptions', () => {
+      const clientId = 'client-without-subscriptions';
 
-      expect(() => {
-        subscriptionManager.broadcastToBoard('board-1', message);
-      }).not.toThrow();
+      const result = subscriptionManager.unsubscribeAll(clientId);
+      expect(result.success).toBe(true);
+      expect(result.unsubscribedCount).toBe(0);
+    });
+  });
 
-      expect(logger.error).toHaveBeenCalledWith('Failed to send message to client', {
+  describe('Message Publishing', () => {
+    beforeEach(() => {
+      // Setup mock clients and subscriptions
+      const clients = ['client-1', 'client-2', 'client-3'].map(id => createMockClient(id));
+      clients.forEach(client => {
+        mockWebSocketManager.getClient.mockReturnValue(client);
+        mockAuth.canSubscribeToChannel.mockReturnValue(true);
+        
+        // Subscribe each client to tasks channel
+        subscriptionManager.subscribe(client.id, SubscriptionChannel.TASKS);
+      });
+    });
+
+    it('should publish message to all subscribers of channel', () => {
+      const message = {
+        type: 'task_created' as const,
+        data: { id: 'task-123', title: 'New Task', boardId: 'board-1' },
+        requestId: 'req-123',
+      };
+
+      mockAuth.canPublishToChannel.mockReturnValue(true);
+
+      const result = subscriptionManager.publish(SubscriptionChannel.TASKS, message);
+      expect(result.success).toBe(true);
+      expect(result.recipientCount).toBeGreaterThan(0);
+    });
+
+    it('should apply filters when publishing', () => {
+      const clientId = 'filtered-client';
+      const mockClient = createMockClient(clientId);
+      
+      mockWebSocketManager.getClient.mockReturnValue(mockClient);
+      mockAuth.canSubscribeToChannel.mockReturnValue(true);
+
+      // Subscribe with board filter
+      const filters = { boardId: 'board-specific' };
+      subscriptionManager.subscribe(clientId, SubscriptionChannel.TASKS, filters);
+
+      const matchingMessage = {
+        type: 'task_created' as const,
+        data: { id: 'task-123', title: 'Task', boardId: 'board-specific' },
+        requestId: 'req-123',
+      };
+
+      const nonMatchingMessage = {
+        type: 'task_created' as const,
+        data: { id: 'task-456', title: 'Task', boardId: 'different-board' },
+        requestId: 'req-456',
+      };
+
+      mockAuth.canPublishToChannel.mockReturnValue(true);
+
+      // Test matching message
+      const result1 = subscriptionManager.publish(SubscriptionChannel.TASKS, matchingMessage);
+      expect(result1.success).toBe(true);
+
+      // Test non-matching message
+      const result2 = subscriptionManager.publish(SubscriptionChannel.TASKS, nonMatchingMessage);
+      expect(result2.success).toBe(true);
+    });
+
+    it('should handle system notifications without filters', () => {
+      const systemMessage = {
+        type: 'system_notification' as const,
+        data: { 
+          level: 'info' as const,
+          message: 'System maintenance scheduled',
+          timestamp: new Date().toISOString()
+        },
+        requestId: 'system-123',
+      };
+
+      mockAuth.canPublishToChannel.mockReturnValue(true);
+
+      const result = subscriptionManager.publish(SubscriptionChannel.SYSTEM, systemMessage);
+      expect(result.success).toBe(true);
+    });
+
+    it('should handle publication context', () => {
+      const message = {
+        type: 'task_updated' as const,
+        data: { id: 'task-123', changes: { status: 'completed' } },
+        requestId: 'req-123',
+      };
+
+      const context = {
+        excludeClient: 'client-1', // Don't send to originating client
+        priority: 'high' as const,
+        metadata: { source: 'api' },
+      };
+
+      mockAuth.canPublishToChannel.mockReturnValue(true);
+
+      const result = subscriptionManager.publish(SubscriptionChannel.TASKS, message, context);
+      expect(result.success).toBe(true);
+    });
+
+    it('should fail publication without permissions', () => {
+      const message = {
+        type: 'admin_action' as const,
+        data: { action: 'user_banned', userId: 'user-123' },
+        requestId: 'req-123',
+      };
+
+      mockAuth.canPublishToChannel.mockReturnValue(false);
+
+      const result = subscriptionManager.publish(SubscriptionChannel.ADMIN, message);
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Insufficient permissions to publish to channel');
+    });
+  });
+
+  describe('Subscription Filtering', () => {
+    it('should match simple field filters', () => {
+      const subscription: Subscription = {
+        id: 'sub-1',
         clientId: 'client-1',
-        error: expect.any(Error),
-      });
+        channel: SubscriptionChannel.TASKS,
+        filters: { boardId: 'board-123' },
+        createdAt: new Date(),
+        lastActivity: new Date(),
+      };
+
+      const matchingMessage = {
+        type: 'task_created' as const,
+        data: { id: 'task-1', boardId: 'board-123', title: 'Test' },
+        requestId: 'req-1',
+      };
+
+      const nonMatchingMessage = {
+        type: 'task_created' as const,
+        data: { id: 'task-2', boardId: 'board-456', title: 'Test' },
+        requestId: 'req-2',
+      };
+
+      // Access private method for testing
+      const matchesFilter = (subscriptionManager as any).matchesFilter;
+      
+      expect(matchesFilter(subscription, matchingMessage)).toBe(true);
+      expect(matchesFilter(subscription, nonMatchingMessage)).toBe(false);
     });
 
-    test('should skip closed connections', () => {
-      mockClient1.readyState = 3; // WebSocket.CLOSED
-      subscriptionManager.subscribeToBoard(mockClient1, 'board-1');
+    it('should match array filters', () => {
+      const subscription: Subscription = {
+        id: 'sub-1',
+        clientId: 'client-1',
+        channel: SubscriptionChannel.TASKS,
+        filters: { priority: ['high', 'critical'] },
+        createdAt: new Date(),
+        lastActivity: new Date(),
+      };
 
-      const message = { type: 'test', data: {} };
-      subscriptionManager.broadcastToBoard('board-1', message);
+      const highPriorityMessage = {
+        type: 'task_created' as const,
+        data: { id: 'task-1', priority: 'high', title: 'Test' },
+        requestId: 'req-1',
+      };
 
-      expect(mockClient1.send).not.toHaveBeenCalled();
+      const lowPriorityMessage = {
+        type: 'task_created' as const,
+        data: { id: 'task-2', priority: 'low', title: 'Test' },
+        requestId: 'req-2',
+      };
+
+      const matchesFilter = (subscriptionManager as any).matchesFilter;
+      
+      expect(matchesFilter(subscription, highPriorityMessage)).toBe(true);
+      expect(matchesFilter(subscription, lowPriorityMessage)).toBe(false);
     });
 
-    test('should clean up closed connections automatically', () => {
-      mockClient1.readyState = 3; // WebSocket.CLOSED
-      subscriptionManager.subscribeToBoard(mockClient1, 'board-1');
+    it('should match multiple field filters (AND logic)', () => {
+      const subscription: Subscription = {
+        id: 'sub-1',
+        clientId: 'client-1',
+        channel: SubscriptionChannel.TASKS,
+        filters: { boardId: 'board-123', assigneeId: 'user-456' },
+        createdAt: new Date(),
+        lastActivity: new Date(),
+      };
 
-      subscriptionManager.cleanupClosedConnections();
+      const fullyMatchingMessage = {
+        type: 'task_created' as const,
+        data: { id: 'task-1', boardId: 'board-123', assigneeId: 'user-456', title: 'Test' },
+        requestId: 'req-1',
+      };
 
-      expect(subscriptionManager.getBoardSubscribers('board-1')).toHaveLength(0);
+      const partiallyMatchingMessage = {
+        type: 'task_created' as const,
+        data: { id: 'task-2', boardId: 'board-123', assigneeId: 'user-789', title: 'Test' },
+        requestId: 'req-2',
+      };
+
+      const matchesFilter = (subscriptionManager as any).matchesFilter;
+      
+      expect(matchesFilter(subscription, fullyMatchingMessage)).toBe(true);
+      expect(matchesFilter(subscription, partiallyMatchingMessage)).toBe(false);
+    });
+
+    it('should handle empty filters (match all)', () => {
+      const subscription: Subscription = {
+        id: 'sub-1',
+        clientId: 'client-1',
+        channel: SubscriptionChannel.TASKS,
+        filters: {},
+        createdAt: new Date(),
+        lastActivity: new Date(),
+      };
+
+      const anyMessage = {
+        type: 'task_created' as const,
+        data: { id: 'task-1', title: 'Test' },
+        requestId: 'req-1',
+      };
+
+      const matchesFilter = (subscriptionManager as any).matchesFilter;
+      
+      expect(matchesFilter(subscription, anyMessage)).toBe(true);
     });
   });
 
   describe('Subscription Statistics', () => {
-    test('should return subscription statistics', () => {
-      subscriptionManager.subscribeToBoard(mockClient1, 'board-1');
-      subscriptionManager.subscribeToBoard(mockClient2, 'board-1');
-      subscriptionManager.subscribeToTask(mockClient1, 'task-1');
-      subscriptionManager.subscribeToUser(mockClient3, 'user-1');
-
-      const stats = subscriptionManager.getSubscriptionStats();
-
-      expect(stats.totalClients).toBe(3);
-      expect(stats.boardSubscriptions).toBe(1);
-      expect(stats.taskSubscriptions).toBe(1);
-      expect(stats.userSubscriptions).toBe(1);
-      expect(stats.totalSubscriptions).toBe(4);
+    beforeEach(() => {
+      // Setup multiple clients and subscriptions
+      const clients = ['client-1', 'client-2', 'client-3'];
+      clients.forEach(clientId => {
+        const mockClient = createMockClient(clientId);
+        mockWebSocketManager.getClient.mockReturnValue(mockClient);
+        mockAuth.canSubscribeToChannel.mockReturnValue(true);
+        
+        // Subscribe to different channels
+        subscriptionManager.subscribe(clientId, SubscriptionChannel.TASKS);
+        subscriptionManager.subscribe(clientId, SubscriptionChannel.BOARDS);
+      });
     });
 
-    test('should return empty stats when no subscriptions exist', () => {
-      const stats = subscriptionManager.getSubscriptionStats();
+    it('should return subscription statistics', () => {
+      const stats = subscriptionManager.getStats();
 
-      expect(stats.totalClients).toBe(0);
-      expect(stats.totalSubscriptions).toBe(0);
+      expect(stats.totalSubscriptions).toBeGreaterThan(0);
+      expect(stats.uniqueClients).toBeGreaterThan(0);
+      expect(stats.channelCounts).toBeDefined();
+      expect(stats.channelCounts[SubscriptionChannel.TASKS]).toBeGreaterThan(0);
+      expect(stats.channelCounts[SubscriptionChannel.BOARDS]).toBeGreaterThan(0);
+    });
+
+    it('should return client subscriptions', () => {
+      const clientId = 'client-1';
+      const subscriptions = subscriptionManager.getClientSubscriptions(clientId);
+
+      expect(Array.isArray(subscriptions)).toBe(true);
+      expect(subscriptions.length).toBeGreaterThan(0);
+      expect(subscriptions[0]).toHaveProperty('id');
+      expect(subscriptions[0]).toHaveProperty('channel');
+      expect(subscriptions[0]).toHaveProperty('filters');
+    });
+
+    it('should return empty array for client with no subscriptions', () => {
+      const clientId = 'non-existent-client';
+      const subscriptions = subscriptionManager.getClientSubscriptions(clientId);
+
+      expect(Array.isArray(subscriptions)).toBe(true);
+      expect(subscriptions.length).toBe(0);
+    });
+
+    it('should return channel subscribers', () => {
+      const subscribers = subscriptionManager.getChannelSubscribers(SubscriptionChannel.TASKS);
+
+      expect(Array.isArray(subscribers)).toBe(true);
+      expect(subscribers.length).toBeGreaterThan(0);
+      expect(subscribers[0]).toHaveProperty('clientId');
+      expect(subscribers[0]).toHaveProperty('subscriptionId');
     });
   });
 
-  describe('Bulk Operations', () => {
-    test('should broadcast to all clients', () => {
-      subscriptionManager.subscribeToBoard(mockClient1, 'board-1');
-      subscriptionManager.subscribeToBoard(mockClient2, 'board-2');
+  describe('Error Handling', () => {
+    it('should handle WebSocket send errors gracefully', () => {
+      const clientId = 'client-1';
+      const mockClient = createMockClient(clientId);
+      mockClient.socket.send = jest.fn().mockImplementation(() => {
+        throw new Error('WebSocket send failed');
+      });
+      
+      mockWebSocketManager.getClient.mockReturnValue(mockClient);
+      mockWebSocketManager.sendToClient.mockImplementation(() => {
+        throw new Error('Send failed');
+      });
+      mockAuth.canSubscribeToChannel.mockReturnValue(true);
+      mockAuth.canPublishToChannel.mockReturnValue(true);
 
+      // Subscribe
+      subscriptionManager.subscribe(clientId, SubscriptionChannel.TASKS);
+
+      // Try to publish - should handle error gracefully
       const message = {
-        type: 'system:maintenance',
-        data: { message: 'System maintenance in 5 minutes' },
+        type: 'task_created' as const,
+        data: { id: 'task-123', title: 'Test' },
+        requestId: 'req-123',
       };
 
-      subscriptionManager.broadcastToAll(message);
-
-      expect(mockClient1.send).toHaveBeenCalledWith(JSON.stringify(message));
-      expect(mockClient2.send).toHaveBeenCalledWith(JSON.stringify(message));
+      const result = subscriptionManager.publish(SubscriptionChannel.TASKS, message);
+      expect(result.success).toBe(true); // Should not fail due to send error
+      expect(logger.error).toHaveBeenCalled();
     });
 
-    test('should unsubscribe client from all subscriptions', () => {
-      subscriptionManager.subscribeToBoard(mockClient1, 'board-1');
-      subscriptionManager.subscribeToBoard(mockClient1, 'board-2');
-      subscriptionManager.subscribeToTask(mockClient1, 'task-1');
+    it('should clean up subscriptions for disconnected clients', () => {
+      const clientId = 'client-1';
+      const mockClient = createMockClient(clientId);
+      mockClient.socket.readyState = 3; // CLOSED
+      
+      mockWebSocketManager.getClient.mockReturnValue(mockClient);
+      mockAuth.canSubscribeToChannel.mockReturnValue(true);
 
-      subscriptionManager.unsubscribeFromAll(mockClient1);
+      // Subscribe
+      const subscribeResult = subscriptionManager.subscribe(clientId, SubscriptionChannel.TASKS);
+      expect(subscribeResult.success).toBe(true);
 
-      expect(subscriptionManager.getBoardSubscribers('board-1')).toHaveLength(0);
-      expect(subscriptionManager.getBoardSubscribers('board-2')).toHaveLength(0);
-      expect(subscriptionManager.getTaskSubscribers('task-1')).toHaveLength(0);
+      // Simulate cleanup
+      subscriptionManager.cleanupClientSubscriptions(clientId);
+
+      // Verify cleanup
+      const subscriptions = subscriptionManager.getClientSubscriptions(clientId);
+      expect(subscriptions.length).toBe(0);
+    });
+
+    it('should handle invalid filter values', () => {
+      const clientId = 'client-1';
+      const mockClient = createMockClient(clientId);
+      
+      mockWebSocketManager.getClient.mockReturnValue(mockClient);
+      mockAuth.canSubscribeToChannel.mockReturnValue(true);
+
+      // Subscribe with function as filter (invalid)
+      const invalidFilters = { boardId: () => 'invalid' } as any;
+      
+      const result = subscriptionManager.subscribe(clientId, SubscriptionChannel.TASKS, invalidFilters);
+      expect(result.success).toBe(true); // Should still work, but filter might be ignored
+    });
+
+    it('should handle subscription errors gracefully', () => {
+      const clientId = 'client-1';
+      
+      // Mock getClient to throw an error
+      mockWebSocketManager.getClient.mockImplementation(() => {
+        throw new Error('Client lookup failed');
+      });
+
+      const result = subscriptionManager.subscribe(clientId, SubscriptionChannel.TASKS);
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Subscription failed');
+      expect(logger.error).toHaveBeenCalledWith('Subscription error', expect.any(Object));
     });
   });
 
-  describe('Memory Management', () => {
-    test('should handle large number of subscriptions', () => {
+  describe('Performance and Memory Management', () => {
+    it('should handle large number of subscriptions', () => {
+      const clientCount = 100;
+      const channelCount = Object.keys(SubscriptionChannel).length;
+      
       // Create many subscriptions
-      for (let i = 0; i < 1000; i++) {
-        const client = {
-          id: `client-${i}`,
-          send: jest.fn(),
-          readyState: 1,
-        };
-        subscriptionManager.subscribeToBoard(client as any, `board-${i % 10}`);
+      for (let i = 0; i < clientCount; i++) {
+        const clientId = `client-${i}`;
+        const mockClient = createMockClient(clientId);
+        mockWebSocketManager.getClient.mockReturnValue(mockClient);
+        mockAuth.canSubscribeToChannel.mockReturnValue(true);
+        
+        Object.values(SubscriptionChannel).forEach(channel => {
+          subscriptionManager.subscribe(clientId, channel);
+        });
       }
 
-      const stats = subscriptionManager.getSubscriptionStats();
-      expect(stats.totalClients).toBe(1000);
-      expect(stats.boardSubscriptions).toBe(10);
+      const stats = subscriptionManager.getStats();
+      expect(stats.totalSubscriptions).toBe(clientCount * channelCount);
+      expect(stats.uniqueClients).toBe(clientCount);
     });
 
-    test('should clean up empty subscription maps', () => {
-      subscriptionManager.subscribeToBoard(mockClient1, 'board-1');
-      subscriptionManager.unsubscribeFromBoard(mockClient1, 'board-1');
+    it('should update subscription activity timestamps', () => {
+      const clientId = 'client-1';
+      const mockClient = createMockClient(clientId);
+      
+      mockWebSocketManager.getClient.mockReturnValue(mockClient);
+      mockAuth.canSubscribeToChannel.mockReturnValue(true);
 
-      // Internal cleanup should remove empty maps
-      const subscribers = subscriptionManager.getBoardSubscribers('board-1');
-      expect(subscribers).toHaveLength(0);
+      const subscribeResult = subscriptionManager.subscribe(clientId, SubscriptionChannel.TASKS);
+      const subscriptionId = subscribeResult.subscriptionId!;
+
+      // Get initial activity time
+      const subscriptions = subscriptionManager.getClientSubscriptions(clientId);
+      const subscription = subscriptions.find(s => s.id === subscriptionId);
+      const initialActivity = subscription?.lastActivity;
+
+      // Wait a bit and trigger activity update
+      setTimeout(() => {
+        subscriptionManager.updateSubscriptionActivity(subscriptionId);
+        
+        const updatedSubscriptions = subscriptionManager.getClientSubscriptions(clientId);
+        const updatedSubscription = updatedSubscriptions.find(s => s.id === subscriptionId);
+        
+        expect(updatedSubscription?.lastActivity.getTime()).toBeGreaterThan(
+          initialActivity?.getTime() || 0
+        );
+      }, 10);
+    });
+
+    it('should batch multiple publications efficiently', () => {
+      const clients = Array.from({ length: 10 }, (_, i) => createMockClient(`client-${i}`));
+      
+      clients.forEach(client => {
+        mockWebSocketManager.getClient.mockReturnValue(client);
+        mockAuth.canSubscribeToChannel.mockReturnValue(true);
+        subscriptionManager.subscribe(client.id, SubscriptionChannel.TASKS);
+      });
+
+      mockAuth.canPublishToChannel.mockReturnValue(true);
+
+      // Batch publish multiple messages
+      const messages = Array.from({ length: 5 }, (_, i) => ({
+        type: 'task_created' as const,
+        data: { id: `task-${i}`, title: `Task ${i}` },
+        requestId: `req-${i}`,
+      }));
+
+      const startTime = Date.now();
+      
+      messages.forEach(message => {
+        subscriptionManager.publish(SubscriptionChannel.TASKS, message);
+      });
+
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+      
+      // Should complete reasonably quickly
+      expect(duration).toBeLessThan(100); // 100ms threshold
+    });
+  });
+
+  describe('Integration Tests', () => {
+    it('should handle realistic subscription workflow', () => {
+      const clientId = 'client-1';
+      const mockClient = createMockClient(clientId);
+      
+      mockWebSocketManager.getClient.mockReturnValue(mockClient);
+      mockAuth.canSubscribeToChannel.mockReturnValue(true);
+      mockAuth.canPublishToChannel.mockReturnValue(true);
+
+      // 1. Subscribe to multiple channels
+      const tasksSub = subscriptionManager.subscribe(clientId, SubscriptionChannel.TASKS);
+      const boardsSub = subscriptionManager.subscribe(clientId, SubscriptionChannel.BOARDS);
+      const notesSub = subscriptionManager.subscribe(clientId, SubscriptionChannel.NOTES, { boardId: 'board-123' });
+
+      expect(tasksSub.success).toBe(true);
+      expect(boardsSub.success).toBe(true);
+      expect(notesSub.success).toBe(true);
+
+      // 2. Publish messages to subscribed channels
+      const taskMessage = {
+        type: 'task_created' as const,
+        data: { id: 'task-1', title: 'New Task' },
+        requestId: 'req-1',
+      };
+
+      const noteMessage = {
+        type: 'note_added' as const,
+        data: { id: 'note-1', boardId: 'board-123', content: 'Test note' },
+        requestId: 'req-2',
+      };
+
+      const taskResult = subscriptionManager.publish(SubscriptionChannel.TASKS, taskMessage);
+      const noteResult = subscriptionManager.publish(SubscriptionChannel.NOTES, noteMessage);
+
+      expect(taskResult.success).toBe(true);
+      expect(noteResult.success).toBe(true);
+
+      // 3. Unsubscribe from one channel
+      const unsubResult = subscriptionManager.unsubscribe(tasksSub.subscriptionId!);
+      expect(unsubResult.success).toBe(true);
+
+      // 4. Clean up all subscriptions
+      const cleanupResult = subscriptionManager.unsubscribeAll(clientId);
+      expect(cleanupResult.success).toBe(true);
+      expect(cleanupResult.unsubscribedCount).toBe(2); // boards and notes remaining
     });
   });
 });

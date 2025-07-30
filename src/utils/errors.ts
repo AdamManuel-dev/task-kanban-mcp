@@ -105,7 +105,7 @@ export class BaseServiceError extends Error implements ServiceError {
   constructor(
     code: string,
     message: string,
-    statusCode: number = 500,
+    statusCode = 500,
     details?: ErrorDetails,
     context?: ErrorContext
   ) {
@@ -222,11 +222,7 @@ export class ConflictError extends BaseServiceError {
  * ```
  */
 export class UnauthorizedError extends BaseServiceError {
-  constructor(
-    message: string = 'Authentication required',
-    details?: ErrorDetails,
-    context?: ErrorContext
-  ) {
+  constructor(message = 'Authentication required', details?: ErrorDetails, context?: ErrorContext) {
     super('UNAUTHORIZED', message, 401, details, context);
   }
 }
@@ -246,7 +242,7 @@ export class UnauthorizedError extends BaseServiceError {
  * ```
  */
 export class ForbiddenError extends BaseServiceError {
-  constructor(message: string = 'Forbidden', details?: ErrorDetails, context?: ErrorContext) {
+  constructor(message = 'Forbidden', details?: ErrorDetails, context?: ErrorContext) {
     super('FORBIDDEN', message, 403, details, context);
   }
 }
@@ -340,11 +336,7 @@ export class DependencyError extends BaseServiceError {
  * ```
  */
 export class RateLimitError extends BaseServiceError {
-  constructor(
-    message: string = 'Rate limit exceeded',
-    details?: ErrorDetails,
-    context?: ErrorContext
-  ) {
+  constructor(message = 'Rate limit exceeded', details?: ErrorDetails, context?: ErrorContext) {
     super('RATE_LIMIT_EXCEEDED', message, 429, details, context);
   }
 }
@@ -693,9 +685,8 @@ class GlobalErrorHandler {
         }
         if (error instanceof NotFoundError) {
           return new NotFoundError(
-            ((error.details as Record<string, unknown>)?.resource as string) || 'Resource',
-            ((error.details as Record<string, unknown>)?.identifier as string | number) ||
-              'unknown',
+            ((error.details as Record<string, unknown>).resource as string) || 'Resource',
+            ((error.details as Record<string, unknown>).identifier as string | number) || 'unknown',
             context
           );
         }
@@ -751,6 +742,44 @@ class GlobalErrorHandler {
  */
 export const globalErrorHandler = new GlobalErrorHandler();
 
+// Enhanced error handling with monitoring
+let errorMonitoringEnabled = false;
+
+/**
+ * Enable error monitoring integration
+ */
+export function enableErrorMonitoring(): void {
+  if (!errorMonitoringEnabled) {
+    errorMonitoringEnabled = true;
+    logger.info('Error monitoring integration enabled');
+  }
+}
+
+/**
+ * Enhanced global error handler with monitoring integration
+ */
+export function handleErrorWithMonitoring(error: unknown, context: ErrorContext): BaseServiceError {
+  const serviceError = globalErrorHandler.handleError(error, context);
+
+  // Record error for monitoring if enabled
+  if (errorMonitoringEnabled) {
+    try {
+      // Dynamically import to avoid circular dependencies
+      import('./error-monitoring')
+        .then(({ errorMonitor }) => {
+          errorMonitor.recordError(serviceError, context);
+        })
+        .catch(() => {
+          // Silently fail if monitoring is not available
+        });
+    } catch {
+      // Silently fail if monitoring is not available
+    }
+  }
+
+  return serviceError;
+}
+
 /**
  * Creates a method decorator for automatic error handling
  *
@@ -804,7 +833,7 @@ export function createServiceErrorHandler(
       try {
         return await originalMethod.apply(this, args);
       } catch (error) {
-        const serviceError = globalErrorHandler.handleError(error, context);
+        const serviceError = handleErrorWithMonitoring(error, context);
 
         logger.error('Service method error', {
           service: serviceName,
@@ -880,10 +909,10 @@ export function withErrorContext<TFn extends (...args: unknown[]) => unknown>(
  */
 export function createErrorBoundary(
   serviceName: string
-): <T extends new (...args: any[]) => object>(constructor: T) => T {
-  return function <T extends new (...args: any[]) => object>(constructor: T): T {
+): <T extends new (...args: unknown[]) => object>(constructor: T) => T {
+  return function <T extends new (...args: unknown[]) => object>(constructor: T): T {
     return class extends constructor {
-      constructor(...args: any[]) {
+      constructor(...args: unknown[]) {
         super(...args);
 
         const prototype = Object.getPrototypeOf(this);

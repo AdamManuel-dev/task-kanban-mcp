@@ -15,7 +15,12 @@ import type { CliComponents } from '../../types';
  * Register the next command
  */
 export function registerNextCommand(taskCmd: Command): void {
-  const getComponents = (): CliComponents => global.cliComponents;
+  const getComponents = (): CliComponents => {
+    if (!global.cliComponents) {
+      throw new Error('CLI components not initialized. Please initialize the CLI first.');
+    }
+    return global.cliComponents;
+  };
 
   taskCmd
     .command('next')
@@ -46,7 +51,7 @@ export function registerNextCommand(taskCmd: Command): void {
           // Call the API endpoint for next task recommendation
           const response = await apiClient.request('GET', '/api/tasks/next', undefined, params);
 
-          if (!response || !(response as any).next_task) {
+          if (!response || !(response as unknown).next_task) {
             formatter.info('No tasks available matching your criteria');
             if (options.json) {
               formatter.output({ next_task: null, reasoning: 'No available tasks found' });
@@ -54,7 +59,7 @@ export function registerNextCommand(taskCmd: Command): void {
             return;
           }
 
-          const { next_task: nextTask, reasoning } = response as any;
+          const { next_task: nextTask, reasoning } = response as unknown;
 
           if (options.json) {
             formatter.output({ next_task: nextTask, reasoning });

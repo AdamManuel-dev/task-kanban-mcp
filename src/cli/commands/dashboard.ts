@@ -7,6 +7,9 @@ import { handleCommandError } from '../../utils/error-handler';
 import type { CliComponents } from '../types';
 
 function getComponents(): CliComponents {
+  if (!global.cliComponents) {
+    throw new Error('CLI components not initialized. Please initialize the CLI first.');
+  }
   return global.cliComponents;
 }
 
@@ -73,7 +76,8 @@ export const dashboardCommand = new Command('dashboard')
         };
 
         // Get API client from global components if available
-        const apiClient = global.cliComponents?.apiClient;
+        const components = getComponents();
+        const { apiClient } = components;
         const dashboard = new DashboardManager(
           config,
           apiClient ? apiClient.getApiClient() : undefined
@@ -115,7 +119,7 @@ dashboardCommand
   .command('overview')
   .description('Launch overview dashboard with task statistics')
   .action(() => {
-    const apiClient = global.cliComponents?.apiClient;
+    const { apiClient } = getComponents();
     const dashboard = new DashboardManager({}, apiClient ? apiClient.getApiClient() : undefined);
     dashboard.switchLayout('overview');
     dashboard.start();
@@ -125,7 +129,7 @@ dashboardCommand
   .command('velocity')
   .description('Launch velocity dashboard with team performance metrics')
   .action(() => {
-    const apiClient = global.cliComponents?.apiClient;
+    const { apiClient } = getComponents();
     const dashboard = new DashboardManager({}, apiClient ? apiClient.getApiClient() : undefined);
     dashboard.switchLayout('velocity');
     dashboard.start();
@@ -135,7 +139,7 @@ dashboardCommand
   .command('personal')
   .description('Launch personal productivity dashboard')
   .action(() => {
-    const apiClient = global.cliComponents?.apiClient;
+    const { apiClient } = getComponents();
     const dashboard = new DashboardManager({}, apiClient ? apiClient.getApiClient() : undefined);
     dashboard.switchLayout('personal');
     dashboard.start();

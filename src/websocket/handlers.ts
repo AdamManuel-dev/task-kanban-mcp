@@ -284,7 +284,7 @@ export class MessageHandler {
     const { clientId, message } = context;
     const payload = message.payload as SubscribeMessage['payload'];
 
-    if (!payload?.channel) {
+    if (!payload.channel) {
       this.webSocketManager.sendError(
         clientId,
         'INVALID_SUBSCRIBE',
@@ -346,7 +346,7 @@ export class MessageHandler {
     const { clientId, message } = context;
     const payload = message.payload as UnsubscribeMessage['payload'];
 
-    if (!payload?.channel) {
+    if (!payload.channel) {
       this.webSocketManager.sendError(
         clientId,
         'INVALID_UNSUBSCRIBE',
@@ -436,7 +436,7 @@ export class MessageHandler {
     const { clientId, message } = context;
     const payload = message.payload as { taskId: string };
 
-    if (!payload?.taskId) {
+    if (!payload.taskId) {
       this.webSocketManager.sendError(
         clientId,
         'INVALID_GET_TASK',
@@ -490,7 +490,7 @@ export class MessageHandler {
     const { clientId, message } = context;
     const payload = message.payload as UpdateSubtaskMessage['payload'];
 
-    if (!payload?.taskId || !payload?.updates) {
+    if (!payload.taskId || !payload.updates) {
       this.webSocketManager.sendError(
         clientId,
         'INVALID_UPDATE_TASK',
@@ -929,7 +929,7 @@ export class MessageHandler {
       // Check permissions
       if (
         !client.permissions.has('write:all') &&
-        !client.permissions.has(`write:task:${String(payload?.taskId)}`)
+        !client.permissions.has(`write:task:${String(payload.taskId)}`)
       ) {
         this.webSocketManager.sendError(
           clientId,
@@ -940,22 +940,22 @@ export class MessageHandler {
         return;
       }
 
-      await this.tagService.addTagToTask(payload?.taskId, payload?.tagId);
+      await this.tagService.addTagToTask(payload.taskId, payload.tagId);
 
       this.webSocketManager.sendToClient(clientId, {
         type: 'tag_assigned_response',
         id: message.id,
-        payload: { taskId: payload?.taskId, tagId: payload?.tagId },
+        payload: { taskId: payload.taskId, tagId: payload.tagId },
       });
 
       // Get task to find board ID for broadcasting
-      const task = await this.taskService.getTaskById(payload?.taskId);
+      const task = await this.taskService.getTaskById(payload.taskId);
       if (task) {
         this.webSocketManager
           .getSubscriptionManager()
           .publishTagAssigned(
-            payload?.taskId,
-            payload?.tagId,
+            payload.taskId,
+            payload.tagId,
             task.board_id,
             client.user?.id ?? 'unknown'
           );
@@ -1257,31 +1257,31 @@ export class MessageHandler {
 
     try {
       // Get parent task info
-      const parentTask = await this.taskService.getTaskById(payload?.parentTaskId ?? 'unknown');
+      const parentTask = await this.taskService.getTaskById(payload.parentTaskId ?? 'unknown');
       if (!parentTask) {
         throw new Error('Parent task not found');
       }
 
       const subtask = await this.taskService.createTask({
-        title: payload?.title ?? 'unknown',
-        description: payload?.description ?? 'unknown',
+        title: payload.title ?? 'unknown',
+        description: payload.description ?? 'unknown',
         board_id: parentTask.board_id,
         column_id: parentTask.column_id,
-        priority: (payload?.priority || parentTask.priority) as number,
-        assignee: payload?.assignee ?? 'unknown',
-        due_date: payload?.due_date ?? new Date(),
-        parent_task_id: payload?.parentTaskId ?? 'unknown',
+        priority: (payload.priority || parentTask.priority) as number,
+        assignee: payload.assignee ?? 'unknown',
+        due_date: payload.due_date ?? new Date(),
+        parent_task_id: payload.parentTaskId ?? 'unknown',
       });
 
       // Calculate parent progress
-      const parentProgress = await this.calculateParentProgress(payload?.parentTaskId ?? 'unknown');
+      const parentProgress = await this.calculateParentProgress(payload.parentTaskId ?? 'unknown');
 
       // Broadcast subtask created event
       this.webSocketManager.broadcast({
         type: 'subtask:created',
         payload: {
           subtask,
-          parentTaskId: payload?.parentTaskId,
+          parentTaskId: payload.parentTaskId,
           createdBy: clientId,
           boardId: parentTask.board_id,
           parentProgress,
@@ -1322,14 +1322,14 @@ export class MessageHandler {
     }
 
     try {
-      const existingSubtask = await this.taskService.getTaskById(payload?.subtaskId ?? 'unknown');
+      const existingSubtask = await this.taskService.getTaskById(payload.subtaskId ?? 'unknown');
       if (!existingSubtask?.parent_task_id) {
         throw new Error('Subtask not found');
       }
 
       const updatedSubtask = await this.taskService.updateTask(
-        payload?.subtaskId ?? 'unknown',
-        payload?.updates as UpdateTaskRequest
+        payload.subtaskId ?? 'unknown',
+        payload.updates as UpdateTaskRequest
       );
 
       // Calculate parent progress
@@ -1340,7 +1340,7 @@ export class MessageHandler {
         type: 'subtask:updated',
         payload: {
           subtask: updatedSubtask,
-          changes: payload?.updates,
+          changes: payload.updates,
           parentTaskId: existingSubtask.parent_task_id,
           updatedBy: clientId,
           boardId: updatedSubtask.board_id,
@@ -1427,13 +1427,13 @@ export class MessageHandler {
       | undefined;
 
     try {
-      const results: any[] = [];
+      const results: unknown[] = [];
       let boardId = '';
 
       switch (payload?.operation) {
         case 'update':
-          for (const taskId of payload?.taskIds ?? []) {
-            const task = await this.taskService.updateTask(taskId, payload?.changes ?? {});
+          for (const taskId of payload.taskIds ?? []) {
+            const task = await this.taskService.updateTask(taskId, payload.changes ?? {});
             results.push(task);
             if (!boardId) boardId = task.board_id;
           }
@@ -1457,9 +1457,9 @@ export class MessageHandler {
       this.webSocketManager.broadcast({
         type: 'bulk:operation',
         payload: {
-          operation: payload?.operation,
-          taskIds: payload?.taskIds,
-          changes: payload?.changes,
+          operation: payload.operation,
+          taskIds: payload.taskIds,
+          changes: payload.changes,
           operatedBy: clientId,
           boardId,
           affectedCount: results.length,

@@ -9,6 +9,7 @@ import inquirer from 'inquirer';
 import { getCLIService } from '@/cli/services/ServiceContainer';
 import { logger } from '@/utils/logger';
 import type { GraphFormatOptions } from '@/services/DependencyVisualizationService';
+import type { Task } from '@/types';
 
 interface DependencyOptions {
   board?: string;
@@ -156,7 +157,7 @@ export function createDependenciesCommand(): Command {
 
         logger.info('Critical Path (Longest Chain):');
 
-        result.critical_path.forEach((task, index) => {
+        result.critical_path.forEach((task: Task, index: number) => {
           const isLast = index === result.critical_path.length - 1;
           const connector = isLast ? '└─' : '├─';
           const statusIcon = getStatusIcon(task.status);
@@ -188,14 +189,14 @@ export function createDependenciesCommand(): Command {
 
         if (result.bottlenecks.length > 0) {
           logger.info('Bottleneck Tasks:');
-          result.bottlenecks.forEach(task => {
+          result.bottlenecks.forEach((task: Task) => {
             logger.info(`   • ${task.title} (${task.id})`);
           });
         }
 
         if (result.starting_tasks.length > 0) {
           logger.info('Starting Tasks (No Dependencies):');
-          result.starting_tasks.forEach(task => {
+          result.starting_tasks.forEach((task: Task) => {
             logger.info(`   • ${task.title} (${task.id})`);
           });
         }
@@ -238,7 +239,7 @@ export function createDependenciesCommand(): Command {
         if (impact.directDependents.length === 0) {
           logger.info('   No tasks directly depend on this task.');
         } else {
-          impact.directDependents.forEach(depTask => {
+          impact.directDependents.forEach((depTask: Task) => {
             const statusIcon = getStatusIcon(depTask.status);
             logger.info(`   ${statusIcon} ${depTask.title} (${depTask.id})`);
           });
@@ -248,7 +249,7 @@ export function createDependenciesCommand(): Command {
         if (impact.indirectDependents.length === 0) {
           logger.info('   No tasks indirectly depend on this task.');
         } else {
-          impact.indirectDependents.forEach(depTask => {
+          impact.indirectDependents.forEach((depTask: Task) => {
             const statusIcon = getStatusIcon(depTask.status);
             logger.info(`   ${statusIcon} ${depTask.title} (${depTask.id})`);
           });
@@ -329,7 +330,11 @@ export function createDependenciesCommand(): Command {
         );
 
         // Call the API to add dependency relationship
-        const apiClient = global.cliComponents?.apiClient;
+        if (!global.cliComponents) {
+          logger.error(chalk.red('❌ CLI components not initialized'));
+          return;
+        }
+        const { apiClient } = global.cliComponents;
         if (!apiClient) {
           logger.error(chalk.red('❌ API client not available'));
           return;
@@ -401,7 +406,7 @@ export function createDependenciesCommand(): Command {
           if (impact.directDependents.length === 0) {
             logger.info(chalk.dim('   No dependents'));
           } else {
-            impact.directDependents.forEach(depTask => {
+            impact.directDependents.forEach((depTask: Task) => {
               const statusIcon = getStatusIcon(depTask.status);
               logger.info(`   ${statusIcon} ${depTask.title} (${depTask.id})`);
             });

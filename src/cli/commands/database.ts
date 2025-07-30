@@ -18,7 +18,12 @@ export function registerDatabaseCommands(program: Command): void {
   const dbCmd = program.command('database').alias('db').description('Database management');
 
   // Get global components with proper typing
-  const getComponents = (): CliComponents => global.cliComponents;
+  const getComponents = (): CliComponents => {
+    if (!global.cliComponents) {
+      throw new Error('CLI components not initialized. Please initialize the CLI first.');
+    }
+    return global.cliComponents;
+  };
 
   dbCmd
     .command('optimize')

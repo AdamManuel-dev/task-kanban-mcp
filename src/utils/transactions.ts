@@ -32,6 +32,8 @@
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, class-methods-use-this, no-await-in-loop, no-restricted-syntax, no-plusplus, @typescript-eslint/require-await */
+// NOTE: This file uses 'any' types for database connection compatibility across different drivers
+// The transaction manager needs to work with various database implementations that don't share common type interfaces
 import { logger } from '@/utils/logger';
 import type { DatabaseConnection } from '@/database/connection';
 import { BaseServiceError, DatabaseError } from '@/utils/errors';
@@ -62,7 +64,7 @@ export interface TransactionContext {
   id: string;
   startTime: Date;
   operations: TransactionOperation[];
-  rollbackActions: (() => Promise<void>)[];
+  rollbackActions: Array<() => Promise<void>>;
   metadata?: Record<string, unknown>;
 }
 
@@ -441,14 +443,16 @@ export class TransactionManager {
    */
   static transactional(options: TransactionOptions = {}) {
     return function transactionDecorator(
-      _target: any,
+      _target: unknown,
       _propertyKey: string,
       descriptor: PropertyDescriptor
     ) {
       const originalMethod = descriptor.value;
 
-      descriptor.value = async function wrappedTransactionMethod(...args: any[]) {
-        const transactionManager = new TransactionManager((this as any).db);
+      descriptor.value = async function wrappedTransactionMethod(...args: unknown[]) {
+        // Type assertion is necessary for decorator pattern access to instance
+        const instance = this as { db: DatabaseConnection };
+        const transactionManager = new TransactionManager(instance.db);
         return transactionManager.executeTransaction(
           async _context => originalMethod.apply(this, args),
           options
@@ -656,7 +660,7 @@ export class TransactionManager {
  * );
  * ```
  */
-export function withTransaction<TService extends { db: DatabaseConnection }, TResult>(
+export async function withTransaction<TService extends { db: DatabaseConnection }, TResult>(
   service: TService,
   operation: (service: TService, context: TransactionContext) => Promise<TResult>,
   options: TransactionOptions = {}
@@ -716,7 +720,7 @@ export async function batchInTransaction<T, R>(
   for (let i = 0; i < items.length; i += batchSize) {
     const batch = items.slice(i, i + batchSize);
     const batchResults = await transactionManager.executeTransaction(async () => {
-      const batchPromises = batch.map((item, index) => operation(item, i + index));
+      const batchPromises = batch.map(async (item, index) => operation(item, i + index));
       return Promise.all(batchPromises);
     }, transactionOptions);
     results.push(...batchResults);

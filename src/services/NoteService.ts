@@ -34,6 +34,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { logger } from '@/utils/logger';
 import type { DatabaseConnection, QueryParameters } from '@/database/connection';
 import type { Note, ServiceError, PaginationOptions, FilterOptions } from '@/types';
+import { validatePagination } from '../utils/sql-security';
 
 /**
  * Request interface for creating new notes
@@ -311,10 +312,12 @@ export class NoteService {
       }
 
       if (conditions.length > 0) {
-        query += ` WHERE ${String(String(conditions.join(' AND ')))}`;
+        query += ` WHERE ${conditions.join(' AND ')}`;
       }
 
-      query += ` ORDER BY n.${String(sortBy)} ${String(String(sortOrder.toUpperCase()))} LIMIT ? OFFSET ?`;
+      // Use secure pagination to prevent ORDER BY injection
+      const paginationClause = validatePagination(sortBy, sortOrder, 'notes', 'n');
+      query += ` ${paginationClause} LIMIT ? OFFSET ?`;
       params.push(limit, offset);
 
       const notes = await this.db.query<Note>(query, params);
@@ -580,7 +583,9 @@ export class NoteService {
       if (sortBy === 'relevance') {
         sql += ' ORDER BY relevance_score DESC, n.updated_at DESC';
       } else {
-        sql += ` ORDER BY n.${String(sortBy)} ${String(String(sortOrder.toUpperCase()))}`;
+        // Use secure pagination to prevent ORDER BY injection
+        const paginationClause = validatePagination(sortBy, sortOrder, 'notes', 'n');
+        sql += ` ${paginationClause.replace('ORDER BY', '')}`;
       }
 
       sql += ` LIMIT ? OFFSET ?`;
@@ -826,7 +831,7 @@ export class NoteService {
 
     try {
       let baseQuery = 'FROM notes n';
-      const params: any[] = [];
+      const params: unknown[] = [];
       const conditions: string[] = [];
 
       if (board_id) {
@@ -872,7 +877,10 @@ export class NoteService {
         ),
       ]);
 
-      const by_category: Record<'general' | 'implementation' | 'research' | 'blocker' | 'idea', number> = {
+      const by_category: Record<
+        'general' | 'implementation' | 'research' | 'blocker' | 'idea',
+        number
+      > = {
         general: 0,
         implementation: 0,
         research: 0,
@@ -916,11 +924,11 @@ export class NoteService {
    * ```
    */
   async getNoteCategories(filters: { task_id?: string; board_id?: string } = {}): Promise<
-    {
+    Array<{
       category: Note['category'];
       count: number;
       percentage: number;
-    }[]
+    }>
   > {
     const { task_id, board_id } = filters;
 

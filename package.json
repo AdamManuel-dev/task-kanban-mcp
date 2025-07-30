@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "nodemon",
-    "build": "tsc --project tsconfig.build.json && tsc-alias -p tsconfig.build.json && npm run copy-assets",
+    "build": "tsc --project tsconfig.build.json && tsc-alias -p tsconfig.tsc-alias.json && npm run copy-assets",
     "build:production": "npm run clean && npm run build:security && npm run copy-assets",
     "build:security": "webpack --config webpack.config.js",
     "build:optimize": "npm run bundle-size && npm run analyze",
@@ -33,10 +33,12 @@
     "dev:server": "nodemon --exec tsx src/server.ts",
     "dev:mcp": "nodemon --exec tsx src/mcp/server.ts",
     "dev:cli": "tsx src/cli/index.ts",
+    "dev:with-types": "echo \"Run 'npm run typecheck:watch' in a separate terminal\" && npm run dev",
     "dev:replit": "npm run build && nodemon --exec \"HOST=0.0.0.0 PORT=3000 node dist/server.js\"",
     "setup:replit": "npm install && npm run build && npm run db:migrate && npm run db:seed",
     "test": "jest",
     "test:watch": "jest --watch",
+    "test:watch:with-types": "echo \"Run 'npm run typecheck:watch' in a separate terminal\" && npm run test:watch",
     "test:coverage": "jest --coverage",
     "test:performance": "jest --config jest.performance.config.js",
     "test:performance:verbose": "jest --config jest.performance.config.js --verbose",
@@ -55,6 +57,12 @@
     "test:cli:errors": "jest --config jest.e2e.config.js --testPathPattern=cli-error-scenarios",
     "test:cli:all": "jest --config jest.e2e.config.js --testPathPattern='cli-.*'",
     "test:all": "npm run test && npm run test:e2e",
+    "test:scale": "npm run test:load:artillery && npm run test:stress:custom",
+    "test:load:artillery": "artillery run artillery-config.yml --output artillery-report.json",
+    "test:stress:custom": "node scripts/stress-test-runner.js --duration 300000 --workers 4 --requestsPerWorker 1000",
+    "test:stress:light": "node scripts/stress-test-runner.js --duration 60000 --workers 2 --requestsPerWorker 100",
+    "test:stress:heavy": "node scripts/stress-test-runner.js --duration 600000 --workers 8 --requestsPerWorker 2000",
+    "test:endurance": "node scripts/stress-test-runner.js --duration 3600000 --workers 2 --requestsPerWorker 10000",
     "lint": "eslint . --ext .ts,.tsx",
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "lint:src": "eslint src --ext .ts,.tsx",
@@ -65,6 +73,7 @@
     "lint:all:fix": "npm run lint:src:fix && npm run lint:test:fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,json,md}\"",
     "typecheck": "tsc --noEmit",
+    "typecheck:watch": "tsc --noEmit --watch",
     "typecheck:build": "tsc --project tsconfig.build.json --noEmit",
     "prepare": "husky install",
     "migrate": "tsx scripts/migrate.ts",
@@ -144,7 +153,7 @@
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/inquirer": "^9.0.8",
-    "@types/jest": "^29.5.11",
+    "@types/jest": "^29.5.14",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.10.5",
     "@types/node-cron": "^3.0.11",
@@ -155,6 +164,7 @@
     "@types/ws": "^8.18.1",
     "@typescript-eslint/eslint-plugin": "^6.15.0",
     "@typescript-eslint/parser": "^6.15.0",
+    "artillery": "^2.0.16",
     "eslint": "^8.56.0",
     "eslint-config-airbnb-base": "^15.0.0",
     "eslint-config-prettier": "^9.1.0",
@@ -166,6 +176,7 @@
     "jest": "^29.7.0",
     "jest-junit": "^16.0.0",
     "lint-staged": "^15.2.0",
+    "minimatch": "^10.0.3",
     "nodemon": "^3.0.2",
     "prettier": "^3.1.1",
     "semantic-release": "^22.0.12",
@@ -201,5 +212,8 @@
     "*.{json,md}": [
       "prettier --write"
     ]
+  },
+  "overrides": {
+    "xml2js": "^0.6.2"
   }
 }

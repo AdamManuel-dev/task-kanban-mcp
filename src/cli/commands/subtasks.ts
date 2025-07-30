@@ -1,7 +1,17 @@
+/**
+ * @fileoverview Subtask management CLI commands
+ * @lastmodified 2025-07-28T10:30:00Z
+ *
+ * Features: Subtask creation, dependency visualization, hierarchy management
+ * Main APIs: registerSubtaskCommands() - subtask and dependency command suite
+ * Constraints: Requires parent task validation, handles hierarchical relationships
+ * Patterns: Interactive prompts, dependency tree display, parent-child relationships
+ */
+
 import { logger } from '@/utils/logger';
 import type { Command } from 'commander';
 import inquirer from 'inquirer';
-import type { CliComponents, AnyApiResponse, CreateTaskRequest } from '../types';
+import type { CliComponents, AnyApiResponse, CreateTaskRequest, TasksResponse } from '../types';
 
 interface DependencyNode {
   id: string;
@@ -17,7 +27,12 @@ export function registerSubtaskCommands(program: Command): void {
     .description('Manage subtasks and dependencies');
 
   // Get global components with proper typing
-  const getComponents = (): CliComponents => global.cliComponents;
+  const getComponents = (): CliComponents => {
+    if (!global.cliComponents) {
+      throw new Error('CLI components not initialized. Please initialize the CLI first.');
+    }
+    return global.cliComponents;
+  };
 
   subtaskCmd
     .command('create <parentId>')
@@ -48,13 +63,13 @@ export function registerSubtaskCommands(program: Command): void {
             process.exit(1);
           }
 
-          let subtaskData: Record<string, unknown> = {
-            parentId,
-            boardId: (parentTask as any).boardId,
-            columnId: (parentTask as any).columnId,
+          let subtaskData: Partial<CreateTaskRequest> & { parent_task_id?: string } = {
+            parent_task_id: parentId,
+            boardId: (parentTask as unknown as { boardId: string }).boardId,
+            columnId: (parentTask as unknown as { columnId: string }).columnId,
           };
 
-          if ((options as any).interactive ?? !options.title) {
+          if (options.interactive ?? !options.title) {
             const questions: Array<
               | {
                   type: string;
@@ -126,9 +141,20 @@ export function registerSubtaskCommands(program: Command): void {
             subtaskData.dueDate = options.due ?? subtaskData.dueDate;
           }
 
-          const subtask = await apiClient.createTask(subtaskData as unknown as CreateTaskRequest);
-          formatter.success(`Subtask created successfully: ${String((subtask as any).id)}`);
-          formatter.output(subtask);
+          // Validate required fields before creating
+          if (!subtaskData.title || !subtaskData.boardId) {
+            formatter.error('Missing required fields: title and boardId');
+            process.exit(1);
+          }
+
+          const subtask = await apiClient.createTask(subtaskData as CreateTaskRequest);
+          if ('data' in subtask && subtask.data && typeof subtask.data === 'object' && 'id' in subtask.data) {
+            formatter.success(`Subtask created successfully: ${String(subtask.data.id)}`);
+            formatter.output(subtask);
+          } else {
+            formatter.error('Failed to create subtask: Invalid response format');
+            process.exit(1);
+          }
         } catch (error) {
           formatter.error(
             `Failed to create subtask: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
@@ -156,14 +182,14 @@ export function registerSubtaskCommands(program: Command): void {
           params.status = options.status;
         }
 
-        const subtasks = (await apiClient.getTasks(params)) as any;
+        const subtasksResponse = await apiClient.getTasks(params);
 
-        if (!subtasks || subtasks.length === 0) {
+        if (!('data' in subtasksResponse) || !subtasksResponse.data || (subtasksResponse as TasksResponse).data.length === 0) {
           formatter.info(`No subtasks found for task ${String(parentId)}`);
           return;
         }
 
-        formatter.output(subtasks, {
+        formatter.output(subtasksResponse, {
           fields: ['id', 'title', 'status', 'priority', 'dueDate', 'createdAt'],
           headers: ['ID', 'Title', 'Status', 'Priority', 'Due Date', 'Created'],
         });
@@ -234,35 +260,33 @@ export function registerSubtaskCommands(program: Command): void {
       try {
         if (options.blocked) {
           // Show tasks that are blocked by this task
-          const blockedTasks = (await apiClient.request<AnyApiResponse>(
-            'GET',
+          const blockedTasksResponse = await apiClient.request<TasksResponse>(
             `/api/tasks/${String(taskId)}/blocking`
-          )) as any;
+          );
 
-          if (!blockedTasks || blockedTasks.length === 0) {
+          if (!blockedTasksResponse.data || blockedTasksResponse.data.length === 0) {
             formatter.info(`No tasks are blocked by task ${String(taskId)}`);
             return;
           }
 
           formatter.info(`Tasks blocked by ${String(taskId)}:`);
-          formatter.output(blockedTasks, {
+          formatter.output(blockedTasksResponse, {
             fields: ['id', 'title', 'status', 'priority'],
             headers: ['ID', 'Title', 'Status', 'Priority'],
           });
         } else {
           // Show dependencies of this task
-          const dependencies = (await apiClient.request<AnyApiResponse>(
-            'GET',
+          const dependenciesResponse = await apiClient.request<TasksResponse>(
             `/api/tasks/${String(taskId)}/dependencies`
-          )) as any;
+          );
 
-          if (!dependencies || dependencies.length === 0) {
+          if (!dependenciesResponse.data || dependenciesResponse.data.length === 0) {
             formatter.info(`Task ${String(taskId)} has no dependencies`);
             return;
           }
 
           formatter.info(`Dependencies for task ${String(taskId)}:`);
-          formatter.output(dependencies, {
+          formatter.output(dependenciesResponse, {
             fields: ['id', 'title', 'status', 'priority'],
             headers: ['ID', 'Title', 'Status', 'Priority'],
           });
@@ -289,7 +313,7 @@ export function registerSubtaskCommands(program: Command): void {
           `/api/tasks/${String(taskId)}/dependency-graph`,
           undefined,
           { depth: depth.toString() }
-        )) as any;
+        )) as unknown;
 
         if (!graph) {
           formatter.info(`No dependency graph available for task ${String(taskId)}`);

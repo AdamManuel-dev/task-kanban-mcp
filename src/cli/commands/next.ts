@@ -6,7 +6,12 @@
 import type { Command } from 'commander';
 import type { CliComponents } from '../types';
 
-const getComponents = (): CliComponents => global.cliComponents;
+const getComponents = (): CliComponents => {
+  if (!global.cliComponents) {
+    throw new Error('CLI components not initialized. Please initialize the CLI first.');
+  }
+  return global.cliComponents;
+};
 
 interface NextTaskOptions {
   board?: string;
@@ -25,6 +30,24 @@ interface NextTaskParams {
   skill_context?: string;
   priority_min?: number;
   exclude_task_ids?: string[];
+}
+
+interface Task {
+  id: string;
+  title: string;
+  description?: string;
+  status: string;
+  priority: number;
+  board_id: string;
+  assignee?: string;
+  due_date?: string;
+}
+
+interface NextTaskResponse {
+  data?: {
+    next_task?: Task;
+    reasoning?: string;
+  };
 }
 
 export function registerNextCommands(program: Command): void {
@@ -66,12 +89,12 @@ export function registerNextCommands(program: Command): void {
         // Call the API to get next task recommendation
         const response = await apiClient.request('POST', '/api/mcp/tools/get_next_task', params);
 
-        if (!response || !(response as any).data) {
+        if (!response || !(response as NextTaskResponse).data) {
           formatter.info('No suitable tasks found for current context');
           return;
         }
 
-        const { next_task: nextTask, reasoning } = (response as any).data;
+        const { next_task: nextTask, reasoning } = (response as NextTaskResponse).data!;
 
         if (!nextTask) {
           formatter.info('No tasks available that match your criteria');

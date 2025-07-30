@@ -30,15 +30,15 @@ export interface SanitizationResult {
 export class InputSanitizer {
   private static instance: InputSanitizer;
 
-  private readonly purify: any;
+  private readonly purify: unknown;
 
   constructor() {
     // Initialize DOMPurify with JSDOM for server-side sanitization
     const { window } = new JSDOM('');
-    this.purify = DOMPurify(window as any);
+    this.purify = DOMPurify(window as unknown);
 
     // Configure DOMPurify for strict sanitization
-    this.purify.addHook('beforeSanitizeElements', (node: any) => {
+    this.purify.addHook('beforeSanitizeElements', (node: unknown) => {
       // Remove all script tags and event handlers
       if (node.nodeName === 'SCRIPT' || node.nodeName === 'IFRAME') {
         node.remove();
@@ -56,7 +56,7 @@ export class InputSanitizer {
   /**
    * Sanitize text input with comprehensive security checks
    */
-  sanitizeText(input: string, options: SanitizationOptions = {}): SanitizationResult {
+  sanitizeText(input: unknown, options: SanitizationOptions = {}): SanitizationResult {
     const {
       allowHtml = false,
       maxLength = 1000,
@@ -68,7 +68,14 @@ export class InputSanitizer {
 
     let sanitized = input;
     const warnings: string[] = [];
-    const originalLength = input.length;
+
+    // Handle null/undefined inputs before accessing length
+    if (input === null || input === undefined) {
+      sanitized = '';
+      warnings.push('Input was converted to string');
+    }
+
+    const originalLength = String(sanitized).length;
 
     // 1. Basic safety checks
     if (typeof sanitized !== 'string') {
@@ -76,13 +83,47 @@ export class InputSanitizer {
       warnings.push('Input was converted to string');
     }
 
-    // 2. Length validation
+    // 2. Decode common encodings to catch encoded injection attempts
+    try {
+      const decoded = decodeURIComponent(sanitized);
+      if (decoded !== sanitized) {
+        sanitized = decoded;
+        warnings.push('URL encoded content was decoded');
+      }
+    } catch {
+      // Ignore decode errors, proceed with original string
+    }
+
+    // Also decode hex sequences
+    if (sanitized.includes('\\x')) {
+      const hexDecoded = sanitized.replace(/\\x([0-9A-Fa-f]{2})/g, (match: string, hex: string) =>
+        String.fromCharCode(parseInt(hex, 16))
+      );
+      if (hexDecoded !== sanitized) {
+        sanitized = hexDecoded;
+        warnings.push('Hex encoded content was decoded');
+      }
+    }
+
+    // Decode unicode sequences
+    if (sanitized.includes('\\u')) {
+      const unicodeDecoded = sanitized.replace(
+        /\\u([0-9A-Fa-f]{4})/g,
+        (match: string, hex: string) => String.fromCharCode(parseInt(hex, 16))
+      );
+      if (unicodeDecoded !== sanitized) {
+        sanitized = unicodeDecoded;
+        warnings.push('Unicode encoded content was decoded');
+      }
+    }
+
+    // 3. Length validation
     if (sanitized.length > maxLength) {
       sanitized = sanitized.substring(0, maxLength);
       warnings.push(`Input truncated to ${String(maxLength)} characters`);
     }
 
-    // 3. Strip control characters (except common whitespace)
+    // 4. Strip control characters (except common whitespace)
     if (stripControlChars) {
       const controlCharRegex = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g;
       const beforeStrip = sanitized;
@@ -92,24 +133,24 @@ export class InputSanitizer {
       }
     }
 
-    // 4. Command injection prevention
+    // 5. Command injection prevention
     if (preventInjection) {
       sanitized = InputSanitizer.preventCommandInjection(sanitized, warnings);
     }
 
-    // 5. HTML sanitization
+    // 6. HTML sanitization
     if (!allowHtml) {
       sanitized = this.purify.sanitize(sanitized, { ALLOWED_TAGS: [] });
     } else {
       sanitized = this.purify.sanitize(sanitized);
     }
 
-    // 6. Escape special characters for CLI safety
+    // 7. Escape special characters for CLI safety
     if (escapeSpecialChars) {
       sanitized = InputSanitizer.escapeCliSpecialChars(sanitized, warnings);
     }
 
-    // 7. Normalize whitespace
+    // 8. Normalize whitespace
     if (normalizeWhitespace) {
       const beforeNormalize = sanitized;
       sanitized = sanitized
@@ -121,7 +162,7 @@ export class InputSanitizer {
       }
     }
 
-    // 8. Additional character restrictions
+    // 9. Additional character restrictions
     if (options.allowedCharacters) {
       const beforeFilter = sanitized;
       sanitized = sanitized.replace(
@@ -143,7 +184,7 @@ export class InputSanitizer {
   }
 
   /**
-   * Prevent command injection attacks
+   * Prevent command injection attacks and dangerous protocols
    */
   private static preventCommandInjection(input: string, warnings: string[]): string {
     const dangerousPatterns = [
@@ -162,12 +203,22 @@ export class InputSanitizer {
       /`/g,
     ];
 
+    // Dangerous protocol patterns
+    const dangerousProtocols = [/javascript:/gi, /vbscript:/gi, /data:[^,]*script/gi];
+
     let sanitized = input;
     let hasInjectionAttempt = false;
 
     dangerousPatterns.forEach(pattern => {
       if (pattern.test(sanitized)) {
         sanitized = sanitized.replace(pattern, '');
+        hasInjectionAttempt = true;
+      }
+    });
+
+    dangerousProtocols.forEach(pattern => {
+      if (pattern.test(sanitized)) {
+        sanitized = sanitized.replace(pattern, 'blocked:');
         hasInjectionAttempt = true;
       }
     });
@@ -233,12 +284,28 @@ export class InputSanitizer {
       allowedCharacters: /[\w\-._~:/?#[\]@!$&'()*+,;=%]/,
     });
 
-    // Additional URL validation
-    try {
-      new URL(result.sanitized);
-    } catch {
-      result.warnings.push('Invalid URL format detected');
-      result.sanitized = '';
+    // Additional dangerous protocol check
+    const dangerousProtocols = ['javascript:', 'vbscript:', 'data:'];
+    const lowerSanitized = result.sanitized.toLowerCase();
+
+    for (const protocol of dangerousProtocols) {
+      if (lowerSanitized.includes(protocol)) {
+        result.sanitized = result.sanitized.replace(new RegExp(protocol, 'gi'), 'blocked:');
+        result.warnings.push(`Dangerous protocol ${protocol} was blocked`);
+        result.modified = true;
+        break;
+      }
+    }
+
+    // Additional URL validation for non-blocked URLs
+    if (!result.sanitized.startsWith('blocked:')) {
+      try {
+        new URL(result.sanitized);
+      } catch {
+        result.warnings.push('Invalid URL format detected');
+        result.sanitized = '';
+        result.modified = true;
+      }
     }
 
     return result;
@@ -292,7 +359,7 @@ export class InputSanitizer {
   /**
    * Sanitize board/column names
    */
-  sanitizeName(input: string, maxLength: number = 50): SanitizationResult {
+  sanitizeName(input: string, maxLength = 50): SanitizationResult {
     return this.sanitizeText(input, {
       allowHtml: false,
       maxLength,

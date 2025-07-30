@@ -7,10 +7,47 @@
 
 import express from 'express';
 import request from 'supertest';
-import { responseFormattingMiddleware } from '../../../src/middleware/response';
 
-// Import the routes after mocking
-import { taskRoutes } from '../../../src/routes/tasks';
+// Mock TaskService
+const mockTaskService = {
+  getTasks: jest.fn(),
+  getTaskById: jest.fn(),
+  createTask: jest.fn(),
+  updateTask: jest.fn(),
+  deleteTask: jest.fn(),
+  moveTask: jest.fn(),
+  getTasksWithDependencies: jest.fn(),
+  getTaskWithSubtasks: jest.fn(),
+  getTaskWithDependencies: jest.fn(),
+};
+
+jest.doMock('../../../src/services/TaskService', () => ({
+  TaskService: jest.fn().mockImplementation(() => mockTaskService),
+}));
+
+// Mock NoteService
+const mockNoteService = {
+  createNote: jest.fn(),
+  updateNote: jest.fn(),
+  deleteNote: jest.fn(),
+  getNoteById: jest.fn(),
+  getNotesByTaskId: jest.fn(),
+};
+
+jest.doMock('../../../src/services/NoteService', () => ({
+  NoteService: jest.fn().mockImplementation(() => mockNoteService),
+}));
+
+// Mock TagService
+const mockTagService = {
+  addTagsToTask: jest.fn(),
+  removeTagFromTask: jest.fn(),
+  getTagsByTaskId: jest.fn(),
+};
+
+jest.doMock('../../../src/services/TagService', () => ({
+  TagService: jest.fn().mockImplementation(() => mockTagService),
+}));
 
 // Mock the database connection
 const mockDbConnection = {
@@ -95,6 +132,10 @@ describe('Tasks Routes', () => {
   let taskId: string;
 
   beforeAll(async () => {
+    // Import after mocks are set up
+    const { responseFormattingMiddleware } = await import('../../../src/middleware/response');
+    const { taskRoutes } = await import('../../../src/routes/tasks');
+
     // Set up Express app
     app = express();
     app.use(express.json());
@@ -139,42 +180,39 @@ describe('Tasks Routes', () => {
 
   describe('GET /api/v1/tasks', () => {
     beforeEach(async () => {
-      // Mock service responses for test tasks
-      mockDbConnection.query.mockResolvedValue({
-        rows: [
-          {
-            id: taskId,
-            board_id: boardId,
-            column_id: columnId,
-            title: 'Test Task 1',
-            description: 'First test task',
-            status: 'todo',
-            position: 0,
-            priority: 1,
-          },
-          {
-            id: 'test-task-2',
-            board_id: boardId,
-            column_id: columnId,
-            title: 'Test Task 2',
-            description: 'Second test task',
-            status: 'in_progress',
-            position: 1,
-            priority: 2,
-          },
-          {
-            id: 'test-task-3',
-            board_id: boardId,
-            column_id: columnId,
-            title: 'Test Task 3',
-            description: 'Third test task',
-            status: 'done',
-            position: 2,
-            priority: 3,
-          },
-        ],
-        rowCount: 3,
-      });
+      // Mock service responses for test tasks - returns array directly
+      mockTaskService.getTasks.mockResolvedValue([
+        {
+          id: taskId,
+          board_id: boardId,
+          column_id: columnId,
+          title: 'Test Task 1',
+          description: 'First test task',
+          status: 'todo',
+          position: 0,
+          priority: 1,
+        },
+        {
+          id: 'test-task-2',
+          board_id: boardId,
+          column_id: columnId,
+          title: 'Test Task 2',
+          description: 'Second test task',
+          status: 'in_progress',
+          position: 1,
+          priority: 2,
+        },
+        {
+          id: 'test-task-3',
+          board_id: boardId,
+          column_id: columnId,
+          title: 'Test Task 3',
+          description: 'Third test task',
+          status: 'done',
+          position: 2,
+          priority: 3,
+        },
+      ]);
     });
 
     it('should return all tasks with default pagination', async () => {
@@ -186,9 +224,34 @@ describe('Tasks Routes', () => {
       expect(response.body.success).toBe(true);
       expect(response.body.data).toHaveLength(3);
       expect(response.body.data[0].title).toBe('Test Task 1');
+      expect(response.body.meta.pagination).toBeDefined();
     });
 
     it('should apply pagination parameters', async () => {
+      // Override the mock to return filtered results
+      mockTaskService.getTasks.mockResolvedValueOnce([
+        {
+          id: 'test-task-2',
+          board_id: boardId,
+          column_id: columnId,
+          title: 'Test Task 2',
+          description: 'Second test task',
+          status: 'in_progress',
+          position: 1,
+          priority: 2,
+        },
+        {
+          id: 'test-task-3',
+          board_id: boardId,
+          column_id: columnId,
+          title: 'Test Task 3',
+          description: 'Third test task',
+          status: 'done',
+          position: 2,
+          priority: 3,
+        },
+      ]);
+
       const response = await request(app)
         .get('/api/v1/tasks')
         .set('X-API-Key', 'test-api-key')
@@ -196,7 +259,7 @@ describe('Tasks Routes', () => {
         .expect(200);
 
       expect(response.body.data).toHaveLength(2);
-      expect(response.body.pagination.limit).toBe(2);
+      expect(response.body.meta.pagination.limit).toBe(2);
     });
 
     it('should filter tasks by board_id', async () => {
@@ -213,6 +276,20 @@ describe('Tasks Routes', () => {
     });
 
     it('should filter tasks by status', async () => {
+      // Override mock for status filtering
+      mockTaskService.getTasks.mockResolvedValueOnce([
+        {
+          id: taskId,
+          board_id: boardId,
+          column_id: columnId,
+          title: 'Test Task 1',
+          description: 'First test task',
+          status: 'todo',
+          position: 0,
+          priority: 1,
+        },
+      ]);
+
       const response = await request(app)
         .get('/api/v1/tasks')
         .set('X-API-Key', 'test-api-key')
@@ -224,6 +301,30 @@ describe('Tasks Routes', () => {
     });
 
     it('should filter tasks by priority range', async () => {
+      // Override mock for priority filtering
+      mockTaskService.getTasks.mockResolvedValueOnce([
+        {
+          id: 'test-task-2',
+          board_id: boardId,
+          column_id: columnId,
+          title: 'Test Task 2',
+          description: 'Second test task',
+          status: 'in_progress',
+          position: 1,
+          priority: 2,
+        },
+        {
+          id: 'test-task-3',
+          board_id: boardId,
+          column_id: columnId,
+          title: 'Test Task 3',
+          description: 'Third test task',
+          status: 'done',
+          position: 2,
+          priority: 3,
+        },
+      ]);
+
       const response = await request(app)
         .get('/api/v1/tasks')
         .set('X-API-Key', 'test-api-key')
@@ -238,6 +339,20 @@ describe('Tasks Routes', () => {
     });
 
     it('should search tasks by title', async () => {
+      // Override mock for search filtering
+      mockTaskService.getTasks.mockResolvedValueOnce([
+        {
+          id: 'test-task-2',
+          board_id: boardId,
+          column_id: columnId,
+          title: 'Test Task 2',
+          description: 'Second test task',
+          status: 'in_progress',
+          position: 1,
+          priority: 2,
+        },
+      ]);
+
       const response = await request(app)
         .get('/api/v1/tasks')
         .set('X-API-Key', 'test-api-key')
@@ -249,6 +364,40 @@ describe('Tasks Routes', () => {
     });
 
     it('should apply sorting', async () => {
+      // Override mock for sorting - return in priority order
+      mockTaskService.getTasks.mockResolvedValueOnce([
+        {
+          id: taskId,
+          board_id: boardId,
+          column_id: columnId,
+          title: 'Test Task 1',
+          description: 'First test task',
+          status: 'todo',
+          position: 0,
+          priority: 1,
+        },
+        {
+          id: 'test-task-2',
+          board_id: boardId,
+          column_id: columnId,
+          title: 'Test Task 2',
+          description: 'Second test task',
+          status: 'in_progress',
+          position: 1,
+          priority: 2,
+        },
+        {
+          id: 'test-task-3',
+          board_id: boardId,
+          column_id: columnId,
+          title: 'Test Task 3',
+          description: 'Third test task',
+          status: 'done',
+          position: 2,
+          priority: 3,
+        },
+      ]);
+
       const response = await request(app)
         .get('/api/v1/tasks')
         .set('X-API-Key', 'test-api-key')
@@ -269,19 +418,16 @@ describe('Tasks Routes', () => {
         priority: 5,
       };
 
-      mockDbConnection.query.mockResolvedValue({
-        rows: [
-          {
-            id: taskId,
-            ...taskData,
-            status: 'todo',
-            position: 0,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
-        ],
-        rowCount: 1,
-      });
+      const createdTask = {
+        id: taskId,
+        ...taskData,
+        status: 'todo',
+        position: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      mockTaskService.createTask.mockResolvedValue(createdTask);
 
       const response = await request(app)
         .post('/api/v1/tasks')
@@ -291,6 +437,7 @@ describe('Tasks Routes', () => {
 
       expect(response.body.success).toBe(true);
       expect(response.body.data.title).toBe('New Task');
+      expect(mockTaskService.createTask).toHaveBeenCalledWith(expect.objectContaining(taskData));
     });
 
     it('should validate required fields', async () => {
@@ -315,7 +462,7 @@ describe('Tasks Routes', () => {
         column_id: 'non-existent-column',
       };
 
-      mockDbConnection.query.mockRejectedValue(new Error('Database error'));
+      mockTaskService.createTask.mockRejectedValue(new Error('Database error'));
 
       const response = await request(app)
         .post('/api/v1/tasks')
@@ -330,7 +477,7 @@ describe('Tasks Routes', () => {
 
   describe('GET /api/v1/tasks/:id', () => {
     beforeEach(async () => {
-      mockDbConnection.queryOne.mockResolvedValue({
+      const mockTask = {
         id: taskId,
         board_id: boardId,
         column_id: columnId,
@@ -340,7 +487,9 @@ describe('Tasks Routes', () => {
         position: 0,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      });
+      };
+      
+      mockTaskService.getTaskById.mockResolvedValue(mockTask);
     });
 
     it('should return task by ID', async () => {
@@ -355,7 +504,7 @@ describe('Tasks Routes', () => {
     });
 
     it('should return 404 for non-existent task', async () => {
-      mockDbConnection.queryOne.mockResolvedValue(null);
+      mockTaskService.getTaskById.mockResolvedValue(null);
 
       const response = await request(app)
         .get('/api/v1/tasks/non-existent-id')
@@ -367,7 +516,7 @@ describe('Tasks Routes', () => {
     });
 
     it('should include subtasks when requested', async () => {
-      mockDbConnection.queryOne.mockResolvedValue({
+      const taskWithSubtasks = {
         id: taskId,
         board_id: boardId,
         column_id: columnId,
@@ -390,7 +539,9 @@ describe('Tasks Routes', () => {
             updated_at: new Date().toISOString(),
           },
         ],
-      });
+      };
+
+      mockTaskService.getTaskWithSubtasks.mockResolvedValue(taskWithSubtasks);
 
       const response = await request(app)
         .get(`/api/v1/tasks/${String(taskId)}`)
@@ -404,7 +555,7 @@ describe('Tasks Routes', () => {
     });
 
     it('should include dependencies when requested', async () => {
-      mockDbConnection.queryOne.mockResolvedValue({
+      const taskWithDependencies = {
         id: taskId,
         board_id: boardId,
         column_id: columnId,
@@ -427,7 +578,9 @@ describe('Tasks Routes', () => {
             updated_at: new Date().toISOString(),
           },
         ],
-      });
+      };
+
+      mockTaskService.getTaskWithDependencies.mockResolvedValue(taskWithDependencies);
 
       const response = await request(app)
         .get(`/api/v1/tasks/${String(taskId)}`)
@@ -443,7 +596,7 @@ describe('Tasks Routes', () => {
 
   describe('PATCH /api/v1/tasks/:id', () => {
     beforeEach(async () => {
-      mockDbConnection.queryOne.mockResolvedValue({
+      const originalTask = {
         id: taskId,
         board_id: boardId,
         column_id: columnId,
@@ -453,7 +606,9 @@ describe('Tasks Routes', () => {
         position: 0,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      });
+      };
+      
+      mockTaskService.getTaskById.mockResolvedValue(originalTask);
     });
 
     it('should update task fields', async () => {
@@ -463,7 +618,7 @@ describe('Tasks Routes', () => {
         status: 'in_progress',
       };
 
-      mockDbConnection.queryOne.mockResolvedValue({
+      const updatedTask = {
         id: taskId,
         board_id: boardId,
         column_id: columnId,
@@ -471,7 +626,9 @@ describe('Tasks Routes', () => {
         position: 0,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      });
+      };
+
+      mockTaskService.updateTask.mockResolvedValue(updatedTask);
 
       const response = await request(app)
         .patch(`/api/v1/tasks/${String(taskId)}`)
@@ -482,10 +639,11 @@ describe('Tasks Routes', () => {
       expect(response.body.success).toBe(true);
       expect(response.body.data.title).toBe('Updated Task');
       expect(response.body.data.status).toBe('in_progress');
+      expect(mockTaskService.updateTask).toHaveBeenCalledWith(taskId, expect.objectContaining(updateData));
     });
 
     it('should return 404 for non-existent task', async () => {
-      mockDbConnection.queryOne.mockRejectedValue(new Error('Not found'));
+      mockTaskService.updateTask.mockRejectedValue(new Error('Not found'));
 
       const response = await request(app)
         .patch('/api/v1/tasks/non-existent-id')
@@ -511,20 +669,20 @@ describe('Tasks Routes', () => {
 
   describe('DELETE /api/v1/tasks/:id', () => {
     beforeEach(async () => {
-      mockDbConnection.queryOne.mockResolvedValue(undefined);
+      mockTaskService.deleteTask.mockResolvedValue(true);
     });
 
     it('should delete task', async () => {
       const response = await request(app)
         .delete(`/api/v1/tasks/${String(taskId)}`)
         .set('X-API-Key', 'test-api-key')
-        .expect(200);
+        .expect(204);
 
-      expect(response.body.success).toBe(true);
+      expect(mockTaskService.deleteTask).toHaveBeenCalledWith(taskId);
     });
 
     it('should return 404 for non-existent task', async () => {
-      mockDbConnection.queryOne.mockRejectedValue(new Error('Not found'));
+      mockTaskService.deleteTask.mockRejectedValue(new Error('Not found'));
 
       const response = await request(app)
         .delete('/api/v1/tasks/non-existent-id')

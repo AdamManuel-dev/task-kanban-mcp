@@ -11,19 +11,24 @@ export class WebSocketAuth {
   }
 
   private initializeApiKeys(): void {
-    // Initialize with default API keys from environment or hardcoded defaults
+    // Initialize with API keys from environment - no hardcoded defaults
     const defaultApiKeys = process.env.DEFAULT_API_KEYS?.split(',') ?? [];
+    
+    // Only add valid API keys (minimum length requirements)
     defaultApiKeys.forEach((key, index) => {
-      this.apiKeys.set(key, {
-        id: `api_user_${String(index)}`,
-        name: `API User ${String(index)}`,
-        role: 'user',
-      });
+      if (key && key.length >= 32) {
+        this.apiKeys.set(key, {
+          id: `api_user_${String(index)}`,
+          name: `API User ${String(index)}`,
+          role: 'user',
+        });
+      }
     });
 
-    // Add a default dev key if in development
-    if (process.env.NODE_ENV === 'development') {
-      this.apiKeys.set('dev-key-1', {
+    // Add a development key only if explicitly enabled and in development
+    if (process.env.NODE_ENV === 'development' && process.env.ENABLE_DEV_API_KEY === 'true') {
+      logger.warn('Development API key enabled - not for production use');
+      this.apiKeys.set('dev-key-12345678901234567890123456789012', {
         id: 'dev_user',
         name: 'Development User',
         role: 'admin',
@@ -71,7 +76,7 @@ export class WebSocketAuth {
     }
   }
 
-  private static authenticateWithJWT(token: string): Promise<AuthenticationResult> {
+  private static async authenticateWithJWT(token: string): Promise<AuthenticationResult> {
     return new Promise(resolve => {
       try {
         const jwtSecret = process.env.JWT_SECRET ?? 'dev-secret-key-change-in-production';
@@ -161,7 +166,7 @@ export class WebSocketAuth {
     }
   }
 
-  private static authenticateWithCredentials(credentials: {
+  private static async authenticateWithCredentials(credentials: {
     email: string;
     password: string;
   }): Promise<AuthenticationResult> {
@@ -263,18 +268,14 @@ export class WebSocketAuth {
     return false;
   }
 
-  static canAccessBoard(
-    permissions: Set<string>,
-    boardId: string,
-    action: string = 'read'
-  ): boolean {
+  static canAccessBoard(permissions: Set<string>, boardId: string, action = 'read'): boolean {
     return (
       WebSocketAuth.hasPermission(permissions, `${String(action)}:all`) ||
       WebSocketAuth.hasPermission(permissions, `${String(action)}:board:${String(boardId)}`)
     );
   }
 
-  static canAccessTask(permissions: Set<string>, taskId: string, action: string = 'read'): boolean {
+  static canAccessTask(permissions: Set<string>, taskId: string, action = 'read'): boolean {
     return (
       WebSocketAuth.hasPermission(permissions, `${String(action)}:all`) ||
       WebSocketAuth.hasPermission(permissions, `${String(action)}:task:${String(taskId)}`)
@@ -289,17 +290,13 @@ export class WebSocketAuth {
   }
 
   // Generate JWT tokens (for testing or client integration)
-  static generateJWT(
-    user: WebSocketUser,
-    permissions: string[],
-    expiresIn: string = '24h'
-  ): string {
+  static generateJWT(user: WebSocketUser, permissions: string[], expiresIn = '24h'): string {
     const jwtSecret = process.env.JWT_SECRET ?? 'dev-secret-key-change-in-production';
     if (!jwtSecret || jwtSecret === 'dev-secret-key-change-in-production') {
       logger.warn('JWT generation using default secret - configure JWT_SECRET in production');
     }
 
-    const payload: any = {
+    const payload: unknown = {
       userId: user.id,
       permissions,
     };

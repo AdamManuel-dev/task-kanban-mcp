@@ -16,7 +16,12 @@ import type { MoveTaskOptions } from './types';
  * Register the move command
  */
 export function registerMoveCommand(taskCmd: Command): void {
-  const getComponents = (): CliComponents => global.cliComponents;
+  const getComponents = (): CliComponents => {
+    if (!global.cliComponents) {
+      throw new Error('CLI components not initialized. Please initialize the CLI first.');
+    }
+    return global.cliComponents;
+  };
 
   taskCmd
     .command('move <id> <column>')

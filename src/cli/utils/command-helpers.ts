@@ -27,7 +27,7 @@ export const getComponents = (): CliComponents => {
  * Higher-order function to inject API client into command handlers
  */
 export const withApiClient =
-  <T, Args extends unknown[]>(handler: (client: any, ...args: Args) => Promise<T>) =>
+  <T, Args extends unknown[]>(handler: (client: unknown, ...args: Args) => Promise<T>) =>
   async (...args: Args): Promise<T> => {
     const { apiClient } = getComponents();
     return handler(apiClient, ...args);
@@ -155,10 +155,7 @@ export const ensureBoardId = (providedBoardId?: string): string => {
  * Common pattern for API responses with data validation
  */
 export const withDataValidation =
-  <T>(
-    validator: (response: unknown) => response is { data: T },
-    noDataMessage: string = 'No data found'
-  ) =>
+  <T>(validator: (response: unknown) => response is { data: T }, noDataMessage = 'No data found') =>
   (response: unknown): T => {
     const { formatter } = getComponents();
 
@@ -180,10 +177,7 @@ export const validateDataResponse = withDataValidation(hasValidData, 'No data av
 /**
  * Helper for interactive confirmation prompts
  */
-export const confirmAction = async (
-  message: string,
-  defaultValue: boolean = false
-): Promise<boolean> => {
+export const confirmAction = async (message: string, defaultValue = false): Promise<boolean> => {
   const inquirer = await import('inquirer');
   const { confirm } = await inquirer.default.prompt<{ confirm: boolean }>([
     {
@@ -214,7 +208,7 @@ export const formatOutput = <T>(
     formatter.info(options.title);
   }
 
-  if (options?.fields && options?.headers) {
+  if (options?.fields && options.headers) {
     formatter.output(data, {
       fields: options.fields,
       headers: options.headers,
@@ -239,7 +233,7 @@ export const showSuccess = (message: string, data?: unknown): void => {
 /**
  * Helper for standardized error messages
  */
-export const showError = (message: string, exitCode: number = 1): never => {
+export const showError = (message: string, exitCode = 1): never => {
   const { formatter } = getComponents();
   formatter.error(message);
   process.exit(exitCode);
@@ -269,11 +263,7 @@ export const buildFilterParams = (options: Record<string, unknown>): Record<stri
 /**
  * Helper to parse and validate limit parameters
  */
-export const parseLimit = (
-  limitStr?: string,
-  defaultLimit: number = 20,
-  maxLimit: number = 100
-): number => {
+export const parseLimit = (limitStr?: string, defaultLimit = 20, maxLimit = 100): number => {
   if (!limitStr) return defaultLimit;
 
   const limit = parseInt(limitStr, 10);
@@ -290,7 +280,7 @@ export const parseLimit = (
 export const parseSortParams = (
   sort?: string,
   order?: string,
-  defaultSort: string = 'createdAt',
+  defaultSort = 'createdAt',
   validSortFields: string[] = ['createdAt', 'updatedAt', 'priority', 'title']
 ): { sort: string; order: 'asc' | 'desc' } => {
   const validSort = sort && validSortFields.includes(sort) ? sort : defaultSort;

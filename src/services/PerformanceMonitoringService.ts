@@ -143,14 +143,17 @@ export class PerformanceMonitoringService extends EventEmitter {
 
       // Track database queries
       const originalQuery = dbConnection.query.bind(dbConnection);
-      dbConnection.query = async function <T = any>(sql: string, params?: any): Promise<T[]> {
+      dbConnection.query = async function <T = unknown>(
+        sql: string,
+        params?: unknown
+      ): Promise<T[]> {
         const queryStart = Date.now();
         dbQueryCount++;
         try {
           const result = (await originalQuery.call(this, sql, params)) as T[];
           const queryTime = Date.now() - queryStart;
           dbQueryTime += queryTime;
-          (globalThis as any).trackDbQuery?.(String(sql), queryTime);
+          (globalThis as unknown).trackDbQuery?.(String(sql), queryTime);
           return result;
         } catch (error) {
           const queryTime = Date.now() - queryStart;
@@ -161,7 +164,7 @@ export class PerformanceMonitoringService extends EventEmitter {
 
       // Capture response
       const originalSend = res.send;
-      res.send = function captureResponseMetrics(body: any) {
+      res.send = function captureResponseMetrics(body: unknown) {
         const responseTime = Date.now() - startTime;
         const endCpuUsage = process.cpuUsage(startCpuUsage);
 
@@ -178,8 +181,8 @@ export class PerformanceMonitoringService extends EventEmitter {
           cpuUsage: endCpuUsage,
           dbQueryCount,
           dbQueryTime,
-          userAgent: req.get('User-Agent') || '',
-          userId: (req as any).user?.id || '',
+          userAgent: req.get('User-Agent') ?? '',
+          userId: (req as unknown).user?.id || '',
           error: res.statusCode >= 400 ? String(body) : '',
         };
 
@@ -270,7 +273,7 @@ export class PerformanceMonitoringService extends EventEmitter {
     // Top endpoints analysis
     const endpointStats = this.analyzeEndpoints(last24h);
     const topEndpoints = Object.entries(endpointStats)
-      .map(([endpoint, stats]: [string, any]) => ({
+      .map(([endpoint, stats]: [string, unknown]) => ({
         endpoint,
         requests: stats.count,
         averageTime: stats.totalTime / stats.count,
@@ -297,8 +300,8 @@ export class PerformanceMonitoringService extends EventEmitter {
       .map(([ruleId, state]) => {
         const rule = this.alertRules.find(r => r.id === ruleId);
         return {
-          type: rule?.severity || ('warning' as const),
-          message: rule?.name || `Alert ${ruleId}`,
+          type: rule?.severity ?? ('warning' as const),
+          message: rule?.name ?? `Alert ${ruleId}`,
           timestamp: state.since,
           resolved: false,
         };
@@ -384,17 +387,17 @@ export class PerformanceMonitoringService extends EventEmitter {
     const key = metric.endpoint;
 
     // Update request counts
-    this.requestCounts.set(key, (this.requestCounts.get(key) || 0) + 1);
+    this.requestCounts.set(key, (this.requestCounts.get(key) ?? 0) + 1);
 
     // Update response times
-    const times = this.responseTimes.get(key) || [];
+    const times = this.responseTimes.get(key) ?? [];
     times.push(metric.responseTime);
     if (times.length > 1000) times.shift(); // Keep last 1000 measurements
     this.responseTimes.set(key, times);
 
     // Update error counts
     if (metric.statusCode >= 400) {
-      this.errorCounts.set(key, (this.errorCounts.get(key) || 0) + 1);
+      this.errorCounts.set(key, (this.errorCounts.get(key) ?? 0) + 1);
     }
   }
 
@@ -493,7 +496,7 @@ export class PerformanceMonitoringService extends EventEmitter {
 
   private trackDbQuery(query: string, time: number): void {
     const key = query.replace(/\s+/g, ' ').trim();
-    const stats = this.dbQueryTracker.get(key) || { count: 0, totalTime: 0 };
+    const stats = this.dbQueryTracker.get(key) ?? { count: 0, totalTime: 0 };
     stats.count++;
     stats.totalTime += time;
     this.dbQueryTracker.set(key, stats);
@@ -584,7 +587,7 @@ export class PerformanceMonitoringService extends EventEmitter {
     return Math.max(0, Math.round(score));
   }
 
-  private calculateTrends(_metrics: PerformanceMetrics[]): any {
+  private calculateTrends(_metrics: PerformanceMetrics[]): unknown {
     // Simplified trend calculation - would implement proper time bucketing
     return {
       responseTimeTrend: [],
@@ -593,8 +596,8 @@ export class PerformanceMonitoringService extends EventEmitter {
     };
   }
 
-  private analyzeEndpoints(metrics: PerformanceMetrics[]): Record<string, any> {
-    const stats: Record<string, any> = {};
+  private analyzeEndpoints(metrics: PerformanceMetrics[]): Record<string, unknown> {
+    const stats: Record<string, unknown> = {};
 
     for (const metric of metrics) {
       if (!stats[metric.endpoint]) {
@@ -616,7 +619,7 @@ export class PerformanceMonitoringService extends EventEmitter {
     return 0;
   }
 
-  private getDatabaseHealth(): any {
+  private getDatabaseHealth(): unknown {
     return {
       connectionPoolSize: 10,
       activeQueries: 0,

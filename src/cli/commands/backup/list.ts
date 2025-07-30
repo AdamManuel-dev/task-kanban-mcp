@@ -63,7 +63,12 @@ function formatRelativeTime(timestamp: string): string {
  * Register the backup list command
  */
 export function registerListCommand(backupCmd: Command): void {
-  const getComponents = (): CliComponents => global.cliComponents;
+  const getComponents = (): CliComponents => {
+    if (!global.cliComponents) {
+      throw new Error('CLI components not initialized. Please initialize the CLI first.');
+    }
+    return global.cliComponents;
+  };
 
   backupCmd
     .command('list')

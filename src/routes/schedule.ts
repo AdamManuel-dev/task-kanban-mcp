@@ -180,7 +180,7 @@ router.post('/create', validateRequest(CreateScheduleSchema), async (req, res) =
  */
 router.get('/list', validateRequest(ListSchedulesSchema), async (req, res) => {
   try {
-    const options = req.query as any;
+    const options = req.query as unknown;
     const { schedulingService } = getServices();
     const schedules = await schedulingService.getSchedules(options);
 

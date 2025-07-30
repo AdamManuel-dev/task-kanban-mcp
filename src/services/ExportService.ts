@@ -395,7 +395,7 @@ export class ExportService {
 
     query += ' ORDER BY created_at DESC';
 
-    return this.db.query<Board>(query, params as any[]);
+    return this.db.query<Board>(query, params);
   }
 
   private async getColumns(boardIds: string[]): Promise<Column[]> {
@@ -433,7 +433,7 @@ export class ExportService {
 
     query += ' ORDER BY created_at DESC';
 
-    return this.db.query<Task>(query, params as any[]);
+    return this.db.query<Task>(query, params);
   }
 
   private async getTags(_options: ExportOptions): Promise<Tag[]> {
@@ -461,7 +461,7 @@ export class ExportService {
 
     query += ' ORDER BY created_at DESC';
 
-    return await this.db.query<Note>(query, params as any[]);
+    return await this.db.query<Note>(query, params);
   }
 
   private static convertArrayToCSV(data: unknown[], columns: string[]): string {
@@ -507,7 +507,7 @@ export class ExportService {
           [
             board.id,
             board.name,
-            board.description || null,
+            board.description ?? null,
             (board as Board & { is_active?: boolean }).is_active ?? true,
             board.created_at,
             board.updated_at,
@@ -537,7 +537,7 @@ export class ExportService {
             column.board_id,
             column.name,
             column.position,
-            column.wip_limit || null,
+            column.wip_limit ?? null,
             column.created_at,
             column.updated_at,
           ]
@@ -588,18 +588,18 @@ export class ExportService {
           [
             task.id,
             task.title,
-            task.description || null,
+            task.description ?? null,
             task.board_id,
             task.column_id,
             task.position,
             task.priority,
             task.status,
-            task.assignee || null,
-            task.due_date || null,
-            task.estimated_hours || null,
-            task.actual_hours || null,
-            task.parent_task_id || null,
-            task.metadata || null,
+            task.assignee ?? null,
+            task.due_date ?? null,
+            task.estimated_hours ?? null,
+            task.actual_hours ?? null,
+            task.parent_task_id ?? null,
+            task.metadata ?? null,
             task.created_at,
             task.updated_at,
           ]
@@ -646,9 +646,9 @@ export class ExportService {
           [
             tag.id,
             tag.name,
-            tag.color || null,
-            tag.description || null,
-            tag.parent_tag_id || null,
+            tag.color ?? null,
+            tag.description ?? null,
+            tag.parent_tag_id ?? null,
             tag.created_at,
           ]
         );
@@ -755,7 +755,7 @@ export class ExportService {
         : this.anonymizeText(board.name, 'Board', options?.hashSeed),
       description:
         board.description && options?.anonymizeDescriptions
-          ? this.anonymizeText(board.description, 'BoardDesc', options?.hashSeed)
+          ? this.anonymizeText(board.description, 'BoardDesc', options.hashSeed)
           : board.description,
     }));
   }
@@ -779,14 +779,14 @@ export class ExportService {
     return tasks.map(task => ({
       ...task,
       title: options?.anonymizeTaskTitles
-        ? this.anonymizeText(task.title, 'Task', options?.hashSeed)
+        ? this.anonymizeText(task.title, 'Task', options.hashSeed)
         : task.title,
       description:
         task.description && options?.anonymizeDescriptions
-          ? this.anonymizeText(task.description, 'TaskDesc', options?.hashSeed)
+          ? this.anonymizeText(task.description, 'TaskDesc', options.hashSeed)
           : task.description,
       assignee: options?.anonymizeUserData
-        ? this.anonymizeText(task.assignee ?? 'unknown', 'User', options?.hashSeed)
+        ? this.anonymizeText(task.assignee ?? 'unknown', 'User', options.hashSeed)
         : task.assignee,
     }));
   }
@@ -802,7 +802,7 @@ export class ExportService {
         : this.anonymizeText(tag.name, 'Tag', options?.hashSeed),
       description:
         tag.description && options?.anonymizeDescriptions
-          ? this.anonymizeText(tag.description, 'TagDesc', options?.hashSeed)
+          ? this.anonymizeText(tag.description, 'TagDesc', options.hashSeed)
           : tag.description,
     }));
   }
@@ -814,7 +814,7 @@ export class ExportService {
     return notes.map(note => ({
       ...note,
       content: options?.anonymizeNotes
-        ? this.anonymizeText(note.content, 'Note', options?.hashSeed)
+        ? this.anonymizeText(note.content, 'Note', options.hashSeed)
         : note.content,
     }));
   }

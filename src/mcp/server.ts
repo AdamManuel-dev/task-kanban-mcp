@@ -304,7 +304,7 @@ export class MCPKanbanServer {
    * await server.stop();
    * ```
    */
-  async stop(exitProcess: boolean = true): Promise<void> {
+  async stop(exitProcess = true): Promise<void> {
     try {
       logger.info('Stopping MCP Kanban server...');
 

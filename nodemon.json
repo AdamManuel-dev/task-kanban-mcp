@@ -11,7 +11,7 @@
     "data",
     "backups"
   ],
-  "exec": "ts-node -r tsconfig-paths/register src/index.ts",
+  "exec": "tsc --noEmit && ts-node -r tsconfig-paths/register src/index.ts",
   "env": {
     "NODE_ENV": "development"
   },

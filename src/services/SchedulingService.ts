@@ -173,7 +173,7 @@ export class SchedulingService {
     } = {}
   ): Promise<BackupSchedule[]> {
     let query = 'SELECT * FROM backup_schedules WHERE 1=1';
-    const params: any[] = [];
+    const params: unknown[] = [];
 
     if (options.enabled !== undefined) {
       query += ' AND enabled = ?';
@@ -362,7 +362,7 @@ export class SchedulingService {
     try {
       const schedules = await this.getSchedules({ enabled: true });
 
-      await Promise.all(schedules.map(schedule => this.executeBackup(schedule)));
+      await Promise.all(schedules.map(async schedule => this.executeBackup(schedule)));
     } catch (error) {
       logger.error('Failed to load and start schedules:', error);
     }

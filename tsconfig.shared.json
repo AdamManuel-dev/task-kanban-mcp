@@ -1,0 +1,23 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "outDir": "./dist/shared",
+    "rootDir": "./src",
+    "tsBuildInfoFile": "./dist/.tsbuildinfo-shared",
+    "noEmit": false
+  },
+  "include": [
+    "src/types/**/*",
+    "src/constants/**/*",
+    "src/database/connection.ts",
+    "src/database/migrations/**/*",
+    "src/utils/logger.ts",
+    "src/utils/errors.ts",
+    "src/utils/validation.ts",
+    "src/utils/type-guards.ts",
+    "src/utils/result.ts"
+  ],
+  "exclude": ["src/**/*.test.ts", "src/**/*.spec.ts"],
+  "references": []
+}

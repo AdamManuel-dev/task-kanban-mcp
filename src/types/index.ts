@@ -231,7 +231,7 @@ export interface BoardWithStats extends Board {
 export interface ServiceError extends Error {
   code: string;
   statusCode: number;
-  details?: string | number | boolean | null | undefined | { [key: string]: unknown } | unknown[];
+  details?: string | number | boolean | null | undefined | Record<string, unknown> | unknown[];
 }
 
 export interface PaginationOptions {

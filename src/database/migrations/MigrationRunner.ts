@@ -18,8 +18,33 @@ export class MigrationRunner {
   constructor(db: Database, options: MigrationOptions = {}) {
     this.db = db;
     this.migrationsPath = options.migrationsPath ?? path.join(__dirname, '.');
-    this.tableName = options.tableName ?? 'schema_migrations';
+
+    // Validate table name to prevent SQL injection
+    const tableName = options.tableName ?? 'schema_migrations';
+    MigrationRunner.validateMigrationTableName(tableName);
+    this.tableName = tableName;
+
     this.validateChecksums = options.validateChecksums !== false;
+  }
+
+  /**
+   * Validates migration table names to prevent SQL injection
+   */
+  private static validateMigrationTableName(tableName: string): void {
+    // Allow only valid migration table names
+    const validMigrationTables = ['schema_migrations', 'schema_versions', 'migration_history'];
+    if (!validMigrationTables.includes(tableName)) {
+      throw new Error(
+        `Invalid migration table name. Must be one of: ${validMigrationTables.join(', ')}`
+      );
+    }
+
+    // Additional validation: alphanumeric and underscores only
+    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(tableName)) {
+      throw new Error(
+        `Invalid table name format. Must contain only letters, numbers, and underscores.`
+      );
+    }
   }
 
   /**
@@ -81,7 +106,7 @@ export class MigrationRunner {
           }
 
           const id = `${number}_${description}`;
-          const checksum = this.calculateChecksum(content);
+          const checksum = MigrationRunner.calculateChecksum(content);
 
           return {
             id,
@@ -277,8 +302,8 @@ export class MigrationRunner {
   ): Promise<void> {
     const run = promisify(this.db.run.bind(this.db)) as (
       sql: string,
-      ...params: any[]
-    ) => Promise<any>;
+      ...params: unknown[]
+    ) => Promise<unknown>;
 
     // Start transaction
     await run('BEGIN TRANSACTION');
@@ -318,7 +343,7 @@ export class MigrationRunner {
   /**
    * Calculate checksum for a file content
    */
-  private calculateChecksum(content: string): string {
+  private static calculateChecksum(content: string): string {
     return crypto.createHash('sha256').update(content).digest('hex');
   }
 

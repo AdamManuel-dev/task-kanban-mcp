@@ -1,13 +1,30 @@
+/**
+ * @fileoverview Note management CLI commands
+ * @lastmodified 2025-07-28T10:30:00Z
+ *
+ * Features: Note CRUD operations, search, categorization, pinning capabilities
+ * Main APIs: registerNoteCommands() - comprehensive note CLI command suite
+ * Constraints: Requires API client, handles task-note relationships
+ * Patterns: Interactive prompts, category filtering, search functionality
+ */
+
 import type { Command } from 'commander';
 import inquirer from 'inquirer';
-import type { CliComponents, CreateNoteRequest } from '../types';
+import type { CliComponents, CreateNoteRequest, UpdateNoteRequest } from '../types';
+import type { Note } from '../../types';
 import { buildSearchNotesParams } from '../utils/parameter-builder';
+import { formatErrorMessage } from '../../utils/type-guards';
 
 export function registerNoteCommands(program: Command): void {
   const noteCmd = program.command('note').alias('n').description('Manage notes');
 
   // Get global components with proper typing
-  const getComponents = (): CliComponents => global.cliComponents;
+  const getComponents = (): CliComponents => {
+    if (!global.cliComponents) {
+      throw new Error('CLI components not initialized. Please initialize the CLI first.');
+    }
+    return global.cliComponents;
+  };
 
   noteCmd
     .command('list')
@@ -32,7 +49,7 @@ export function registerNoteCommands(program: Command): void {
 
         try {
           const params = buildSearchNotesParams({
-            limit: parseInt(options.limit || '20', 10),
+            limit: parseInt(options.limit ?? '20', 10),
             ...(options.category && { category: options.category }),
             ...(options.task && { taskId: options.task }),
             ...(options.pinned && { pinned: 'true' }),
@@ -110,7 +127,7 @@ export function registerNoteCommands(program: Command): void {
 
         let noteData: Partial<CreateNoteRequest> = {};
 
-        if ((options as any).interactive ?? !options.title) {
+        if (options.interactive ?? !options.title) {
           const questions: Array<{
             type: string;
             name: string;
@@ -173,17 +190,15 @@ export function registerNoteCommands(program: Command): void {
         noteData.category = (options.category ?? noteData.category ?? 'general') as NonNullable<
           CreateNoteRequest['category']
         >;
-        noteData.taskId = options.task ?? (noteData as any).taskId;
+        noteData.taskId = options.task ?? noteData.taskId;
         noteData.pinned = options.pin ?? noteData.pinned ?? false;
 
         try {
           const note = await apiClient.createNote(noteData as CreateNoteRequest);
-          formatter.success(`Note created successfully: ${String(String(note.data?.id))}`);
+          formatter.success(`Note created successfully: ${note.data.id}`);
           formatter.output(note);
         } catch (error) {
-          formatter.error(
-            `Failed to create note: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
-          );
+          formatter.error(formatErrorMessage('Failed to create note', error));
           process.exit(1);
         }
       }
@@ -199,94 +214,109 @@ export function registerNoteCommands(program: Command): void {
     .option('--pin', 'pin the note')
     .option('--unpin', 'unpin the note')
     .option('-i, --interactive', 'interactive mode')
-    .action(async (id: string, options) => {
-      const { apiClient, formatter } = getComponents();
+    .action(
+      async (
+        id: string,
+        options: {
+          title?: string;
+          content?: string;
+          category?: string;
+          task?: string;
+          pin?: boolean;
+          unpin?: boolean;
+          interactive?: boolean;
+        }
+      ) => {
+        const { apiClient, formatter } = getComponents();
 
-      try {
-        // Get current note data
-        const currentNote = (await apiClient.getNote(id)) as any;
-        if (!currentNote) {
-          formatter.error(`Note ${String(id)} not found`);
+        try {
+          // Get current note data
+          const noteResponse = await apiClient.getNote(id);
+          if (!noteResponse || !('data' in noteResponse)) {
+            formatter.error(`Note ${String(id)} not found`);
+            process.exit(1);
+          }
+
+          const currentNote = noteResponse.data as Note;
+
+          let updates: UpdateNoteRequest = {};
+
+          if (options.interactive) {
+            const answers = await inquirer.prompt([
+              {
+                type: 'input',
+                name: 'title',
+                message: 'Note title:',
+                default: currentNote.content,
+              },
+              {
+                type: 'editor',
+                name: 'content',
+                message: 'Note content:',
+                default: currentNote.content ?? '',
+              },
+              {
+                type: 'list',
+                name: 'category',
+                message: 'Note category:',
+                choices: ['general', 'implementation', 'research', 'blocker', 'idea'],
+                default: currentNote.category ?? 'general',
+              },
+              {
+                type: 'confirm',
+                name: 'pinned',
+                message: 'Pin this note?',
+                default: currentNote.pinned ?? false,
+              },
+            ]);
+            updates = answers;
+          } else {
+            // Use command line options
+            if (options.content) updates.content = options.content;
+            if (options.category)
+              updates.category = options.category as UpdateNoteRequest['category'];
+            if (options.pin) updates.pinned = true;
+            if (options.unpin) updates.pinned = false;
+          }
+
+          if (Object.keys(updates).length === 0) {
+            formatter.warn('No updates specified');
+            return;
+          }
+
+          const updatedNote = (await apiClient.updateNote(id, updates)) as unknown;
+          formatter.success('Note updated successfully');
+          formatter.output(updatedNote);
+        } catch (error) {
+          formatter.error(formatErrorMessage('Failed to update note', error));
           process.exit(1);
         }
-
-        let updates: Partial<{ title: string; content: string; tags: string; isPrivate: boolean }> =
-          {};
-
-        if (options.interactive) {
-          const answers = await inquirer.prompt([
-            {
-              type: 'input',
-              name: 'title',
-              message: 'Note title:',
-              default: currentNote.title,
-            },
-            {
-              type: 'editor',
-              name: 'content',
-              message: 'Note content:',
-              default: currentNote.content ?? '',
-            },
-            {
-              type: 'list',
-              name: 'category',
-              message: 'Note category:',
-              choices: ['general', 'implementation', 'research', 'blocker', 'idea'],
-              default: currentNote.category ?? 'general',
-            },
-            {
-              type: 'confirm',
-              name: 'pinned',
-              message: 'Pin this note?',
-              default: currentNote.pinned ?? false,
-            },
-          ]);
-          updates = answers;
-        } else {
-          // Use command line options
-          if (options.content) updates.content = options.content;
-          if (options.category) (updates as any).category = options.category;
-          if (options.pin) (updates as any).pinned = true;
-          if (options.unpin) (updates as any).pinned = false;
-        }
-
-        if (Object.keys(updates).length === 0) {
-          formatter.warn('No updates specified');
-          return;
-        }
-
-        const updatedNote = (await apiClient.updateNote(id, updates)) as any;
-        formatter.success('Note updated successfully');
-        formatter.output(updatedNote);
-      } catch (error) {
-        formatter.error(
-          `Failed to update note: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
-        );
-        process.exit(1);
       }
-    });
+    );
 
   noteCmd
     .command('delete <id>')
     .alias('rm')
     .description('Delete a note')
     .option('-f, --force', 'skip confirmation')
-    .action(async (id: string, options) => {
+    .action(async (id: string, options: { force?: boolean }) => {
       const { apiClient, formatter } = getComponents();
 
       try {
         if (!options.force) {
-          const note = (await apiClient.getNote(id)) as any;
-          if (!note) {
+          const noteResponse = await apiClient.getNote(id);
+          if (!noteResponse || !('data' in noteResponse)) {
             formatter.error(`Note ${String(id)} not found`);
             process.exit(1);
           }
+
+          const note = noteResponse.data as Note;
 
           const { confirm } = await inquirer.prompt([
             {
               type: 'confirm',
               name: 'confirm',
-              message: `Delete note "${String(String(note.title))}"?`,
+              message: `Delete note "${String(note.id)}"?`,
               default: false,
             },
           ]);
@@ -300,9 +330,7 @@ export function registerNoteCommands(program: Command): void {
         await apiClient.deleteNote(id);
         formatter.success(`Note ${String(id)} deleted successfully`);
       } catch (error) {
-        formatter.error(
-          `Failed to delete note: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
-        );
+        formatter.error(formatErrorMessage('Failed to delete note', error));
         process.exit(1);
       }
     });
@@ -313,7 +341,7 @@ export function registerNoteCommands(program: Command): void {
     .description('Search notes')
     .option('-c, --category <category>', 'filter by category')
     .option('-l, --limit <number>', 'limit number of results', '10')
-    .action(async (query: string, options) => {
+    .action(async (query: string, options: { category?: string; limit?: string }) => {
       const { apiClient, formatter } = getComponents();
 
       try {
@@ -321,7 +349,7 @@ export function registerNoteCommands(program: Command): void {
         if (options.category) searchParams.category = options.category;
         if (options.limit) searchParams.limit = options.limit;
 
-        const notes = (await apiClient.searchNotes(query)) as any;
+        const notes = (await apiClient.searchNotes(query)) as unknown[];
 
         if (!notes || notes.length === 0) {
           formatter.info(`No notes found matching "${String(query)}"`);
@@ -333,9 +361,7 @@ export function registerNoteCommands(program: Command): void {
           headers: ['ID', 'Title', 'Category', 'Content'],
         });
       } catch (error) {
-        formatter.error(
-          `Failed to search notes: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
-        );
+        formatter.error(formatErrorMessage('Failed to search notes', error));
         process.exit(1);
       }
     });
@@ -350,9 +376,7 @@ export function registerNoteCommands(program: Command): void {
         await apiClient.updateNote(id, { pinned: true });
         formatter.success(`Note ${String(id)} pinned successfully`);
       } catch (error) {
-        formatter.error(
-          `Failed to pin note: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
-        );
+        formatter.error(formatErrorMessage('Failed to pin note', error));
         process.exit(1);
       }
     });
@@ -367,9 +391,7 @@ export function registerNoteCommands(program: Command): void {
         await apiClient.updateNote(id, { pinned: false });
         formatter.success(`Note ${String(id)} unpinned successfully`);
       } catch (error) {
-        formatter.error(
-          `Failed to unpin note: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
-        );
+        formatter.error(formatErrorMessage('Failed to unpin note', error));
         process.exit(1);
       }
     });

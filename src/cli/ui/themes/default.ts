@@ -136,15 +136,15 @@ export const highContrastTheme: Theme = {
     blocked: { icon: '[!]', color: chalk.red.bold },
   },
   priority: {
-    P1: chalk.bgRed.white.bold,      // Critical: White text on red background
-    P2: chalk.bgYellow.black.bold,   // High: Black text on yellow background  
-    P3: chalk.bgBlue.white.bold,     // Medium: White text on blue background
-    P4: chalk.bgGreen.black.bold,    // Low: Black text on green background
-    P5: chalk.bgGray.white.bold,     // Lowest: White text on gray background
+    P1: chalk.bgRed.white.bold, // Critical: White text on red background
+    P2: chalk.bgYellow.black.bold, // High: Black text on yellow background
+    P3: chalk.bgBlue.white.bold, // Medium: White text on blue background
+    P4: chalk.bgGreen.black.bold, // Low: Black text on green background
+    P5: chalk.bgGray.white.bold, // Lowest: White text on gray background
   },
   icons: {
     ...defaultTheme.icons,
-    task: '[T]',    // Text-based icons for better accessibility
+    task: '[T]', // Text-based icons for better accessibility
     board: '[B]',
     user: '[U]',
     tag: '[#]',
@@ -181,9 +181,12 @@ export class ThemeManager {
   }
 
   formatStatus(status: string, text?: string): string {
-    const statusConfig = this.currentTheme.status[status as keyof typeof this.currentTheme.status];
-    if (!statusConfig) return text ?? status;
+    // Use object.hasOwnProperty to check if status exists
+    if (!Object.prototype.hasOwnProperty.call(this.currentTheme.status, status)) {
+      return text ?? status;
+    }
 
+    const statusConfig = this.currentTheme.status[status as keyof typeof this.currentTheme.status];
     const { icon } = statusConfig;
     const coloredIcon = statusConfig.color(icon);
 
@@ -193,9 +196,12 @@ export class ThemeManager {
   }
 
   formatPriority(priority: string, text?: string): string {
-    const colorFn = this.currentTheme.priority[priority as keyof typeof this.currentTheme.priority];
-    if (!colorFn) return text ?? priority;
+    // Use object.hasOwnProperty to check if priority exists
+    if (!Object.prototype.hasOwnProperty.call(this.currentTheme.priority, priority)) {
+      return text ?? priority;
+    }
 
+    const colorFn = this.currentTheme.priority[priority as keyof typeof this.currentTheme.priority];
     return colorFn(text ?? priority);
   }
 

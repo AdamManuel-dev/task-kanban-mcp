@@ -34,7 +34,7 @@ export class BoardFormatter {
   /**
    * Format a complete board view
    */
-  formatBoard(
+  static formatBoard(
     board: Board,
     options?: {
       maxWidth?: number;
@@ -172,7 +172,7 @@ export class BoardFormatter {
       for (const task of column.tasks) {
         // Count by priority
         if (task.priority) {
-          const count = stats.tasksByPriority.get(task.priority) || 0;
+          const count = stats.tasksByPriority.get(task.priority) ?? 0;
           stats.tasksByPriority.set(task.priority, count + 1);
         }
 

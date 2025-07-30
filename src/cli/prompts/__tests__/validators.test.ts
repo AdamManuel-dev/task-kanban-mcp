@@ -55,25 +55,25 @@ describe('Validator Functions', () => {
       // Some inputs get sanitized successfully and become valid (return true)
       // Others get sanitized and trigger warning messages
       const result1 = validateTaskTitle('Task<Title');
-      expect(typeof result1 === 'string' || result1 === true).toBe(true); // Either sanitized successfully or returns warning
+      expect(typeof result1 === 'string' || result1).toBe(true); // Either sanitized successfully or returns warning
 
       const result2 = validateTaskTitle('Task>Title');
-      expect(typeof result2 === 'string' || result2 === true).toBe(true);
+      expect(typeof result2 === 'string' || result2).toBe(true);
 
       const result3 = validateTaskTitle('Task:Title');
-      expect(typeof result3 === 'string' || result3 === true).toBe(true);
+      expect(typeof result3 === 'string' || result3).toBe(true);
 
       const result4 = validateTaskTitle('Task"Title');
-      expect(typeof result4 === 'string' || result4 === true).toBe(true);
+      expect(typeof result4 === 'string' || result4).toBe(true);
 
       const result5 = validateTaskTitle('Task\\Title');
-      expect(typeof result5 === 'string' || result5 === true).toBe(true);
+      expect(typeof result5 === 'string' || result5).toBe(true);
 
       const result6 = validateTaskTitle('Task|Title');
-      expect(typeof result6 === 'string' || result6 === true).toBe(true);
+      expect(typeof result6 === 'string' || result6).toBe(true);
 
       const result7 = validateTaskTitle('Task*Title');
-      expect(typeof result7 === 'string' || result7 === true).toBe(true);
+      expect(typeof result7 === 'string' || result7).toBe(true);
     });
   });
 
@@ -203,7 +203,7 @@ describe('Validator Functions', () => {
       );
       // Board name with @ symbol gets sanitized and becomes valid
       const boardResult = validateBoardName('Board@Name');
-      expect(typeof boardResult === 'string' || boardResult === true).toBe(true);
+      expect(typeof boardResult === 'string' || boardResult).toBe(true);
     });
   });
 
@@ -236,9 +236,9 @@ describe('Validator Functions', () => {
       );
       // Tag names with invalid characters get sanitized
       const tagResult1 = validateTagName('tag with spaces');
-      expect(typeof tagResult1 === 'string' || tagResult1 === true).toBe(true);
+      expect(typeof tagResult1 === 'string' || tagResult1).toBe(true);
       const tagResult2 = validateTagName('tag@name');
-      expect(typeof tagResult2 === 'string' || tagResult2 === true).toBe(true);
+      expect(typeof tagResult2 === 'string' || tagResult2).toBe(true);
     });
   });
 

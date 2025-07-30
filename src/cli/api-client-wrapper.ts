@@ -95,7 +95,7 @@ export class ApiClientWrapper {
 
   private readonly options: ApiWrapperOptions;
 
-  private isOnline: boolean = true;
+  private isOnline = true;
 
   private operationQueue: Array<{
     operation: () => Promise<unknown>;
@@ -265,7 +265,7 @@ export class ApiClientWrapper {
       // Queue the operation for when we're back online
       return new Promise<T>((resolve, reject) => {
         this.operationQueue.push({
-          operation: () => this.apiClient.request(''),
+          operation: async () => this.apiClient.request(''),
           resolve: resolve as (value: unknown) => void,
           reject,
         });
@@ -345,7 +345,7 @@ export class ApiClientWrapper {
   /**
    * Sleep utility for retry delays
    */
-  private static sleep(ms: number): Promise<void> {
+  private static async sleep(ms: number): Promise<void> {
     return new Promise<void>(resolve => {
       setTimeout(resolve, ms);
     });
@@ -354,7 +354,7 @@ export class ApiClientWrapper {
   // Enhanced API methods with spinner integration
 
   async testConnection(): Promise<boolean> {
-    return this.executeWithEnhancements(() => this.apiClient.testConnection(), {
+    return this.executeWithEnhancements(async () => this.apiClient.testConnection(), {
       operationName: 'Test Connection',
       showSpinner: true,
       spinnerText: 'Testing server connection...',
@@ -365,7 +365,7 @@ export class ApiClientWrapper {
   }
 
   async getHealth(): Promise<HealthResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.getHealth(), {
+    return this.executeWithEnhancements(async () => this.apiClient.getHealth(), {
       operationName: 'Get Health Status',
       showSpinner: true,
       spinnerText: 'Checking server health...',
@@ -375,7 +375,7 @@ export class ApiClientWrapper {
 
   // Task API methods with enhancements
   async getTasks(params?: Record<string, string>): Promise<AnyApiResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.getTasks(params), {
+    return this.executeWithEnhancements(async () => this.apiClient.getTasks(params), {
       operationName: 'Fetch Tasks',
       showSpinner: true,
       spinnerText: 'Loading tasks...',
@@ -384,7 +384,7 @@ export class ApiClientWrapper {
   }
 
   async getTask(id: string): Promise<AnyApiResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.getTask(id), {
+    return this.executeWithEnhancements(async () => this.apiClient.getTask(id), {
       operationName: 'Fetch Task',
       showSpinner: true,
       spinnerText: `Loading task ${String(id)}...`,
@@ -393,7 +393,7 @@ export class ApiClientWrapper {
   }
 
   async createTask(task: CreateTaskRequest): Promise<AnyApiResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.createTask(task), {
+    return this.executeWithEnhancements(async () => this.apiClient.createTask(task), {
       operationName: 'Create Task',
       showSpinner: true,
       spinnerText: `Creating task: ${String(String(task.title))}`,
@@ -403,7 +403,7 @@ export class ApiClientWrapper {
   }
 
   async updateTask(id: string, updates: UpdateTaskRequest): Promise<TaskResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.updateTask(id, updates), {
+    return this.executeWithEnhancements(async () => this.apiClient.updateTask(id, updates), {
       operationName: 'Update Task',
       showSpinner: true,
       spinnerText: `Updating task ${String(id)}...`,
@@ -413,7 +413,7 @@ export class ApiClientWrapper {
   }
 
   async deleteTask(id: string): Promise<AnyApiResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.deleteTask(id), {
+    return this.executeWithEnhancements(async () => this.apiClient.deleteTask(id), {
       operationName: 'Delete Task',
       showSpinner: true,
       spinnerText: `Deleting task ${String(id)}...`,
@@ -423,18 +423,21 @@ export class ApiClientWrapper {
   }
 
   async moveTask(id: string, columnId: string, position?: number): Promise<AnyApiResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.moveTask(id, columnId, position), {
-      operationName: 'Move Task',
-      showSpinner: true,
-      spinnerText: `Moving task ${String(id)}...`,
-      successText: 'Task moved successfully',
-      errorText: 'Failed to move task',
-    });
+    return this.executeWithEnhancements(
+      async () => this.apiClient.moveTask(id, columnId, position),
+      {
+        operationName: 'Move Task',
+        showSpinner: true,
+        spinnerText: `Moving task ${String(id)}...`,
+        successText: 'Task moved successfully',
+        errorText: 'Failed to move task',
+      }
+    );
   }
 
   // Board API methods with enhancements
   async getBoards(): Promise<AnyApiResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.getBoards(), {
+    return this.executeWithEnhancements(async () => this.apiClient.getBoards(), {
       operationName: 'Fetch Boards',
       showSpinner: true,
       spinnerText: 'Loading boards...',
@@ -443,7 +446,7 @@ export class ApiClientWrapper {
   }
 
   async getBoard(id: string): Promise<AnyApiResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.getBoard(id), {
+    return this.executeWithEnhancements(async () => this.apiClient.getBoard(id), {
       operationName: 'Fetch Board',
       showSpinner: true,
       spinnerText: `Loading board ${String(id)}...`,
@@ -451,7 +454,7 @@ export class ApiClientWrapper {
   }
 
   async createBoard(board: CreateBoardRequest): Promise<BoardResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.createBoard(board), {
+    return this.executeWithEnhancements(async () => this.apiClient.createBoard(board), {
       operationName: 'Create Board',
       showSpinner: true,
       spinnerText: `Creating board: ${String(String(board.name))}`,
@@ -461,7 +464,7 @@ export class ApiClientWrapper {
   }
 
   async updateBoard(id: string, updates: UpdateBoardRequest): Promise<BoardResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.updateBoard(id, updates), {
+    return this.executeWithEnhancements(async () => this.apiClient.updateBoard(id, updates), {
       operationName: 'Update Board',
       showSpinner: true,
       spinnerText: `Updating board ${String(id)}...`,
@@ -471,7 +474,7 @@ export class ApiClientWrapper {
   }
 
   async deleteBoard(id: string): Promise<AnyApiResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.deleteBoard(id), {
+    return this.executeWithEnhancements(async () => this.apiClient.deleteBoard(id), {
       operationName: 'Delete Board',
       showSpinner: true,
       spinnerText: `Deleting board ${String(id)}...`,
@@ -481,7 +484,7 @@ export class ApiClientWrapper {
   }
 
   async getBoardStats(id: string): Promise<AnyApiResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.getBoardStats(id), {
+    return this.executeWithEnhancements(async () => this.apiClient.getBoardStats(id), {
       operationName: 'Fetch Board Stats',
       showSpinner: true,
       spinnerText: `Loading board statistics...`,
@@ -491,7 +494,7 @@ export class ApiClientWrapper {
 
   // Note API methods with enhancements
   async getNotes(params?: Record<string, string>): Promise<AnyApiResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.getNotes(params), {
+    return this.executeWithEnhancements(async () => this.apiClient.getNotes(params), {
       operationName: 'Fetch Notes',
       showSpinner: true,
       spinnerText: 'Loading notes...',
@@ -499,7 +502,7 @@ export class ApiClientWrapper {
   }
 
   async getNote(id: string): Promise<AnyApiResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.getNote(id), {
+    return this.executeWithEnhancements(async () => this.apiClient.getNote(id), {
       operationName: 'Fetch Note',
       showSpinner: true,
       spinnerText: `Loading note ${String(id)}...`,
@@ -508,7 +511,7 @@ export class ApiClientWrapper {
   }
 
   async createNote(note: CreateNoteRequest): Promise<NoteResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.createNote(note), {
+    return this.executeWithEnhancements(async () => this.apiClient.createNote(note), {
       operationName: 'Create Note',
       showSpinner: true,
       spinnerText: `Creating note: ${String(String(note.content.substring(0, 50)))}${String(String(note.content.length > 50 ? '...' : ''))}`,
@@ -518,7 +521,7 @@ export class ApiClientWrapper {
   }
 
   async updateNote(id: string, updates: UpdateNoteRequest): Promise<NoteResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.updateNote(id, updates), {
+    return this.executeWithEnhancements(async () => this.apiClient.updateNote(id, updates), {
       operationName: 'Update Note',
       showSpinner: true,
       spinnerText: `Updating note ${String(id)}...`,
@@ -528,7 +531,7 @@ export class ApiClientWrapper {
   }
 
   async deleteNote(id: string): Promise<AnyApiResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.deleteNote(id), {
+    return this.executeWithEnhancements(async () => this.apiClient.deleteNote(id), {
       operationName: 'Delete Note',
       showSpinner: true,
       spinnerText: `Deleting note ${String(id)}...`,
@@ -538,7 +541,7 @@ export class ApiClientWrapper {
   }
 
   async searchNotes(query: string): Promise<AnyApiResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.searchNotes(query), {
+    return this.executeWithEnhancements(async () => this.apiClient.searchNotes(query), {
       operationName: 'Search Notes',
       showSpinner: true,
       spinnerText: `Searching notes for: ${String(query)}`,
@@ -548,7 +551,7 @@ export class ApiClientWrapper {
 
   // Tag API methods with enhancements
   async getTags(): Promise<AnyApiResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.getTags(), {
+    return this.executeWithEnhancements(async () => this.apiClient.getTags(), {
       operationName: 'Fetch Tags',
       showSpinner: true,
       spinnerText: 'Loading tags...',
@@ -556,7 +559,7 @@ export class ApiClientWrapper {
   }
 
   async getTag(id: string): Promise<AnyApiResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.getTag(id), {
+    return this.executeWithEnhancements(async () => this.apiClient.getTag(id), {
       operationName: 'Fetch Tag',
       showSpinner: true,
       spinnerText: `Loading tag ${String(id)}...`,
@@ -565,7 +568,7 @@ export class ApiClientWrapper {
   }
 
   async createTag(tag: CreateTagRequest): Promise<TagResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.createTag(tag), {
+    return this.executeWithEnhancements(async () => this.apiClient.createTag(tag), {
       operationName: 'Create Tag',
       showSpinner: true,
       spinnerText: `Creating tag: ${String(String(tag.name))}`,
@@ -575,7 +578,7 @@ export class ApiClientWrapper {
   }
 
   async addTagsToTask(taskId: string, tags: string[]): Promise<AnyApiResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.addTagsToTask(taskId, tags), {
+    return this.executeWithEnhancements(async () => this.apiClient.addTagsToTask(taskId, tags), {
       operationName: 'Add Tags to Task',
       showSpinner: true,
       spinnerText: `Adding tags to task ${String(taskId)}...`,
@@ -585,7 +588,7 @@ export class ApiClientWrapper {
   }
 
   async removeTagFromTask(taskId: string, tag: string): Promise<AnyApiResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.removeTagFromTask(taskId, tag), {
+    return this.executeWithEnhancements(async () => this.apiClient.removeTagFromTask(taskId, tag), {
       operationName: 'Remove Tag from Task',
       showSpinner: true,
       spinnerText: `Removing tag from task ${String(taskId)}...`,
@@ -595,7 +598,7 @@ export class ApiClientWrapper {
   }
 
   async updateTag(id: string, updates: UpdateTagRequest): Promise<TagResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.updateTag(id, updates), {
+    return this.executeWithEnhancements(async () => this.apiClient.updateTag(id, updates), {
       operationName: 'Update Tag',
       showSpinner: true,
       spinnerText: `Updating tag ${String(id)}...`,
@@ -605,7 +608,7 @@ export class ApiClientWrapper {
   }
 
   async deleteTag(id: string): Promise<AnyApiResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.deleteTag(id), {
+    return this.executeWithEnhancements(async () => this.apiClient.deleteTag(id), {
       operationName: 'Delete Tag',
       showSpinner: true,
       spinnerText: `Deleting tag ${String(id)}...`,
@@ -615,7 +618,7 @@ export class ApiClientWrapper {
   }
 
   async searchTags(query: string): Promise<AnyApiResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.searchTags(query), {
+    return this.executeWithEnhancements(async () => this.apiClient.searchTags(query), {
       operationName: 'Search Tags',
       showSpinner: true,
       spinnerText: `Searching tags for: ${String(query)}`,
@@ -623,7 +626,7 @@ export class ApiClientWrapper {
   }
 
   async mergeTags(fromId: string, toId: string): Promise<AnyApiResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.mergeTags(fromId, toId), {
+    return this.executeWithEnhancements(async () => this.apiClient.mergeTags(fromId, toId), {
       operationName: 'Merge Tags',
       showSpinner: true,
       spinnerText: `Merging tags ${String(fromId)} → ${String(toId)}...`,
@@ -635,7 +638,7 @@ export class ApiClientWrapper {
 
   // Priority API methods
   async getPriorities(): Promise<AnyApiResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.getPriorities(), {
+    return this.executeWithEnhancements(async () => this.apiClient.getPriorities(), {
       operationName: 'Fetch Priorities',
       showSpinner: true,
       spinnerText: 'Loading priorities...',
@@ -643,7 +646,7 @@ export class ApiClientWrapper {
   }
 
   async getNextTask(): Promise<AnyApiResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.getNextTask(), {
+    return this.executeWithEnhancements(async () => this.apiClient.getNextTask(), {
       operationName: 'Get Next Task',
       showSpinner: true,
       spinnerText: 'Finding next task...',
@@ -652,7 +655,7 @@ export class ApiClientWrapper {
   }
 
   async recalculatePriorities(): Promise<AnyApiResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.recalculatePriorities(), {
+    return this.executeWithEnhancements(async () => this.apiClient.recalculatePriorities(), {
       operationName: 'Recalculate Priorities',
       showSpinner: true,
       spinnerText: 'Recalculating task priorities...',
@@ -663,18 +666,21 @@ export class ApiClientWrapper {
   }
 
   async updateTaskPriority(id: string, priority: number): Promise<AnyApiResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.updateTaskPriority(id, priority), {
-      operationName: 'Update Task Priority',
-      showSpinner: true,
-      spinnerText: `Updating priority for task ${String(id)}...`,
-      successText: 'Task priority updated successfully',
-      errorText: 'Failed to update task priority',
-    });
+    return this.executeWithEnhancements(
+      async () => this.apiClient.updateTaskPriority(id, priority),
+      {
+        operationName: 'Update Task Priority',
+        showSpinner: true,
+        spinnerText: `Updating priority for task ${String(id)}...`,
+        successText: 'Task priority updated successfully',
+        errorText: 'Failed to update task priority',
+      }
+    );
   }
 
   // Context API methods
   async getContext(): Promise<AnyApiResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.getContext(), {
+    return this.executeWithEnhancements(async () => this.apiClient.getContext(), {
       operationName: 'Fetch Context',
       showSpinner: true,
       spinnerText: 'Loading context information...',
@@ -683,7 +689,7 @@ export class ApiClientWrapper {
   }
 
   async getTaskContext(id: string): Promise<AnyApiResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.getTaskContext(id), {
+    return this.executeWithEnhancements(async () => this.apiClient.getTaskContext(id), {
       operationName: 'Fetch Task Context',
       showSpinner: true,
       spinnerText: `Loading context for task ${String(id)}...`,
@@ -692,7 +698,7 @@ export class ApiClientWrapper {
   }
 
   async getProjectSummary(): Promise<AnyApiResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.getProjectSummary(), {
+    return this.executeWithEnhancements(async () => this.apiClient.getProjectSummary(), {
       operationName: 'Fetch Project Summary',
       showSpinner: true,
       spinnerText: 'Generating project summary...',
@@ -702,7 +708,7 @@ export class ApiClientWrapper {
 
   // Search API methods
   async searchTasks(query: string, params?: Record<string, string>): Promise<AnyApiResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.searchTasks(query, params), {
+    return this.executeWithEnhancements(async () => this.apiClient.searchTasks(query, params), {
       operationName: 'Search Tasks',
       showSpinner: true,
       spinnerText: `Searching tasks for: ${String(query)}`,
@@ -719,7 +725,7 @@ export class ApiClientWrapper {
     encryptionKey?: string;
     description?: string;
   }): Promise<AnyApiResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.createBackup(options), {
+    return this.executeWithEnhancements(async () => this.apiClient.createBackup(options), {
       operationName: 'Create Backup',
       showSpinner: true,
       spinnerText: `Creating backup: ${options.name}`,
@@ -734,7 +740,7 @@ export class ApiClientWrapper {
     order?: string;
     limit?: string;
   }): Promise<AnyApiResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.getBackups(params), {
+    return this.executeWithEnhancements(async () => this.apiClient.getBackups(params), {
       operationName: 'Get Backups',
       showSpinner: true,
       spinnerText: 'Loading backups...',
@@ -742,7 +748,7 @@ export class ApiClientWrapper {
   }
 
   async getBackup(id: string): Promise<AnyApiResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.getBackup(id), {
+    return this.executeWithEnhancements(async () => this.apiClient.getBackup(id), {
       operationName: 'Get Backup',
       showSpinner: true,
       spinnerText: `Loading backup ${id}...`,
@@ -750,7 +756,7 @@ export class ApiClientWrapper {
   }
 
   async deleteBackup(id: string): Promise<AnyApiResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.deleteBackup(id), {
+    return this.executeWithEnhancements(async () => this.apiClient.deleteBackup(id), {
       operationName: 'Delete Backup',
       showSpinner: true,
       spinnerText: `Deleting backup ${id}...`,
@@ -766,7 +772,7 @@ export class ApiClientWrapper {
       decryptionKey?: string;
     }
   ): Promise<AnyApiResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.restoreBackup(id, options), {
+    return this.executeWithEnhancements(async () => this.apiClient.restoreBackup(id, options), {
       operationName: 'Restore Backup',
       showSpinner: true,
       spinnerText: `Restoring backup ${id}...`,
@@ -777,7 +783,7 @@ export class ApiClientWrapper {
   }
 
   async exportBackup(id: string, format?: string): Promise<AnyApiResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.exportBackup(id, format), {
+    return this.executeWithEnhancements(async () => this.apiClient.exportBackup(id, format), {
       operationName: 'Export Backup',
       showSpinner: true,
       spinnerText: `Exporting backup ${id}...`,
@@ -787,7 +793,7 @@ export class ApiClientWrapper {
   }
 
   async getBackupSchedules(params?: Record<string, string>): Promise<AnyApiResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.getBackupSchedules(params), {
+    return this.executeWithEnhancements(async () => this.apiClient.getBackupSchedules(params), {
       operationName: 'Get Backup Schedules',
       showSpinner: true,
       spinnerText: 'Loading backup schedules...',
@@ -800,7 +806,7 @@ export class ApiClientWrapper {
     enabled?: boolean;
     options?: Record<string, unknown>;
   }): Promise<AnyApiResponse> {
-    return this.executeWithEnhancements(() => this.apiClient.createBackupSchedule(schedule), {
+    return this.executeWithEnhancements(async () => this.apiClient.createBackupSchedule(schedule), {
       operationName: 'Create Backup Schedule',
       showSpinner: true,
       spinnerText: `Creating backup schedule: ${schedule.name}`,

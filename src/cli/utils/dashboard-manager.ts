@@ -32,9 +32,9 @@ export interface DashboardConfig {
 export class DashboardManager {
   private readonly screen: blessed.Widgets.Screen;
 
-  private readonly grid: any;
+  private readonly grid: unknown;
 
-  private readonly widgets: Map<string, any> = new Map();
+  private readonly widgets: Map<string, unknown> = new Map();
 
   private readonly config: DashboardConfig;
 
@@ -222,9 +222,7 @@ export class DashboardManager {
 
     // Populate activity log
     data.activity.forEach(activity => {
-      activityLog.log(
-        `${String(String(activity.timestamp))}: ${String(String(activity.event))} (${String(String(activity.user))})`
-      );
+      activityLog.log(`${activity.timestamp}: ${activity.event} (${activity.user})`);
     });
 
     this.widgets.set('statusDonut', statusDonut);
@@ -237,13 +235,10 @@ export class DashboardManager {
   }
 
   /**
-   * Create velocity-focused dashboard
+   * Create large velocity trend chart
    */
-  createVelocityDashboard(data: DashboardData): void {
-    this.clearWidgets();
-
-    // Large velocity chart
-    const velocityLine = this.grid.set(0, 0, 8, 12, contrib.line, {
+  private createLargeVelocityChart(data: DashboardData): any {
+    return this.grid.set(0, 0, 8, 12, contrib.line, {
       style: {
         line: 'cyan',
         text: 'white',
@@ -254,13 +249,47 @@ export class DashboardManager {
       label: 'Team Velocity Trend',
       data: {
         title: 'Completed Tasks',
-        x: data.velocity.map(v => v.period),
-        y: data.velocity.map(v => v.completed),
+        x: data.velocity.map(velocityData => velocityData.period),
+        y: data.velocity.map(velocityData => velocityData.completed),
       },
     });
+  }
 
-    // Burndown chart
-    const burndownLine = this.grid.set(8, 0, 4, 8, contrib.line, {
+  /**
+   * Create team capacity table widget
+   */
+  private createTeamCapacityTable(data: DashboardData): any {
+    const teamTable = this.grid.set(8, 8, 4, 4, contrib.table, {
+      keys: true,
+      fg: 'white',
+      selectedFg: 'white',
+      selectedBg: 'blue',
+      interactive: false,
+      label: 'Team Capacity',
+      width: '30%',
+      height: '30%',
+      border: { type: 'line' as unknown, fg: 'cyan' },
+      columnSpacing: 10,
+      columnWidth: [16, 12, 12],
+    });
+
+    teamTable.setData({
+      headers: ['Member', 'Tasks', 'Load %'],
+      data: data.teamMembers.map(teamMember => [
+        teamMember.name,
+        teamMember.taskCount.toString(),
+        `${teamMember.load}%`,
+      ]),
+    });
+
+    return teamTable;
+  }
+
+  /**
+   * Create sprint burndown chart
+   */
+  private createBurndownChart(data: DashboardData): any {
+    return this.grid.set(8, 0, 4, 8, contrib.line, {
       style: {
         line: 'red',
         text: 'white',
@@ -272,8 +301,8 @@ export class DashboardManager {
       data: [
         {
           title: 'Actual',
-          x: data.burndown.map(b => b.day),
-          y: data.burndown.map(b => b.remaining),
+          x: data.burndown.map(burndownData => burndownData.day),
+          y: data.burndown.map(burndownData => burndownData.remaining),
           style: { line: 'red' },
         },
         {
@@ -285,33 +314,29 @@ export class DashboardManager {
       ],
     });
 
-    // Team capacity table
-    const teamTable = this.grid.set(8, 8, 4, 4, contrib.table, {
-      keys: true,
-      fg: 'white',
-      selectedFg: 'white',
-      selectedBg: 'blue',
-      interactive: false,
-      label: 'Team Capacity',
-      width: '30%',
-      height: '30%',
-      border: { type: 'line' as any, fg: 'cyan' },
-      columnSpacing: 10,
-      columnWidth: [16, 12, 12],
-    });
-
-    teamTable.setData({
-      headers: ['Member', 'Tasks', 'Load %'],
-      data: data.teamMembers.map(member => [
-        member.name,
-        member.taskCount.toString(),
-        `${String(String(member.load))}%`,
-      ]),
-    });
+    const teamTable = this.createTeamCapacityTable(data);
 
     this.widgets.set('velocityLine', velocityLine);
     this.widgets.set('burndownLine', burndownLine);
     this.widgets.set('teamTable', teamTable);
+
+    this.addHeader('📈 Velocity Dashboard');
+    this.addFooter();
+  }
+
+  /**
+   * Create velocity-focused dashboard using extracted helper methods
+   */
+  createVelocityDashboard(data: DashboardData): void {
+    this.clearWidgets();
+
+    const velocityChart = this.createLargeVelocityChart(data);
+    const burndownChart = this.createBurndownChart(data);
+    const teamCapacityTable = this.createTeamCapacityTable(data);
+
+    this.widgets.set('velocityLine', velocityChart);
+    this.widgets.set('burndownLine', burndownChart);
+    this.widgets.set('teamTable', teamCapacityTable);
 
     this.addHeader('📈 Velocity Dashboard');
     this.addFooter();
@@ -343,7 +368,7 @@ export class DashboardManager {
       label: 'My Tasks',
       width: '30%',
       height: '30%',
-      border: { type: 'line' as any, fg: 'cyan' },
+      border: { type: 'line' as unknown, fg: 'cyan' },
       columnSpacing: 10,
       columnWidth: [20, 12, 12],
     });
@@ -370,7 +395,7 @@ export class DashboardManager {
     // Today's focus box
     const focusBox = this.grid.set(9, 0, 3, 12, blessed.box, {
       label: "Today's Focus",
-      border: { type: 'line' as any, fg: 'yellow' },
+      border: { type: 'line' as unknown, fg: 'yellow' },
       style: { fg: 'white' },
       padding: { left: 2, right: 2 },
     });
@@ -423,7 +448,7 @@ export class DashboardManager {
     });
 
     const now = new Date().toLocaleString();
-    header.setContent(`${String(title)} | ${String(now)} | Press 'h' for help`);
+    header.setContent(`${title} | ${now} | Press 'h' for help`);
     this.widgets.set('header', header);
   }
 
@@ -439,7 +464,7 @@ export class DashboardManager {
 
     const currentTheme = this.themeHelper.getTheme().name;
     footer.setContent(
-      `1-3:Layouts | Tab:Navigate | r:Refresh | t:Theme(${String(currentTheme)}) | s:Stats | d:Debug | h:Help | q:Quit`
+      `1-3:Layouts | Tab:Navigate | r:Refresh | t:Theme(${currentTheme}) | s:Stats | d:Debug | h:Help | q:Quit`
     );
     this.widgets.set('footer', footer);
   }
@@ -451,9 +476,9 @@ export class DashboardManager {
     const errorBox = blessed.box({
       top: 1,
       right: 1,
-      width: Math.floor((this.screen as any).width * 0.4),
+      width: Math.floor((this.screen as unknown).width * 0.4),
       height: 3,
-      border: { type: 'line' as any, fg: 'red' as any },
+      border: { type: 'line' as unknown, fg: 'red' as unknown },
       style: { fg: 'white', bg: 'red' },
       label: '⚠️  Error',
       content: message,
@@ -477,9 +502,9 @@ export class DashboardManager {
     const themeBox = blessed.box({
       top: 1,
       left: 1,
-      width: Math.floor((this.screen as any).width * 0.3),
+      width: Math.floor((this.screen as unknown).width * 0.3),
       height: 3,
-      border: { type: 'line' as any, fg: this.themeHelper.getColor('primary') as any },
+      border: { type: 'line' as unknown, fg: this.themeHelper.getColor('primary') as unknown },
       style: {
         fg: this.themeHelper.getColor('foreground'),
         bg: this.themeHelper.getColor('secondary'),
@@ -508,7 +533,7 @@ export class DashboardManager {
       left: 'center',
       width: '50%',
       height: '60%',
-      border: { type: 'line' as any, fg: 'yellow' as any },
+      border: { type: 'line' as unknown, fg: 'yellow' as unknown },
       style: { fg: 'white', bg: 'black' },
       label: '📖 Dashboard Help',
       content: `
@@ -580,7 +605,7 @@ Press any key to close this help...
     this.themeHelper.setTheme(this.config.theme);
 
     // Show theme change notification
-    this.showThemeNotification(`Theme changed to: ${String(String(this.config.theme))}`);
+    this.showThemeNotification(`Theme changed to: ${this.config.theme}`);
 
     // Refresh dashboard with new theme
     void this.refreshData();
@@ -650,8 +675,10 @@ Press any key to close this help...
       this.screen.render();
     } catch (error) {
       // Show error notification and use sample data
-      this.showErrorNotification(`Data refresh failed: ${error instanceof Error ? error.message : String(error)}`);
-      const fallbackData = this.generateSampleData();
+      this.showErrorNotification(
+        `Data refresh failed: ${error instanceof Error ? error.message : String(error)}`
+      );
+      const fallbackData = DashboardManager.generateSampleData();
 
       switch (this.currentLayout) {
         case 'overview':
@@ -698,7 +725,7 @@ Press any key to close this help...
   /**
    * Generate sample data for demo
    */
-  private generateSampleData(): DashboardData {
+  private static generateSampleData(): DashboardData {
     return {
       tasks: {
         total: 45,
@@ -773,13 +800,13 @@ Press any key to close this help...
     const widgetKeys = Array.from(this.widgets.keys());
     if (widgetKeys.length === 0) return;
 
-    const currentIndex = (this as any).focusedWidget
-      ? widgetKeys.indexOf((this as any).focusedWidget)
+    const currentIndex = (this as unknown).focusedWidget
+      ? widgetKeys.indexOf((this as unknown).focusedWidget)
       : -1;
     const nextIndex = (currentIndex + 1) % widgetKeys.length;
 
-    (this as any).focusedWidget = widgetKeys[nextIndex];
-    const widget = this.widgets.get((this as any).focusedWidget);
+    (this as unknown).focusedWidget = widgetKeys[nextIndex];
+    const widget = this.widgets.get((this as unknown).focusedWidget);
 
     if (widget?.focus) {
       widget.focus();
@@ -794,13 +821,13 @@ Press any key to close this help...
     const widgetKeys = Array.from(this.widgets.keys());
     if (widgetKeys.length === 0) return;
 
-    const currentIndex = (this as any).focusedWidget
-      ? widgetKeys.indexOf((this as any).focusedWidget)
+    const currentIndex = (this as unknown).focusedWidget
+      ? widgetKeys.indexOf((this as unknown).focusedWidget)
       : -1;
     const prevIndex = currentIndex <= 0 ? widgetKeys.length - 1 : currentIndex - 1;
 
-    (this as any).focusedWidget = widgetKeys[prevIndex];
-    const widget = this.widgets.get((this as any).focusedWidget);
+    (this as unknown).focusedWidget = widgetKeys[prevIndex];
+    const widget = this.widgets.get((this as unknown).focusedWidget);
 
     if (widget?.focus) {
       widget.focus();
@@ -812,16 +839,16 @@ Press any key to close this help...
    * Toggle fullscreen mode for focused widget
    */
   private toggleFullscreen(): void {
-    if (!(this as any).focusedWidget) {
+    if (!(this as unknown).focusedWidget) {
       this.showNotification('No widget focused. Use Tab to focus a widget first.');
       return;
     }
 
-    (this as any).isFullscreen = !(this as any).isFullscreen;
+    (this as unknown).isFullscreen = !(this as unknown).isFullscreen;
 
-    if ((this as any).isFullscreen) {
+    if ((this as unknown).isFullscreen) {
       this.showNotification(
-        `Fullscreen mode: ${String(String((this as any).focusedWidget))} (press F or F11 to exit)`
+        `Fullscreen mode: ${String(String((this as unknown).focusedWidget))} (press F or F11 to exit)`
       );
       // In a real implementation, this would resize the focused widget to full screen
     } else {
@@ -839,7 +866,7 @@ Press any key to close this help...
       left: 'center',
       width: '60%',
       height: '50%',
-      border: { type: 'line' as any, fg: this.themeHelper.getColor('primary') as any },
+      border: { type: 'line' as unknown, fg: this.themeHelper.getColor('primary') as unknown },
       style: {
         fg: this.themeHelper.getColor('foreground'),
         bg: this.themeHelper.getColor('background'),
@@ -888,9 +915,9 @@ Press any key to close...
    * Toggle debug mode
    */
   private toggleDebugMode(): void {
-    (this as any).debugMode = !(this as any).debugMode;
+    (this as unknown).debugMode = !(this as unknown).debugMode;
 
-    if ((this as any).debugMode) {
+    if ((this as unknown).debugMode) {
       this.showNotification('Debug mode enabled - showing widget info');
       this.showDebugOverlay();
     } else {
@@ -912,14 +939,14 @@ Press any key to close...
       right: 0,
       width: '25%',
       height: '30%',
-      border: { type: 'line' as any, fg: 'yellow' as any },
+      border: { type: 'line' as unknown, fg: 'yellow' as unknown },
       style: { fg: 'yellow', bg: 'black' },
       label: '🐛 Debug Info',
       content: `
 Widgets: ${String(String(this.widgets.size))}
-Focused: ${String(String((this as any).focusedWidget ?? 'none'))}
+Focused: ${String(String((this as unknown).focusedWidget ?? 'none'))}
 Layout: ${String(String(this.currentLayout))}
-Fullscreen: ${String(String((this as any).isFullscreen))}
+Fullscreen: ${String(String((this as unknown).isFullscreen))}
 Theme: ${String(String(this.themeHelper.getTheme().name))}
 
 Active Widgets:
@@ -949,9 +976,9 @@ ${String(debugInfo)}
    * Reset view to default state
    */
   private resetView(): void {
-    (this as any).isFullscreen = false;
-    (this as any).focusedWidget = null;
-    (this as any).debugMode = false;
+    (this as unknown).isFullscreen = false;
+    (this as unknown).focusedWidget = null;
+    (this as unknown).debugMode = false;
     this.hideDebugOverlay();
     void this.refreshData();
     this.showNotification('View reset to default state');
@@ -966,7 +993,7 @@ ${String(debugInfo)}
       left: 'center',
       width: '50%',
       height: 3,
-      border: { type: 'line' as any, fg: this.themeHelper.getColor('info') as any },
+      border: { type: 'line' as unknown, fg: this.themeHelper.getColor('info') as unknown },
       style: {
         fg: this.themeHelper.getColor('foreground'),
         bg: this.themeHelper.getColor('secondary'),

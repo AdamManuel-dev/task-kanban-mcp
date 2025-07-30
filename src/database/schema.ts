@@ -370,7 +370,7 @@ export class SchemaManager {
   /**
    * Get database statistics
    */
-  async getDatabaseStats(): Promise<Record<string, any>> {
+  async getDatabaseStats(): Promise<Record<string, unknown>> {
     try {
       const stats = await this.db.getStats();
 

@@ -297,7 +297,7 @@ export class StatisticsCollector {
         try {
           // Check both possible timestamp columns
           const timestampResults = await Promise.all(
-            ['last_modified', 'last_update'].map(col =>
+            ['last_modified', 'last_update'].map(async col =>
               this.db
                 .queryOne<{ max_time: string }>(
                   `
@@ -723,11 +723,11 @@ export class StatisticsCollector {
   private static formatBytes(bytes: number): string {
     if (bytes === 0) return '0 B';
 
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    const BYTES_PER_UNIT = 1024;
+    const sizeUnits = ['B', 'KB', 'MB', 'GB'];
+    const unitIndex = Math.floor(Math.log(bytes) / Math.log(BYTES_PER_UNIT));
 
-    return `${String(String(parseFloat((bytes / k ** i).toFixed(2))))} ${String(sizes[i])}`;
+    return `${parseFloat((bytes / BYTES_PER_UNIT ** unitIndex).toFixed(2))} ${sizeUnits[unitIndex]}`;
   }
 }
 

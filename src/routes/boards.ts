@@ -141,7 +141,7 @@ export function boardRoutes(): Router {
           search,
         } = req.query;
 
-        const options: any = {
+        const options: unknown = {
           limit: parseInt(limit as string, 10),
           offset: parseInt(offset as string, 10),
           sortBy: sortBy as string,
@@ -168,7 +168,7 @@ export function boardRoutes(): Router {
           data: boards,
           page: Math.floor(options.offset / options.limit) + 1,
           limit: options.limit,
-          total
+          total,
         });
       } catch (error) {
         return next(error);
@@ -724,7 +724,7 @@ export function boardRoutes(): Router {
         search,
       } = req.query;
 
-      const options: any = {
+      const options: unknown = {
         limit: parseInt(limit as string, 10),
         offset: parseInt(offset as string, 10),
         sortBy: sortBy as string,
@@ -751,7 +751,7 @@ export function boardRoutes(): Router {
         data: tasks,
         page: Math.floor(options.offset / options.limit) + 1,
         limit: options.limit,
-        total
+        total,
       });
     } catch (error) {
       return next(error);

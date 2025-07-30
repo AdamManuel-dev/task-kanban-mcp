@@ -1,0 +1,260 @@
+name: Code Review Automation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  automated-review:
+    name: Automated Code Review
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Run TypeScript compilation
+        run: npx tsc --noEmit
+        continue-on-error: true
+        id: typescript
+        
+      - name: Run ESLint
+        run: npx eslint src/**/*.{ts,tsx} --format=json --output-file=eslint-results.json
+        continue-on-error: true
+        id: eslint
+        
+      - name: Run security audit
+        run: npm audit --audit-level=moderate --json > security-audit.json
+        continue-on-error: true
+        id: security
+        
+      - name: Run tests
+        run: npm test -- --coverage --json --outputFile=test-results.json
+        continue-on-error: true
+        id: tests
+        
+      - name: Analyze function complexity
+        run: |
+          node fix-function-length.js > function-analysis.txt
+          echo "FUNCTION_VIOLATIONS=$(grep -c "exceeding 50 lines" function-analysis.txt || echo 0)" >> $GITHUB_ENV
+        continue-on-error: true
+        
+      - name: Check bundle size
+        run: |
+          npm run build > build-output.txt 2>&1 || true
+          if [ -f "dist/index.js" ]; then
+            BUNDLE_SIZE=$(stat -c%s dist/index.js)
+            echo "BUNDLE_SIZE=$BUNDLE_SIZE" >> $GITHUB_ENV
+          else
+            echo "BUNDLE_SIZE=0" >> $GITHUB_ENV
+          fi
+        continue-on-error: true
+        
+      - name: Generate review comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            // Read analysis results
+            let eslintResults = [];
+            let testResults = {};
+            let securityIssues = [];
+            
+            try {
+              eslintResults = JSON.parse(fs.readFileSync('eslint-results.json', 'utf8'));
+            } catch (e) { console.log('No ESLint results'); }
+            
+            try {
+              testResults = JSON.parse(fs.readFileSync('test-results.json', 'utf8'));
+            } catch (e) { console.log('No test results'); }
+            
+            try {
+              const auditData = JSON.parse(fs.readFileSync('security-audit.json', 'utf8'));
+              securityIssues = auditData.vulnerabilities || [];
+            } catch (e) { console.log('No security audit results'); }
+            
+            // Count issues
+            const eslintErrors = eslintResults.reduce((sum, file) => sum + file.errorCount, 0);
+            const eslintWarnings = eslintResults.reduce((sum, file) => sum + file.warningCount, 0);
+            const testsPassed = testResults.success || false;
+            const functionViolations = process.env.FUNCTION_VIOLATIONS || 0;
+            const bundleSize = Math.round((process.env.BUNDLE_SIZE || 0) / 1024);
+            
+            // Generate review status
+            const tsStatus = '${{ steps.typescript.outcome }}' === 'success' ? '✅' : '❌';
+            const eslintStatus = eslintErrors === 0 ? '✅' : '❌';
+            const testStatus = testsPassed ? '✅' : '❌';
+            const securityStatus = securityIssues.length === 0 ? '✅' : '⚠️';
+            
+            // Create comment body
+            const commentBody = `## 🤖 Automated Code Review
+            
+            ### Quality Checks
+            | Check | Status | Details |
+            |-------|---------|---------|
+            | TypeScript | ${tsStatus} | Compilation ${'${{ steps.typescript.outcome }}'} |
+            | ESLint | ${eslintStatus} | ${eslintErrors} errors, ${eslintWarnings} warnings |
+            | Tests | ${testStatus} | Test suite ${'${{ steps.tests.outcome }}'} |
+            | Security | ${securityStatus} | ${securityIssues.length} vulnerabilities found |
+            | Functions | ${functionViolations > 0 ? '⚠️' : '✅'} | ${functionViolations} functions >50 lines |
+            | Bundle Size | ℹ️ | ${bundleSize}KB |
+            
+            ### Review Recommendations
+            
+            ${eslintErrors > 0 ? `
+            **❌ ESLint Errors (${eslintErrors})**
+            - Fix all ESLint errors before merging
+            - Run \`npm run lint:fix\` to auto-fix issues
+            ` : ''}
+            
+            ${eslintWarnings > 5 ? `
+            **⚠️ ESLint Warnings (${eslintWarnings})**
+            - Consider addressing warnings for better code quality
+            ` : ''}
+            
+            ${functionViolations > 0 ? `
+            **⚠️ Function Length Violations (${functionViolations})**
+            - Functions should be ≤50 lines for maintainability
+            - Run \`node fix-function-length.js\` for analysis
+            - Consider refactoring large functions
+            ` : ''}
+            
+            ${securityIssues.length > 0 ? `
+            **⚠️ Security Issues (${securityIssues.length})**
+            - Run \`npm audit fix\` to resolve vulnerabilities
+            - Review security implications before merging
+            ` : ''}
+            
+            ${bundleSize > 1000 ? `
+            **ℹ️ Large Bundle Size (${bundleSize}KB)**
+            - Consider code splitting or dependency optimization
+            ` : ''}
+            
+            ### Manual Review Checklist
+            - [ ] Code follows established patterns
+            - [ ] Error handling is comprehensive  
+            - [ ] Performance impact considered
+            - [ ] Security implications reviewed
+            - [ ] Documentation updated
+            
+            ${tsStatus === '✅' && eslintStatus === '✅' && testStatus === '✅' && securityStatus === '✅' ? 
+            '### ✅ Ready for Manual Review\nAutomated checks passed! This PR is ready for human review.' :
+            '### ⚠️ Fix Issues Before Review\nPlease address the automated check failures before requesting manual review.'}
+            
+            ---
+            *Generated by automated code review • [View workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})*`;
+            
+            // Post comment
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: commentBody
+            });
+            
+  review-requirements:
+    name: Check Review Requirements
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: Check if review required
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+            
+            // Require review for:
+            // - Changes to critical files
+            // - Large PRs (>500 lines changed)
+            // - Breaking changes
+            
+            const criticalFiles = [
+              'src/database/',
+              'src/services/',
+              'src/middleware/auth',
+              'src/mcp/',
+              'package.json',
+              'tsconfig',
+              '.github/workflows/'
+            ];
+            
+            const files = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+            
+            const changedFiles = files.data.map(f => f.filename);
+            const linesChanged = files.data.reduce((sum, f) => sum + f.additions + f.deletions, 0);
+            
+            const touchesCriticalFiles = changedFiles.some(file => 
+              criticalFiles.some(critical => file.startsWith(critical))
+            );
+            
+            const isLargePR = linesChanged > 500;
+            const hasBreakingChanges = pr.body?.includes('BREAKING CHANGE') || pr.title.includes('!');
+            
+            let requiresReview = touchesCriticalFiles || isLargePR || hasBreakingChanges;
+            
+            // Create status check
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: pr.head.sha,
+              state: 'pending',
+              target_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/pull/${context.issue.number}`,
+              description: requiresReview ? 'Manual review required' : 'Review recommended',
+              context: 'review-requirements'
+            });
+            
+            if (requiresReview) {
+              const reasons = [];
+              if (touchesCriticalFiles) reasons.push('touches critical files');
+              if (isLargePR) reasons.push(`large PR (${linesChanged} lines changed)`);
+              if (hasBreakingChanges) reasons.push('contains breaking changes');
+              
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `## 👥 Manual Review Required
+                
+                This PR requires manual review because it ${reasons.join(', ')}.
+                
+                **Changed Files:** ${changedFiles.length}
+                **Lines Changed:** ${linesChanged}
+                **Critical Files Affected:** ${touchesCriticalFiles ? 'Yes' : 'No'}
+                
+                Please request review from:
+                - [ ] Code owner for affected areas
+                - [ ] Security reviewer (if security-related)
+                - [ ] Performance reviewer (if performance-critical)
+                
+                ---
+                *Auto-generated review requirement check*`
+              });
+            }

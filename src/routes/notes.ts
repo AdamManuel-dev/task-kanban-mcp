@@ -16,11 +16,15 @@ export function noteRoutes(): Router {
       const { query, limit = 50, offset = 0, task_id, board_id, category, pinned } = req.query;
 
       if (!query) {
-        res.apiError({ code: 'INVALID_INPUT', message: 'Search query is required', statusCode: 400 });
+        res.apiError({
+          code: 'INVALID_INPUT',
+          message: 'Search query is required',
+          statusCode: 400,
+        });
         return;
       }
 
-      const options: any = {
+      const options: unknown = {
         query: query as string,
         limit: parseInt(limit as string, 10),
         offset: parseInt(offset as string, 10),
@@ -39,7 +43,7 @@ export function noteRoutes(): Router {
         data: searchResults,
         page: Math.floor(options.offset / options.limit) + 1,
         limit: options.limit,
-        total: searchResults.length
+        total: searchResults.length,
       });
     } catch (error) {
       next(error);
@@ -91,7 +95,7 @@ export function noteRoutes(): Router {
         limit: parseInt(limit as string, 10),
         task_id: task_id as string,
         board_id: board_id as string,
-        category: category as any,
+        category: category as unknown,
         pinned: true,
       };
 
@@ -117,7 +121,7 @@ export function noteRoutes(): Router {
         search,
       } = req.query;
 
-      const options: any = {
+      const options: unknown = {
         limit: parseInt(limit as string, 10),
         offset: parseInt(offset as string, 10),
         sortBy: sortBy as string,
@@ -142,7 +146,7 @@ export function noteRoutes(): Router {
         data: notes,
         page: Math.floor(options.offset / options.limit) + 1,
         limit: options.limit,
-        total
+        total,
       });
     } catch (error) {
       next(error);
@@ -153,7 +157,7 @@ export function noteRoutes(): Router {
   router.post('/', requirePermission('write'), async (req, res, next): Promise<void> => {
     try {
       const rawNoteData = validateInput(NoteValidation.create, req.body);
-      const noteData: any = {
+      const noteData: unknown = {
         task_id: rawNoteData.task_id,
         content: rawNoteData.content,
       };

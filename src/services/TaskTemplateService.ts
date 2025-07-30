@@ -40,7 +40,7 @@ export class TaskTemplateService {
   ): Promise<TaskTemplate[]> {
     try {
       let query = 'SELECT * FROM task_templates WHERE 1=1';
-      const params: any[] = [];
+      const params: unknown[] = [];
 
       if (!options.includeInactive) {
         query += ' AND is_active = ?';
@@ -105,12 +105,12 @@ export class TaskTemplateService {
           request.category,
           request.title_template,
           request.description_template || null,
-          request.priority || 0,
-          request.estimated_hours || null,
-          JSON.stringify(request.tags || []),
-          JSON.stringify(request.checklist_items || []),
-          JSON.stringify(request.custom_fields || {}),
-          request.created_by || null,
+          request.priority ?? 0,
+          request.estimated_hours ?? null,
+          JSON.stringify(request.tags ?? []),
+          JSON.stringify(request.checklist_items ?? []),
+          JSON.stringify(request.custom_fields ?? {}),
+          request.created_by ?? null,
           0, // is_system
           1, // is_active
           0, // usage_count
@@ -145,7 +145,7 @@ export class TaskTemplateService {
       }
 
       const updates: string[] = [];
-      const params: any[] = [];
+      const params: unknown[] = [];
 
       const fields = [
         'name',
@@ -413,7 +413,7 @@ export class TaskTemplateService {
 
   // Private methods
 
-  private mapRowToTemplate(row: any): TaskTemplate {
+  private mapRowToTemplate(row: unknown): TaskTemplate {
     return {
       id: row.id,
       name: row.name,
@@ -435,7 +435,7 @@ export class TaskTemplateService {
     };
   }
 
-  private processTemplate(template: string, variables: Record<string, any>): string {
+  private processTemplate(template: string, variables: Record<string, unknown>): string {
     let result = template;
 
     // Replace variables in format {{variable_name}}
@@ -473,11 +473,11 @@ export class TaskTemplateService {
         template.category,
         template.title_template,
         template.description_template || null,
-        template.priority || 0,
-        template.estimated_hours || null,
-        JSON.stringify(template.tags || []),
-        JSON.stringify(template.checklist_items || []),
-        JSON.stringify(template.custom_fields || {}),
+        template.priority ?? 0,
+        template.estimated_hours ?? null,
+        JSON.stringify(template.tags ?? []),
+        JSON.stringify(template.checklist_items ?? []),
+        JSON.stringify(template.custom_fields ?? {}),
         'system',
         1, // is_system
         1, // is_active
@@ -488,7 +488,7 @@ export class TaskTemplateService {
     );
   }
 
-  private getDefaultSystemTemplates(): (TaskTemplateCreateRequest & { is_system: boolean })[] {
+  private getDefaultSystemTemplates(): Array<TaskTemplateCreateRequest & { is_system: boolean }> {
     return [
       {
         name: 'Bug Report',

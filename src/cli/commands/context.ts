@@ -59,7 +59,12 @@ export function registerContextCommands(program: Command): void {
   const contextCmd = program.command('context').alias('ctx').description('AI context and insights');
 
   // Get global components with proper typing
-  const getComponents = (): CliComponents => global.cliComponents;
+  const getComponents = (): CliComponents => {
+    if (!global.cliComponents) {
+      throw new Error('CLI components not initialized. Please initialize the CLI first.');
+    }
+    return global.cliComponents;
+  };
 
   /**
    * Show current work context with AI-generated insights.
@@ -441,7 +446,7 @@ export function registerContextCommands(program: Command): void {
         formatter.info('Analyzing work patterns...');
         const context = (await apiClient.getContext()) as ContextData;
 
-        if (!context?.insights) {
+        if (!context.insights) {
           formatter.info('No insights available');
           return;
         }

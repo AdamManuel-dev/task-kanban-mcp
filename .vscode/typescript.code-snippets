@@ -1,0 +1,214 @@
+{
+  "Service Class with Error Handling": {
+    "prefix": "service-class",
+    "body": [
+      "/**",
+      " * @fileoverview ${1:Service name} service implementation",
+      " * @lastmodified ${2:${CURRENT_YEAR}-${CURRENT_MONTH}-${CURRENT_DATE}T${CURRENT_HOUR}:${CURRENT_MINUTE}:00Z}",
+      " * ",
+      " * Features: ${3:Core features}",
+      " * Main APIs: ${4:Key methods}",
+      " * Constraints: ${5:Dependencies and limitations}",
+      " * Patterns: ${6:Error handling and patterns}",
+      " */",
+      "",
+      "import type { DatabaseConnection } from '@/database/connection';",
+      "import { logger } from '@/utils/logger';",
+      "import type { ServiceError } from '@/types';",
+      "",
+      "export class ${1:Service}Service {",
+      "  constructor(private readonly db: DatabaseConnection) {}",
+      "",
+      "  async ${7:methodName}(${8:params}): Promise<${9:ReturnType}> {",
+      "    try {",
+      "      $0",
+      "      return result;",
+      "    } catch (error) {",
+      "      logger.error('${1:Service} operation failed', { error, ${8:params} });",
+      "      throw this.createError('${10:ERROR_CODE}', '${11:Error message}', error);",
+      "    }",
+      "  }",
+      "",
+      "  private createError(code: string, message: string, originalError?: unknown): ServiceError {",
+      "    const error = new Error(message) as ServiceError;",
+      "    error.code = code;",
+      "    error.statusCode = this.getStatusCodeForError(code);",
+      "    error.details = originalError;",
+      "    return error;",
+      "  }",
+      "",
+      "  private getStatusCodeForError(code: string): number {",
+      "    switch (code) {",
+      "      case 'NOT_FOUND':",
+      "        return 404;",
+      "      case 'INVALID_INPUT':",
+      "        return 400;",
+      "      default:",
+      "        return 500;",
+      "    }",
+      "  }",
+      "}"
+    ],
+    "description": "Create a service class with proper error handling and file header"
+  },
+  "CLI Command Function": {
+    "prefix": "cli-command",
+    "body": [
+      "export function register${1:Command}Command(program: Command): void {",
+      "  program",
+      "    .command('${2:command-name}')",
+      "    .alias('${3:alias}')",
+      "    .description('${4:Command description}')",
+      "    .option('-f, --format <format>', 'Output format', '${5:default}')",
+      "    .action(async (options: ${6:OptionsType}) => {",
+      "      try {",
+      "        const { formatters, services } = global.cliComponents;",
+      "        ",
+      "        $0",
+      "        ",
+      "        formatters.success('${1:Command} completed successfully');",
+      "      } catch (error) {",
+      "        const { formatters } = global.cliComponents;",
+      "        formatters.error('${1:Command} failed', error);",
+      "        process.exit(1);",
+      "      }",
+      "    });",
+      "}"
+    ],
+    "description": "Create a CLI command function with proper error handling"
+  },
+  "Database Query with Types": {
+    "prefix": "db-query",
+    "body": [
+      "const ${1:results} = await this.db.query<${2:ResultType}>(",
+      "  `",
+      "    ${3:SELECT * FROM table_name}",
+      "    WHERE ${4:condition} = ?",
+      "  `,",
+      "  [${5:params}]",
+      ");",
+      "$0"
+    ],
+    "description": "Database query with proper typing"
+  },
+  "Async Function with Return Type": {
+    "prefix": "async-func",
+    "body": [
+      "async ${1:function} ${2:functionName}(${3:params}): Promise<${4:ReturnType}> {",
+      "  try {",
+      "    $0",
+      "  } catch (error) {",
+      "    logger.error('${2:functionName} failed', { error, ${3:params} });",
+      "    throw error;",
+      "  }",
+      "}"
+    ],
+    "description": "Async function with proper return type and error handling"
+  },
+  "Type-Safe API Route": {
+    "prefix": "api-route",
+    "body": [
+      "router.${1:get}('${2:/path}', async (req: Request, res: Response, next: NextFunction): Promise<void> => {",
+      "  try {",
+      "    const ${3:data} = req.${4:body} as ${5:RequestType};",
+      "    ",
+      "    $0",
+      "    ",
+      "    res.apiSuccess(${6:result});",
+      "  } catch (error) {",
+      "    next(error);",
+      "  }",
+      "});"
+    ],
+    "description": "Type-safe API route with proper error handling"
+  },
+  "Interface Definition": {
+    "prefix": "interface",
+    "body": [
+      "export interface ${1:InterfaceName} {",
+      "  ${2:property}: ${3:type};",
+      "  ${4:optional}?: ${5:type};",
+      "  $0",
+      "}"
+    ],
+    "description": "TypeScript interface definition"
+  },
+  "Type Guard Function": {
+    "prefix": "type-guard",
+    "body": [
+      "export function is${1:TypeName}(value: unknown): value is ${1:TypeName} {",
+      "  return (",
+      "    typeof value === 'object' &&",
+      "    value !== null &&",
+      "    '${2:property}' in value &&",
+      "    typeof (value as ${1:TypeName}).${2:property} === '${3:type}'$0",
+      "  );",
+      "}"
+    ],
+    "description": "Type guard function for runtime type checking"
+  },
+  "Result Type Pattern": {
+    "prefix": "result-type",
+    "body": [
+      "type ${1:Operation}Result<T> = {",
+      "  success: true;",
+      "  data: T;",
+      "} | {",
+      "  success: false;",
+      "  error: {",
+      "    code: string;",
+      "    message: string;",
+      "    details?: unknown;",
+      "  };",
+      "};"
+    ],
+    "description": "Result type pattern for error handling"
+  },
+  "Branded Type": {
+    "prefix": "branded-type",
+    "body": [
+      "export type ${1:TypeName} = string & { readonly __brand: '${1:TypeName}' };",
+      "",
+      "export function create${1:TypeName}(value: string): ${1:TypeName} {",
+      "  // Add validation logic here",
+      "  $0",
+      "  return value as ${1:TypeName};",
+      "}"
+    ],
+    "description": "Branded type for better type safety"
+  },
+  "Generic Service Method": {
+    "prefix": "service-method",
+    "body": [
+      "async ${1:methodName}<T extends ${2:BaseType}>(${3:params}): Promise<${4:ServiceResult<T>}> {",
+      "  try {",
+      "    logger.debug('${1:methodName} called', { ${3:params} });",
+      "    ",
+      "    $0",
+      "    ",
+      "    logger.info('${1:methodName} completed', { result });",
+      "    return { success: true, data: result };",
+      "  } catch (error) {",
+      "    logger.error('${1:methodName} failed', { error, ${3:params} });",
+      "    return { success: false, error: this.handleError(error) };",
+      "  }",
+      "}"
+    ],
+    "description": "Generic service method with logging and result pattern"
+  },
+  "Zod Schema Validation": {
+    "prefix": "zod-schema",
+    "body": [
+      "import { z } from 'zod';",
+      "",
+      "export const ${1:schemaName}Schema = z.object({",
+      "  ${2:field}: z.string().min(1, '${2:field} is required'),",
+      "  ${3:optional}: z.string().optional(),",
+      "  $0",
+      "});",
+      "",
+      "export type ${1/(.*)Schema/${1:/capitalize}/} = z.infer<typeof ${1:schemaName}Schema>;"
+    ],
+    "description": "Zod schema with TypeScript type inference"
+  }
+}
