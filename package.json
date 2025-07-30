@@ -119,7 +119,7 @@
     "enquirer": "^2.4.1",
     "express": "^4.18.2",
     "express-rate-limit": "^7.1.5",
-    "helmet": "^7.1.0",
+    "helmet": "^8.1.0",
     "ink": "^6.0.1",
     "inquirer": "^9.2.12",
     "jsdom": "^26.1.0",
