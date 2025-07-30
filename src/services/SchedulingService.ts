@@ -30,7 +30,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import * as cron from 'node-cron';
 import { logger } from '@/utils/logger';
-import type { DatabaseConnection } from '@/database/connection';
+import type { DatabaseConnection, QueryParameters } from '@/database/connection';
 import type { BackupService } from './BackupService';
 
 /**
@@ -173,7 +173,7 @@ export class SchedulingService {
     } = {}
   ): Promise<BackupSchedule[]> {
     let query = 'SELECT * FROM backup_schedules WHERE 1=1';
-    const params: unknown[] = [];
+    const params: QueryParameters = [];
 
     if (options.enabled !== undefined) {
       query += ' AND enabled = ?';
@@ -193,7 +193,7 @@ export class SchedulingService {
     }
 
     const rows = await this.db.query(query, params);
-    return rows.map(row => SchedulingService.deserializeSchedule(row));
+    return rows.map(row => SchedulingService.deserializeSchedule(row as any));
   }
 
   /**
@@ -204,7 +204,7 @@ export class SchedulingService {
    */
   async getScheduleById(id: string): Promise<BackupSchedule | null> {
     const row = await this.db.queryOne('SELECT * FROM backup_schedules WHERE id = ?', [id]);
-    return row ? SchedulingService.deserializeSchedule(row) : null;
+    return row ? SchedulingService.deserializeSchedule(row as any) : null;
   }
 
   /**

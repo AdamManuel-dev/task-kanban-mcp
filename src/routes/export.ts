@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { Router } from 'express';
-import { ExportService } from '@/services/ExportService';
+import { ExportService, type ExportOptions } from '@/services/ExportService';
 import { requirePermission } from '@/middleware/auth';
 import { validateInput } from '@/utils/validation';
 import { z } from 'zod';
@@ -53,8 +53,8 @@ router.get(
       const db = dbConnection;
       const exportService = new ExportService(db);
 
-      // Build options object omitting undefined values
-      const options: unknown = {
+      // Build options object omitting undefined values  
+      const options: ExportOptions = {
         format: validated.format,
       };
 
@@ -140,7 +140,7 @@ router.post(
       const validated = validateInput(ConvertSchema, req.body);
 
       const db = dbConnection;
-      const exportService = new ExportService(db);
+      const _exportService = new ExportService(db);
 
       // TODO: Implement convertFormat method in ExportService
       throw new Error('Convert format not implemented yet');
@@ -168,8 +168,8 @@ router.get(
       const exportService = new ExportService(db);
 
       // Force anonymization
-      const options: unknown = {
-        ...validated,
+      const options: ExportOptions = {
+        format: validated.format,
         anonymize: true,
         anonymizationOptions: validated.anonymizationOptions ?? {
           anonymizeUserData: true,
@@ -179,6 +179,16 @@ router.get(
           preserveStructure: false,
         },
       };
+
+      // Add optional properties only if they exist
+      if (validated.includeBoards !== undefined) options.includeBoards = validated.includeBoards;
+      if (validated.includeTasks !== undefined) options.includeTasks = validated.includeTasks;
+      if (validated.includeTags !== undefined) options.includeTags = validated.includeTags;
+      if (validated.includeNotes !== undefined) options.includeNotes = validated.includeNotes;
+      if (validated.boardIds !== undefined) options.boardIds = validated.boardIds;
+      if (validated.taskStatuses !== undefined) options.taskStatuses = validated.taskStatuses;
+      if (validated.dateFrom !== undefined) options.dateFrom = new Date(validated.dateFrom);
+      if (validated.dateTo !== undefined) options.dateTo = new Date(validated.dateTo);
 
       const result = await (options.format === 'json'
         ? exportService.exportToJSON(options)

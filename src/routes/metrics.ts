@@ -58,8 +58,8 @@ router.get('/services/:serviceName', (req, res) => {
     const metricsData = {
       ...metrics,
       methodMetrics: Array.from(metrics.methodMetrics.entries()).map(([name, stats]) => ({
-        methodName: name,
         ...stats,
+        methodName: name,
       })),
     };
 

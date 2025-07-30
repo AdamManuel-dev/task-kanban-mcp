@@ -13,6 +13,15 @@ import { z } from 'zod';
 import { requirePermission } from '@/middleware/auth';
 import { validateRequest } from '@/middleware/validation';
 import { logger } from '@/utils/logger';
+import type { Task, TaskTag, Note } from '@/types';
+import type { CreateTaskRequest } from '@/services/TaskService';
+
+interface CreateNoteRequest {
+  task_id: string;
+  content: string;
+  category?: string;
+  created_by?: string;
+}
 
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -24,11 +33,14 @@ interface AuthenticatedRequest extends Request {
 
 interface Services {
   taskService: {
-    createTask: (data: unknown) => Promise<unknown>;
-    setTaskTags: (taskId: string, tags: string[]) => Promise<void>;
+    createTask: (data: CreateTaskRequest) => Promise<Task>;
+    getTaskById: (id: string, options?: { notes?: boolean; tags?: boolean }) => Promise<Task | null>;
+  };
+  tagService: {
+    addTagToTask: (taskId: string, tagId: string) => Promise<TaskTag>;
   };
   noteService: {
-    createNote: (data: unknown) => Promise<void>;
+    createNote: (data: CreateNoteRequest) => Promise<Note>;
   };
 }
 
@@ -61,7 +73,7 @@ const createTaskBodySchema = z.object({
  */
 export const createTaskHandler = (services: Services) => [
   requirePermission('write'),
-  validateRequest(createTaskBodySchema, 'body'),
+  validateRequest(createTaskBodySchema),
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const taskData = req.body;
@@ -76,7 +88,9 @@ export const createTaskHandler = (services: Services) => [
 
       // Handle tags if provided
       if (taskData.tags && taskData.tags.length > 0) {
-        await services.taskService.setTaskTags(task.id, taskData.tags);
+        for (const tagId of taskData.tags) {
+          await services.tagService.addTagToTask(task.id, tagId);
+        }
       }
 
       // Handle notes if provided

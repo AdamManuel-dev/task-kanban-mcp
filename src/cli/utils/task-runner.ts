@@ -74,7 +74,7 @@ export class TaskRunner {
   ): Promise<void> {
     const mainTasks = groups.map(group => ({
       title: group.title,
-      task: (_ctx: any, task: any): any => {
+      task: (_ctx: unknown, task: unknown): unknown => {
         const subtasks = group.tasks.map(item => ({
           title: item.title,
           task: item.action,
@@ -82,14 +82,14 @@ export class TaskRunner {
           enabled: item.enabled ?? true,
         }));
 
-        return task.newListr(subtasks, {
+        return (task as any).newListr(subtasks as any, {
           concurrent: group.concurrent ?? false,
           exitOnError: options?.exitOnError ?? true,
         });
       },
-    }));
+    })) as any;
 
-    const listr = new Listr(mainTasks, {
+    const listr = new Listr(mainTasks as any, {
       concurrent: false,
       exitOnError: options?.exitOnError ?? true,
       renderer: this.renderer,
@@ -202,7 +202,7 @@ export class TaskRunner {
         }
 
         throw new Error(
-          `Failed after ${String(maxRetries)} attempts: ${(lastError as { message?: string })?.message ?? 'Unknown error'}`
+          `Failed after ${String(maxRetries)} attempts: ${(lastError as { message?: string }).message ?? 'Unknown error'}`
         );
       },
     };

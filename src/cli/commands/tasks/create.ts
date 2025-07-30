@@ -19,7 +19,6 @@ import { SpinnerManager } from '../../utils/spinner';
 import { isSuccessResponse } from '../../api-client-wrapper';
 import { TaskTemplateService } from '../../../services/TaskTemplateService';
 import {
-  getComponents,
   withErrorHandling,
   withSpinner,
   validateRequiredFields,
@@ -86,7 +85,7 @@ export function registerCreateCommand(taskCmd: Command): void {
     .option('-i, --interactive', 'interactive mode')
     .action(
       withErrorHandling('create task', async (options: CreateTaskOptions) => {
-        const { config, apiClient, formatter } = getCliComponents();
+        const { config: _config, apiClient, formatter: _formatter } = getCliComponents();
         const spinner = new SpinnerManager();
 
         let taskData: Record<string, unknown> = {};

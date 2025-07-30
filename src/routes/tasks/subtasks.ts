@@ -8,55 +8,44 @@
  * Patterns: RESTful routes under /tasks/:id/subtasks
  */
 
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { TaskService } from '@/services/TaskService';
 import { dbConnection } from '@/database/connection';
 import { logger } from '@/utils/logger';
-import { createServiceErrorHandler } from '@/utils/errors';
 
 export const taskSubtaskRoutes = Router({ mergeParams: true });
 
 /**
  * GET /tasks/:id/subtasks - Get all subtasks for a task
  */
-taskSubtaskRoutes.get('/', async (req, res) => {
-  const errorHandler = createServiceErrorHandler('getTaskSubtasks', logger);
+taskSubtaskRoutes.get('/', async (req: Request, res: Response, next: NextFunction) => {
 
   try {
     const taskId = req.params.id;
     const taskService = new TaskService(dbConnection);
     const result = await taskService.getSubtasks(taskId);
 
-    if ((result as any).success) {
-      res.json({ success: true, data: (result as any).data });
-    } else {
-      res.status(400).json(result as any);
-    }
+    res.json({ success: true, data: result });
   } catch (error) {
-    errorHandler(error, req, res);
+    next(error);
   }
 });
 
 /**
  * POST /tasks/:id/subtasks - Create a subtask under parent task
  */
-taskSubtaskRoutes.post('/', async (req, res) => {
-  const errorHandler = createServiceErrorHandler('createSubtask', logger);
+taskSubtaskRoutes.post('/', async (req: Request, res: Response, next: NextFunction) => {
 
   try {
     const parentTaskId = req.params.id;
     const subtaskData = { ...req.body, parent_task_id: parentTaskId };
 
     const taskService = new TaskService(dbConnection);
-    const result = await taskService.createTask(subtaskData as any);
+    const result = await taskService.createTask(subtaskData);
 
-    if ((result as any).success) {
-      res.status(201).json({ success: true, data: (result as any).data });
-    } else {
-      res.status(400).json(result as any);
-    }
+    res.status(201).json({ success: true, data: result });
   } catch (error) {
-    errorHandler(error, req, res);
+    next(error);
   }
 });
 
@@ -71,35 +60,26 @@ taskSubtaskRoutes.put('/:subtaskId', async (req, res) => {
     const updates = req.body;
 
     const taskService = new TaskService(dbConnection);
-    const result = await taskService.updateTask(subtaskId, updates as any);
+    const result = await taskService.updateTask(subtaskId, updates);
 
-    if ((result as any).success) {
-      res.json({ success: true, data: (result as any).data });
-    } else {
-      res.status(400).json(result as any);
-    }
+    res.json({ success: true, data: result });
   } catch (error) {
-    errorHandler(error, req, res);
+    next(error);
   }
 });
 
 /**
  * DELETE /tasks/:id/subtasks/:subtaskId - Delete a subtask
  */
-taskSubtaskRoutes.delete('/:subtaskId', async (req, res) => {
-  const errorHandler = createServiceErrorHandler('deleteSubtask', logger);
+taskSubtaskRoutes.delete('/:subtaskId', async (req: Request, res: Response, next: NextFunction) => {
 
   try {
     const { subtaskId } = req.params;
     const taskService = new TaskService(dbConnection);
-    const result = await taskService.deleteTask(subtaskId);
+    await taskService.deleteTask(subtaskId);
 
-    if ((result as any).success) {
-      res.json({ success: true, message: 'Subtask deleted successfully' });
-    } else {
-      res.status(400).json(result as any);
-    }
+    res.json({ success: true, message: 'Subtask deleted successfully' });
   } catch (error) {
-    errorHandler(error, req, res);
+    next(error);
   }
 });

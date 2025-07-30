@@ -336,7 +336,7 @@ export class BackupMonitoringService extends EventEmitter {
       }
 
       return backupFiles.sort((a, b) => a.name.localeCompare(b.name));
-    } catch (error) {
+    } catch (error: any) {
       if (error.code === 'ENOENT') {
         logger.warn('Backup directory does not exist', { path: this.config.backupPath });
         return [];

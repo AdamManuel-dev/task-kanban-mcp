@@ -884,7 +884,7 @@ export function registerBoardCommands(program: Command): void {
           };
 
           const templateKey = options.template as keyof typeof templates;
-          if (!templates[templateKey]) {
+          if (!(templateKey in templates)) {
             formatter.error(
               `Invalid template: ${String(options.template)}. Available: ${String(Object.keys(templates).join(', '))}`
             );

@@ -63,7 +63,7 @@ export function registerNoteCommands(program: Command): void {
 
           const notes = await apiClient.getNotes(queryParams);
 
-          if (!notes || !Array.isArray(notes) || notes.length === 0) {
+          if (!Array.isArray(notes) || notes.length === 0) {
             formatter.info('No notes found');
             return;
           }
@@ -90,7 +90,7 @@ export function registerNoteCommands(program: Command): void {
       try {
         const note = await apiClient.getNote(id);
 
-        if (!note) {
+        if (!('data' in note)) {
           formatter.error(`Note ${String(id)} not found`);
           process.exit(1);
         }
@@ -232,7 +232,7 @@ export function registerNoteCommands(program: Command): void {
         try {
           // Get current note data
           const noteResponse = await apiClient.getNote(id);
-          if (!noteResponse || !('data' in noteResponse)) {
+          if (!('data' in noteResponse)) {
             formatter.error(`Note ${String(id)} not found`);
             process.exit(1);
           }
@@ -244,29 +244,23 @@ export function registerNoteCommands(program: Command): void {
           if (options.interactive) {
             const answers = await inquirer.prompt([
               {
-                type: 'input',
-                name: 'title',
-                message: 'Note title:',
-                default: currentNote.content,
-              },
-              {
                 type: 'editor',
                 name: 'content',
                 message: 'Note content:',
-                default: currentNote.content ?? '',
+                default: currentNote.content || '',
               },
               {
                 type: 'list',
                 name: 'category',
                 message: 'Note category:',
                 choices: ['general', 'implementation', 'research', 'blocker', 'idea'],
-                default: currentNote.category ?? 'general',
+                default: currentNote.category,
               },
               {
                 type: 'confirm',
                 name: 'pinned',
                 message: 'Pin this note?',
-                default: currentNote.pinned ?? false,
+                default: currentNote.pinned || false,
               },
             ]);
             updates = answers;
@@ -305,7 +299,7 @@ export function registerNoteCommands(program: Command): void {
       try {
         if (!options.force) {
           const noteResponse = await apiClient.getNote(id);
-          if (!noteResponse || !('data' in noteResponse)) {
+          if (!('data' in noteResponse)) {
             formatter.error(`Note ${String(id)} not found`);
             process.exit(1);
           }
@@ -351,7 +345,7 @@ export function registerNoteCommands(program: Command): void {
 
         const notes = (await apiClient.searchNotes(query)) as unknown[];
 
-        if (!notes || notes.length === 0) {
+        if (notes.length === 0) {
           formatter.info(`No notes found matching "${String(query)}"`);
           return;
         }

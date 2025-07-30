@@ -50,22 +50,16 @@ export function registerNextCommand(taskCmd: Command): void {
           if (options.includeBlocked) params.exclude_blocked = 'false';
 
           // Call the API endpoint for next task recommendation
-          const response = await apiClient.request('GET', '/api/tasks/next', undefined, params) as {
-            next_task?: {
-              id: string;
-              title: string;
-              description?: string;
-              priority: string;
-              status: string;
-              board_id: string;
-              created_at: string;
-              updated_at: string;
-              due_date?: string;
-            };
-            reasoning?: string;
-          };
+          const response = await apiClient.request('GET', '/api/tasks/next', undefined, params);
 
-          if (!response?.next_task) {
+          // Type assertion for API response
+          interface NextTaskResponse {
+            next_task?: Task;
+            reasoning?: string;
+          }
+          const typedResponse = response as NextTaskResponse;
+
+          if (!typedResponse.next_task) {
             formatter.info('No tasks available matching your criteria');
             if (options.json) {
               formatter.output({ next_task: null, reasoning: 'No available tasks found' });
@@ -73,7 +67,7 @@ export function registerNextCommand(taskCmd: Command): void {
             return;
           }
 
-          const { next_task: nextTask, reasoning } = response;
+          const { next_task: nextTask, reasoning } = typedResponse;
 
           if (options.json) {
             formatter.output({ next_task: nextTask, reasoning });

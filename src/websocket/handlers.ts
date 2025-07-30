@@ -501,7 +501,7 @@ export class MessageHandler {
     }
 
     try {
-      const task = await this.taskService.updateTask(payload.taskId, payload.updates);
+      const task = await this.taskService.updateTask(payload.taskId as string, payload.updates);
 
       this.webSocketManager.sendToClient(clientId, {
         type: 'update_task_success',
@@ -548,7 +548,7 @@ export class MessageHandler {
    */
   private async handleCreateTask(context: MessageContext): Promise<void> {
     const { clientId, client, message } = context;
-    const taskData = message.payload as CreateTaskRequest | undefined;
+    const taskData = message.payload as unknown as CreateTaskRequest | undefined;
 
     if (!taskData?.title || !taskData.board_id) {
       this.webSocketManager.sendError(

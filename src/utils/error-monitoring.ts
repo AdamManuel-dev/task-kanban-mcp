@@ -49,6 +49,31 @@ export interface AlertRule {
   enabled: boolean;
 }
 
+export interface WebhookConfig {
+  url: string;
+  headers?: Record<string, string>;
+}
+
+export interface EmailConfig {
+  to: string;
+  from?: string;
+  subject?: string;
+}
+
+export interface SlackConfig {
+  channel: string;
+  token?: string;
+  webhook?: string;
+}
+
+export interface ErrorFilters {
+  since?: Date;
+  severity?: string[];
+  fingerprint?: string;
+  service?: string;
+  limit?: number;
+}
+
 export interface AlertChannel {
   name: string;
   type: 'log' | 'webhook' | 'email' | 'slack';
@@ -272,13 +297,13 @@ export class AlertManager {
           logger.error('ALERT', alert);
           break;
         case 'webhook':
-          await this.sendWebhookAlert(channel.config, alert);
+          await this.sendWebhookAlert(channel.config as WebhookConfig, alert as ErrorEvent);
           break;
         case 'email':
-          await this.sendEmailAlert(channel.config, alert);
+          await this.sendEmailAlert(channel.config as EmailConfig, alert as ErrorEvent);
           break;
         case 'slack':
-          await this.sendSlackAlert(channel.config, alert);
+          await this.sendSlackAlert(channel.config as SlackConfig, alert as ErrorEvent);
           break;
       }
     } catch (error) {
@@ -289,17 +314,17 @@ export class AlertManager {
     }
   }
 
-  private async sendWebhookAlert(config: unknown, alert: unknown): Promise<void> {
+  private async sendWebhookAlert(config: WebhookConfig, alert: ErrorEvent): Promise<void> {
     // Implementation would depend on HTTP client availability
     logger.info('Webhook alert would be sent', { url: config.url, alert });
   }
 
-  private async sendEmailAlert(config: unknown, alert: unknown): Promise<void> {
+  private async sendEmailAlert(config: EmailConfig, alert: ErrorEvent): Promise<void> {
     // Implementation would depend on email service
     logger.info('Email alert would be sent', { to: config.to, alert });
   }
 
-  private async sendSlackAlert(config: unknown, alert: unknown): Promise<void> {
+  private async sendSlackAlert(config: SlackConfig, alert: ErrorEvent): Promise<void> {
     // Implementation would depend on Slack SDK
     logger.info('Slack alert would be sent', { channel: config.channel, alert });
   }
@@ -404,7 +429,7 @@ export class ErrorMonitor {
     return this.storage.getMetrics(timeWindow);
   }
 
-  getErrors(filters?: unknown): ErrorEvent[] {
+  getErrors(filters?: ErrorFilters): ErrorEvent[] {
     return this.storage.getErrors(filters);
   }
 

@@ -199,7 +199,7 @@ describe('WebSocketServer', () => {
 
       const client = new WebSocket(`ws://localhost:${testPort}`);
 
-      client.on('close', (code, reason) => {
+      client.on('close', (code, _reason) => {
         expect(code).toBe(1008); // Policy violation
         expect(logger.warn).toHaveBeenCalledWith(
           'Client connection rejected',
@@ -220,7 +220,7 @@ describe('WebSocketServer', () => {
 
       const client = new WebSocket(`ws://localhost:${testPort}`);
 
-      client.on('close', (code, reason) => {
+      client.on('close', (code, _reason) => {
         expect(code).toBe(1008); // Policy violation
         expect(logger.warn).toHaveBeenCalledWith(
           'Client connection rejected',
@@ -453,12 +453,12 @@ describe('WebSocketServer', () => {
     it('should close connection if pong timeout exceeded', done => {
       const client = new WebSocket(`ws://localhost:${testPort}`);
 
-      client.on('ping', data => {
+      client.on('ping', _data => {
         // Don't respond to ping to trigger timeout
         logger.debug('Received ping, not responding to test timeout');
       });
 
-      client.on('close', (code, reason) => {
+      client.on('close', (code, _reason) => {
         expect(code).toBe(1000); // Normal closure
         expect(logger.warn).toHaveBeenCalledWith(
           'Client connection closed due to ping timeout',

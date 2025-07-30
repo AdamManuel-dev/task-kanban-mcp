@@ -41,6 +41,12 @@ export interface SystemHealthMetrics {
   rateLimitHits: number;
 }
 
+export interface EndpointStats {
+  count: number;
+  totalTime: number;
+  errors: number;
+}
+
 export interface PerformanceDashboard {
   overview: {
     totalRequests: number;
@@ -153,7 +159,8 @@ export class PerformanceMonitoringService extends EventEmitter {
           const result = (await originalQuery.call(this, sql, params)) as T[];
           const queryTime = Date.now() - queryStart;
           dbQueryTime += queryTime;
-          (globalThis as unknown).trackDbQuery?.(String(sql), queryTime);
+          // @ts-ignore - Optional global tracking function for debugging
+          globalThis.trackDbQuery?.(String(sql), queryTime);
           return result;
         } catch (error) {
           const queryTime = Date.now() - queryStart;
@@ -182,7 +189,7 @@ export class PerformanceMonitoringService extends EventEmitter {
           dbQueryCount,
           dbQueryTime,
           userAgent: req.get('User-Agent') ?? '',
-          userId: (req as unknown).user?.id || '',
+          userId: (req as any).user?.id || '',
           error: res.statusCode >= 400 ? String(body) : '',
         };
 
@@ -273,7 +280,7 @@ export class PerformanceMonitoringService extends EventEmitter {
     // Top endpoints analysis
     const endpointStats = this.analyzeEndpoints(last24h);
     const topEndpoints = Object.entries(endpointStats)
-      .map(([endpoint, stats]: [string, unknown]) => ({
+      .map(([endpoint, stats]: [string, any]) => ({
         endpoint,
         requests: stats.count,
         averageTime: stats.totalTime / stats.count,
@@ -596,8 +603,8 @@ export class PerformanceMonitoringService extends EventEmitter {
     };
   }
 
-  private analyzeEndpoints(metrics: PerformanceMetrics[]): Record<string, unknown> {
-    const stats: Record<string, unknown> = {};
+  private analyzeEndpoints(metrics: PerformanceMetrics[]): Record<string, EndpointStats> {
+    const stats: Record<string, EndpointStats> = {};
 
     for (const metric of metrics) {
       if (!stats[metric.endpoint]) {

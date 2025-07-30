@@ -5,6 +5,7 @@
 
 import { randomUUID } from 'crypto';
 import { dbConnection } from '@/database/connection';
+import type { QueryParameter } from '@/database/connection';
 import { logger } from '@/utils/logger';
 import type {
   TaskTemplate,
@@ -17,6 +18,35 @@ import type {
   TemplateVariable,
 } from '@/types/templates';
 import type { DatabaseTask } from '@/types';
+import type { CreateTaskRequest as TaskServiceCreateRequest } from './TaskService';
+
+// Database row interfaces
+interface TaskTemplateRow {
+  id: string;
+  name: string;
+  description: string | null;
+  category: 'bug' | 'feature' | 'meeting' | 'maintenance' | 'research' | 'review' | 'custom';
+  title_template: string;
+  description_template: string | null;
+  priority: number;
+  estimated_hours: number | null;
+  tags: string;
+  checklist_items: string;
+  custom_fields: string;
+  created_by: string | null;
+  is_system: number;
+  is_active: number;
+  usage_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface TemplateUsageRow {
+  template_id: string;
+  template_name: string;
+  usage_count: number;
+  last_used: string;
+}
 
 export class TaskTemplateService {
   private static instance: TaskTemplateService;
@@ -40,7 +70,7 @@ export class TaskTemplateService {
   ): Promise<TaskTemplate[]> {
     try {
       let query = 'SELECT * FROM task_templates WHERE 1=1';
-      const params: unknown[] = [];
+      const params: QueryParameter[] = [];
 
       if (!options.includeInactive) {
         query += ' AND is_active = ?';
@@ -59,8 +89,8 @@ export class TaskTemplateService {
 
       query += ' ORDER BY is_system DESC, category, name';
 
-      const rows = await dbConnection.query(query, params);
-      return rows.map(row => this.mapRowToTemplate(row as any));
+      const rows = await dbConnection.query<TaskTemplateRow>(query, params);
+      return rows.map(row => this.mapRowToTemplate(row));
     } catch (error) {
       logger.error('Failed to get templates:', error);
       throw new Error(
@@ -74,8 +104,11 @@ export class TaskTemplateService {
    */
   async getTemplate(id: string): Promise<TaskTemplate | null> {
     try {
-      const row = await dbConnection.queryOne('SELECT * FROM task_templates WHERE id = ?', [id]);
-      return row ? this.mapRowToTemplate(row as any) : null;
+      const row = await dbConnection.queryOne<TaskTemplateRow>(
+        'SELECT * FROM task_templates WHERE id = ?',
+        [id]
+      );
+      return row ? this.mapRowToTemplate(row) : null;
     } catch (error) {
       logger.error(`Failed to get template ${id}:`, error);
       throw new Error(
@@ -145,7 +178,7 @@ export class TaskTemplateService {
       }
 
       const updates: string[] = [];
-      const params: unknown[] = [];
+      const params: QueryParameter[] = [];
 
       const fields = [
         'name',
@@ -159,9 +192,10 @@ export class TaskTemplateService {
       ];
 
       for (const field of fields) {
-        if (request[field as keyof TaskTemplateUpdateRequest] !== undefined) {
+        const value = request[field as keyof TaskTemplateUpdateRequest];
+        if (value !== undefined) {
           updates.push(`${field} = ?`);
-          params.push(request[field as keyof TaskTemplateUpdateRequest]);
+          params.push(value as QueryParameter);
         }
       }
 
@@ -250,7 +284,7 @@ export class TaskTemplateService {
       const { dbConnection } = await import('@/database/connection');
       const taskService = new TaskService(dbConnection);
 
-      const taskData: any = {
+      const taskData: TaskServiceCreateRequest = {
         title,
         description,
         board_id: request.board_id,
@@ -258,10 +292,9 @@ export class TaskTemplateService {
         priority: template.priority,
         assignee: request.assignee,
         due_date: request.due_date ? new Date(request.due_date) : undefined,
-        tags: template.tags,
       };
 
-      const task = await taskService.createTask(taskData as any);
+      const task = await taskService.createTask(taskData);
 
       // Update template usage count
       await this.incrementUsageCount(request.template_id);
@@ -296,7 +329,7 @@ export class TaskTemplateService {
    */
   async getUsageStats(): Promise<TemplateUsageStats[]> {
     try {
-      const rows = await dbConnection.query(`
+      const rows = await dbConnection.query<TemplateUsageRow>(`
         SELECT 
           id as template_id,
           name as template_name,
@@ -307,7 +340,7 @@ export class TaskTemplateService {
         ORDER BY usage_count DESC
       `);
 
-      return rows.map((row: any) => ({
+      return rows.map(row => ({
         template_id: row.template_id,
         template_name: row.template_name,
         usage_count: row.usage_count,
@@ -413,20 +446,20 @@ export class TaskTemplateService {
 
   // Private methods
 
-  private mapRowToTemplate(row: any): TaskTemplate {
+  private mapRowToTemplate(row: TaskTemplateRow): TaskTemplate {
     return {
       id: row.id,
       name: row.name,
-      description: row.description || '',
+      description: row.description ?? '',
       category: row.category,
       title_template: row.title_template,
-      description_template: row.description_template || '',
+      description_template: row.description_template ?? '',
       priority: row.priority,
-      estimated_hours: row.estimated_hours,
+      estimated_hours: row.estimated_hours ?? undefined,
       tags: JSON.parse(row.tags || '[]'),
       checklist_items: JSON.parse(row.checklist_items || '[]'),
       custom_fields: JSON.parse(row.custom_fields || '{}'),
-      created_by: row.created_by,
+      created_by: row.created_by ?? undefined,
       is_system: Boolean(row.is_system),
       is_active: Boolean(row.is_active),
       usage_count: row.usage_count,
@@ -435,7 +468,7 @@ export class TaskTemplateService {
     };
   }
 
-  private processTemplate(template: string, variables: Record<string, any>): string {
+  private processTemplate(template: string, variables: Record<string, unknown>): string {
     let result = template;
 
     // Replace variables in format {{variable_name}}

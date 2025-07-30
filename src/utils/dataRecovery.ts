@@ -46,6 +46,13 @@ interface RecoveryOptions {
   maxRepairAttempts: number;
 }
 
+interface ForeignKeyViolation {
+  table: string;
+  rowid: string | number;
+  fkid: string | number;
+  parent?: string;
+}
+
 export class DataRecoveryManager {
   private db: Database;
 
@@ -278,7 +285,7 @@ export class DataRecoveryManager {
     // Enable foreign key checking temporarily
     this.db.pragma('foreign_keys = ON');
 
-    const foreignKeyViolations = this.db.pragma('foreign_key_check') as unknown[];
+    const foreignKeyViolations = this.db.pragma('foreign_key_check') as ForeignKeyViolation[];
 
     for (const violation of foreignKeyViolations) {
       issues.push({

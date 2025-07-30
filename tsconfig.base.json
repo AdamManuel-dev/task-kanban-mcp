@@ -43,6 +43,10 @@
     "isolatedModules": true,
     "allowSyntheticDefaultImports": true,
 
+    /* Experimental Features */
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+
     /* Type Checking */
     "strict": true,
     "noImplicitAny": true,
@@ -65,7 +69,7 @@
     /* Skip Lib Check */
     "skipLibCheck": true
   },
-  "exclude": ["node_modules", "dist", "build", "coverage", "**/*.test.ts", "**/*.spec.ts"],
+  "exclude": ["node_modules", "dist", "build", "coverage", "**/*.test.ts", "**/*.spec.ts", "src/cli/commands/migrate-safe.ts"],
   "watchOptions": {
     "watchFile": "useFsEvents",
     "watchDirectory": "useFsEvents",

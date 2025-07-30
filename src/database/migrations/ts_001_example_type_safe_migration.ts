@@ -10,7 +10,7 @@
 
 import type { Database } from 'sqlite3';
 import { promisify } from 'util';
-import type { TypeSafeMigration, SchemaVersion, TableDefinition } from './TypeSafeMigrationRunner';
+import type { TypeSafeMigration, SchemaVersion } from './TypeSafeMigrationRunner';
 import { logger } from '../../utils/logger';
 
 /**
@@ -251,7 +251,7 @@ const migration: TypeSafeMigration = {
   /**
    * Rollback migration
    */
-  async down(db: Database, previousSchema?: SchemaVersion): Promise<void> {
+  async down(db: Database, _previousSchema?: SchemaVersion): Promise<void> {
     const run = promisify(db.run.bind(db));
 
     // Drop trigger
@@ -285,8 +285,8 @@ const migration: TypeSafeMigration = {
    * Validate schema after migration
    */
   async validate(db: Database): Promise<boolean> {
-    const get = promisify(db.get.bind(db));
-    const run = promisify(db.run.bind(db));
+    const get = promisify(db.get.bind(db)) as (sql: string, params?: any) => Promise<any>;
+    const run = promisify(db.run.bind(db)) as (sql: string, params?: any) => Promise<any>;
 
     try {
       // Check if table exists
@@ -307,7 +307,7 @@ const migration: TypeSafeMigration = {
       });
 
       const expectedColumns = Object.keys(schemaV1.tables.tasks_v2.columns);
-      const actualColumns = tableInfo.map(col => col.name);
+      const actualColumns = tableInfo.map(col => (col as { name: string }).name);
 
       const missingColumns = expectedColumns.filter(col => !actualColumns.includes(col));
       if (missingColumns.length > 0) {
@@ -331,13 +331,10 @@ const migration: TypeSafeMigration = {
       // Test basic operations
       await run(
         'INSERT INTO tasks_v2 (id, board_id, column_id, title) VALUES (?, ?, ?, ?)',
-        'test-validation-id',
-        'test-board',
-        'todo',
-        'Test Task'
+        ['test-validation-id', 'test-board', 'todo', 'Test Task']
       );
 
-      await run('DELETE FROM tasks_v2 WHERE id = ?', 'test-validation-id');
+      await run('DELETE FROM tasks_v2 WHERE id = ?', ['test-validation-id']);
 
       return true;
     } catch (error) {

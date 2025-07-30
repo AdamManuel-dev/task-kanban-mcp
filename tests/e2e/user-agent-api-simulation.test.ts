@@ -12,6 +12,10 @@ import request from 'supertest';
 import type { Express } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 
+// Import server after mocking
+import { createServer } from '../../src/server';
+import { dbConnection } from '../../src/database/connection';
+
 // Mock the problematic service metrics decorator
 jest.mock('../../src/utils/service-metrics', () => ({
   TrackPerformance: () => () => ({}),
@@ -20,10 +24,6 @@ jest.mock('../../src/utils/service-metrics', () => ({
     getMetrics: jest.fn(() => ({ total: 0, success: 0, failure: 0 })),
   },
 }));
-
-// Import server after mocking
-import { createServer } from '../../src/server';
-import { dbConnection } from '../../src/database/connection';
 
 interface TaskState {
   id: string;
@@ -42,13 +42,15 @@ interface BoardState {
 
 class UserSimulator {
   constructor(
-    private app: Express,
-    private apiKey: string
+    private readonly app: Express,
+    private readonly apiKey: string
   ) {}
 
-  private taskCache: Map<string, TaskState> = new Map();
-  private boardCache: Map<string, BoardState> = new Map();
-  private actionLog: string[] = [];
+  private readonly taskCache: Map<string, TaskState> = new Map();
+
+  private readonly boardCache: Map<string, BoardState> = new Map();
+
+  private readonly actionLog: string[] = [];
 
   async createBoard(name: string): Promise<BoardState> {
     const response = await request(this.app)
@@ -80,7 +82,7 @@ class UserSimulator {
         column_id: columnId,
         title,
         priority: priority || Math.floor(Math.random() * 5) + 1,
-        status: 'todo'
+        status: 'todo',
       });
 
     if (!response.body.success) {
@@ -145,25 +147,27 @@ class UserSimulator {
     return {
       boards: Array.from(this.boardCache.values()),
       tasks: Array.from(this.taskCache.values()),
-      actionCount: this.actionLog.length
+      actionCount: this.actionLog.length,
     };
   }
 }
 
 class AIAgentSimulator {
   constructor(
-    private app: Express,
-    private apiKey: string
+    private readonly app: Express,
+    private readonly apiKey: string
   ) {}
 
   private currentProject?: { boardId: string; taskIds: string[] };
-  private actionLog: string[] = [];
+
+  private readonly actionLog: string[] = [];
+
   private completedTasks = 0;
 
   async initializeProject(boardId: string): Promise<void> {
     this.currentProject = {
       boardId,
-      taskIds: []
+      taskIds: [],
     };
     this.actionLog.push(`AI Agent: Initialized project with board ${boardId}`);
   }
@@ -178,7 +182,7 @@ class AIAgentSimulator {
         board_id: this.currentProject.boardId,
         ...(status && { status }),
         sort_by: 'priority',
-        sort_order: 'desc'
+        sort_order: 'desc',
       });
 
     this.actionLog.push('AI Agent: Searched for tasks');
@@ -199,7 +203,7 @@ class AIAgentSimulator {
       'Analyzing requirements',
       'Implementing solution',
       'Testing implementation',
-      'Final review'
+      'Final review',
     ];
 
     for (const step of steps) {
@@ -230,7 +234,7 @@ class AIAgentSimulator {
     return {
       completedTasks: this.completedTasks,
       actionCount: this.actionLog.length,
-      currentProject: this.currentProject
+      currentProject: this.currentProject,
     };
   }
 }
@@ -264,7 +268,7 @@ describe('User and AI Agent API Simulation', () => {
 
   afterAll(async () => {
     if (server) {
-      await new Promise<void>((resolve) => {
+      await new Promise<void>(resolve => {
         server.close(() => resolve());
       });
     }
@@ -290,7 +294,7 @@ describe('User and AI Agent API Simulation', () => {
     const performUserAction = async (index: number) => {
       try {
         const actionType = Math.random();
-        
+
         if (actionType < 0.4) {
           // Create task
           await userSimulator.createTask(board.id, `User Task ${index}`);
@@ -316,7 +320,7 @@ describe('User and AI Agent API Simulation', () => {
             await userSimulator.addTaskNote(task.id, `User note ${index}`);
           }
         }
-        
+
         userActionCount++;
       } catch (error: any) {
         userErrors.push(`User action ${index}: ${error.message}`);
@@ -327,7 +331,7 @@ describe('User and AI Agent API Simulation', () => {
     const performAgentAction = async (index: number) => {
       try {
         const todoTasks = await agentSimulator.searchTasks('todo');
-        
+
         if (todoTasks.length > 0 && Math.random() > 0.3) {
           // Work on a task
           const task = todoTasks[0];
@@ -336,7 +340,7 @@ describe('User and AI Agent API Simulation', () => {
           // Just search tasks
           await agentSimulator.searchTasks();
         }
-        
+
         agentActionCount++;
       } catch (error: any) {
         agentErrors.push(`Agent action ${index}: ${error.message}`);
@@ -344,18 +348,18 @@ describe('User and AI Agent API Simulation', () => {
     };
 
     // Create 50 concurrent operations (25 user, 25 agent)
-    const operations: Promise<void>[] = [];
-    
+    const operations: Array<Promise<void>> = [];
+
     for (let i = 0; i < 25; i++) {
       // Add slight delay to avoid overwhelming the system
       operations.push(
-        new Promise(resolve => setTimeout(resolve, i * 20))
-          .then(() => performUserAction(i))
+        new Promise(resolve => setTimeout(resolve, i * 20)).then(async () => performUserAction(i))
       );
-      
+
       operations.push(
-        new Promise(resolve => setTimeout(resolve, i * 30 + 10))
-          .then(() => performAgentAction(i))
+        new Promise(resolve => setTimeout(resolve, i * 30 + 10)).then(async () =>
+          performAgentAction(i)
+        )
       );
     }
 
@@ -399,7 +403,7 @@ describe('User and AI Agent API Simulation', () => {
       priority: expect.any(Number),
       board_id: expect.any(String),
       created_at: expect.any(String),
-      updated_at: expect.any(String)
+      updated_at: expect.any(String),
     });
 
     // Test task listing with pagination
@@ -413,7 +417,7 @@ describe('User and AI Agent API Simulation', () => {
       items: expect.any(Array),
       total: expect.any(Number),
       limit: 10,
-      offset: 0
+      offset: 0,
     });
 
     // Test board retrieval
@@ -429,23 +433,23 @@ describe('User and AI Agent API Simulation', () => {
         expect.objectContaining({
           id: expect.any(String),
           name: expect.any(String),
-          position: expect.any(Number)
-        })
-      ])
+          position: expect.any(Number),
+        }),
+      ]),
     });
   });
 
   it('should handle stress test with heavy concurrent load', async () => {
     const errors: string[] = [];
     const board = await userSimulator.createBoard('Stress Test Board');
-    
+
     // Create 30 concurrent operations
-    const operations: Promise<void>[] = [];
-    
+    const operations: Array<Promise<void>> = [];
+
     // Mix of create, update, and read operations
     for (let i = 0; i < 30; i++) {
       const opType = i % 3;
-      
+
       operations.push(
         (async () => {
           try {
@@ -470,18 +474,18 @@ describe('User and AI Agent API Simulation', () => {
         })()
       );
     }
-    
+
     await Promise.all(operations);
-    
+
     console.log(`Stress test completed with ${errors.length} errors`);
-    
+
     // Verify system stability
     expect(errors.length).toBeLessThan(5); // Less than ~15% error rate
-    
+
     // Verify data integrity
     const finalTasks = await userSimulator.listTasks(board.id);
     expect(finalTasks.length).toBeGreaterThan(5);
-    
+
     // Check no duplicate IDs
     const taskIds = new Set(finalTasks.map(t => t.id));
     expect(taskIds.size).toBe(finalTasks.length);

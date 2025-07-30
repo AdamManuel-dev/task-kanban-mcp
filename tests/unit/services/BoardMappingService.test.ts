@@ -3,7 +3,7 @@
  * Tests context-aware board selection features added in Phase 15.2
  */
 
-import { expect } from 'chai';
+// Using Jest's built-in expect
 import * as sinon from 'sinon';
 import { BoardMappingService } from '../../../src/services/BoardMappingService';
 import { GitService } from '../../../src/services/GitService';

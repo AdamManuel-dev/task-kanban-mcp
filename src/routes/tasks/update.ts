@@ -8,16 +8,14 @@
  * Patterns: Returns 200 with updated task or error response
  */
 
-import type { Request, Response } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import { TaskService } from '@/services/TaskService';
 import { logger } from '@/utils/logger';
-import { createServiceErrorHandler } from '@/utils/errors';
 
 /**
  * Updates an existing task
  */
-export const updateTaskHandler = async (req: Request, res: Response): Promise<void> => {
-  const errorHandler = createServiceErrorHandler('updateTaskHandler', logger);
+export const updateTaskHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
 
   try {
     const taskId = req.params.id;
@@ -25,13 +23,8 @@ export const updateTaskHandler = async (req: Request, res: Response): Promise<vo
 
     const taskService = new TaskService();
     const result = await taskService.updateTask(taskId, updates);
-
-    if (result.success) {
-      res.json({ success: true, data: result.data });
-    } else {
-      res.status(400).json(result);
-    }
+    res.json({ success: true, data: result });
   } catch (error) {
-    errorHandler(error, req, res);
+    next(error);
   }
 };

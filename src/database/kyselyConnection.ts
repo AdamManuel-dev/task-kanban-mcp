@@ -7,8 +7,8 @@
 
 import { Kysely, SqliteDialect } from 'kysely';
 import Database from 'better-sqlite3';
-import { logger } from '@/utils/logger';
-import { config } from '@/config';
+import { logger } from '../utils/logger';
+import { config } from '../config';
 import type { Database as DatabaseSchema } from './kyselySchema';
 
 export class KyselyConnection {
@@ -198,7 +198,7 @@ export class KyselyConnection {
 
       const tableStats = await Promise.all(
         tables.map(async table => {
-          const countResult = await this._db!.selectFrom(table as unknown)
+          const countResult = await this._db!.selectFrom(table as any)
             .select([this._db!.fn.count<number>('id').as('count')])
             .executeTakeFirst();
 

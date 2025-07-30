@@ -838,26 +838,30 @@ export class DatabaseIntegrityChecker {
       }
 
       // Check for orphaned FTS entries
-      const orphanedTasksFts = await this.db.query(`
+      const orphanedTasksFts = await this.db.query<{ count: number }>(`
         SELECT COUNT(*) as count
         FROM tasks_fts
         WHERE rowid NOT IN (SELECT rowid FROM tasks)
       `);
 
-      if ((orphanedTasksFts[0] as any)?.count > 0) {
-        warnings.push(`Found ${(orphanedTasksFts[0] as any).count} orphaned entries in tasks FTS table`);
-        metadata.orphanedTasksFts = (orphanedTasksFts[0] as any).count;
+      if ((orphanedTasksFts[0]?.count ?? 0) > 0) {
+        warnings.push(
+          `Found ${orphanedTasksFts[0]?.count ?? 0} orphaned entries in tasks FTS table`
+        );
+        metadata.orphanedTasksFts = orphanedTasksFts[0]?.count ?? 0;
       }
 
-      const orphanedNotesFts = await this.db.query(`
+      const orphanedNotesFts = await this.db.query<{ count: number }>(`
         SELECT COUNT(*) as count
         FROM notes_fts
         WHERE rowid NOT IN (SELECT rowid FROM notes)
       `);
 
-      if ((orphanedNotesFts[0] as any)?.count > 0) {
-        warnings.push(`Found ${(orphanedNotesFts[0] as any).count} orphaned entries in notes FTS table`);
-        metadata.orphanedNotesFts = (orphanedNotesFts[0] as any).count;
+      if ((orphanedNotesFts[0]?.count ?? 0) > 0) {
+        warnings.push(
+          `Found ${orphanedNotesFts[0]?.count ?? 0} orphaned entries in notes FTS table`
+        );
+        metadata.orphanedNotesFts = orphanedNotesFts[0]?.count ?? 0;
       }
 
       // Check for missing FTS entries
@@ -941,12 +945,12 @@ export class DatabaseIntegrityChecker {
         'idx_task_tags_tag_id',
       ];
 
-      const existingIndexes = await this.db.query(`
+      const existingIndexes = await this.db.query<{ name: string }>(`
         SELECT name FROM sqlite_master 
         WHERE type='index' AND name NOT LIKE 'sqlite_%'
       `);
 
-      const existingIndexNames = existingIndexes.map((idx: any) => idx.name);
+      const existingIndexNames = existingIndexes.map(idx => idx.name);
       const missingIndexes = expectedIndexes.filter(idx => !existingIndexNames.includes(idx));
 
       if (missingIndexes.length > 0) {
@@ -955,7 +959,7 @@ export class DatabaseIntegrityChecker {
       }
 
       // Check for duplicate or redundant indexes
-      const allIndexes = await this.db.query(`
+      const allIndexes = await this.db.query<{ name: string; table_name: string; sql: string }>(`
         SELECT 
           name,
           tbl_name as table_name,
@@ -967,7 +971,7 @@ export class DatabaseIntegrityChecker {
 
       metadata.totalIndexes = allIndexes.length;
       metadata.indexesByTable = allIndexes.reduce(
-        (acc, idx) => {
+        (acc: Record<string, string[]>, idx: { name: string; table_name: string; sql: string }) => {
           if (!acc[idx.table_name]) acc[idx.table_name] = [];
           acc[idx.table_name].push(idx.name);
           return acc;
@@ -977,7 +981,11 @@ export class DatabaseIntegrityChecker {
 
       // Check index usage statistics (if available)
       try {
-        const indexStats = await this.db.query(`
+        const indexStats = await this.db.query<{
+          name: string;
+          tbl: string;
+          stats_status: string;
+        }>(`
           SELECT 
             sm.name,
             sm.tbl_name as tbl,

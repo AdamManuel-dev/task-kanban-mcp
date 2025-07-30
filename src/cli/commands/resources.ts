@@ -17,6 +17,7 @@ import {
   initializeResourceMonitoring,
   type ResourceMonitorConfig,
 } from '../../utils/resource-monitor';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { logger } from '../../utils/logger';
 
 /**
@@ -69,7 +70,7 @@ export function registerResourceCommands(program: Command): void {
     .option('--detailed', 'show detailed resource information')
     .action(
       withErrorHandling('show resource status', async (options: { detailed?: boolean } = {}) => {
-        const { formatter } = getComponents();
+        const { formatter: _formatter } = getComponents();
 
         const stats = resourceMonitor.getCurrentStats();
         const summary = resourceMonitor.getSummary();
@@ -176,7 +177,7 @@ export function registerResourceCommands(program: Command): void {
         );
 
         // Show recent history
-        const historyData = history.map((stat, index) => ({
+        const historyData = history.map((stat, _index) => ({
           time: stat.memory.timestamp.toLocaleTimeString(),
           memory: formatBytes(stat.memory.heapUsed),
           heap: `${stat.memory.heapUtilization.toFixed(1)}%`,

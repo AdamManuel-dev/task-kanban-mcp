@@ -53,7 +53,7 @@ export class AIContextualPrioritizer {
    */
   async prioritizeTasksWithContext(
     boardId: string,
-    contextFilters: string[] = [],
+    _contextFilters: string[] = [],
     maxTasks = 50
   ): Promise<EnhancedPriorityResult[]> {
     try {
@@ -274,8 +274,8 @@ export class AIContextualPrioritizer {
     const reasons: string[] = [];
 
     // Task type preference
-    if (userContext.preferredTaskTypes && (task as unknown).category) {
-      if (userContext.preferredTaskTypes.includes((task as unknown).category)) {
+    if (userContext.preferredTaskTypes && (task as any).category) {
+      if (userContext.preferredTaskTypes.includes((task as any).category)) {
         score += 15;
         confidence += 0.3;
         reasons.push(`Preferred task type (+15 points)`);
@@ -425,7 +425,7 @@ export class AIContextualPrioritizer {
    * Calculate dependency impact score
    */
   private async calculateDependencyImpact(
-    task: Task
+    _task: Task
   ): Promise<{ score: number; reasoning?: string }> {
     try {
       // This would integrate with the existing dependency service
@@ -495,11 +495,11 @@ export class AIContextualPrioritizer {
       if (!repo) return {};
 
       const branches = await this.gitService.getBranches(repo.path);
-      const currentBranch = branches.find(b => (b as unknown).current);
+      const currentBranch = branches.find(b => (b as any).current);
 
       return {
         currentBranch: currentBranch?.name,
-        recentCommits: (currentBranch as unknown)?.commitCount ?? 0,
+        recentCommits: (currentBranch as any)?.commitCount ?? 0,
         branchAge: currentBranch ? this.calculateBranchAge(currentBranch) : 0,
       };
     } catch (error) {
@@ -544,7 +544,7 @@ export class AIContextualPrioritizer {
   }
 
   private async getProjectContext(
-    boardId: string
+    _boardId: string
   ): Promise<ContextualPriorityFactors['projectContext']> {
     try {
       // This would integrate with project management features
@@ -599,7 +599,7 @@ export class AIContextualPrioritizer {
     return intersection.length / union.length; // Jaccard similarity
   }
 
-  private calculateBranchAge(branch: unknown): number {
+  private calculateBranchAge(_branch: unknown): number {
     // Calculate branch age in days - placeholder implementation
     return 5; // days
   }

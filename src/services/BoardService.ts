@@ -394,8 +394,11 @@ export class BoardService {
       }
 
       // Use secure pagination to prevent ORDER BY injection
-      const paginationClause = validatePagination(sortBy, sortOrder, 'boards');
-      query += ` ${paginationClause} LIMIT ? OFFSET ?`;
+      const paginationResult = validatePagination(
+        { limit, offset, sortBy, sortOrder }, 
+        'boards'
+      );
+      query += ` ${paginationResult.orderByClause} LIMIT ? OFFSET ?`;
       params.push(limit, offset);
 
       const boards = await this.db.query<Board>(query, params);

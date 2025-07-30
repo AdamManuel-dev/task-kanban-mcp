@@ -525,8 +525,8 @@ export class MCPResourceRegistry {
 
           const stats = workloadMap[assignee];
           stats.total_tasks++;
-          if (task.status in stats) {
-            (stats as unknown)[task.status]++;
+          if (task.status in stats && typeof stats[task.status] === 'number') {
+            (stats[task.status] as number)++;
           }
 
           if (task.priority >= 4) {

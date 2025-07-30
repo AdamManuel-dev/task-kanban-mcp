@@ -30,12 +30,12 @@ export interface SanitizationResult {
 export class InputSanitizer {
   private static instance: InputSanitizer;
 
-  private readonly purify: any;
+  private readonly purify: typeof DOMPurify;
 
   constructor() {
     // Initialize DOMPurify with JSDOM for server-side sanitization
     const { window } = new JSDOM('');
-    this.purify = DOMPurify(window as any);
+    this.purify = DOMPurify(window);
 
     // Configure DOMPurify for strict sanitization
     this.purify.addHook('beforeSanitizeElements', (node: any) => {
@@ -56,7 +56,7 @@ export class InputSanitizer {
   /**
    * Sanitize text input with comprehensive security checks
    */
-  sanitizeText(input: any, options: SanitizationOptions = {}): SanitizationResult {
+  sanitizeText(input: unknown, options: SanitizationOptions = {}): SanitizationResult {
     const {
       allowHtml = false,
       maxLength = 1000,
@@ -66,22 +66,21 @@ export class InputSanitizer {
       escapeSpecialChars = true,
     } = options;
 
-    let sanitized = input;
+    let sanitized: string;
     const warnings: string[] = [];
 
     // Handle null/undefined inputs before accessing length
     if (input === null || input === undefined) {
       sanitized = '';
       warnings.push('Input was converted to string');
-    }
-
-    const originalLength = String(sanitized).length;
-
-    // 1. Basic safety checks
-    if (typeof sanitized !== 'string') {
-      sanitized = String(sanitized);
+    } else if (typeof input !== 'string') {
+      sanitized = String(input);
       warnings.push('Input was converted to string');
+    } else {
+      sanitized = input;
     }
+
+    const originalLength = sanitized.length;
 
     // 2. Decode common encodings to catch encoded injection attempts
     try {
@@ -165,10 +164,7 @@ export class InputSanitizer {
     // 9. Additional character restrictions
     if (options.allowedCharacters) {
       const beforeFilter = sanitized;
-      sanitized = sanitized.replace(
-        new RegExp(`[^${options.allowedCharacters.source}]`, 'g'),
-        ''
-      );
+      sanitized = sanitized.replace(new RegExp(`[^${options.allowedCharacters.source}]`, 'g'), '');
       if (beforeFilter !== sanitized) {
         warnings.push('Invalid characters removed');
       }
@@ -472,9 +468,7 @@ export class InputSanitizer {
     // Check for suspicious patterns
     const suspiciousCheck = InputSanitizer.detectSuspiciousPatterns(input);
     if (suspiciousCheck.suspicious) {
-      issues.push(
-        `Suspicious patterns detected: ${suspiciousCheck.patterns.join(', ')}`
-      );
+      issues.push(`Suspicious patterns detected: ${suspiciousCheck.patterns.join(', ')}`);
       recommendations.push('Remove or escape suspicious content');
       score -= 30;
     }

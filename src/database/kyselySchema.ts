@@ -81,9 +81,18 @@ export interface ApiKeyTable {
   id: Generated<string>;
   key_hash: string;
   name: string;
+  description: string | null;
+  permissions: string; // JSON string
+  user_id: string | null;
   created_at: Generated<string>;
-  last_used_at: string | null;
+  updated_at: Generated<string>;
   expires_at: string | null;
+  last_used_at: string | null;
+  revoked_at: string | null;
+  is_active: Generated<number>; // SQLite boolean (0/1)
+  rotation_history: string | null; // JSON string
+  usage_count: Generated<number>;
+  rate_limit_rpm: number | null;
 }
 
 export interface BackupTable {
@@ -110,6 +119,23 @@ export interface ScheduleTable {
   updated_at: Generated<string>;
 }
 
+export interface BackupScheduleTable {
+  id: Generated<string>;
+  name: string;
+  cron_expression: string;
+  is_active: Generated<number>; // SQLite boolean (0/1)
+  backup_type: 'full' | 'incremental';
+  retention_days: number;
+  compress: Generated<number>; // SQLite boolean (0/1)
+  verify: Generated<number>; // SQLite boolean (0/1)
+  last_run: string | null;
+  next_run: string | null;
+  success_count: Generated<number>;
+  failure_count: Generated<number>;
+  created_at: Generated<string>;
+  updated_at: Generated<string>;
+}
+
 // Database interface combining all tables
 export interface Database {
   boards: BoardTable;
@@ -122,6 +148,7 @@ export interface Database {
   api_keys: ApiKeyTable;
   backups: BackupTable;
   schedules: ScheduleTable;
+  backup_schedules: BackupScheduleTable;
 }
 
 // Helper types for operations
@@ -148,11 +175,16 @@ export type TagUpdate = Updateable<TagTable>;
 export type TaskTag = Selectable<TaskTagTable>;
 export type NewTaskTag = Insertable<TaskTagTable>;
 
+export type ApiKeyRow = Selectable<ApiKeyTable>;
+export type NewApiKey = Insertable<ApiKeyTable>;
+export type ApiKeyUpdate = Updateable<ApiKeyTable>;
+
+export type BackupScheduleRow = Selectable<BackupScheduleTable>;
+export type NewBackupSchedule = Insertable<BackupScheduleTable>;
+export type BackupScheduleUpdate = Updateable<BackupScheduleTable>;
+
 export type TaskDependency = Selectable<TaskDependencyTable>;
 export type NewTaskDependency = Insertable<TaskDependencyTable>;
-
-export type ApiKey = Selectable<ApiKeyTable>;
-export type NewApiKey = Insertable<ApiKeyTable>;
 
 export type Backup = Selectable<BackupTable>;
 export type NewBackup = Insertable<BackupTable>;

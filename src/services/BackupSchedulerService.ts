@@ -3,6 +3,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { logger } from '@/utils/logger';
 import type { DatabaseConnection } from '@/database/connection';
+import type { BackupScheduleRow } from '@/database/kyselySchema';
 import { BaseServiceError } from '@/utils/errors';
 import { BackupService, type BackupMetadata, type CreateBackupOptions } from './BackupService';
 
@@ -184,7 +185,7 @@ export class BackupSchedulerService {
    */
   async getSchedule(scheduleId: string): Promise<BackupSchedule | null> {
     const row = await this.db.queryOne('SELECT * FROM backup_schedules WHERE id = ?', [scheduleId]);
-    return row ? this.deserializeSchedule(row) : null;
+    return row ? this.deserializeSchedule(row as BackupScheduleRow) : null;
   }
 
   /**
@@ -192,7 +193,7 @@ export class BackupSchedulerService {
    */
   async listSchedules(): Promise<BackupSchedule[]> {
     const rows = await this.db.query('SELECT * FROM backup_schedules ORDER BY created_at DESC');
-    return rows.map(row => this.deserializeSchedule(row));
+    return rows.map(row => this.deserializeSchedule(row as BackupScheduleRow));
   }
 
   /**
@@ -231,7 +232,8 @@ export class BackupSchedulerService {
     const task = this.schedules.get(scheduleId);
     if (task) {
       task.stop();
-      (task as any).destroy?.();
+      // @ts-ignore - destroy method might not be typed but exists on some cron implementations
+      task.destroy?.();
       this.schedules.delete(scheduleId);
       logger.info('Backup schedule stopped', { scheduleId });
     }
@@ -333,7 +335,8 @@ export class BackupSchedulerService {
   private getNextRunTime(cronExpression: string): string {
     try {
       const task = cron.schedule(cronExpression, () => {}, { scheduled: false });
-      const nextDates = (task as any).nextDates(1);
+      // @ts-ignore - nextDates method might not be typed but exists on cron library
+      const nextDates = task.nextDates(1);
       return nextDates[0].toISOString();
     } catch (error) {
       logger.error('Failed to calculate next run time', { cronExpression, error });
@@ -454,7 +457,7 @@ export class BackupSchedulerService {
   /**
    * Deserialize schedule from database row
    */
-  private deserializeSchedule(row: any): BackupSchedule {
+  private deserializeSchedule(row: BackupScheduleRow): BackupSchedule {
     return {
       id: row.id,
       name: row.name,
@@ -482,7 +485,8 @@ export class BackupSchedulerService {
     for (const [scheduleId, task] of this.schedules.entries()) {
       try {
         task.stop();
-        (task as any).destroy?.();
+        // @ts-ignore - destroy method might not be typed but exists on some cron implementations
+        task.destroy?.();
         logger.info('Stopped scheduled task', { scheduleId });
       } catch (error) {
         logger.error('Error stopping scheduled task', { scheduleId, error });

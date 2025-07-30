@@ -316,8 +316,12 @@ export class NoteService {
       }
 
       // Use secure pagination to prevent ORDER BY injection
-      const paginationClause = validatePagination(sortBy, sortOrder, 'notes', 'n');
-      query += ` ${paginationClause} LIMIT ? OFFSET ?`;
+      const paginationResult = validatePagination(
+        { limit, offset, sortBy, sortOrder }, 
+        'notes', 
+        'n'
+      );
+      query += ` ${paginationResult.orderByClause} LIMIT ? OFFSET ?`;
       params.push(limit, offset);
 
       const notes = await this.db.query<Note>(query, params);
@@ -584,8 +588,12 @@ export class NoteService {
         sql += ' ORDER BY relevance_score DESC, n.updated_at DESC';
       } else {
         // Use secure pagination to prevent ORDER BY injection
-        const paginationClause = validatePagination(sortBy, sortOrder, 'notes', 'n');
-        sql += ` ${paginationClause.replace('ORDER BY', '')}`;
+        const paginationResult = validatePagination(
+          { limit, offset, sortBy, sortOrder }, 
+          'notes', 
+          'n'
+        );
+        sql += ` ${paginationResult.orderByClause.replace('ORDER BY', '')}`;
       }
 
       sql += ` LIMIT ? OFFSET ?`;
@@ -831,7 +839,7 @@ export class NoteService {
 
     try {
       let baseQuery = 'FROM notes n';
-      const params: unknown[] = [];
+      const params: QueryParameters = [];
       const conditions: string[] = [];
 
       if (board_id) {

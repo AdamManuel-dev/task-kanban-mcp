@@ -36,7 +36,7 @@ describe('NoteService', () => {
     }
 
     // Use test-specific database file
-    process.env.DATABASE_PATH = './data/kanban-test.db';
+    process.env.DATABASE_PATH = ':memory:';
 
     await dbConnection.initialize();
     noteService = new NoteService(dbConnection);

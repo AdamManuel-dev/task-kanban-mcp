@@ -14,6 +14,10 @@ import { promisify } from 'util';
 import request from 'supertest';
 import type { Express } from 'express';
 
+// Import server after mocking
+import { createServer } from '../../src/server';
+import { dbConnection } from '../../src/database/connection';
+
 const execAsync = promisify(exec);
 
 // Mock the problematic imports
@@ -23,10 +27,6 @@ jest.mock('../../src/utils/service-metrics', () => ({
     collectMetric: jest.fn(),
   },
 }));
-
-// Import server after mocking
-import { createServer } from '../../src/server';
-import { dbConnection } from '../../src/database/connection';
 
 describe('User and AI Agent Curl Simulation', () => {
   let app: Express;
@@ -49,7 +49,7 @@ describe('User and AI Agent Curl Simulation', () => {
 
     // Start server on random port
     server = app.listen(0);
-    const port = (server.address() as any).port;
+    const port = server.address().port;
     baseUrl = `http://localhost:${port}`;
 
     console.log(`Test server started on port ${port}`);
@@ -57,7 +57,7 @@ describe('User and AI Agent Curl Simulation', () => {
 
   afterAll(async () => {
     if (server) {
-      await new Promise<void>((resolve) => {
+      await new Promise<void>(resolve => {
         server.close(() => resolve());
       });
     }
@@ -75,7 +75,7 @@ describe('User and AI Agent Curl Simulation', () => {
         -H "Content-Type: application/json" \
         -d '{"name": "User Test Board", "template": "kanban"}'
     `;
-    
+
     const { stdout: boardResponse } = await execAsync(createBoardCmd);
     const boardData = JSON.parse(boardResponse);
     expect(boardData.success).toBe(true);
@@ -96,13 +96,13 @@ describe('User and AI Agent Curl Simulation', () => {
             "status": "todo"
           }'
       `;
-      
+
       const { stdout } = await execAsync(createTaskCmd);
       const taskData = JSON.parse(stdout);
       expect(taskData.success).toBe(true);
       taskIds.push(taskData.data.id);
       console.log(`User created task: ${taskData.data.id}`);
-      
+
       // Small delay to simulate realistic user behavior
       await new Promise(resolve => setTimeout(resolve, 100));
     }
@@ -112,7 +112,7 @@ describe('User and AI Agent Curl Simulation', () => {
       curl -s -X GET "${baseUrl}/api/v1/tasks?board_id=${boardId}" \
         -H "X-API-Key: ${apiKey}"
     `;
-    
+
     const { stdout: tasksListResponse } = await execAsync(listTasksCmd);
     const tasksList = JSON.parse(tasksListResponse);
     expect(tasksList.success).toBe(true);
@@ -122,7 +122,7 @@ describe('User and AI Agent Curl Simulation', () => {
     // Step 4: AI Agent works on first 3 tasks
     for (let i = 0; i < 3; i++) {
       const taskId = taskIds[i];
-      
+
       // Update to in_progress
       const updateProgressCmd = `
         curl -s -X PATCH ${baseUrl}/api/v1/tasks/${taskId} \
@@ -132,7 +132,7 @@ describe('User and AI Agent Curl Simulation', () => {
       `;
       await execAsync(updateProgressCmd);
       console.log(`AI Agent started working on task: ${taskId}`);
-      
+
       // Add progress note
       const addNoteCmd = `
         curl -s -X POST ${baseUrl}/api/v1/tasks/${taskId}/notes \
@@ -141,7 +141,7 @@ describe('User and AI Agent Curl Simulation', () => {
           -d '{"content": "AI Agent: Analyzing and implementing solution..."}'
       `;
       await execAsync(addNoteCmd);
-      
+
       // Complete the task
       const completeTaskCmd = `
         curl -s -X PATCH ${baseUrl}/api/v1/tasks/${taskId} \
@@ -151,7 +151,7 @@ describe('User and AI Agent Curl Simulation', () => {
       `;
       await execAsync(completeTaskCmd);
       console.log(`AI Agent completed task: ${taskId}`);
-      
+
       // Simulate work time
       await new Promise(resolve => setTimeout(resolve, 200));
     }
@@ -159,13 +159,13 @@ describe('User and AI Agent Curl Simulation', () => {
     // Step 5: Verify final state
     const { stdout: finalStateResponse } = await execAsync(listTasksCmd);
     const finalState = JSON.parse(finalStateResponse);
-    
+
     const todoCount = finalState.data.items.filter((t: any) => t.status === 'todo').length;
     const doneCount = finalState.data.items.filter((t: any) => t.status === 'done').length;
-    
+
     expect(todoCount).toBe(2);
     expect(doneCount).toBe(3);
-    
+
     console.log(`Final state - Todo: ${todoCount}, Done: ${doneCount}`);
   }, 30000);
 
@@ -183,7 +183,7 @@ describe('User and AI Agent Curl Simulation', () => {
     boardId = JSON.parse(stdout).data.id;
 
     // Define concurrent operations
-    const operations: Promise<void>[] = [];
+    const operations: Array<Promise<void>> = [];
 
     // User operations: Create 10 tasks
     for (let i = 0; i < 10; i++) {
@@ -198,11 +198,13 @@ describe('User and AI Agent Curl Simulation', () => {
               "priority": ${Math.floor(Math.random() * 5) + 1},
               "status": "todo"
             }'
-        `).then(() => {
-          console.log(`Created concurrent task ${i}`);
-        }).catch(err => {
-          errors.push(`Create task ${i}: ${err.message}`);
-        })
+        `)
+          .then(() => {
+            console.log(`Created concurrent task ${i}`);
+          })
+          .catch(err => {
+            errors.push(`Create task ${i}: ${err.message}`);
+          })
       );
     }
 
@@ -210,10 +212,12 @@ describe('User and AI Agent Curl Simulation', () => {
     for (let i = 0; i < 10; i++) {
       operations.push(
         new Promise(resolve => setTimeout(resolve, i * 50)) // Stagger the requests slightly
-          .then(() => execAsync(`
+          .then(async () =>
+            execAsync(`
             curl -s -X GET "${baseUrl}/api/v1/tasks?board_id=${boardId}" \
               -H "X-API-Key: ${apiKey}"
-          `))
+          `)
+          )
           .then(({ stdout }) => {
             const tasks = JSON.parse(stdout).data.items;
             console.log(`Agent query ${i}: Found ${tasks.length} tasks`);
@@ -239,7 +243,7 @@ describe('User and AI Agent Curl Simulation', () => {
         -H "X-API-Key: ${apiKey}"
     `);
     const finalTasks = JSON.parse(finalCheck).data.items;
-    
+
     expect(finalTasks.length).toBeGreaterThanOrEqual(5); // At least half should succeed
     console.log(`Final task count: ${finalTasks.length}`);
   }, 30000);
@@ -280,7 +284,6 @@ describe('User and AI Agent Curl Simulation', () => {
           const taskId = JSON.parse(createResp).data.id;
           taskIds.push(taskId);
           operations.push({ type: 'create_task', time: Date.now() - startTime });
-          
         } else if (opType < 0.6) {
           // User lists tasks (20% chance)
           await execAsync(`
@@ -288,13 +291,12 @@ describe('User and AI Agent Curl Simulation', () => {
               -H "X-API-Key: ${apiKey}"
           `);
           operations.push({ type: 'list_tasks', time: Date.now() - startTime });
-          
         } else if (opType < 0.8 && taskIds.length > 0) {
           // Agent updates task status (20% chance)
           const taskId = taskIds[Math.floor(Math.random() * taskIds.length)];
           const statuses = ['in_progress', 'done', 'blocked'];
           const newStatus = statuses[Math.floor(Math.random() * statuses.length)];
-          
+
           await execAsync(`
             curl -s -X PATCH ${baseUrl}/api/v1/tasks/${taskId} \
               -H "X-API-Key: ${apiKey}" \
@@ -302,7 +304,6 @@ describe('User and AI Agent Curl Simulation', () => {
               -d '{"status": "${newStatus}"}'
           `);
           operations.push({ type: 'update_status', time: Date.now() - startTime });
-          
         } else if (taskIds.length > 0) {
           // Agent adds note (20% chance)
           const taskId = taskIds[Math.floor(Math.random() * taskIds.length)];
@@ -314,28 +315,32 @@ describe('User and AI Agent Curl Simulation', () => {
           `);
           operations.push({ type: 'add_note', time: Date.now() - startTime });
         }
-        
+
         // Random delay between operations (50-200ms)
         await new Promise(resolve => setTimeout(resolve, 50 + Math.random() * 150));
-        
       } catch (err: any) {
         console.error(`Operation ${i} failed: ${err.message}`);
       }
     }
 
     // Calculate statistics
-    const stats = operations.reduce((acc, op) => {
-      if (!acc[op.type]) {
-        acc[op.type] = { count: 0, totalTime: 0 };
-      }
-      acc[op.type].count++;
-      acc[op.type].totalTime += op.time;
-      return acc;
-    }, {} as Record<string, { count: number; totalTime: number }>);
+    const stats = operations.reduce(
+      (acc, op) => {
+        if (!acc[op.type]) {
+          acc[op.type] = { count: 0, totalTime: 0 };
+        }
+        acc[op.type].count++;
+        acc[op.type].totalTime += op.time;
+        return acc;
+      },
+      {} as Record<string, { count: number; totalTime: number }>
+    );
 
     console.log('Operation statistics:');
     Object.entries(stats).forEach(([type, data]) => {
-      console.log(`  ${type}: ${data.count} ops, avg ${(data.totalTime / data.count).toFixed(2)}ms`);
+      console.log(
+        `  ${type}: ${data.count} ops, avg ${(data.totalTime / data.count).toFixed(2)}ms`
+      );
     });
 
     // Verify operations completed successfully

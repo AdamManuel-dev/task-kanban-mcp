@@ -8,7 +8,7 @@
  * Patterns: Health check protocols, validation strategies, test automation, reporting
  */
 
-import fs from 'fs/promises';
+import fs, { Stats } from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
 import { logger } from '../utils/logger';
@@ -246,7 +246,7 @@ export class BackupHealthCheckService {
   /**
    * Get backup files sorted by modification time
    */
-  private async getBackupFiles(): Promise<Array<{ path: string; name: string; stats: unknown }>> {
+  private async getBackupFiles(): Promise<Array<{ path: string; name: string; stats: Stats }>> {
     try {
       const files = await fs.readdir(this.backupPath);
       const backupFiles = [];
@@ -276,7 +276,7 @@ export class BackupHealthCheckService {
   private async checkBackupFile(backupFile: {
     path: string;
     name: string;
-    stats: unknown;
+    stats: Stats;
   }): Promise<HealthCheckItem[]> {
     const checks: HealthCheckItem[] = [];
     const baseName = path.basename(backupFile.name, path.extname(backupFile.name));
@@ -375,7 +375,7 @@ export class BackupHealthCheckService {
   private async checkFileSize(backupFile: {
     path: string;
     name: string;
-    stats: unknown;
+    stats: Stats;
   }): Promise<HealthCheckItem> {
     const baseName = path.basename(backupFile.name, path.extname(backupFile.name));
     const { size } = backupFile.stats;
@@ -425,7 +425,7 @@ export class BackupHealthCheckService {
   private async checkFileAge(backupFile: {
     path: string;
     name: string;
-    stats: unknown;
+    stats: Stats;
   }): Promise<HealthCheckItem> {
     const baseName = path.basename(backupFile.name, path.extname(backupFile.name));
     const ageHours = (Date.now() - backupFile.stats.mtime.getTime()) / (1000 * 60 * 60);
@@ -538,7 +538,7 @@ export class BackupHealthCheckService {
   private async testBackupRestoration(backupFile: {
     path: string;
     name: string;
-    stats: unknown;
+    stats: Stats;
   }): Promise<HealthCheckItem> {
     const startTime = Date.now();
     const baseName = path.basename(backupFile.name, path.extname(backupFile.name));
@@ -609,7 +609,7 @@ export class BackupHealthCheckService {
    * Check backup frequency
    */
   private async checkBackupFrequency(
-    backupFiles: Array<{ path: string; name: string; stats: unknown }>
+    backupFiles: Array<{ path: string; name: string; stats: Stats }>
   ): Promise<HealthCheckItem> {
     if (backupFiles.length === 0) {
       return {
@@ -696,7 +696,7 @@ export class BackupHealthCheckService {
    * Check retention compliance
    */
   private async checkRetentionCompliance(
-    backupFiles: Array<{ path: string; name: string; stats: unknown }>
+    backupFiles: Array<{ path: string; name: string; stats: Stats }>
   ): Promise<HealthCheckItem> {
     const now = Date.now();
     const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
@@ -730,7 +730,7 @@ export class BackupHealthCheckService {
    * Check encryption compliance
    */
   private async checkEncryptionCompliance(
-    backupFiles: Array<{ path: string; name: string; stats: unknown }>
+    backupFiles: Array<{ path: string; name: string; stats: Stats }>
   ): Promise<HealthCheckItem> {
     let encryptedCount = 0;
 
@@ -777,7 +777,7 @@ export class BackupHealthCheckService {
    * Run performance tests
    */
   private async runPerformanceTests(
-    backupFiles: Array<{ path: string; name: string; stats: unknown }>
+    backupFiles: Array<{ path: string; name: string; stats: Stats }>
   ): Promise<HealthCheckItem[]> {
     const checks: HealthCheckItem[] = [];
 
@@ -799,7 +799,7 @@ export class BackupHealthCheckService {
   private async testReadPerformance(backupFile: {
     path: string;
     name: string;
-    stats: unknown;
+    stats: Stats;
   }): Promise<HealthCheckItem> {
     const startTime = Date.now();
     const baseName = path.basename(backupFile.name, path.extname(backupFile.name));

@@ -118,11 +118,11 @@ export function registerSelectCommand(taskCmd: Command): void {
 
         const InteractiveTaskSelector = () => {
           const [currentTasks, setCurrentTasks] = React.useState(taskList);
-          const [statusFilter, setStatusFilter] = React.useState<string[]>([]);
+          const [_statusFilter, _setStatusFilter] = React.useState<string[]>([]);
           const [, setSearchMode] = React.useState(false);
-          const [searchQuery, setSearchQuery] = React.useState('');
+          const [_searchQuery, _setSearchQuery] = React.useState('');
 
-          const handleTaskSelect = async (task: Task & { tags?: string[] }) => {
+          const _handleTaskSelect = async (task: Task & { tags?: string[] }) => {
             formatter.info(
               `\n✅ Selected: ${String(String(task.title))} [${String(String(task.id))}]`
             );
@@ -226,7 +226,7 @@ export function registerSelectCommand(taskCmd: Command): void {
             }
           };
 
-          const handleKeyPress = async (key: string, _selectedTask: Task | null) => {
+          const _handleKeyPress = async (key: string, _selectedTask: Task | null) => {
             switch (key) {
               case 'search': {
                 setSearchMode(true);
@@ -237,7 +237,7 @@ export function registerSelectCommand(taskCmd: Command): void {
                     message: 'Search tasks:',
                   },
                 ]);
-                setSearchQuery(query);
+                _setSearchQuery(query);
                 if (query) {
                   const filtered = taskList.filter(
                     t =>
@@ -309,7 +309,7 @@ export function registerSelectCommand(taskCmd: Command): void {
                   const status = key.replace('filter:', '');
                   const filtered = taskList.filter(t => t.status === status);
                   setCurrentTasks(filtered);
-                  setStatusFilter([status]);
+                  _setStatusFilter([status]);
                   formatter.info(`\n🔍 Filtered by status: ${String(status)}`);
                 }
                 break;

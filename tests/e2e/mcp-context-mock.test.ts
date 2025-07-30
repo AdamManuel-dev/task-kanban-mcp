@@ -1,7 +1,7 @@
 /**
  * @fileoverview Mock E2E test for MCP context evaluation
  * @lastmodified 2025-01-30T00:00:00Z
- * 
+ *
  * Features: Tests MCP context accuracy using mock data
  * Main APIs: Context validation, accuracy metrics
  * Constraints: No external dependencies, fast execution
@@ -57,7 +57,6 @@ interface MockProjectContext {
 }
 
 describe('MCP Context Mock Evaluation Test', () => {
-  
   function generateMockContext(scenario: string): MockProjectContext {
     switch (scenario) {
       case 'simple_project':
@@ -118,19 +117,23 @@ describe('MCP Context Mock Evaluation Test', () => {
 
     return {
       summary: `Project "Simple Web App" has 3 tasks across 1 board. Currently 1 task is in progress (user authentication - P0), 1 is pending (database schema - P1), and 1 is completed. The project is 33% complete with active development on critical security features.`,
-      boards: [{
-        id: boardId,
-        name: 'Simple Web App',
-        description: 'Basic web application development',
-        task_count: 3,
-        completion_rate: 0.33,
-      }],
+      boards: [
+        {
+          id: boardId,
+          name: 'Simple Web App',
+          description: 'Basic web application development',
+          task_count: 3,
+          completion_rate: 0.33,
+        },
+      ],
       tasks,
-      priorities: [{
-        task: tasks[1], // Authentication task
-        urgency_level: 'critical',
-        reasoning: ['P0 priority', 'Security feature', 'In active development'],
-      }],
+      priorities: [
+        {
+          task: tasks[1], // Authentication task
+          urgency_level: 'critical',
+          reasoning: ['P0 priority', 'Security feature', 'In active development'],
+        },
+      ],
       blockers: [],
       metrics: {
         total_tasks: 3,
@@ -140,7 +143,7 @@ describe('MCP Context Mock Evaluation Test', () => {
         average_completion_time: 2,
       },
       recommendations: [
-        'Focus on completing user authentication as it\'s a P0 priority',
+        "Focus on completing user authentication as it's a P0 priority",
         'Start database schema design soon as it may block future development',
         'Consider adding more tasks to better track project progress',
       ],
@@ -192,13 +195,15 @@ describe('MCP Context Mock Evaluation Test', () => {
 
     return {
       summary: `Critical blockers detected! The "Product Launch" project has 3 high-priority tasks, with 2 currently blocked. Database Schema Design is blocked awaiting requirements, which is blocking API Development. Frontend Development is blocked by the API. Immediate action needed to unblock the database design to prevent cascade delays.`,
-      boards: [{
-        id: boardId,
-        name: 'Product Launch',
-        description: 'Q1 2025 Product Launch',
-        task_count: 3,
-        completion_rate: 0,
-      }],
+      boards: [
+        {
+          id: boardId,
+          name: 'Product Launch',
+          description: 'Q1 2025 Product Launch',
+          task_count: 3,
+          completion_rate: 0,
+        },
+      ],
       tasks,
       priorities: [
         {
@@ -295,13 +300,15 @@ describe('MCP Context Mock Evaluation Test', () => {
 
     return {
       summary: `Sprint planning for "Sprint 23" shows 30 hours of estimated work across 4 tasks. Critical bug fix (2h) should be addressed first, followed by user profile feature (16h) as it delivers customer value. Technical debt refactoring (8h) can improve performance. Documentation (4h) can be done if time permits. Recommended sprint capacity: 2 developers for 1 week.`,
-      boards: [{
-        id: boardId,
-        name: 'Sprint 23',
-        description: 'Two-week development sprint',
-        task_count: 4,
-        completion_rate: 0,
-      }],
+      boards: [
+        {
+          id: boardId,
+          name: 'Sprint 23',
+          description: 'Two-week development sprint',
+          task_count: 4,
+          completion_rate: 0,
+        },
+      ],
       tasks,
       priorities: [
         {
@@ -329,7 +336,7 @@ describe('MCP Context Mock Evaluation Test', () => {
         average_completion_time: 0,
       },
       recommendations: [
-        'Start with critical bug fix - it\'s a quick win and unblocks customers',
+        "Start with critical bug fix - it's a quick win and unblocks customers",
         'Assign user profile feature to 2 developers for faster delivery',
         'Consider deferring documentation to next sprint if time is tight',
         'Set sprint goal: "Improve user experience with bug fixes and profile management"',
@@ -342,10 +349,10 @@ describe('MCP Context Mock Evaluation Test', () => {
     const boardId = uuidv4();
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
-    
+
     const lastWeek = new Date();
     lastWeek.setDate(lastWeek.getDate() - 7);
-    
+
     const tasks: MockTask[] = [
       {
         id: uuidv4(),
@@ -389,13 +396,15 @@ describe('MCP Context Mock Evaluation Test', () => {
 
     return {
       summary: `URGENT: "Production Release" has 2 critical overdue tasks! Security audit is 7 days overdue and actively being worked on. Payment integration is 1 day overdue and blocks launch. Both P0 tasks require immediate attention. Total 3 tasks with 0% completion rate. Crisis mode recommended with all hands on deck.`,
-      boards: [{
-        id: boardId,
-        name: 'Production Release',
-        description: 'Critical production features',
-        task_count: 3,
-        completion_rate: 0,
-      }],
+      boards: [
+        {
+          id: boardId,
+          name: 'Production Release',
+          description: 'Critical production features',
+          task_count: 3,
+          completion_rate: 0,
+        },
+      ],
       tasks,
       priorities: [
         {
@@ -432,7 +441,7 @@ describe('MCP Context Mock Evaluation Test', () => {
     const boardId = uuidv4();
     const nextWeek = new Date();
     nextWeek.setDate(nextWeek.getDate() + 7);
-    
+
     const tasks: MockTask[] = [
       {
         id: uuidv4(),
@@ -487,13 +496,15 @@ describe('MCP Context Mock Evaluation Test', () => {
 
     return {
       summary: `"Maintenance Sprint" is progressing well with 25% completion. Caching implementation is 50% complete and on track. Unit tests are scheduled for next week with adequate time buffer. Team workload is balanced with mix of development, testing, and DevOps tasks. No blockers or overdue items. Healthy project pace.`,
-      boards: [{
-        id: boardId,
-        name: 'Maintenance Sprint',
-        description: 'Technical improvements and maintenance',
-        task_count: 4,
-        completion_rate: 0.25,
-      }],
+      boards: [
+        {
+          id: boardId,
+          name: 'Maintenance Sprint',
+          description: 'Technical improvements and maintenance',
+          task_count: 4,
+          completion_rate: 0.25,
+        },
+      ],
       tasks,
       priorities: [
         {
@@ -555,7 +566,9 @@ describe('MCP Context Mock Evaluation Test', () => {
       score++;
       details.push(`✓ Correct priority count: ${expectedPatterns.priorityCount}`);
     } else {
-      details.push(`✗ Priority count mismatch: expected ${expectedPatterns.priorityCount}, got ${context.priorities.length}`);
+      details.push(
+        `✗ Priority count mismatch: expected ${expectedPatterns.priorityCount}, got ${context.priorities.length}`
+      );
     }
 
     // Check blocker detection
@@ -564,13 +577,15 @@ describe('MCP Context Mock Evaluation Test', () => {
       score++;
       details.push(`✓ Correct blocker count: ${expectedPatterns.blockerCount}`);
     } else {
-      details.push(`✗ Blocker count mismatch: expected ${expectedPatterns.blockerCount}, got ${context.blockers.length}`);
+      details.push(
+        `✗ Blocker count mismatch: expected ${expectedPatterns.blockerCount}, got ${context.blockers.length}`
+      );
     }
 
     // Check recommendation quality
     for (const recType of expectedPatterns.recommendationTypes) {
       totalChecks++;
-      const hasRecommendation = context.recommendations.some(r => 
+      const hasRecommendation = context.recommendations.some(r =>
         r.toLowerCase().includes(recType.toLowerCase())
       );
       if (hasRecommendation) {
@@ -689,27 +704,42 @@ describe('MCP Context Mock Evaluation Test', () => {
   });
 
   test('should provide actionable recommendations', () => {
-    const scenarios = ['simple_project', 'complex_with_blockers', 'sprint_planning', 'overdue_crisis', 'balanced_workload'];
-    
+    const scenarios = [
+      'simple_project',
+      'complex_with_blockers',
+      'sprint_planning',
+      'overdue_crisis',
+      'balanced_workload',
+    ];
+
     for (const scenario of scenarios) {
       const context = generateMockContext(scenario);
-      
+
       // All recommendations should be actionable (contain verbs)
-      const actionVerbs = ['focus', 'start', 'consider', 'assign', 'schedule', 'contact', 'complete', 'allocate', 'postpone', 'continue'];
+      const actionVerbs = [
+        'focus',
+        'start',
+        'consider',
+        'assign',
+        'schedule',
+        'contact',
+        'complete',
+        'allocate',
+        'postpone',
+        'continue',
+      ];
       let hasActionableRecommendations = 0;
-      
+
       for (const recommendation of context.recommendations) {
-        const hasActionVerb = actionVerbs.some(verb => 
-          recommendation.toLowerCase().includes(verb)
-        );
+        const hasActionVerb = actionVerbs.some(verb => recommendation.toLowerCase().includes(verb));
         if (hasActionVerb) {
           hasActionableRecommendations++;
         }
       }
-      
+
       const actionableRatio = hasActionableRecommendations / context.recommendations.length;
       expect(actionableRatio).toBeGreaterThan(0.5); // Adjusted for more realistic expectations
-      
+
       // Should have at least 3 recommendations
       expect(context.recommendations.length).toBeGreaterThanOrEqual(3);
     }
@@ -745,13 +775,19 @@ describe('MCP Context Mock Evaluation Test', () => {
   });
 
   test('should maintain high overall accuracy across all scenarios', () => {
-    const scenarios = ['simple_project', 'complex_with_blockers', 'sprint_planning', 'overdue_crisis', 'balanced_workload'];
+    const scenarios = [
+      'simple_project',
+      'complex_with_blockers',
+      'sprint_planning',
+      'overdue_crisis',
+      'balanced_workload',
+    ];
     let totalAccuracy = 0;
     const accuracyResults: Record<string, number> = {};
 
     for (const scenario of scenarios) {
       const context = generateMockContext(scenario);
-      
+
       // Generic evaluation criteria
       const evaluation = evaluateContextAccuracy(context, {
         summaryKeywords: [context.boards[0].name, 'task'],
@@ -759,7 +795,7 @@ describe('MCP Context Mock Evaluation Test', () => {
         blockerCount: context.blockers.length,
         recommendationTypes: [''],
       });
-      
+
       accuracyResults[scenario] = evaluation.accuracy;
       totalAccuracy += evaluation.accuracy;
     }
@@ -769,7 +805,7 @@ describe('MCP Context Mock Evaluation Test', () => {
     console.log('Average accuracy:', averageAccuracy);
 
     expect(averageAccuracy).toBeGreaterThan(0.8);
-    
+
     // No scenario should have accuracy below 0.7
     for (const [scenario, accuracy] of Object.entries(accuracyResults)) {
       expect(accuracy).toBeGreaterThan(0.7);

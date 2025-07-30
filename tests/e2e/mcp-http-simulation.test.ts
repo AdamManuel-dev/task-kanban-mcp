@@ -12,6 +12,9 @@ import request from 'supertest';
 import type { Express } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 
+import { createServer } from '../../src/server';
+import { dbConnection } from '../../src/database/connection';
+
 // Mock the service metrics decorator
 jest.mock('../../src/utils/service-metrics', () => ({
   TrackPerformance: () => () => ({}),
@@ -20,9 +23,6 @@ jest.mock('../../src/utils/service-metrics', () => ({
     getMetrics: jest.fn(() => ({ total: 0, success: 0, failure: 0 })),
   },
 }));
-
-import { createServer } from '../../src/server';
-import { dbConnection } from '../../src/database/connection';
 
 interface MCPOperation {
   type: 'tool_call' | 'resource_read' | 'prompt_get';
@@ -36,12 +36,12 @@ interface MCPOperation {
 }
 
 class MCPSimulatedClient {
-  private operations: MCPOperation[] = [];
-  
+  private readonly operations: MCPOperation[] = [];
+
   constructor(
-    private clientId: string,
-    private app: Express,
-    private apiKey: string
+    private readonly clientId: string,
+    private readonly app: Express,
+    private readonly apiKey: string
   ) {}
 
   async callTool(toolName: string, args: any): Promise<any> {
@@ -138,7 +138,7 @@ class MCPSimulatedClient {
       .query({ board_id: args.board_id, limit: 50 });
 
     const tasks = tasksResponse.body.data.items;
-    
+
     const todoCount = tasks.filter((t: any) => t.status === 'todo').length;
     const inProgressCount = tasks.filter((t: any) => t.status === 'in_progress').length;
     const doneCount = tasks.filter((t: any) => t.status === 'done').length;
@@ -222,10 +222,13 @@ class MCPSimulatedClient {
       successfulOperations: successfulOps,
       failedOperations: failedOps,
       averageDuration: avgDuration,
-      operationsByType: this.operations.reduce((acc, op) => {
-        acc[op.type] = (acc[op.type] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>),
+      operationsByType: this.operations.reduce(
+        (acc, op) => {
+          acc[op.type] = (acc[op.type] || 0) + 1;
+          return acc;
+        },
+        {} as Record<string, number>
+      ),
     };
   }
 }
@@ -261,7 +264,7 @@ describe('MCP HTTP Simulation', () => {
 
   afterAll(async () => {
     if (server) {
-      await new Promise<void>((resolve) => {
+      await new Promise<void>(resolve => {
         server.close(() => resolve());
       });
     }
@@ -293,7 +296,7 @@ describe('MCP HTTP Simulation', () => {
 
     // Run concurrent agent workflows
     const startTime = Date.now();
-    const workflows = agents.map(agent => 
+    const workflows = agents.map(async agent =>
       agent.simulateAgentWorkflow(testBoardId).catch(err => {
         console.error(`Agent ${agent.getMetrics().clientId} workflow failed:`, err);
       })
@@ -304,7 +307,7 @@ describe('MCP HTTP Simulation', () => {
 
     // Collect and analyze metrics
     const allMetrics = agents.map(agent => agent.getMetrics());
-    
+
     const totalOps = allMetrics.reduce((sum, m) => sum + m.totalOperations, 0);
     const successfulOps = allMetrics.reduce((sum, m) => sum + m.successfulOperations, 0);
     const avgDuration = allMetrics.reduce((sum, m) => sum + m.averageDuration, 0) / numAgents;
@@ -334,13 +337,13 @@ describe('MCP HTTP Simulation', () => {
       clients.push(new MCPSimulatedClient(`rapid-${i}`, app, apiKey));
     }
 
-    const operations: Promise<any>[] = [];
+    const operations: Array<Promise<any>> = [];
     const startTime = Date.now();
 
     // Each client makes rapid tool calls
     for (let i = 0; i < numClients; i++) {
       const client = clients[i];
-      
+
       for (let j = 0; j < callsPerClient; j++) {
         // Mix of different operations
         if (j % 3 === 0) {
@@ -395,7 +398,7 @@ describe('MCP HTTP Simulation', () => {
     const testBoard = uuidv4();
     const numClients = 10;
     const clients: MCPSimulatedClient[] = [];
-    
+
     // Create board
     await request(app)
       .post('/api/v1/boards')
@@ -437,11 +440,11 @@ describe('MCP HTTP Simulation', () => {
       .query({ board_id: testBoard });
 
     const tasks = finalTasks.body.data.items;
-    
+
     // Check data integrity
     expect(tasks.length).toBe(numClients);
     expect(new Set(taskIds).size).toBe(numClients); // All unique IDs
-    
+
     // Verify each task has valid state
     tasks.forEach((task: any) => {
       expect(task.id).toBeTruthy();

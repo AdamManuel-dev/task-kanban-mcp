@@ -500,9 +500,10 @@ export class TaskService {
       priority_max,
     } = options;
 
+    let query = 'SELECT DISTINCT t.* FROM tasks t';
+    const params: QueryParameters = [];
+    
     try {
-      let query = 'SELECT DISTINCT t.* FROM tasks t';
-      const params: QueryParameters = [];
       const conditions: string[] = ['t.archived = ?'];
       params.push(archived);
 
@@ -568,8 +569,12 @@ export class TaskService {
       query += ` WHERE ${conditions.join(' AND ')}`;
 
       // Use secure pagination to prevent ORDER BY injection
-      const paginationClause = validatePagination(sortBy, sortOrder, 'tasks', 't');
-      query += ` ${paginationClause} LIMIT ? OFFSET ?`;
+      const paginationResult = validatePagination(
+        { limit, offset, sortBy, sortOrder }, 
+        'tasks', 
+        't'
+      );
+      query += ` ${paginationResult.orderByClause} LIMIT ? OFFSET ?`;
       params.push(limit, offset);
 
       const tasks = await this.db.query<Task>(query, params);
@@ -610,15 +615,18 @@ export class TaskService {
   @TrackPerformance('TaskService')
   async updateTask(id: string, data: UpdateTaskRequest): Promise<Task> {
     try {
+      console.log('DEBUG updateTask called with:', { id, data });
       const existingTask = await this.getTaskById(id);
       if (!existingTask) {
         throw TaskService.createError('TASK_NOT_FOUND', 'Task not found', { id });
       }
+      console.log('DEBUG existing task:', existingTask.title);
 
       const updates: string[] = [];
       const params: QueryParameters = [];
 
       if (data.title !== undefined) {
+        console.log('DEBUG adding title update:', data.title);
         updates.push('title = ?');
         params.push(data.title);
       }
@@ -702,14 +710,14 @@ export class TaskService {
           params.push(new Date());
           params.push(id);
 
-          await db.run(
-            `
-            UPDATE tasks 
-            SET ${String(String(updates.join(', ')))}
-            WHERE id = ?
-          `,
-            params
-          );
+          const query = `UPDATE tasks SET ${updates.join(', ')} WHERE id = ?`;
+          console.log('DEBUG updateTask query:', query);
+          console.log('DEBUG updateTask params:', params);
+          
+          const result = await db.run(query, params);
+          if (!result || result.changes === 0) {
+            throw new Error(`DEBUG: Update failed - no rows changed. Query: ${query}, Params: ${JSON.stringify(params)}`);
+          }
         }
       });
 

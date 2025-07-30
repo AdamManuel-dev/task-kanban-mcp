@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { NoteService } from '@/services/NoteService';
+import { NoteService, type NoteSearchOptions, type NoteFilters, type CreateNoteRequest, type UpdateNoteRequest } from '@/services/NoteService';
+import type { PaginationOptions, Note } from '@/types';
 import { dbConnection } from '@/database/connection';
 import { requirePermission } from '@/middleware/auth';
 import { NoteValidation, validateInput } from '@/utils/validation';
@@ -24,25 +25,25 @@ export function noteRoutes(): Router {
         return;
       }
 
-      const options: any = {
+      const options: NoteSearchOptions = {
         query: query as string,
-        limit: parseInt(limit as string, 10),
-        offset: parseInt(offset as string, 10),
+        limit: parseInt(limit as string, 10) || 50,
+        offset: parseInt(offset as string, 10) || 0,
       };
 
       // Add optional properties only if they have values
       if (task_id) options.task_id = task_id as string;
       if (board_id) options.board_id = board_id as string;
-      if (category) options.category = category;
+      if (category) options.category = category as 'general' | 'implementation' | 'research' | 'blocker' | 'idea';
       if (pinned === 'true') options.pinned_only = true;
       else if (pinned === 'false') options.pinned_only = false;
 
-      const searchResults = await noteService.searchNotes(options as any);
+      const searchResults = await noteService.searchNotes(options);
 
       res.apiPagination({
         data: searchResults,
-        page: Math.floor(options.offset / options.limit) + 1,
-        limit: options.limit,
+        page: Math.floor((options.offset || 0) / (options.limit || 50)) + 1,
+        limit: options.limit || 50,
         total: searchResults.length,
       });
     } catch (error) {
@@ -55,10 +56,9 @@ export function noteRoutes(): Router {
     try {
       const { task_id, board_id } = req.query;
 
-      const filters: any = {
-        task_id: task_id as string,
-        board_id: board_id as string,
-      };
+      const filters: { task_id?: string; board_id?: string } = {};
+      if (task_id) filters.task_id = task_id as string;
+      if (board_id) filters.board_id = board_id as string;
 
       const categories = await noteService.getNoteCategories(filters);
       res.apiSuccess(categories);
@@ -72,12 +72,12 @@ export function noteRoutes(): Router {
     try {
       const { limit = 20, task_id, board_id, days = 7 } = req.query;
 
-      const options: any = {
+      const options: PaginationOptions & { days?: number; board_id?: string; task_id?: string } = {
         limit: parseInt(limit as string, 10),
-        task_id: task_id as string,
-        board_id: board_id as string,
         days: parseInt(days as string, 10),
       };
+      if (task_id) options.task_id = task_id as string;
+      if (board_id) options.board_id = board_id as string;
 
       const recentNotes = await noteService.getRecentNotes(options);
       res.apiSuccess(recentNotes);
@@ -91,13 +91,13 @@ export function noteRoutes(): Router {
     try {
       const { limit = 50, task_id, board_id, category } = req.query;
 
-      const options: any = {
+      const options: PaginationOptions & NoteFilters = {
         limit: parseInt(limit as string, 10),
-        task_id: task_id as string,
-        board_id: board_id as string,
-        category: category as any,
         pinned: true,
       };
+      if (task_id) options.task_id = task_id as string;
+      if (board_id) options.board_id = board_id as string;
+      if (category) options.category = category as Note['category'];
 
       const pinnedNotes = await noteService.getNotes(options);
       res.apiSuccess(pinnedNotes);
@@ -121,9 +121,9 @@ export function noteRoutes(): Router {
         search,
       } = req.query;
 
-      const options: any = {
-        limit: parseInt(limit as string, 10),
-        offset: parseInt(offset as string, 10),
+      const options: PaginationOptions & NoteFilters = {
+        limit: parseInt(limit as string, 10) || 50,
+        offset: parseInt(offset as string, 10) || 0,
         sortBy: sortBy as string,
         sortOrder: sortOrder as 'asc' | 'desc',
         search: search as string,
@@ -131,21 +131,21 @@ export function noteRoutes(): Router {
 
       if (task_id) options.task_id = task_id as string;
       if (board_id) options.board_id = board_id as string;
-      if (category) options.category = category;
+      if (category) options.category = category as 'general' | 'implementation' | 'research' | 'blocker' | 'idea';
       if (pinned === 'true') options.pinned = true;
       else if (pinned === 'false') options.pinned = false;
 
-      const notes = await noteService.getNotes(options as any);
+      const notes = await noteService.getNotes(options);
 
       // Get total count for pagination
       const { limit: _, offset: __, ...countOptions } = options;
-      const totalNotes = await noteService.getNotes(countOptions as any);
+      const totalNotes = await noteService.getNotes(countOptions);
       const total = totalNotes.length;
 
       res.apiPagination({
         data: notes,
-        page: Math.floor(options.offset / options.limit) + 1,
-        limit: options.limit,
+        page: Math.floor((options.offset || 0) / (options.limit || 50)) + 1,
+        limit: options.limit || 50,
         total,
       });
     } catch (error) {
@@ -157,7 +157,7 @@ export function noteRoutes(): Router {
   router.post('/', requirePermission('write'), async (req, res, next): Promise<void> => {
     try {
       const rawNoteData = validateInput(NoteValidation.create, req.body);
-      const noteData: any = {
+      const noteData: CreateNoteRequest = {
         task_id: rawNoteData.task_id,
         content: rawNoteData.content,
       };
@@ -166,7 +166,7 @@ export function noteRoutes(): Router {
       if (rawNoteData.category) noteData.category = rawNoteData.category;
       if (rawNoteData.pinned !== undefined) noteData.pinned = rawNoteData.pinned;
 
-      const note = await noteService.createNote(noteData as any);
+      const note = await noteService.createNote(noteData);
       res.status(201).apiSuccess(note);
     } catch (error) {
       next(error);
@@ -210,7 +210,7 @@ export function noteRoutes(): Router {
       const updateData = Object.fromEntries(
         Object.entries(rawUpdateData).filter(([, value]) => value !== undefined)
       );
-      const note = await noteService.updateNote(id, updateData as any);
+      const note = await noteService.updateNote(id, updateData as UpdateNoteRequest);
       res.apiSuccess(note);
     } catch (error) {
       next(error);

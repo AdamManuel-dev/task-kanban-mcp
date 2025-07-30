@@ -312,7 +312,7 @@ export class TypeSafeQueryBuilder<TSchema extends TableSchema = typeof DefaultSc
     const startTime = Date.now();
 
     try {
-      const all = promisify(this.db.all.bind(this.db));
+      const all = promisify(this.db.all.bind(this.db)) as (sql: string, params?: any) => Promise<any[]>;
       const rows = (await all(sql, parameters)) as QueryRow[];
 
       const executionTime = Date.now() - startTime;
@@ -446,7 +446,7 @@ export class SelectQueryBuilder<TSchema extends TableSchema, TTable extends keyo
 
     try {
       const { sql, parameters } = this.build();
-      const all = promisify(this.db.all.bind(this.db));
+      const all = promisify(this.db.all.bind(this.db)) as (sql: string, params?: any) => Promise<any[]>;
       const rows = (await all(sql, parameters)) as TResult[];
 
       const executionTime = Date.now() - startTime;
@@ -547,7 +547,7 @@ export class InsertQueryBuilder<TSchema extends TableSchema, TTable extends keyo
       const { sql, parameters } = this.build();
 
       const result = await new Promise<{ lastID?: number; changes?: number }>((resolve, reject) => {
-        this.db.run(sql, parameters, function (this: unknown, err: Error | null) {
+        this.db.run(sql, parameters, function (this: { lastID: number; changes: number }, err: Error | null) {
           if (err) {
             reject(err);
           } else {
@@ -584,7 +584,7 @@ export class InsertQueryBuilder<TSchema extends TableSchema, TTable extends keyo
   build(): { sql: string; parameters: SQLParameter[] } {
     const columns = Object.keys(this.data);
     const placeholders = columns.map(() => '?').join(', ');
-    const parameters = Object.values(this.data);
+    const parameters = Object.values(this.data).filter((v): v is SQLParameter => v !== undefined);
 
     // Validate columns exist in schema
     for (const column of columns) {
@@ -632,7 +632,7 @@ export class UpdateQueryBuilder<TSchema extends TableSchema, TTable extends keyo
       const { sql, parameters } = this.build();
 
       const result = await new Promise<{ changes?: number }>((resolve, reject) => {
-        this.db.run(sql, parameters, function (this: unknown, err: Error | null) {
+        this.db.run(sql, parameters, function (this: { changes: number }, err: Error | null) {
           if (err) {
             reject(err);
           } else {
@@ -669,7 +669,7 @@ export class UpdateQueryBuilder<TSchema extends TableSchema, TTable extends keyo
   build(): { sql: string; parameters: SQLParameter[] } {
     const columns = Object.keys(this.data);
     const setClause = columns.map(col => `${col} = ?`).join(', ');
-    const setParameters = Object.values(this.data);
+    const setParameters = Object.values(this.data).filter((v): v is SQLParameter => v !== undefined);
 
     // Validate columns exist in schema
     for (const column of columns) {
@@ -724,7 +724,7 @@ export class DeleteQueryBuilder<TSchema extends TableSchema, TTable extends keyo
       const { sql, parameters } = this.build();
 
       const result = await new Promise<{ changes?: number }>((resolve, reject) => {
-        this.db.run(sql, parameters, function (this: unknown, err: Error | null) {
+        this.db.run(sql, parameters, function (this: { changes: number }, err: Error | null) {
           if (err) {
             reject(err);
           } else {
@@ -774,7 +774,7 @@ export class DeleteQueryBuilder<TSchema extends TableSchema, TTable extends keyo
 /**
  * SQL template literal function for type-safe raw queries
  */
-export function sql<TResult = QueryRow>(
+export function sql<_TResult = QueryRow>(
   strings: TemplateStringsArray,
   ...values: SQLParameter[]
 ): { query: string; parameters: SQLParameter[] } {

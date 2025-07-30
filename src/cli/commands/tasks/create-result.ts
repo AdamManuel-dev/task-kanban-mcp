@@ -9,13 +9,13 @@
  */
 
 import type { Command } from 'commander';
-import type { CliComponents, CreateTaskRequest as CLICreateTaskRequest } from '../../types';
+import type { CliComponents } from '../../types';
 import type { CreateTaskRequest as ServiceCreateTaskRequest } from '../../../services/TaskService';
 import type { CreateTaskOptions } from './types';
 import type { Task } from '../../../types';
 import { TaskServiceResult } from '../../../services/TaskServiceResult';
-import { Ok, Err, isOk, match, andThen, map, createServiceError } from '../../../utils/result';
-import type { Result, ServiceResult } from '../../../utils/result';
+import { Ok, Err, isOk, match, map, createServiceError } from '../../../utils/result';
+import type { ServiceResult } from '../../../utils/result';
 import { withErrorHandling, ensureBoardId } from '../../utils/command-helpers';
 import { createTaskPrompt } from '../../prompts/task-prompts';
 import { PRIORITY_MAPPING } from '../../../constants';
@@ -78,7 +78,7 @@ async function createTaskWithResult(options: CreateTaskOptions): Promise<Service
   if (!global.cliComponents) {
     return Err(createServiceError('CONFIG_ERROR', 'CLI components not initialized'));
   }
-  const { config, services } = global.cliComponents;
+  const { config, services: _services } = global.cliComponents;
 
   // Initialize task service with Result pattern
   // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
@@ -178,7 +178,7 @@ async function gatherTaskData(
  */
 function buildCreateRequest(
   taskData: Record<string, unknown>,
-  config: unknown
+  _config: unknown
 ): ServiceResult<ServiceCreateTaskRequest> {
   try {
     // Validate required fields
@@ -222,11 +222,12 @@ function buildCreateRequest(
 /**
  * Example of chaining Result operations
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function demonstrateResultChaining(taskId: string): Promise<ServiceResult<string>> {
   if (!global.cliComponents) {
     return Err(createServiceError('CONFIG_ERROR', 'CLI components not initialized'));
   }
-  const { services } = global.cliComponents;
+  const { services: _services } = global.cliComponents;
   // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   const { CLIServiceContainer } = await import('@/cli/services/ServiceContainer');
   const container = CLIServiceContainer.getInstance();
@@ -252,6 +253,7 @@ async function demonstrateResultChaining(taskId: string): Promise<ServiceResult<
 /**
  * Example of mapping over Result values
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function formatTaskForDisplay(taskResult: ServiceResult<Task>): ServiceResult<string> {
   return map(taskResult, task => `${task.title} (${task.status}) - Priority: ${task.priority}`);
 }

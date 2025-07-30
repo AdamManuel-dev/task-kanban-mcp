@@ -1,7 +1,7 @@
 /**
  * @fileoverview E2E test simulating random user interactions with kanban CLI
  * @lastmodified 2025-01-30T00:00:00Z
- * 
+ *
  * Features: Tests 50 random CLI actions with realistic user patterns
  * Main APIs: Mock command execution with realistic CLI output
  * Constraints: Uses in-memory data structures for fast execution
@@ -66,7 +66,7 @@ describe('CLI Random User Interactions E2E Test', () => {
     const actions = Object.keys(ACTION_WEIGHTS);
     const weights = Object.values(ACTION_WEIGHTS);
     const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
-    
+
     let random = Math.random() * totalWeight;
     for (let i = 0; i < actions.length; i++) {
       random -= weights[i];
@@ -74,7 +74,7 @@ describe('CLI Random User Interactions E2E Test', () => {
         return actions[i];
       }
     }
-    
+
     return actions[0];
   }
 
@@ -93,19 +93,22 @@ describe('CLI Random User Interactions E2E Test', () => {
           result.output = `Board created successfully!\n\nID: ${data.id}\nName: ${data.name}\nDescription: ${data.description}`;
           result.extractedId = data.id;
         } else if (command.includes('list')) {
-          result.output = `Boards:\n${Array.from(context.boards.values()).map(b => `  • ${b.name} (${b.id})`).join('\n')}`;
+          result.output = `Boards:\n${Array.from(context.boards.values())
+            .map(b => `  • ${b.name} (${b.id})`)
+            .join('\n')}`;
         }
         break;
-      
+
       case 'task':
         if (command.includes('create')) {
           result.output = `Task created successfully!\n\nID: ${data.id}\nTitle: ${data.title}\nPriority: ${data.priority}`;
           result.extractedId = data.id;
         } else if (command.includes('list')) {
           const tasks = Array.from(context.tasks.values());
-          result.output = tasks.length > 0 
-            ? `Tasks:\n${tasks.map(t => `  • [${t.priority}] ${t.title} (${t.column_id})`).join('\n')}`
-            : 'No tasks found.';
+          result.output =
+            tasks.length > 0
+              ? `Tasks:\n${tasks.map(t => `  • [${t.priority}] ${t.title} (${t.column_id})`).join('\n')}`
+              : 'No tasks found.';
         } else if (command.includes('show')) {
           if (data) {
             result.output = `Task Details:\n\nID: ${data.id}\nTitle: ${data.title}\nDescription: ${data.description}\nPriority: ${data.priority}\nStatus: ${data.column_id}`;
@@ -115,19 +118,22 @@ describe('CLI Random User Interactions E2E Test', () => {
           }
         }
         break;
-      
+
       case 'context':
         const totalTasks = context.tasks.size;
         const tasksByStatus = {
           todo: Array.from(context.tasks.values()).filter(t => t.column_id === 'todo').length,
-          'in-progress': Array.from(context.tasks.values()).filter(t => t.column_id === 'in-progress').length,
+          'in-progress': Array.from(context.tasks.values()).filter(
+            t => t.column_id === 'in-progress'
+          ).length,
           done: Array.from(context.tasks.values()).filter(t => t.column_id === 'done').length,
         };
         result.output = `Current Work Context:\n\nTotal Tasks: ${totalTasks}\n  • To Do: ${tasksByStatus.todo}\n  • In Progress: ${tasksByStatus['in-progress']}\n  • Done: ${tasksByStatus.done}`;
         break;
-      
+
       case 'health':
-        result.output = 'System Health Check:\n\n✓ Database connection: OK\n✓ Configuration: OK\n✓ All systems operational';
+        result.output =
+          'System Health Check:\n\n✓ Database connection: OK\n✓ Configuration: OK\n✓ All systems operational';
         break;
     }
 
@@ -136,7 +142,7 @@ describe('CLI Random User Interactions E2E Test', () => {
 
   async function executeRandomAction(): Promise<ActionResult> {
     const action = selectRandomAction();
-    
+
     switch (action) {
       case 'createBoard': {
         const board = {
@@ -149,7 +155,10 @@ describe('CLI Random User Interactions E2E Test', () => {
         if (!context.currentBoardId) {
           context.currentBoardId = board.id;
         }
-        return mockCommand(`board create --name "${board.name}" --description "${board.description}"`, board);
+        return mockCommand(
+          `board create --name "${board.name}" --description "${board.description}"`,
+          board
+        );
       }
 
       case 'createTask': {
@@ -166,7 +175,7 @@ describe('CLI Random User Interactions E2E Test', () => {
             context.currentBoardId = board.id;
           }
         }
-        
+
         const task = {
           id: uuidv4(),
           title: generateRandomString('Task'),
@@ -198,12 +207,13 @@ describe('CLI Random User Interactions E2E Test', () => {
         if (!taskId) {
           return { action, command: 'task update', success: false, output: 'No tasks available' };
         }
-        
+
         const task = context.tasks.get(taskId)!;
         if (Math.random() > 0.5) task.title = generateRandomString('Updated');
         if (Math.random() > 0.5) task.description = generateRandomString('Updated desc');
-        if (Math.random() > 0.5) task.priority = getRandomElement(['P0', 'P1', 'P2', 'P3']) || task.priority;
-        
+        if (Math.random() > 0.5)
+          task.priority = getRandomElement(['P0', 'P1', 'P2', 'P3']) || task.priority;
+
         const result = mockCommand(`task update ${taskId} --title "${task.title}"`, task);
         result.output = `Task updated successfully!\n\nID: ${task.id}\nTitle: ${task.title}\nPriority: ${task.priority}`;
         return result;
@@ -223,9 +233,10 @@ describe('CLI Random User Interactions E2E Test', () => {
 
       case 'searchTasks': {
         const query = getRandomElement(['test', 'task', 'updated', 'board']) || 'task';
-        const matchingTasks = Array.from(context.tasks.values()).filter(t => 
-          t.title.toLowerCase().includes(query.toLowerCase()) ||
-          t.description.toLowerCase().includes(query.toLowerCase())
+        const matchingTasks = Array.from(context.tasks.values()).filter(
+          t =>
+            t.title.toLowerCase().includes(query.toLowerCase()) ||
+            t.description.toLowerCase().includes(query.toLowerCase())
         );
         const result = mockCommand(`task search --query "${query}"`, matchingTasks);
         if (matchingTasks.length > 0) {
@@ -320,7 +331,12 @@ describe('CLI Random User Interactions E2E Test', () => {
 
       case 'deleteBoard': {
         if (context.boards.size <= 1) {
-          return { action, command: 'board delete', success: false, output: 'Cannot delete last board' };
+          return {
+            action,
+            command: 'board delete',
+            success: false,
+            output: 'Cannot delete last board',
+          };
         }
         const boardId = getRandomElement(
           Array.from(context.boards.keys()).filter(id => id !== context.currentBoardId)
@@ -348,19 +364,19 @@ describe('CLI Random User Interactions E2E Test', () => {
   test('should execute 50 random CLI actions successfully', async () => {
     const results: ActionResult[] = [];
     const actionCounts: Record<string, number> = {};
-    
+
     // Ensure we start with some data
     await executeRandomAction(); // Create initial board
     await executeRandomAction(); // Likely creates another board or task
-    
+
     // Execute 48 more random actions
     for (let i = 0; i < 48; i++) {
       const result = await executeRandomAction();
       results.push(result);
-      
+
       // Count actions
       actionCounts[result.action] = (actionCounts[result.action] || 0) + 1;
-      
+
       // Validate output format
       expect(result).toHaveProperty('action');
       expect(result).toHaveProperty('command');
@@ -369,11 +385,11 @@ describe('CLI Random User Interactions E2E Test', () => {
         expect(result).toHaveProperty('output');
       }
     }
-    
+
     // Analyze results
     const successCount = results.filter(r => r.success).length;
     const successRate = (successCount / results.length) * 100;
-    
+
     console.log('\n=== Test Results ===');
     console.log('Action distribution:', actionCounts);
     console.log('Context state:', {
@@ -383,7 +399,7 @@ describe('CLI Random User Interactions E2E Test', () => {
       notes: context.notes.size,
     });
     console.log(`Success rate: ${successRate.toFixed(2)}% (${successCount}/${results.length})`);
-    
+
     // Assertions
     expect(Object.keys(actionCounts).length).toBeGreaterThan(5);
     expect(context.boards.size).toBeGreaterThan(0);
@@ -397,7 +413,7 @@ describe('CLI Random User Interactions E2E Test', () => {
     Array.from(context.tasks.values()).forEach(task => {
       expect(boardIds.has(task.board_id)).toBe(true);
     });
-    
+
     // All tags and notes should belong to existing tasks
     const taskIds = new Set(context.tasks.keys());
     Array.from(context.tags.values()).forEach(tag => {
@@ -412,13 +428,13 @@ describe('CLI Random User Interactions E2E Test', () => {
     // Test various commands produce expected output format
     const boardListResult = mockCommand('board list');
     expect(boardListResult.output).toContain('Boards:');
-    
+
     const taskListResult = mockCommand('task list');
     expect(taskListResult.output).toMatch(/Tasks:|No tasks found/);
-    
+
     const contextResult = mockCommand('context show');
     expect(contextResult.output).toContain('Current Work Context:');
-    
+
     const healthResult = mockCommand('health');
     expect(healthResult.output).toContain('System Health Check:');
     expect(healthResult.output).toContain('OK');

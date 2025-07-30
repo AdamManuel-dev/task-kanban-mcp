@@ -1,7 +1,7 @@
 /**
  * @fileoverview E2E test for MCP context evaluation and accuracy
  * @lastmodified 2025-01-30T00:00:00Z
- * 
+ *
  * Features: Tests MCP context refinement accuracy across various scenarios
  * Main APIs: MCP server, context tools, prompt evaluation
  * Constraints: Requires MCP server running, test database setup
@@ -110,7 +110,7 @@ describe('MCP Context Evaluation E2E Test', () => {
       });
 
       mcpProcess.on('error', reject);
-      
+
       // Wait for server to be ready
       setTimeout(resolve, 2000);
     });
@@ -119,11 +119,14 @@ describe('MCP Context Evaluation E2E Test', () => {
   async function sendMCPMessage(message: MCPMessage): Promise<MCPMessage> {
     return new Promise((resolve, reject) => {
       const msgWithId = { ...message, id: messageId++ };
-      
-      mcpProcess.stdin?.write(JSON.stringify(msgWithId) + '\n');
-      
+
+      mcpProcess.stdin?.write(`${JSON.stringify(msgWithId)}\n`);
+
       const handler = (data: Buffer) => {
-        const lines = data.toString().split('\n').filter(line => line.trim());
+        const lines = data
+          .toString()
+          .split('\n')
+          .filter(line => line.trim());
         for (const line of lines) {
           try {
             const response = JSON.parse(line);
@@ -140,9 +143,9 @@ describe('MCP Context Evaluation E2E Test', () => {
           }
         }
       };
-      
+
       mcpProcess.stdout?.on('data', handler);
-      
+
       setTimeout(() => {
         mcpProcess.stdout?.off('data', handler);
         reject(new Error('MCP request timeout'));
@@ -155,7 +158,7 @@ describe('MCP Context Evaluation E2E Test', () => {
     const board = boardService.createBoard({
       name,
       description,
-      color: '#' + Math.floor(Math.random()*16777215).toString(16),
+      color: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
     });
     testBoards.set(board.id, board);
     return board.id;
@@ -181,9 +184,9 @@ describe('MCP Context Evaluation E2E Test', () => {
       priority: options.priority || 'P2',
       due_date: options.dueDate,
     });
-    
+
     testTasks.set(task.id, task);
-    
+
     // Add tags if provided
     if (options.tags) {
       for (const tagName of options.tags) {
@@ -192,7 +195,7 @@ describe('MCP Context Evaluation E2E Test', () => {
         testTags.set(tag.id, tag);
       }
     }
-    
+
     // Add notes if provided
     if (options.notes) {
       for (const noteContent of options.notes) {
@@ -204,7 +207,7 @@ describe('MCP Context Evaluation E2E Test', () => {
         testNotes.set(note.id, note);
       }
     }
-    
+
     return task.id;
   }
 
@@ -214,48 +217,48 @@ describe('MCP Context Evaluation E2E Test', () => {
       name: 'Simple Project Context',
       setup: async () => {
         const boardId = await createTestBoard('Development Board', 'Main development tasks');
-        
+
         await createTestTask(boardId, 'Implement user authentication', {
           priority: 'P0',
           status: 'in-progress',
           tags: ['backend', 'security'],
           notes: ['Need to implement OAuth2 flow'],
         });
-        
+
         await createTestTask(boardId, 'Create login UI', {
           priority: 'P1',
           status: 'todo',
           tags: ['frontend'],
         });
-        
+
         await createTestTask(boardId, 'Write authentication tests', {
           priority: 'P2',
           status: 'todo',
           tags: ['testing'],
         });
       },
-      validate: async (result) => {
+      validate: async result => {
         const context = result.result;
-        
+
         // Validate project summary
         expect(context).toContain('Development Board');
         expect(context).toContain('authentication');
         expect(context).toContain('in-progress');
-        
+
         // Validate priority detection
         expect(context).toMatch(/P0|high priority|critical/i);
-        
+
         // Validate task relationships
         expect(context).toMatch(/login.*UI.*authentication/is);
       },
       expectedAccuracy: 0.85,
     },
-    
+
     {
       name: 'Complex Project with Blockers',
       setup: async () => {
         const boardId = await createTestBoard('Product Launch', 'Q1 2025 Product Launch');
-        
+
         // Create interconnected tasks
         const apiTask = await createTestTask(boardId, 'API Development', {
           priority: 'P0',
@@ -263,31 +266,31 @@ describe('MCP Context Evaluation E2E Test', () => {
           tags: ['backend', 'api'],
           notes: ['Blocked by database schema design'],
         });
-        
+
         const dbTask = await createTestTask(boardId, 'Database Schema Design', {
           priority: 'P0',
           status: 'todo',
           tags: ['database', 'blocker'],
           notes: ['Waiting for requirements finalization'],
         });
-        
+
         await createTestTask(boardId, 'Frontend Development', {
           priority: 'P1',
           status: 'blocked',
           tags: ['frontend'],
           notes: [`Blocked by API task ${apiTask}`, 'Cannot proceed without API endpoints'],
         });
-        
+
         await createTestTask(boardId, 'Marketing Website', {
           priority: 'P2',
           status: 'in-progress',
           tags: ['marketing'],
         });
-        
+
         // Create overdue task
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
-        
+
         await createTestTask(boardId, 'Security Audit', {
           priority: 'P0',
           status: 'todo',
@@ -295,33 +298,33 @@ describe('MCP Context Evaluation E2E Test', () => {
           tags: ['security', 'compliance'],
         });
       },
-      validate: async (result) => {
+      validate: async result => {
         const context = result.result;
-        
+
         // Validate blocker detection
         expect(context).toMatch(/block|dependency|waiting/i);
         expect(context).toContain('Database Schema Design');
         expect(context).toContain('API Development');
-        
+
         // Validate overdue detection
         expect(context).toMatch(/overdue|past due|late/i);
         expect(context).toContain('Security Audit');
-        
+
         // Validate critical path identification
         expect(context).toMatch(/critical path|bottleneck/i);
-        
+
         // Validate recommendations
         expect(context).toMatch(/recommend|suggest|should/i);
         expect(context).toMatch(/prioritize.*database|database.*first/i);
       },
-      expectedAccuracy: 0.80,
+      expectedAccuracy: 0.8,
     },
-    
+
     {
       name: 'Sprint Planning Context',
       setup: async () => {
         const boardId = await createTestBoard('Sprint 23', 'Two-week sprint');
-        
+
         // Create a mix of task sizes and priorities
         await createTestTask(boardId, 'Refactor authentication module', {
           priority: 'P1',
@@ -329,28 +332,28 @@ describe('MCP Context Evaluation E2E Test', () => {
           tags: ['refactoring', 'tech-debt'],
           notes: ['Estimated: 8 hours', 'Complexity: High'],
         });
-        
+
         await createTestTask(boardId, 'Fix login bug', {
           priority: 'P0',
           status: 'todo',
           tags: ['bug', 'quick-fix'],
           notes: ['Estimated: 2 hours', 'Customer reported'],
         });
-        
+
         await createTestTask(boardId, 'Add user profile feature', {
           priority: 'P2',
           status: 'todo',
           tags: ['feature', 'frontend', 'backend'],
           notes: ['Estimated: 16 hours', 'Requires API and UI work'],
         });
-        
+
         await createTestTask(boardId, 'Update documentation', {
           priority: 'P3',
           status: 'todo',
           tags: ['documentation'],
           notes: ['Estimated: 4 hours'],
         });
-        
+
         // Some completed tasks for velocity
         await createTestTask(boardId, 'Setup CI/CD pipeline', {
           priority: 'P1',
@@ -358,32 +361,32 @@ describe('MCP Context Evaluation E2E Test', () => {
           tags: ['devops'],
         });
       },
-      validate: async (result) => {
+      validate: async result => {
         const context = result.result;
-        
+
         // Validate sprint capacity analysis
         expect(context).toMatch(/capacity|velocity|bandwidth/i);
         expect(context).toMatch(/30.*hours|hours.*30/i); // Total estimated hours
-        
+
         // Validate prioritization
         expect(context).toMatch(/bug.*first|priority.*bug/i);
         expect(context).toContain('Fix login bug');
-        
+
         // Validate task grouping
         expect(context).toMatch(/quick wins|low.*hanging.*fruit/i);
-        
+
         // Validate recommendations
         expect(context).toMatch(/sprint goal|objective/i);
         expect(context).toMatch(/risk|stretch goal/i);
       },
       expectedAccuracy: 0.82,
     },
-    
+
     {
       name: 'Task Breakdown Assistant',
       setup: async () => {
         const boardId = await createTestBoard('Feature Development', 'New features board');
-        
+
         await createTestTask(boardId, 'Implement real-time notifications system', {
           priority: 'P1',
           status: 'todo',
@@ -395,9 +398,9 @@ describe('MCP Context Evaluation E2E Test', () => {
           ],
         });
       },
-      validate: async (result) => {
+      validate: async result => {
         const context = result.result;
-        
+
         // Validate task breakdown
         expect(context).toMatch(/backend.*infrastructure|notification.*service/i);
         expect(context).toMatch(/websocket|real.*time.*connection/i);
@@ -406,21 +409,21 @@ describe('MCP Context Evaluation E2E Test', () => {
         expect(context).toMatch(/API.*endpoint/i);
         expect(context).toMatch(/frontend.*integration|UI.*component/i);
         expect(context).toMatch(/test|testing/i);
-        
+
         // Validate subtask estimation
         expect(context).toMatch(/estimate|effort|hours|points/i);
-        
+
         // Validate dependencies mentioned
         expect(context).toMatch(/depend|prerequisite|before|after/i);
       },
       expectedAccuracy: 0.88,
     },
-    
+
     {
       name: 'Retrospective Analysis',
       setup: async () => {
         const boardId = await createTestBoard('Completed Sprint', 'Sprint 22 - Completed');
-        
+
         // Mix of completed and incomplete tasks
         await createTestTask(boardId, 'User authentication', {
           priority: 'P0',
@@ -428,27 +431,27 @@ describe('MCP Context Evaluation E2E Test', () => {
           tags: ['feature', 'security'],
           notes: ['Completed on time', 'No major issues'],
         });
-        
+
         await createTestTask(boardId, 'Payment integration', {
           priority: 'P0',
           status: 'done',
           tags: ['feature', 'payment'],
           notes: ['Delayed by 3 days', 'External API issues'],
         });
-        
+
         await createTestTask(boardId, 'Performance optimization', {
           priority: 'P1',
           status: 'in-progress',
           tags: ['tech-debt', 'performance'],
           notes: ['Carried over to next sprint', 'More complex than estimated'],
         });
-        
+
         await createTestTask(boardId, 'Mobile app bug fixes', {
           priority: 'P1',
           status: 'done',
           tags: ['bug', 'mobile'],
         });
-        
+
         await createTestTask(boardId, 'Documentation update', {
           priority: 'P3',
           status: 'todo',
@@ -456,21 +459,21 @@ describe('MCP Context Evaluation E2E Test', () => {
           notes: ['Deprioritized'],
         });
       },
-      validate: async (result) => {
+      validate: async result => {
         const context = result.result;
-        
+
         // Validate completion metrics
         expect(context).toMatch(/60|3.*5|three.*five/i); // 3 out of 5 completed
-        
+
         // Validate issue identification
         expect(context).toContain('Payment integration');
         expect(context).toMatch(/delay|late|behind schedule/i);
         expect(context).toMatch(/external.*API|third.*party/i);
-        
+
         // Validate carryover identification
         expect(context).toContain('Performance optimization');
         expect(context).toMatch(/carry.*over|incomplete|next sprint/i);
-        
+
         // Validate insights
         expect(context).toMatch(/estimate|estimation.*accuracy/i);
         expect(context).toMatch(/lesson|learning|improve/i);
@@ -483,13 +486,13 @@ describe('MCP Context Evaluation E2E Test', () => {
   function calculateAccuracy(actual: string, expected: string[]): number {
     const normalizedActual = actual.toLowerCase();
     let matches = 0;
-    
+
     for (const expectedItem of expected) {
       if (normalizedActual.includes(expectedItem.toLowerCase())) {
         matches++;
       }
     }
-    
+
     return matches / expected.length;
   }
 
@@ -501,10 +504,10 @@ describe('MCP Context Evaluation E2E Test', () => {
       testTasks.clear();
       testTags.clear();
       testNotes.clear();
-      
+
       // Setup scenario
       await scenario.setup();
-      
+
       // Get context through MCP
       const response = await sendMCPMessage({
         jsonrpc: '2.0',
@@ -516,10 +519,10 @@ describe('MCP Context Evaluation E2E Test', () => {
           },
         },
       });
-      
+
       // Validate the response
       await scenario.validate(response);
-      
+
       // Additional validation can be added here
       expect(response.result).toBeDefined();
       expect(response.error).toBeUndefined();
@@ -535,11 +538,11 @@ describe('MCP Context Evaluation E2E Test', () => {
       metricsAccuracy: 0,
       overallAccuracy: 0,
     };
-    
+
     // Run multiple context evaluations
     for (let i = 0; i < 5; i++) {
       const boardId = await createTestBoard(`Test Board ${i}`, 'Metrics test board');
-      
+
       // Create varied tasks
       const taskCount = 5 + Math.floor(Math.random() * 10);
       for (let j = 0; j < taskCount; j++) {
@@ -549,49 +552,57 @@ describe('MCP Context Evaluation E2E Test', () => {
           tags: ['feature', 'bug', 'tech-debt'].slice(0, Math.floor(Math.random() * 3) + 1),
         });
       }
-      
+
       // Get context
       const context = await contextService.getProjectContext({
         detail_level: 'comprehensive',
         include_metrics: true,
       });
-      
+
       // Evaluate accuracy
       const actualTaskCount = testTasks.size;
       const reportedTaskCount = context.key_metrics.total_tasks;
-      metrics.metricsAccuracy += 1 - Math.abs(actualTaskCount - reportedTaskCount) / actualTaskCount;
-      
+      metrics.metricsAccuracy +=
+        1 - Math.abs(actualTaskCount - reportedTaskCount) / actualTaskCount;
+
       // Check priority accuracy
-      const highPriorityTasks = Array.from(testTasks.values()).filter(t => t.priority === 'P0' || t.priority === 'P1');
-      const reportedPriorities = context.priorities.filter(p => p.urgency_level === 'high' || p.urgency_level === 'critical');
-      metrics.taskPrioritizationAccuracy += Math.min(1, reportedPriorities.length / Math.max(1, highPriorityTasks.length));
+      const highPriorityTasks = Array.from(testTasks.values()).filter(
+        t => t.priority === 'P0' || t.priority === 'P1'
+      );
+      const reportedPriorities = context.priorities.filter(
+        p => p.urgency_level === 'high' || p.urgency_level === 'critical'
+      );
+      metrics.taskPrioritizationAccuracy += Math.min(
+        1,
+        reportedPriorities.length / Math.max(1, highPriorityTasks.length)
+      );
     }
-    
+
     // Average the metrics
     const sampleCount = 5;
     metrics.metricsAccuracy /= sampleCount;
     metrics.taskPrioritizationAccuracy /= sampleCount;
-    
+
     // Set other metrics based on scenario results
     metrics.projectSummaryAccuracy = 0.85;
-    metrics.blockerDetectionAccuracy = 0.80;
+    metrics.blockerDetectionAccuracy = 0.8;
     metrics.recommendationRelevance = 0.82;
-    
+
     // Calculate overall accuracy
-    metrics.overallAccuracy = (
-      metrics.projectSummaryAccuracy +
-      metrics.taskPrioritizationAccuracy +
-      metrics.blockerDetectionAccuracy +
-      metrics.recommendationRelevance +
-      metrics.metricsAccuracy
-    ) / 5;
-    
+    metrics.overallAccuracy =
+      (metrics.projectSummaryAccuracy +
+        metrics.taskPrioritizationAccuracy +
+        metrics.blockerDetectionAccuracy +
+        metrics.recommendationRelevance +
+        metrics.metricsAccuracy) /
+      5;
+
     console.log('Context Accuracy Metrics:', metrics);
-    
+
     // Assertions
     expect(metrics.overallAccuracy).toBeGreaterThan(0.75);
-    expect(metrics.projectSummaryAccuracy).toBeGreaterThan(0.80);
-    expect(metrics.taskPrioritizationAccuracy).toBeGreaterThan(0.70);
+    expect(metrics.projectSummaryAccuracy).toBeGreaterThan(0.8);
+    expect(metrics.taskPrioritizationAccuracy).toBeGreaterThan(0.7);
     expect(metrics.blockerDetectionAccuracy).toBeGreaterThan(0.75);
     expect(metrics.recommendationRelevance).toBeGreaterThan(0.75);
     expect(metrics.metricsAccuracy).toBeGreaterThan(0.85);
@@ -599,7 +610,7 @@ describe('MCP Context Evaluation E2E Test', () => {
 
   test('should maintain context consistency across multiple requests', async () => {
     const boardId = await createTestBoard('Consistency Test', 'Testing context consistency');
-    
+
     // Create stable test data
     for (let i = 0; i < 5; i++) {
       await createTestTask(boardId, `Stable Task ${i}`, {
@@ -607,7 +618,7 @@ describe('MCP Context Evaluation E2E Test', () => {
         status: 'todo',
       });
     }
-    
+
     // Get context multiple times
     const contexts: any[] = [];
     for (let i = 0; i < 3; i++) {
@@ -620,19 +631,19 @@ describe('MCP Context Evaluation E2E Test', () => {
         },
       });
       contexts.push(response.result);
-      
+
       // Wait a bit between requests
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
-    
+
     // Verify consistency
     for (let i = 1; i < contexts.length; i++) {
       // Check that key information remains consistent
       expect(contexts[i]).toContain('Consistency Test');
       expect(contexts[i]).toContain('5'); // task count
-      
+
       // Priorities should be consistent
-      const prevPriorities = contexts[i-1].match(/P\d/g) || [];
+      const prevPriorities = contexts[i - 1].match(/P\d/g) || [];
       const currPriorities = contexts[i].match(/P\d/g) || [];
       expect(prevPriorities.sort()).toEqual(currPriorities.sort());
     }

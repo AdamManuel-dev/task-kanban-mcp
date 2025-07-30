@@ -89,7 +89,12 @@ describe('TaskService - Simple Tests', () => {
   });
 
   it('should be able to fetch tasks', async () => {
-    const tasks = await taskService.getTasks();
-    expect(Array.isArray(tasks)).toBe(true);
+    try {
+      const tasks = await taskService.getTasks();
+      expect(Array.isArray(tasks)).toBe(true);
+    } catch (error) {
+      console.log('Actual database error:', error);
+      throw error;
+    }
   });
 });

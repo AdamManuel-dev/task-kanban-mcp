@@ -115,7 +115,7 @@ router.post('/create', validateRequest(CreateBackupSchema), (req, res) => {
         backup = await backupService.createFullBackup(options);
       }
 
-      logger.info(`Backup created via API: ${String((backup as unknown).id)}`);
+      logger.info(`Backup created via API: ${String((backup as any).id)}`);
       res.status(201).json(formatSuccessResponse(backup));
     } catch (error) {
       logger.error('Backup creation failed:', error);
@@ -603,7 +603,7 @@ router.get(
           res.setHeader('Content-Type', 'application/json');
           res.setHeader(
             'Content-Disposition',
-            `attachment; filename="${String(String((backup as unknown).name))}.json"`
+            `attachment; filename="${String((backup as any).name)}.json"`
           );
           res.json(backup);
           break;
@@ -611,20 +611,20 @@ router.get(
           res.setHeader('Content-Type', 'application/sql');
           res.setHeader(
             'Content-Disposition',
-            `attachment; filename="${String(String((backup as unknown).name))}.sql"`
+            `attachment; filename="${String((backup as any).name)}.sql"`
           );
           res.send(
-            `-- Backup metadata for ${String(String((backup as unknown).name))}\n-- ID: ${String(String((backup as unknown).id))}\n-- Created: ${String(String((backup as unknown).createdAt))}`
+            `-- Backup metadata for ${String((backup as any).name)}\n-- ID: ${String((backup as any).id)}\n-- Created: ${String((backup as any).createdAt)}`
           );
           break;
         case 'csv':
           res.setHeader('Content-Type', 'text/csv');
           res.setHeader(
             'Content-Disposition',
-            `attachment; filename="${String(String((backup as unknown).name))}.csv"`
+            `attachment; filename="${String((backup as any).name)}.csv"`
           );
           res.send(
-            `id,name,type,status,size,created_at\n${String(String((backup as unknown).id))},${String(String((backup as unknown).name))},${String(String((backup as unknown).type))},${String(String((backup as unknown).status))},${String(String((backup as unknown).size))},${String(String((backup as unknown).createdAt))}`
+            `id,name,type,status,size,created_at\n${String((backup as any).id)},${String((backup as any).name)},${String((backup as any).type)},${String((backup as any).status)},${String((backup as any).size)},${String((backup as any).createdAt)}`
           );
           break;
         default:
@@ -788,7 +788,7 @@ router.post(
       const validation = await backupService.validateRestoreOptions(id, options);
 
       logger.info(`Restore validation completed for backup: ${id}`, {
-        isValid: (validation as unknown).isValid,
+        isValid: validation.isValid,
       });
       res.json(formatSuccessResponse(validation, 'Validation completed'));
     } catch (error) {
@@ -850,7 +850,7 @@ router.post(
       const integrityCheck = await backupService.performDataIntegrityCheck();
 
       logger.info('Data integrity check completed', {
-        passed: (integrityCheck as unknown).isPassed,
+        passed: integrityCheck.isPassed,
       });
       res.json(formatSuccessResponse(integrityCheck, 'Integrity check completed'));
     } catch (error) {

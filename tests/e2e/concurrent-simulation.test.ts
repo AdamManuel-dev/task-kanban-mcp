@@ -72,7 +72,7 @@ describe('Concurrent User and Agent Simulation', () => {
           `SELECT id FROM columns WHERE board_id = ? AND name = 'Todo' LIMIT 1`,
           [boardId]
         );
-        
+
         await dbConnection.db.run(
           `INSERT INTO tasks (id, title, board_id, column_id, status, priority, position, created_at, updated_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
@@ -83,7 +83,7 @@ describe('Concurrent User and Agent Simulation', () => {
             columnId?.id || 'default',
             'todo',
             Math.floor(Math.random() * 5) + 1,
-            index * 1000  // position
+            index * 1000, // position
           ]
         );
         tasksCreated++;
@@ -155,13 +155,13 @@ describe('Concurrent User and Agent Simulation', () => {
     }
 
     // Run 50 concurrent operations
-    const operations: Promise<void>[] = [];
+    const operations: Array<Promise<void>> = [];
 
     for (let i = 0; i < 50; i++) {
       // User actions
       if (i % 2 === 0) {
         operations.push(
-          new Promise(async (resolve) => {
+          new Promise(async resolve => {
             await new Promise(r => setTimeout(r, Math.random() * 100));
             if (Math.random() > 0.5) {
               await userCreateTask(10 + i);
@@ -176,7 +176,7 @@ describe('Concurrent User and Agent Simulation', () => {
       // Agent actions
       if (i % 3 === 0) {
         operations.push(
-          new Promise(async (resolve) => {
+          new Promise(async resolve => {
             await new Promise(r => setTimeout(r, Math.random() * 150 + 50));
             const task = await agentGetTask();
             if (task) {
@@ -213,7 +213,9 @@ describe('Concurrent User and Agent Simulation', () => {
     if (errors.length > 0) {
       console.log('First few errors:', errors.slice(0, 3));
     }
-    console.log(`- Final state: Total=${finalStats.total}, Todo=${finalStats.todo_count}, Done=${finalStats.done_count}`);
+    console.log(
+      `- Final state: Total=${finalStats.total}, Todo=${finalStats.todo_count}, Done=${finalStats.done_count}`
+    );
 
     // Calculate concurrency
     const allActions = [...userActions, ...agentActions];
@@ -230,13 +232,13 @@ describe('Concurrent User and Agent Simulation', () => {
 
   it('should handle heavy concurrent load', async () => {
     const errors: string[] = [];
-    const operations: Promise<void>[] = [];
+    const operations: Array<Promise<void>> = [];
     const actionTimestamps: number[] = [];
 
     // Create 100 concurrent operations
     for (let i = 0; i < 100; i++) {
       operations.push(
-        new Promise(async (resolve) => {
+        new Promise(async resolve => {
           const startTime = Date.now();
           try {
             if (i % 3 === 0) {
@@ -248,14 +250,21 @@ describe('Concurrent User and Agent Simulation', () => {
               await dbConnection.db.run(
                 `INSERT INTO tasks (id, title, board_id, column_id, status, priority, position, created_at, updated_at)
                  VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
-                [uuidv4(), `Load Test ${i}`, boardId, columnId?.id || 'default', 'todo', 1, i * 1000]
+                [
+                  uuidv4(),
+                  `Load Test ${i}`,
+                  boardId,
+                  columnId?.id || 'default',
+                  'todo',
+                  1,
+                  i * 1000,
+                ]
               );
             } else if (i % 3 === 1) {
               // Read tasks
-              await dbConnection.db.all(
-                `SELECT * FROM tasks WHERE board_id = ? LIMIT 10`,
-                [boardId]
-              );
+              await dbConnection.db.all(`SELECT * FROM tasks WHERE board_id = ? LIMIT 10`, [
+                boardId,
+              ]);
             } else {
               // Update random task
               await dbConnection.db.run(

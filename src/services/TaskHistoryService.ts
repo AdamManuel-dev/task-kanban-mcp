@@ -126,7 +126,7 @@ export class TaskHistoryService {
       query += ' ORDER BY changed_at DESC';
 
       const rows = await dbConnection.query(query, params);
-      return rows.map((row: any) => this.mapRowToHistoryEntry(row));
+      return rows.map((row: unknown) => this.mapRowToHistoryEntry(row));
     } catch (error) {
       logger.error('Failed to get task history:', error);
       throw new Error(
@@ -168,7 +168,7 @@ export class TaskHistoryService {
         // No priority changes yet
         const currentTask = await dbConnection.queryOne('SELECT priority FROM tasks WHERE id = ?', [
           taskId,
-        ]) as any;
+        ]);
 
         return {
           task_id: taskId,
@@ -299,7 +299,7 @@ export class TaskHistoryService {
 
       historyQuery += ' ORDER BY th.changed_at DESC';
 
-      const allPriorityChanges = await dbConnection.query(historyQuery, params);
+      const allPriorityChanges = await dbConnection.query<PriorityChangeEntry>(historyQuery, params);
 
       // Count total changes
       const totalPriorityChanges = allPriorityChanges.length;
@@ -330,9 +330,9 @@ export class TaskHistoryService {
 
       // Count common change reasons
       const reasonCounts = allPriorityChanges
-        .filter((change: any) => change.reason)
+        .filter((change: PriorityChangeEntry) => change.reason)
         .reduce(
-          (acc: Record<string, number>, change: any) => {
+          (acc: Record<string, number>, change: PriorityChangeEntry) => {
             const { reason } = change;
             acc[reason] = (acc[reason] ?? 0) + 1;
             return acc;
@@ -347,7 +347,7 @@ export class TaskHistoryService {
 
       // Analyze priority distribution
       const priorityValues = allPriorityChanges
-        .map((change: any) => parseInt(change.new_value ?? '1'))
+        .map((change: PriorityChangeEntry) => parseInt(change.new_value ?? '1'))
         .filter(p => !isNaN(p));
 
       const priorityCounts = priorityValues.reduce(
@@ -372,10 +372,10 @@ export class TaskHistoryService {
       // This could be enhanced with more sophisticated trend analysis
       // For now, just count based on recent changes per task
       for (const taskId of Object.keys(taskChangeCounts)) {
-        const taskChanges = allPriorityChanges.filter((c: any) => c.task_id === taskId);
+        const taskChanges = allPriorityChanges.filter((c: PriorityChangeEntry) => c.task_id === taskId);
         if (taskChanges.length >= 2) {
-          const recent = parseInt((taskChanges[0] as any).new_value || '1');
-          const older = parseInt((taskChanges[taskChanges.length - 1] as any).old_value || '1');
+          const recent = parseInt(taskChanges[0].new_value || '1');
+          const older = parseInt(taskChanges[taskChanges.length - 1].old_value || '1');
 
           if (recent > older) {
             trendAnalysis.increasing_count++;
@@ -424,7 +424,7 @@ export class TaskHistoryService {
       params.push(limit);
 
       const rows = await dbConnection.query(query, params);
-      return rows.map((row: any) => this.mapRowToHistoryEntry(row)) as PriorityChangeEntry[];
+      return rows.map((row: unknown) => this.mapRowToHistoryEntry(row)) as PriorityChangeEntry[];
     } catch (error) {
       logger.error('Failed to get recent priority changes:', error);
       throw error;

@@ -332,7 +332,7 @@ export class SecureCliWrapper {
    * ```
    */
   secureCommand(command: Command): Command {
-    // Store original action handler using the public API
+    // Store original action handler using type assertion for private property
     const originalAction = (command as any)._actionHandler;
 
     if (originalAction) {
@@ -728,7 +728,7 @@ export function addSecurityMiddleware(program: Command): Command {
   // Hook into the program's action handling
   const originalParse = program.parse.bind(program);
   // eslint-disable-next-line no-param-reassign
-  program.parse = function secureParse(argv?: readonly string[], options?: unknown) {
+  program.parse = function secureParse(argv?: readonly string[], _options?: unknown) {
     const args = argv || process.argv;
 
     // Validate arguments before parsing

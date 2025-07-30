@@ -35,8 +35,8 @@ describe('TagService', () => {
       await dbConnection.close();
     }
 
-    // Use test-specific database file
-    process.env.DATABASE_PATH = './data/kanban-test.db';
+    // Use in-memory database for testing
+    process.env.DATABASE_PATH = ':memory:';
 
     await dbConnection.initialize();
     tagService = new TagService(dbConnection);

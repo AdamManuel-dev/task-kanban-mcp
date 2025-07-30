@@ -22,9 +22,35 @@ interface AuthenticatedRequest extends Request {
   };
 }
 
+interface TaskListOptions {
+  limit?: number;
+  offset?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  filters?: {
+    board_id?: string;
+    column_id?: string;
+    status?: string;
+    assignee?: string;
+    parent_task_id?: string;
+    search?: string;
+    priority_min?: number;
+    priority_max?: number;
+  };
+}
+
+interface Task {
+  id: string;
+  title: string;
+  description?: string;
+  status?: string;
+  priority?: number;
+  [key: string]: unknown;
+}
+
 interface Services {
   taskService: {
-    getTasks: (options?: unknown) => Promise<unknown>;
+    getTasks: (options?: TaskListOptions) => Promise<Task[]>;
   };
 }
 
@@ -72,31 +98,49 @@ export const listTasksHandler = (services: Services) => [
 
       logger.debug('Listing tasks', { filters, userId: req.user?.id });
 
-      const result = await services.taskService.listTasks({
-        limit: filters.limit || 50,
-        offset: filters.offset ?? 0,
-        sortBy: filters.sortBy ?? 'updated_at',
-        sortOrder: filters.sortOrder ?? 'desc',
-        filters: {
-          board_id: filters.board_id,
-          column_id: filters.column_id,
-          status: filters.status,
-          assignee: filters.assignee,
-          parent_task_id: filters.parent_task_id,
-          search: filters.search,
-          priority_min: filters.priority_min,
-          priority_max: filters.priority_max,
-        },
+      const limit = Number(filters.limit) || 50;
+      const offset = Number(filters.offset) || 0;
+      
+      const tasks = await services.taskService.getTasks({
+        limit,
+        offset,
+        sortBy: filters.sortBy as string ?? 'updated_at',
+        sortOrder: (filters.sortOrder as 'asc' | 'desc') ?? 'desc',
+        board_id: filters.board_id as string,
+        column_id: filters.column_id as string,
+        status: filters.status as string,
+        assignee: filters.assignee as string,
+        parent_task_id: filters.parent_task_id as string,
+        search: filters.search as string,
+        priority_min: Number(filters.priority_min),
+        priority_max: Number(filters.priority_max),
       });
+
+      // Get total count for pagination (without limit/offset)
+      const totalTasks = await services.taskService.getTasks({
+        sortBy: filters.sortBy as string ?? 'updated_at',
+        sortOrder: (filters.sortOrder as 'asc' | 'desc') ?? 'desc',
+        board_id: filters.board_id as string,
+        column_id: filters.column_id as string,
+        status: filters.status as string,
+        assignee: filters.assignee as string,
+        parent_task_id: filters.parent_task_id as string,
+        search: filters.search as string,
+        priority_min: Number(filters.priority_min),
+        priority_max: Number(filters.priority_max),
+      });
+      
+      const total = totalTasks.length;
+      const hasMore = offset + limit < total;
 
       res.json({
         success: true,
-        data: result.tasks,
+        data: tasks,
         pagination: {
-          limit: result.limit,
-          offset: result.offset,
-          total: result.total,
-          hasMore: result.hasMore,
+          limit,
+          offset,
+          total,
+          hasMore,
         },
       });
     } catch (error) {

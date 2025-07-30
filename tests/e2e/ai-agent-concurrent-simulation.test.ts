@@ -31,11 +31,16 @@ interface AgentMetrics {
 }
 
 class AIAgent {
-  private actions: AgentAction[] = [];
+  private readonly actions: AgentAction[] = [];
+
   private tasksCreated = 0;
+
   private tasksCompleted = 0;
 
-  constructor(private agentId: string, private boardId: string) {}
+  constructor(
+    private readonly agentId: string,
+    private readonly boardId: string
+  ) {}
 
   async createTask(title: string, priority: number): Promise<string | null> {
     const startTime = Date.now();
@@ -46,13 +51,13 @@ class AIAgent {
     try {
       taskId = uuidv4();
       const columnId = await this.getColumnId('Todo');
-      
+
       await dbConnection.execute(
         `INSERT INTO tasks (id, title, board_id, column_id, status, priority, position, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
         [taskId, title, this.boardId, columnId, 'todo', priority, Date.now()]
       );
-      
+
       this.tasksCreated++;
     } catch (err: any) {
       success = false;
@@ -78,7 +83,7 @@ class AIAgent {
          LIMIT 1`,
         [this.boardId]
       );
-      
+
       task = result[0] || null;
     } catch (err: any) {
       success = false;
@@ -149,11 +154,11 @@ class AIAgent {
 
   async collaborateWithAgent(otherAgentId: string): Promise<void> {
     const startTime = Date.now();
-    
+
     // Simulate agent collaboration by analyzing the board
     // and deciding whether to create more tasks or work on existing ones
     const analysis = await this.analyzeBoard();
-    
+
     if (analysis.todo < 3) {
       // Create more tasks
       await this.createTask(`Collaborative task from ${this.agentId}`, 3);
@@ -216,7 +221,7 @@ class AIAgent {
 
 describe('AI Agent Concurrent Simulation', () => {
   let boardId: string;
-  let agents: AIAgent[] = [];
+  const agents: AIAgent[] = [];
 
   beforeAll(async () => {
     // Initialize database
@@ -262,14 +267,14 @@ describe('AI Agent Concurrent Simulation', () => {
     }
 
     // Simulate concurrent agent operations
-    const operations: Promise<void>[] = [];
+    const operations: Array<Promise<void>> = [];
 
     for (let round = 0; round < 5; round++) {
       for (const agent of agents) {
         operations.push(
           (async () => {
             const action = Math.random();
-            
+
             if (action < 0.3) {
               // Create a new task
               await agent.createTask(
@@ -301,7 +306,7 @@ describe('AI Agent Concurrent Simulation', () => {
 
     // Collect and analyze metrics
     const allMetrics = agents.map(agent => agent.getMetrics());
-    
+
     const totalActions = allMetrics.reduce((sum, m) => sum + m.actionsPerformed, 0);
     const totalTasksCreated = allMetrics.reduce((sum, m) => sum + m.tasksCreated, 0);
     const totalTasksCompleted = allMetrics.reduce((sum, m) => sum + m.tasksCompleted, 0);
@@ -337,7 +342,9 @@ describe('AI Agent Concurrent Simulation', () => {
     // Per-agent metrics
     console.log('\nPer-agent performance:');
     allMetrics.forEach(m => {
-      console.log(`  ${m.agentId}: ${m.actionsPerformed} actions, ${m.tasksCreated} created, ${m.tasksCompleted} completed`);
+      console.log(
+        `  ${m.agentId}: ${m.actionsPerformed} actions, ${m.tasksCreated} created, ${m.tasksCompleted} completed`
+      );
     });
 
     // Verify results
@@ -358,15 +365,13 @@ describe('AI Agent Concurrent Simulation', () => {
       testAgents.push(new AIAgent(`load-test-${i}`, boardId));
     }
 
-    const operations: Promise<void>[] = [];
-    
+    const operations: Array<Promise<void>> = [];
+
     // Each agent performs rapid operations
     for (const agent of testAgents) {
       for (let i = 0; i < actionsPerAgent; i++) {
-        operations.push(
-          agent.createTask(`Load test ${i}`, 1).catch(() => {})
-        );
-        
+        operations.push(agent.createTask(`Load test ${i}`, 1).catch(() => {}));
+
         operations.push(
           (async () => {
             const task = await agent.findNextTask();
@@ -417,13 +422,13 @@ describe('AI Agent Concurrent Simulation', () => {
     const workerOps = [];
     for (let i = 0; i < 5; i++) {
       workerOps.push(
-        collaborativeAgents[1].findNextTask().then(task => {
+        collaborativeAgents[1].findNextTask().then(async task => {
           if (task) return collaborativeAgents[1].workOnTask(task.id);
         })
       );
-      
+
       workerOps.push(
-        collaborativeAgents[2].findNextTask().then(task => {
+        collaborativeAgents[2].findNextTask().then(async task => {
           if (task) return collaborativeAgents[2].workOnTask(task.id);
         })
       );
@@ -435,7 +440,7 @@ describe('AI Agent Concurrent Simulation', () => {
     const analysis = await collaborativeAgents[3].analyzeBoard();
 
     // Agents collaborate based on analysis
-    const collaborationOps = collaborativeAgents.map(agent =>
+    const collaborationOps = collaborativeAgents.map(async agent =>
       agent.collaborateWithAgent('reviewer')
     );
 

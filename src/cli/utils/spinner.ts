@@ -152,7 +152,7 @@ export class SpinnerManager {
         return;
       }
 
-      const finalText = text ? this.validateText(text) : this._spinner?.text ?? '';
+      const finalText = text ? this.validateText(text) : (this._spinner.text ?? '');
 
       SpinnerManager.safeOperation(() => {
         if (this._spinner) {

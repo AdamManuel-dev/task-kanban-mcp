@@ -60,8 +60,10 @@ export const dashboardCommand = new Command('dashboard')
             theme: options.theme,
             availableThemes,
           });
-          logger.error(`Invalid theme: ${options.theme}`);
-          logger.info('Available themes:', { themes: availableThemes });
+          // eslint-disable-next-line no-console
+          console.error(`Invalid theme: ${options.theme}`);
+          // eslint-disable-next-line no-console
+          console.log('Available themes:', availableThemes.join(', '));
           return;
         }
 

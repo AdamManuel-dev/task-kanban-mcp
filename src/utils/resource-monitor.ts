@@ -146,8 +146,10 @@ export class ResourceMonitor extends EventEmitter {
       cpu: this.getCpuStats(),
       uptime: process.uptime(),
       eventLoopDelay: this.getEventLoopDelay(),
-      activeHandles: (process as unknown)._getActiveHandles?.()?.length ?? 0,
-      activeRequests: (process as unknown)._getActiveRequests?.()?.length ?? 0,
+      // @ts-ignore - Internal Node.js methods for debugging purposes
+      activeHandles: process._getActiveHandles?.()?.length ?? 0,
+      // @ts-ignore - Internal Node.js methods for debugging purposes
+      activeRequests: process._getActiveRequests?.()?.length ?? 0,
     };
   }
 

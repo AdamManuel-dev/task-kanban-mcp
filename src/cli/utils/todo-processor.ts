@@ -209,7 +209,7 @@ export class TodoProcessor {
     const groups = TodoProcessor.createExecutionGroups(todos);
 
     const listr = new Listr(
-      groups.map((group: any, index: number) => ({
+      groups.map((group: TodoItem[], index: number) => ({
         title: `Execution Group ${index + 1} (${group.length} tasks)`,
         task: (_ctx: unknown, _task: unknown) => {
           const subtasks = group.map((todo: TodoItem) => ({
@@ -223,20 +223,20 @@ export class TodoProcessor {
             },
           }));
 
-          return new Listr(subtasks, {
+          return new Listr(subtasks as any, {
             concurrent: options.concurrent ?? true,
             rendererOptions: {
               showSubtasks: true,
             } as any,
           });
         },
-      })) as unknown,
+      })) as any,
       {
         concurrent: false,
         rendererOptions: {
           showSubtasks: true,
           showTimer: true,
-        } as unknown,
+        } as any,
       }
     );
 

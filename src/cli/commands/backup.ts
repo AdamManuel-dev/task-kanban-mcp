@@ -564,7 +564,9 @@ export function registerBackupCommands(program: Command): void {
               validate: (input: string): string | true => {
                 // Basic validation - in production you'd want more thorough validation
                 const parts = input.trim().split(' ');
-                return parts.length === 5 ? true : 'Invalid cron expression format (should have 5 parts)';
+                return parts.length === 5
+                  ? true
+                  : 'Invalid cron expression format (should have 5 parts)';
               },
             },
             {

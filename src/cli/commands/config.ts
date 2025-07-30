@@ -329,7 +329,7 @@ export function registerConfigCommands(program: Command): void {
           formatter.output('\n🔧 Git Integration: Enabled');
           formatter.output(`Auto-detect: ${config.git.autoDetect ? 'Yes' : 'No'}`);
 
-          if (config.git.branchPatterns) {
+          if (Object.keys(config.git.branchPatterns).length > 0) {
             formatter.output('\n🌿 Branch Patterns:');
             Object.entries(config.git.branchPatterns).forEach(([pattern, boardId]) => {
               formatter.output(`  ${pattern} → ${boardId}`);
@@ -342,10 +342,10 @@ export function registerConfigCommands(program: Command): void {
         if (config.mappings && config.mappings.length > 0) {
           formatter.output('\n🗺️ Mapping Rules:');
           config.mappings
-            .sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0))
+            .sort((a, b) => (b.priority || 0) - (a.priority || 0))
             .forEach((mapping, index) => {
               formatter.output(
-                `  ${index + 1}. ${mapping.type}:${mapping.pattern} → ${mapping.boardId} (priority: ${mapping.priority ?? 0})`
+                `  ${index + 1}. ${mapping.type}:${mapping.pattern} → ${mapping.boardId} (priority: ${mapping.priority || 0})`
               );
             });
         }

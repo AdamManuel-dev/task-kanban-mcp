@@ -105,7 +105,7 @@ export class EnhancedRateLimiter {
   /**
    * Check global IP-based rate limits
    */
-  private checkGlobalLimit(ip: string, endpoint: string): RateLimitResult {
+  private checkGlobalLimit(ip: string, _endpoint: string): RateLimitResult {
     const now = Date.now();
     const windowMs = 60000; // 1 minute
     const maxRequests = config.rateLimit.maxRequests || 1000;
@@ -151,7 +151,7 @@ export class EnhancedRateLimiter {
   /**
    * Check user-specific rate limits with adaptive scaling
    */
-  private checkUserLimit(userId: string, endpoint: string): RateLimitResult {
+  private checkUserLimit(userId: string, _endpoint: string): RateLimitResult {
     const now = Date.now();
     const userConfig = this.getUserConfig(userId);
     const windowMs = 60000; // 1 minute
@@ -358,7 +358,7 @@ export class EnhancedRateLimiter {
    * Extract user ID from request (from auth middleware)
    */
   private getUserId(req: Request): string | null {
-    return ((req as unknown).user?.id || (req as unknown).userId) ?? null;
+    return ((req as any).user?.id || (req as any).userId) ?? null;
   }
 
   /**

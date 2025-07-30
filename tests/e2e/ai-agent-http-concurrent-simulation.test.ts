@@ -9,6 +9,12 @@
  */
 
 // Mock the service metrics decorator first
+import request from 'supertest';
+import type { Express } from 'express';
+import { v4 as uuidv4 } from 'uuid';
+import { createServer } from '../../src/server';
+import { dbConnection } from '../../src/database/connection';
+
 jest.mock('../../src/utils/service-metrics', () => ({
   TrackPerformance: () => () => ({}),
   serviceMetricsCollector: {
@@ -16,12 +22,6 @@ jest.mock('../../src/utils/service-metrics', () => ({
     getMetrics: jest.fn(() => ({ total: 0, success: 0, failure: 0 })),
   },
 }));
-
-import request from 'supertest';
-import type { Express } from 'express';
-import { v4 as uuidv4 } from 'uuid';
-import { createServer } from '../../src/server';
-import { dbConnection } from '../../src/database/connection';
 
 interface AgentAction {
   agentId: string;
@@ -43,15 +43,17 @@ interface AgentMetrics {
 }
 
 class HTTPAIAgent {
-  private actions: AgentAction[] = [];
+  private readonly actions: AgentAction[] = [];
+
   private tasksCreated = 0;
+
   private tasksCompleted = 0;
 
   constructor(
-    private agentId: string,
-    private boardId: string,
-    private app: Express,
-    private apiKey: string
+    private readonly agentId: string,
+    private readonly boardId: string,
+    private readonly app: Express,
+    private readonly apiKey: string
   ) {}
 
   async createTask(title: string, priority: number): Promise<string | null> {
@@ -68,7 +70,7 @@ class HTTPAIAgent {
           board_id: this.boardId,
           title,
           priority,
-          status: 'todo'
+          status: 'todo',
         });
 
       if (response.body.success) {
@@ -102,7 +104,7 @@ class HTTPAIAgent {
           status: 'todo',
           sort_by: 'priority',
           sort_order: 'desc',
-          limit: 1
+          limit: 1,
         });
 
       if (response.body.success && response.body.data.items.length > 0) {
@@ -164,7 +166,7 @@ class HTTPAIAgent {
         analysis = {
           total: tasks.length,
           todo: tasks.filter((t: any) => t.status === 'todo').length,
-          done: tasks.filter((t: any) => t.status === 'done').length
+          done: tasks.filter((t: any) => t.status === 'done').length,
         };
       }
     } catch (err: any) {
@@ -178,11 +180,11 @@ class HTTPAIAgent {
 
   async collaborateWithAgent(otherAgentId: string): Promise<void> {
     const startTime = Date.now();
-    
+
     // Simulate agent collaboration by analyzing the board
     // and deciding whether to create more tasks or work on existing ones
     const analysis = await this.analyzeBoard();
-    
+
     if (analysis.todo < 3) {
       // Create more tasks
       await this.createTask(`Collaborative task from ${this.agentId}`, 3);
@@ -240,7 +242,7 @@ describe('AI Agent HTTP Concurrent Simulation', () => {
   let server: any;
   let boardId: string;
   let apiKey: string;
-  let agents: HTTPAIAgent[] = [];
+  const agents: HTTPAIAgent[] = [];
 
   beforeAll(async () => {
     // Set up test environment
@@ -270,7 +272,7 @@ describe('AI Agent HTTP Concurrent Simulation', () => {
 
   afterAll(async () => {
     if (server) {
-      await new Promise<void>((resolve) => {
+      await new Promise<void>(resolve => {
         server.close(() => resolve());
       });
     }
@@ -295,19 +297,19 @@ describe('AI Agent HTTP Concurrent Simulation', () => {
           board_id: boardId,
           title: `Initial HTTP task ${i + 1}`,
           priority: Math.floor(Math.random() * 5) + 1,
-          status: 'todo'
+          status: 'todo',
         });
     }
 
     // Simulate concurrent agent operations via HTTP
-    const operations: Promise<void>[] = [];
+    const operations: Array<Promise<void>> = [];
 
     for (let round = 0; round < 5; round++) {
       for (const agent of agents) {
         operations.push(
           (async () => {
             const action = Math.random();
-            
+
             if (action < 0.3) {
               // Create a new task
               await agent.createTask(
@@ -339,7 +341,7 @@ describe('AI Agent HTTP Concurrent Simulation', () => {
 
     // Collect and analyze metrics
     const allMetrics = agents.map(agent => agent.getMetrics());
-    
+
     const totalActions = allMetrics.reduce((sum, m) => sum + m.actionsPerformed, 0);
     const totalTasksCreated = allMetrics.reduce((sum, m) => sum + m.tasksCreated, 0);
     const totalTasksCompleted = allMetrics.reduce((sum, m) => sum + m.tasksCompleted, 0);
@@ -375,7 +377,9 @@ describe('AI Agent HTTP Concurrent Simulation', () => {
     // Per-agent metrics
     console.log('\\nPer-agent HTTP performance:');
     allMetrics.forEach(m => {
-      console.log(`  ${m.agentId}: ${m.actionsPerformed} actions, ${m.tasksCreated} created, ${m.tasksCompleted} completed`);
+      console.log(
+        `  ${m.agentId}: ${m.actionsPerformed} actions, ${m.tasksCreated} created, ${m.tasksCompleted} completed`
+      );
     });
 
     // Verify results
@@ -396,15 +400,13 @@ describe('AI Agent HTTP Concurrent Simulation', () => {
       testAgents.push(new HTTPAIAgent(`http-load-test-${i}`, boardId, app, apiKey));
     }
 
-    const operations: Promise<void>[] = [];
-    
+    const operations: Array<Promise<void>> = [];
+
     // Each agent performs rapid HTTP operations
     for (const agent of testAgents) {
       for (let i = 0; i < actionsPerAgent; i++) {
-        operations.push(
-          agent.createTask(`HTTP Load test ${i}`, 1).catch(() => {})
-        );
-        
+        operations.push(agent.createTask(`HTTP Load test ${i}`, 1).catch(() => {}));
+
         operations.push(
           (async () => {
             const task = await agent.findNextTask();
@@ -458,13 +460,13 @@ describe('AI Agent HTTP Concurrent Simulation', () => {
     const workerOps = [];
     for (let i = 0; i < 5; i++) {
       workerOps.push(
-        collaborativeAgents[1].findNextTask().then(task => {
+        collaborativeAgents[1].findNextTask().then(async task => {
           if (task) return collaborativeAgents[1].workOnTask(task.id);
         })
       );
-      
+
       workerOps.push(
-        collaborativeAgents[2].findNextTask().then(task => {
+        collaborativeAgents[2].findNextTask().then(async task => {
           if (task) return collaborativeAgents[2].workOnTask(task.id);
         })
       );
@@ -476,7 +478,7 @@ describe('AI Agent HTTP Concurrent Simulation', () => {
     const analysis = await collaborativeAgents[3].analyzeBoard();
 
     // Agents collaborate based on analysis
-    const collaborationOps = collaborativeAgents.map(agent =>
+    const collaborationOps = collaborativeAgents.map(async agent =>
       agent.collaborateWithAgent('http-reviewer')
     );
 

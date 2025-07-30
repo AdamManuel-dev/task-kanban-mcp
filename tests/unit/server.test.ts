@@ -39,7 +39,7 @@ jest.mock('@/config', () => ({
       skipSuccessfulRequests: false,
     },
     database: {
-      path: './data/kanban-test.db',
+      path: ':memory:',
       backupPath: './data/backups',
       walMode: true,
       memoryLimit: 268435456,

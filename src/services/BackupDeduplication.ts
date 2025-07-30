@@ -119,7 +119,7 @@ export class BackupDeduplicationService {
         chunks: this.chunkIndex.size,
         backups: this.backupIndex.size,
       });
-    } catch (error) {
+    } catch (error: any) {
       if (error.code === 'ENOENT') {
         logger.info('No existing deduplication index found, starting fresh');
         this.indexLoaded = true;

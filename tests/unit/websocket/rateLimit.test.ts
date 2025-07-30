@@ -8,7 +8,7 @@
  * Patterns: Unit tests, time-based testing, rate limit validation, error handling
  */
 
-import { RateLimiter, RateLimitEntry, RateLimitConfig } from '../../../src/websocket/rateLimit';
+import { RateLimiter } from '../../../src/websocket/rateLimit';
 import { logger } from '../../../src/utils/logger';
 import { config } from '../../../src/config';
 
@@ -52,10 +52,8 @@ describe('RateLimiter', () => {
 
   afterEach(() => {
     mockDate.mockRestore();
-    if (rateLimiter) {
-      // Clean up any intervals
-      (rateLimiter as any).cleanupInterval && clearInterval((rateLimiter as any).cleanupInterval);
-    }
+    // Clean up any intervals
+    (rateLimiter as any).cleanupInterval && clearInterval((rateLimiter as any).cleanupInterval);
   });
 
   describe('Connection Rate Limiting', () => {
@@ -147,11 +145,14 @@ describe('RateLimiter', () => {
     it('should handle errors gracefully', () => {
       const ip = 'invalid-ip';
 
-      // Mock Map.get to throw error
-      const originalGet = Map.prototype.get;
-      Map.prototype.get = jest.fn().mockImplementation(() => {
+      // Create a spy that throws error
+      const mockConnectionLimits = new Map();
+      const getSpy = jest.spyOn(mockConnectionLimits, 'get').mockImplementation(() => {
         throw new Error('Map error');
       });
+
+      // Replace the internal map with our mock
+      (rateLimiter as any).connectionLimits = mockConnectionLimits;
 
       const result = rateLimiter.checkLimit(ip);
       expect(result).toBe(false);
@@ -160,8 +161,8 @@ describe('RateLimiter', () => {
         expect.objectContaining({ ip, error: expect.any(Error) })
       );
 
-      // Restore original method
-      Map.prototype.get = originalGet;
+      // Restore spy
+      getSpy.mockRestore();
     });
   });
 
@@ -254,11 +255,14 @@ describe('RateLimiter', () => {
     it('should handle message limit errors gracefully', () => {
       const clientId = 'client-1';
 
-      // Mock Map.set to throw error
-      const originalSet = Map.prototype.set;
-      Map.prototype.set = jest.fn().mockImplementation(() => {
+      // Create a spy that throws error
+      const mockMessageLimits = new Map();
+      const setSpy = jest.spyOn(mockMessageLimits, 'set').mockImplementation(() => {
         throw new Error('Map error');
       });
+
+      // Replace the internal map with our mock
+      (rateLimiter as any).messageLimits = mockMessageLimits;
 
       const result = rateLimiter.checkMessageLimit(clientId);
       expect(result).toBe(false);
@@ -267,8 +271,8 @@ describe('RateLimiter', () => {
         expect.objectContaining({ clientId, error: expect.any(Error) })
       );
 
-      // Restore original method
-      Map.prototype.set = originalSet;
+      // Restore spy
+      setSpy.mockRestore();
     });
   });
 
@@ -338,8 +342,11 @@ describe('RateLimiter', () => {
 
   describe('Cleanup and Memory Management', () => {
     it('should start cleanup interval', () => {
-      const rateLimiter = new RateLimiter();
-      expect((rateLimiter as any).cleanupInterval).toBeTruthy();
+      const testRateLimiter = new RateLimiter();
+      expect((testRateLimiter as any).cleanupInterval).toBeTruthy();
+      // Clean up test instance
+      (testRateLimiter as any).cleanupInterval &&
+        clearInterval((testRateLimiter as any).cleanupInterval);
     });
 
     it('should clean up expired entries', () => {
@@ -367,13 +374,19 @@ describe('RateLimiter', () => {
     });
 
     it('should handle cleanup errors gracefully', () => {
-      const originalDelete = Map.prototype.delete;
-      Map.prototype.delete = jest.fn().mockImplementation(() => {
+      // Make some entries
+      rateLimiter.checkLimit('test-ip');
+
+      // Create a spy that throws error
+      const mockConnectionLimits = new Map();
+      mockConnectionLimits.set('test-ip', { requests: 1, resetTime: Date.now() + 60000 });
+
+      const deleteSpy = jest.spyOn(mockConnectionLimits, 'delete').mockImplementation(() => {
         throw new Error('Delete error');
       });
 
-      // Make some entries
-      rateLimiter.checkLimit('test-ip');
+      // Replace the internal map with our mock
+      (rateLimiter as any).connectionLimits = mockConnectionLimits;
 
       // Trigger cleanup - should not throw
       expect(() => {
@@ -385,8 +398,8 @@ describe('RateLimiter', () => {
         expect.objectContaining({ error: expect.any(Error) })
       );
 
-      // Restore original method
-      Map.prototype.delete = originalDelete;
+      // Restore spy
+      deleteSpy.mockRestore();
     });
   });
 
@@ -397,11 +410,15 @@ describe('RateLimiter', () => {
         config: {},
       }));
 
-      const rateLimiter = new RateLimiter();
-      const connectionStatus = rateLimiter.getConnectionStatus('test');
+      const testRateLimiter = new RateLimiter();
+      const connectionStatus = testRateLimiter.getConnectionStatus('test');
 
       // Should use default values
       expect(connectionStatus.limit).toBe(1000); // Default maxConnections
+
+      // Clean up test instance
+      (testRateLimiter as any).cleanupInterval &&
+        clearInterval((testRateLimiter as any).cleanupInterval);
     });
 
     it('should allow custom configuration', () => {
@@ -421,10 +438,14 @@ describe('RateLimiter', () => {
         config: customConfig,
       }));
 
-      const rateLimiter = new RateLimiter();
-      const connectionStatus = rateLimiter.getConnectionStatus('test');
+      const customRateLimiter = new RateLimiter();
+      const connectionStatus = customRateLimiter.getConnectionStatus('test');
 
       expect(connectionStatus.limit).toBe(500);
+
+      // Clean up test instance
+      (customRateLimiter as any).cleanupInterval &&
+        clearInterval((customRateLimiter as any).cleanupInterval);
     });
   });
 

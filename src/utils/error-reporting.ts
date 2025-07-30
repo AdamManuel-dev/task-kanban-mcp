@@ -14,6 +14,29 @@ import { errorRecoveryManager } from './error-recovery';
 import type { ErrorEvent, ErrorMetrics } from './error-monitoring';
 import type { BaseServiceError, ErrorContext } from './errors';
 
+// Circuit breaker state interface
+interface CircuitBreakerState {
+  state: 'closed' | 'open' | 'half-open';
+  failures: number;
+  nextAttempt?: number;
+}
+
+// Bulkhead statistics interface
+interface BulkheadStats {
+  activeRequests: number;
+  maxConcurrency: number;
+  queuedRequests?: number;
+  completedRequests?: number;
+}
+
+// System health interface
+interface SystemHealth {
+  healthy: boolean;
+  status?: string;
+  checks?: Record<string, boolean>;
+  uptime?: number;
+}
+
 // ============================================================================
 // TYPES AND INTERFACES
 // ============================================================================
@@ -227,7 +250,7 @@ export class DiagnosticsCollector {
   }
 
   private static extractCircuitBreakerStates(
-    breakers: Record<string, unknown>
+    breakers: Record<string, CircuitBreakerState>
   ): Record<string, string> {
     const states: Record<string, string> = {};
 
@@ -239,7 +262,7 @@ export class DiagnosticsCollector {
   }
 
   private static calculateBulkheadUtilization(
-    bulkheads: Record<string, unknown>
+    bulkheads: Record<string, BulkheadStats>
   ): Record<string, number> {
     const utilization: Record<string, number> = {};
 
@@ -454,7 +477,7 @@ export class ErrorReporter {
   }
 
   private static determineOverallHealth(
-    systemHealth: unknown,
+    systemHealth: SystemHealth,
     events: ErrorEvent[]
   ): 'healthy' | 'degraded' | 'critical' {
     const criticalErrors = events.filter(e => e.severity === 'critical');
@@ -473,7 +496,7 @@ export class ErrorReporter {
     return 'healthy';
   }
 
-  private static generateRecommendations(events: ErrorEvent[], systemHealth: unknown): string[] {
+  private static generateRecommendations(events: ErrorEvent[], systemHealth: SystemHealth): string[] {
     const recommendations: string[] = [];
 
     if (events.length > 100) {

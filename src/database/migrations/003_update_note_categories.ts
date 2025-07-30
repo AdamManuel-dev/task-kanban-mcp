@@ -9,7 +9,7 @@ import { promisify } from 'util';
 
 export async function up(db: Database): Promise<void> {
   const run = promisify(db.run.bind(db));
-  const all = promisify(db.all.bind(db));
+  const _all = promisify(db.all.bind(db));
 
   try {
     // Step 1: Create new notes table with updated categories

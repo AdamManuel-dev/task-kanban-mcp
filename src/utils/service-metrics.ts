@@ -253,8 +253,8 @@ export function TrackPerformance(serviceName?: string) {
     if (process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID) {
       return descriptor || { configurable: true, writable: true };
     }
-    
-    if (!descriptor || !descriptor.value) {
+
+    if (!descriptor.value) {
       return descriptor || { configurable: true, writable: true };
     }
     const originalMethod = descriptor.value;

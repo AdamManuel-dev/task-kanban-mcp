@@ -78,7 +78,7 @@ export function registerPerformanceCommands(program: Command): void {
             memory?: boolean;
           } = {}
         ) => {
-          const { formatter } = getComponents();
+          const { formatter: _formatter } = getComponents();
           const summary = getPerformanceSummary();
           const { stats } = summary;
 
@@ -350,7 +350,7 @@ export function registerPerformanceCommands(program: Command): void {
             disable?: boolean;
           } = {}
         ) => {
-          const { formatter } = getComponents();
+          const { formatter: _formatter } = getComponents();
 
           if (options.enable) {
             performanceMonitor.setEnabled(true);

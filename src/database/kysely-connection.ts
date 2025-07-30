@@ -8,9 +8,7 @@
  * Patterns: Singleton pattern, lazy initialization, error handling
  */
 
-import { Kysely, SqliteDialect, FileMigrationProvider, Migrator } from 'kysely';
-import * as path from 'path';
-import * as fs from 'fs';
+import { Kysely, SqliteDialect } from 'kysely';
 import type { Database } from './schema-types';
 import { DatabaseConnection } from './connection';
 
@@ -34,7 +32,7 @@ export function getKyselyDb(): Kysely<Database> {
 
     kyselyDb = new Kysely<Database>({
       dialect: new SqliteDialect({
-        database: sqlite,
+        database: sqlite as any,
       }),
     });
   }

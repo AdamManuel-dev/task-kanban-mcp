@@ -237,7 +237,8 @@ export function requirePermissions(
  * @param apiKey - The API key to validate
  * @returns True if the API key is valid, false otherwise
  */
-function validateApiKey(apiKey: string): boolean {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function validateApiKey(_apiKey: string): boolean {
   // Legacy validation function - DEPRECATED
   // All API key validation should go through ApiKeyService
   logger.warn('Using deprecated validateApiKey function - migrate to ApiKeyService');
@@ -323,7 +324,7 @@ export async function authenticateApiKey(
 
   // Use proper ApiKeyService validation instead of deprecated function
   try {
-    const apiKeyService = new ApiKeyService();
+    const apiKeyService = new ApiKeyService(req.app.get('db'));
     const validationResult = await apiKeyService.validateApiKey(apiKey);
     if (!validationResult.isValid) {
       logger.warn('Authentication failed: Invalid API key provided', {

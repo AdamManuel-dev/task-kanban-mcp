@@ -43,9 +43,9 @@ const getTaskQuerySchema = z.object({
  */
 export const getTaskHandler = (services: Services) => [
   requirePermission('read'),
-  validateRequest(getTaskParamsSchema, 'params'),
-  validateRequest(getTaskQuerySchema, 'query'),
-  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  validateRequest(getTaskParamsSchema),
+  validateRequest(getTaskQuerySchema),
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
       const { include } = req.query;
@@ -53,7 +53,7 @@ export const getTaskHandler = (services: Services) => [
       logger.debug('Getting task', { taskId: id, include, userId: req.user?.id });
 
       const includeOptions = include
-        ? include.split(',').reduce(
+        ? (include as string).split(',').reduce(
             (acc, item) => {
               acc[item.trim()] = true;
               return acc;

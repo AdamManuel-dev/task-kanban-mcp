@@ -140,7 +140,7 @@ export const validateUrl = createSafePromptValidator(
 export function validateGitRepoUrl(input: string): true | string {
   const urlValidation = validateUrl(input);
   if (urlValidation !== true) {
-    return urlValidation as string;
+    return urlValidation;
   }
 
   const gitUrlRegex =

@@ -8,10 +8,9 @@
  * Patterns: RESTful routes under /tasks/:id/dependencies
  */
 
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { TaskService } from '@/services/TaskService';
 import { logger } from '@/utils/logger';
-import { createServiceErrorHandler } from '@/utils/errors';
 import { dbConnection } from '@/database/connection';
 
 export const taskDependencyRoutes = Router({ mergeParams: true });
@@ -19,29 +18,23 @@ export const taskDependencyRoutes = Router({ mergeParams: true });
 /**
  * GET /tasks/:id/dependencies - Get all dependencies for a task
  */
-taskDependencyRoutes.get('/', async (req: any, res: any) => {
-  const errorHandler = createServiceErrorHandler('getTaskDependencies');
+taskDependencyRoutes.get('/', async (req: Request, res: Response, next: NextFunction) => {
 
   try {
     const taskId = req.params.id;
     const taskService = new TaskService(dbConnection);
     const result = await taskService.getTaskDependencies(taskId);
 
-    if ((result as any).success) {
-      res.json({ success: true, data: (result as any).data });
-    } else {
-      res.status(400).json(result);
-    }
+    res.json({ success: true, data: result });
   } catch (error) {
-    errorHandler(error as any, req, res);
+    next(error);
   }
 });
 
 /**
  * POST /tasks/:id/dependencies - Add dependency to task
  */
-taskDependencyRoutes.post('/', async (req: any, res: any) => {
-  const errorHandler = createServiceErrorHandler('addTaskDependency');
+taskDependencyRoutes.post('/', async (req: Request, res: Response, next: NextFunction) => {
 
   try {
     const taskId = req.params.id;
@@ -50,33 +43,23 @@ taskDependencyRoutes.post('/', async (req: any, res: any) => {
     const taskService = new TaskService(dbConnection);
     const result = await taskService.addDependency(taskId, dependsOnTaskId, type);
 
-    if ((result as any).success) {
-      res.status(201).json({ success: true, data: (result as any).data });
-    } else {
-      res.status(400).json(result);
-    }
+    res.status(201).json({ success: true, data: result });
   } catch (error) {
-    errorHandler(error as any, req, res);
+    next(error);
   }
 });
 
 /**
  * DELETE /tasks/:id/dependencies/:dependsOnTaskId - Remove dependency
  */
-taskDependencyRoutes.delete('/:dependsOnTaskId', async (req: any, res: any) => {
-  const errorHandler = createServiceErrorHandler('removeTaskDependency');
+taskDependencyRoutes.delete('/:dependsOnTaskId', async (req: Request, res: Response, next: NextFunction) => {
 
   try {
     const { id: taskId, dependsOnTaskId } = req.params;
     const taskService = new TaskService(dbConnection);
-    const result = await taskService.removeDependency(taskId, dependsOnTaskId);
-
-    if ((result as any).success) {
-      res.json({ success: true, message: 'Dependency removed' });
-    } else {
-      res.status(400).json(result);
-    }
+    await taskService.removeDependency(taskId, dependsOnTaskId);
+    res.json({ success: true, message: 'Dependency removed' });
   } catch (error) {
-    errorHandler(error as any, req, res);
+    next(error);
   }
 });

@@ -238,11 +238,54 @@ export function detectCloudEnvironment(): CloudEnvironmentInfo {
   };
 }
 
+export interface CloudConfig {
+  server?: {
+    host?: string;
+    port?: number;
+  };
+  websocket?: {
+    host?: string;
+    port?: number;
+    path?: string;
+    corsOrigin?: string;
+    maxConnections?: number;
+    enabled?: boolean;
+  };
+  api?: {
+    corsOrigin?: string;
+    corsCredentials?: boolean;
+  };
+  database?: {
+    path?: string;
+    walMode?: boolean;
+    memoryLimit?: number;
+  };
+  performance?: {
+    maxMemoryUsage?: number;
+    memoryCheckInterval?: number;
+  };
+  logging?: {
+    level?: string;
+    format?: string;
+    console?: boolean;
+    file?: boolean;
+  };
+  git?: {
+    autoCommit?: boolean;
+    branchPrefix?: string;
+    autoDetect?: boolean;
+  };
+  backup?: {
+    enabled?: boolean;
+    schedule?: string;
+  };
+}
+
 /**
  * Gets cloud environment-specific configuration overrides
  */
-export function getCloudEnvironmentConfig(cloudEnv: CloudEnvironmentInfo): Record<string, unknown> {
-  const config: Record<string, unknown> = {
+export function getCloudEnvironmentConfig(cloudEnv: CloudEnvironmentInfo): CloudConfig {
+  const config: CloudConfig = {
     server: {
       host: cloudEnv.defaultHost,
       port: cloudEnv.defaultPort,
@@ -308,7 +351,7 @@ export function getCloudEnvironmentConfig(cloudEnv: CloudEnvironmentInfo): Recor
         memoryCheckInterval: 15000,
       };
       config.websocket = {
-        ...(config.websocket || {}),
+        ...((config.websocket as object) || {}),
         enabled: false, // WebSockets may not work reliably
       };
       config.backup = {
@@ -322,7 +365,7 @@ export function getCloudEnvironmentConfig(cloudEnv: CloudEnvironmentInfo): Recor
         memoryCheckInterval: 30000,
       };
       config.websocket = {
-        ...(config.websocket || {}),
+        ...((config.websocket as object) || {}),
         maxConnections: 50, // Lower limit
       };
       break;

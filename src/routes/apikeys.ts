@@ -8,12 +8,22 @@
  * Patterns: Express router, admin-only endpoints, comprehensive management
  */
 
+import type { Request } from 'express';
 import { Router } from 'express';
 import { ApiKeyService } from '../services/ApiKeyService';
 import { dbConnection } from '../database/connection';
 import { requirePermission } from '../middleware/auth';
 import { logger } from '../utils/logger';
-import { BadRequestError, NotFoundError, BaseServiceError } from '../utils/errors';
+import { ValidationError, NotFoundError } from '../utils/errors';
+
+interface AuthenticatedRequest extends Request {
+  user?: {
+    id: string;
+    name: string;
+    permissions: string[];
+  };
+  apiKeyId?: string;
+}
 
 const router = Router();
 const apiKeyService = new ApiKeyService(dbConnection);
@@ -22,23 +32,23 @@ const apiKeyService = new ApiKeyService(dbConnection);
  * Create a new API key
  * Requires admin permission
  */
-router.post('/', requirePermission('admin'), async (req, res, next) => {
+router.post('/', requirePermission('admin'), async (req: AuthenticatedRequest, res, next) => {
   try {
     const { name, description, permissions, expiresAt, rateLimitRpm } = req.body;
 
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
-      throw new BadRequestError('Name is required and cannot be empty');
+      throw new ValidationError('Name is required and cannot be empty');
     }
 
     if (!permissions || !Array.isArray(permissions) || permissions.length === 0) {
-      throw new BadRequestError('Permissions array is required and cannot be empty');
+      throw new ValidationError('Permissions array is required and cannot be empty');
     }
 
     // Validate permissions
     const validPermissions = ['read', 'write', 'admin'];
     const invalidPermissions = permissions.filter(p => !validPermissions.includes(p));
     if (invalidPermissions.length > 0) {
-      throw new BadRequestError(`Invalid permissions: ${invalidPermissions.join(', ')}`);
+      throw new ValidationError(`Invalid permissions: ${invalidPermissions.join(', ')}`);
     }
 
     // Parse expiration date if provided
@@ -46,16 +56,16 @@ router.post('/', requirePermission('admin'), async (req, res, next) => {
     if (expiresAt) {
       expirationDate = new Date(expiresAt);
       if (isNaN(expirationDate.getTime())) {
-        throw new BadRequestError('Invalid expiration date format');
+        throw new ValidationError('Invalid expiration date format');
       }
       if (expirationDate <= new Date()) {
-        throw new BadRequestError('Expiration date must be in the future');
+        throw new ValidationError('Expiration date must be in the future');
       }
     }
 
     // Validate rate limit if provided
     if (rateLimitRpm !== undefined && (typeof rateLimitRpm !== 'number' || rateLimitRpm <= 0)) {
-      throw new BadRequestError('Rate limit must be a positive number');
+      throw new ValidationError('Rate limit must be a positive number');
     }
 
     const result = await apiKeyService.createApiKey({
@@ -96,7 +106,7 @@ router.post('/', requirePermission('admin'), async (req, res, next) => {
  * List API keys
  * Requires admin permission
  */
-router.get('/', requirePermission('admin'), async (req, res, next) => {
+router.get('/', requirePermission('admin'), async (req: AuthenticatedRequest, res, next) => {
   try {
     const { userId, isActive, includeRevoked = 'false', limit = '50', offset = '0' } = req.query;
 
@@ -133,7 +143,7 @@ router.get('/', requirePermission('admin'), async (req, res, next) => {
  * Get API key by ID
  * Requires admin permission
  */
-router.get('/:id', requirePermission('admin'), async (req, res, next) => {
+router.get('/:id', requirePermission('admin'), async (req: AuthenticatedRequest, res, next) => {
   try {
     const { id } = req.params;
     const apiKey = await apiKeyService.getApiKeyById(id);
@@ -160,13 +170,13 @@ router.get('/:id', requirePermission('admin'), async (req, res, next) => {
  * Rotate API key
  * Requires admin permission
  */
-router.put('/:id/rotate', requirePermission('admin'), async (req, res, next) => {
+router.put('/:id/rotate', requirePermission('admin'), async (req: AuthenticatedRequest, res, next) => {
   try {
     const { id } = req.params;
     const { gracePeriodMs = 3600000 } = req.body; // Default 1 hour
 
     if (typeof gracePeriodMs !== 'number' || gracePeriodMs < 0) {
-      throw new BadRequestError('Grace period must be a non-negative number');
+      throw new ValidationError('Grace period must be a non-negative number');
     }
 
     const result = await apiKeyService.rotateApiKey(id, gracePeriodMs);
@@ -194,7 +204,7 @@ router.put('/:id/rotate', requirePermission('admin'), async (req, res, next) => 
  * Revoke API key
  * Requires admin permission
  */
-router.delete('/:id', requirePermission('admin'), async (req, res, next) => {
+router.delete('/:id', requirePermission('admin'), async (req: AuthenticatedRequest, res, next) => {
   try {
     const { id } = req.params;
     const { reason } = req.body;
@@ -222,7 +232,7 @@ router.delete('/:id', requirePermission('admin'), async (req, res, next) => {
  * Get API key usage statistics
  * Requires admin permission
  */
-router.get('/stats/usage', requirePermission('admin'), async (req, res, next) => {
+router.get('/stats/usage', requirePermission('admin'), async (req: AuthenticatedRequest, res, next) => {
   try {
     const stats = await apiKeyService.getUsageStats();
 
@@ -241,7 +251,7 @@ router.get('/stats/usage', requirePermission('admin'), async (req, res, next) =>
  * Clean up expired API keys
  * Requires admin permission
  */
-router.post('/cleanup/expired', requirePermission('admin'), async (req, res, next) => {
+router.post('/cleanup/expired', requirePermission('admin'), async (req: AuthenticatedRequest, res, next) => {
   try {
     const cleanedCount = await apiKeyService.cleanupExpiredKeys();
 
@@ -266,13 +276,13 @@ router.post('/cleanup/expired', requirePermission('admin'), async (req, res, nex
  * Test current API key (self-check)
  * Requires any valid API key
  */
-router.get('/test/current', async (req, res, next) => {
+router.get('/test/current', async (req: AuthenticatedRequest, res, next) => {
   try {
     const response = {
       success: true,
       data: {
         valid: true,
-        apiKeyId: (req as unknown).apiKeyId,
+        apiKeyId: req.apiKeyId,
         user: req.user,
         timestamp: new Date().toISOString(),
       },

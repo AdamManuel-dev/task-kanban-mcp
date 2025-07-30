@@ -8,18 +8,16 @@
  * Patterns: RESTful routes under /tasks/:id/notes
  */
 
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { NoteService } from '@/services/NoteService';
 import { logger } from '@/utils/logger';
-import { createServiceErrorHandler } from '@/utils/errors';
 
 export const taskNotesRoutes = Router({ mergeParams: true });
 
 /**
  * GET /tasks/:id/notes - Get all notes for a task
  */
-taskNotesRoutes.get('/', async (req, res) => {
-  const errorHandler = createServiceErrorHandler('getTaskNotes', logger);
+taskNotesRoutes.get('/', async (req: Request, res: Response, next: NextFunction) => {
 
   try {
     const taskId = req.params.id;
@@ -32,15 +30,14 @@ taskNotesRoutes.get('/', async (req, res) => {
       res.status(400).json(result);
     }
   } catch (error) {
-    errorHandler(error, req, res);
+    next(error);
   }
 });
 
 /**
  * POST /tasks/:id/notes - Create a note for a task
  */
-taskNotesRoutes.post('/', async (req, res) => {
-  const errorHandler = createServiceErrorHandler('createTaskNote', logger);
+taskNotesRoutes.post('/', async (req: Request, res: Response, next: NextFunction) => {
 
   try {
     const taskId = req.params.id;
@@ -48,13 +45,8 @@ taskNotesRoutes.post('/', async (req, res) => {
 
     const noteService = new NoteService();
     const result = await noteService.createNote(noteData);
-
-    if (result.success) {
-      res.status(201).json({ success: true, data: result.data });
-    } else {
-      res.status(400).json(result);
-    }
+    res.status(201).json({ success: true, data: result });
   } catch (error) {
-    errorHandler(error, req, res);
+    next(error);
   }
 });

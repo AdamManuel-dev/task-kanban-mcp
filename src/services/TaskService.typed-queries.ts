@@ -438,12 +438,12 @@ export class TaskServiceWithTypedQueries {
         archived: 0,
       };
 
-      statusResult.rows.forEach((row: unknown) => {
+      statusResult.rows.forEach((row: any) => {
         byStatus[row.status as Task['status']] = row.count;
       });
 
       const byPriority: Record<number, number> = {};
-      priorityResult.rows.forEach((row: unknown) => {
+      priorityResult.rows.forEach((row: any) => {
         byPriority[row.priority] = row.count;
       });
 

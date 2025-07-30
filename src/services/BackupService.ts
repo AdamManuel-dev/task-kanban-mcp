@@ -1579,7 +1579,7 @@ export class BackupService extends EventEmitter {
     try {
       // Check if required indexes exist
       const indexes = await this.db.query("SELECT name FROM sqlite_master WHERE type='index'");
-      const indexNames = indexes.map((idx: unknown) => idx.name);
+      const indexNames = indexes.map((idx: any) => idx.name);
 
       const requiredIndexes = [
         'idx_tasks_board_id',
@@ -1792,7 +1792,7 @@ export class BackupService extends EventEmitter {
       for (const row of data) {
         const columns = Object.keys(row as Record<string, unknown>);
         const values = columns.map(col => {
-          const value = row[col];
+          const value = (row as any)[col];
           if (value === null || value === undefined) return 'NULL';
           if (typeof value === 'string') return `'${value.replace(/'/g, "''")}'`;
           return String(value);

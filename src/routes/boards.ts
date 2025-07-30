@@ -30,6 +30,8 @@ import { requirePermission } from '@/middleware/auth';
 import { validateRequest } from '@/middleware/validation';
 import { BoardValidation, validateInput } from '@/utils/validation';
 import { NotFoundError } from '@/utils/errors';
+import type { PaginationOptions, FilterOptions } from '@/types';
+import type { TaskFilters } from '@/services/TaskService';
 
 // Validation schemas
 const CreateBoardSchema = z.object({
@@ -141,9 +143,9 @@ export function boardRoutes(): Router {
           search,
         } = req.query;
 
-        const options: unknown = {
-          limit: parseInt(limit as string, 10),
-          offset: parseInt(offset as string, 10),
+        const options: PaginationOptions & FilterOptions = {
+          limit: parseInt(limit as string, 10) || 50,
+          offset: parseInt(offset as string, 10) || 0,
           sortBy: sortBy as string,
           sortOrder: sortOrder as 'asc' | 'desc',
           search: search as string,
@@ -166,8 +168,8 @@ export function boardRoutes(): Router {
 
         res.apiPagination({
           data: boards,
-          page: Math.floor(options.offset / options.limit) + 1,
-          limit: options.limit,
+          page: Math.floor((options.offset || 0) / (options.limit || 50)) + 1,
+          limit: options.limit || 50,
           total,
         });
       } catch (error) {
@@ -724,16 +726,16 @@ export function boardRoutes(): Router {
         search,
       } = req.query;
 
-      const options: unknown = {
-        limit: parseInt(limit as string, 10),
-        offset: parseInt(offset as string, 10),
+      const options: PaginationOptions & TaskFilters = {
+        limit: parseInt(limit as string, 10) || 50,
+        offset: parseInt(offset as string, 10) || 0,
         sortBy: sortBy as string,
         sortOrder: sortOrder as 'asc' | 'desc',
         board_id: id,
       };
 
       if (column_id) options.column_id = column_id as string;
-      if (status) options.status = status;
+      if (status) options.status = status as 'todo' | 'in_progress' | 'done' | 'blocked' | 'archived';
       if (assignee) options.assignee = assignee as string;
       if (search) options.search = search as string;
 
@@ -749,8 +751,8 @@ export function boardRoutes(): Router {
 
       res.apiPagination({
         data: tasks,
-        page: Math.floor(options.offset / options.limit) + 1,
-        limit: options.limit,
+        page: Math.floor((options.offset || 0) / (options.limit || 50)) + 1,
+        limit: options.limit || 50,
         total,
       });
     } catch (error) {

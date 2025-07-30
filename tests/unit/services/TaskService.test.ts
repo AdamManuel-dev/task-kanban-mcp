@@ -35,7 +35,7 @@ describe('TaskService', () => {
     }
 
     // Use test-specific database file
-    process.env.DATABASE_PATH = './data/kanban-test.db';
+    process.env.DATABASE_PATH = ':memory:';
 
     await dbConnection.initialize();
     taskService = new TaskService(dbConnection);
@@ -72,7 +72,7 @@ describe('TaskService', () => {
     }
 
     // Clean up test database
-    const testDbPath = './data/kanban-test.db';
+    const testDbPath = ':memory:';
     if (fs.existsSync(testDbPath)) {
       try {
         fs.unlinkSync(testDbPath);

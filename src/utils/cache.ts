@@ -49,6 +49,15 @@ export interface CacheOptions {
 }
 
 /**
+ * API Client interface for cache warming
+ */
+interface ApiClient {
+  getBoards?: () => Promise<unknown>;
+  getCurrentUser?: () => Promise<unknown>;
+  [key: string]: unknown;
+}
+
+/**
  * Intelligent cache manager with LRU eviction and TTL support
  */
 export class CacheManager<T = unknown> {
@@ -509,7 +518,7 @@ export const cacheWarming = {
   /**
    * Pre-populate cache with commonly accessed data
    */
-  async warmCommonQueries(apiClient: unknown): Promise<void> {
+  async warmCommonQueries(apiClient: ApiClient): Promise<void> {
     logger.info('Starting cache warming...');
 
     try {

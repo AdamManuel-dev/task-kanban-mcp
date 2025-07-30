@@ -361,8 +361,11 @@ export class TagService {
       }
 
       // Use secure pagination to prevent ORDER BY injection
-      const paginationClause = validatePagination(sortBy, sortOrder, 'tags');
-      query += ` ${paginationClause} LIMIT ? OFFSET ?`;
+      const paginationResult = validatePagination(
+        { limit, offset, sortBy, sortOrder }, 
+        'tags'
+      );
+      query += ` ${paginationResult.orderByClause} LIMIT ? OFFSET ?`;
       params.push(limit, offset);
 
       const tags = await this.db.query<Tag>(query, params);

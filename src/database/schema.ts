@@ -231,14 +231,14 @@ export class SchemaManager {
   async schemaExists(): Promise<boolean> {
     try {
       // Check for multiple core tables to ensure schema really exists
-      const tables = await this.db.query(`
+      const tables = await this.db.query<{ count: number }>(`
         SELECT COUNT(*) as count FROM sqlite_master 
         WHERE type='table' 
         AND name IN ('boards', 'tasks', 'columns', 'notes', 'tags')
         AND name NOT LIKE 'sqlite_%'
       `);
       // Consider schema exists if we have at least 3 of the core tables
-      return tables[0]?.count >= 3;
+      return (tables[0]?.count ?? 0) >= 3;
     } catch (error) {
       logger.error('Error checking schema existence:', error);
       return false;
@@ -253,12 +253,12 @@ export class SchemaManager {
 
     try {
       // First check if any schema exists
-      const tables = await this.db.query(`
+      const tables = await this.db.query<{ count: number }>(`
         SELECT COUNT(*) as count FROM sqlite_master 
         WHERE type='table' AND name NOT LIKE 'sqlite_%'
       `);
 
-      if (!tables || tables[0]?.count === 0) {
+      if (!tables || (tables[0]?.count ?? 0) === 0) {
         logger.info('No schema to drop');
         return;
       }
@@ -375,7 +375,7 @@ export class SchemaManager {
       const stats = await this.db.getStats();
 
       // Get table row counts
-      const tables = await this.db.query(`
+      const tables = await this.db.query<{ name: string }>(`
         SELECT name FROM sqlite_master 
         WHERE type='table' AND name NOT LIKE 'sqlite_%'
         ORDER BY name
@@ -384,7 +384,10 @@ export class SchemaManager {
       const tableCounts: Record<string, number> = {};
       await Promise.all(
         tables.map(async table => {
-          await this.db.queryOne(`SELECT COUNT(*) as count FROM ${String(String(table.name))}`);
+          const result = await this.db.queryOne<{ count: number }>(
+            `SELECT COUNT(*) as count FROM ${String(String(table.name))}`
+          );
+          tableCounts[table.name] = result?.count ?? 0;
         })
       );
 
@@ -484,7 +487,7 @@ export class SchemaManager {
 
   private async getCurrentSchemaVersion(): Promise<string> {
     try {
-      const result = await this.db.queryOne(`
+      const result = await this.db.queryOne<{ value: string }>(`
         SELECT value FROM schema_info WHERE key = 'version'
       `);
       return result?.value ?? 'unknown';
@@ -528,18 +531,19 @@ export class SchemaManager {
     };
 
     for (const obj of objects) {
-      switch (obj.type) {
+      const dbObj = obj as { type: string; name: string };
+      switch (dbObj.type) {
         case 'table':
-          schema.tables.push(obj.name);
+          schema.tables.push(dbObj.name);
           break;
         case 'index':
-          schema.indexes.push(obj.name);
+          schema.indexes.push(dbObj.name);
           break;
         case 'view':
-          schema.views.push(obj.name);
+          schema.views.push(dbObj.name);
           break;
         case 'trigger':
-          schema.triggers.push(obj.name);
+          schema.triggers.push(dbObj.name);
           break;
       }
     }

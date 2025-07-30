@@ -24,7 +24,7 @@
  */
 
 import { logger } from '@/utils/logger';
-import type { DatabaseConnection } from '@/database/connection';
+import type { DatabaseConnection, QueryParameters } from '@/database/connection';
 import type { Board, Task, Tag, Note, Column } from '@/types';
 import { BaseServiceError } from '@/utils/errors';
 import * as fs from 'fs/promises';
@@ -386,7 +386,7 @@ export class ExportService {
 
   private async getBoards(options: ExportOptions): Promise<Board[]> {
     let query = 'SELECT * FROM boards WHERE deleted_at IS NULL';
-    const params: unknown[] = [];
+    const params: QueryParameters = [];
 
     if (options.boardIds && options.boardIds.length > 0) {
       query += ` AND id IN (${options.boardIds.map(() => '?').join(',')})`;
@@ -409,7 +409,7 @@ export class ExportService {
 
   private async getTasks(options: ExportOptions): Promise<Task[]> {
     let query = 'SELECT * FROM tasks WHERE deleted_at IS NULL';
-    const params: unknown[] = [];
+    const params: QueryParameters = [];
 
     if (options.boardIds && options.boardIds.length > 0) {
       query += ` AND board_id IN (${options.boardIds.map(() => '?').join(',')})`;
@@ -450,7 +450,7 @@ export class ExportService {
 
   private async getNotes(options: ExportOptions): Promise<Note[]> {
     let query = 'SELECT * FROM notes';
-    const params: unknown[] = [];
+    const params: QueryParameters = [];
 
     if (options.boardIds && options.boardIds.length > 0) {
       query += ` WHERE task_id IN (SELECT id FROM tasks WHERE board_id IN (${options.boardIds

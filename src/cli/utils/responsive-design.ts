@@ -321,7 +321,7 @@ export class ResponsiveDesignHelper {
    * Get optimal text truncation length for current terminal
    */
   static getOptimalTextLength(context: 'title' | 'description' | 'label'): number {
-    const size = this.getTerminalSize();
+    const _size = this.getTerminalSize();
     const breakpoint = this.getBreakpoint();
 
     const baseLengths = {

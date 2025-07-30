@@ -40,18 +40,27 @@ interface WebSocketMessage {
 
 class WebSocketAIAgent {
   private ws: WebSocket | null = null;
-  private actions: AgentAction[] = [];
+
+  private readonly actions: AgentAction[] = [];
+
   private tasksCreated = 0;
+
   private tasksCompleted = 0;
+
   private connected = false;
+
   private authenticated = false;
-  private pendingMessages = new Map<string, { resolve: Function; reject: Function; timer: NodeJS.Timeout }>();
+
+  private readonly pendingMessages = new Map<
+    string,
+    { resolve: Function; reject: Function; timer: NodeJS.Timeout }
+  >();
 
   constructor(
-    private agentId: string,
-    private boardId: string,
-    private wsUrl: string,
-    private apiKey: string
+    private readonly agentId: string,
+    private readonly boardId: string,
+    private readonly wsUrl: string,
+    private readonly apiKey: string
   ) {}
 
   async connect(): Promise<void> {
@@ -64,7 +73,7 @@ class WebSocketAIAgent {
         this.sendMessage({
           type: 'auth',
           id: uuidv4(),
-          payload: { apiKey: this.apiKey }
+          payload: { apiKey: this.apiKey },
         });
       });
 
@@ -72,7 +81,7 @@ class WebSocketAIAgent {
         try {
           const message = JSON.parse(data.toString()) as WebSocketMessage;
           this.handleMessage(message);
-          
+
           if (message.type === 'auth_success') {
             this.authenticated = true;
             resolve();
@@ -84,7 +93,7 @@ class WebSocketAIAgent {
         }
       });
 
-      this.ws.on('error', (error) => {
+      this.ws.on('error', error => {
         console.error(`[${this.agentId}] WebSocket error:`, error);
         reject(error);
       });
@@ -129,8 +138,8 @@ class WebSocketAIAgent {
           board_id: this.boardId,
           title,
           priority,
-          status: 'todo'
-        }
+          status: 'todo',
+        },
       });
 
       if (response.success) {
@@ -163,8 +172,8 @@ class WebSocketAIAgent {
           status: 'todo',
           sort_by: 'priority',
           sort_order: 'desc',
-          limit: 1
-        }
+          limit: 1,
+        },
       });
 
       if (response.success && response.data.items.length > 0) {
@@ -190,8 +199,8 @@ class WebSocketAIAgent {
         type: 'update_task',
         payload: {
           id: taskId,
-          status: 'in_progress'
-        }
+          status: 'in_progress',
+        },
       });
 
       // Simulate work time
@@ -202,8 +211,8 @@ class WebSocketAIAgent {
         type: 'update_task',
         payload: {
           id: taskId,
-          status: 'done'
-        }
+          status: 'done',
+        },
       });
 
       this.tasksCompleted++;
@@ -226,8 +235,8 @@ class WebSocketAIAgent {
         type: 'list_tasks',
         payload: {
           board_id: this.boardId,
-          limit: 100
-        }
+          limit: 100,
+        },
       });
 
       if (response.success) {
@@ -235,7 +244,7 @@ class WebSocketAIAgent {
         analysis = {
           total: tasks.length,
           todo: tasks.filter((t: any) => t.status === 'todo').length,
-          done: tasks.filter((t: any) => t.status === 'done').length
+          done: tasks.filter((t: any) => t.status === 'done').length,
         };
       }
     } catch (err: any) {
@@ -249,10 +258,10 @@ class WebSocketAIAgent {
 
   async collaborateWithAgent(otherAgentId: string): Promise<void> {
     const startTime = Date.now();
-    
+
     // Simulate agent collaboration by analyzing the board
     const analysis = await this.analyzeBoard();
-    
+
     if (analysis.todo < 3) {
       // Create more tasks
       await this.createTask(`WS Collaborative task from ${this.agentId}`, 3);
@@ -269,14 +278,16 @@ class WebSocketAIAgent {
 
   private sendMessage(message: WebSocketMessage): void {
     if (this.ws && this.connected) {
-      this.ws.send(JSON.stringify({
-        ...message,
-        timestamp: new Date().toISOString()
-      }));
+      this.ws.send(
+        JSON.stringify({
+          ...message,
+          timestamp: new Date().toISOString(),
+        })
+      );
     }
   }
 
-  private sendRequestMessage(message: Omit<WebSocketMessage, 'id'>): Promise<any> {
+  private async sendRequestMessage(message: Omit<WebSocketMessage, 'id'>): Promise<any> {
     return new Promise((resolve, reject) => {
       const id = uuidv4();
       const fullMessage = { ...message, id };
@@ -343,7 +354,7 @@ describe('AI Agent WebSocket Concurrent Simulation', () => {
   let wsPort: number;
   let wsUrl: string;
   let boardId: string;
-  let agents: WebSocketAIAgent[] = [];
+  const agents: WebSocketAIAgent[] = [];
   const apiKey = 'test-ws-key';
 
   beforeAll(async () => {
@@ -363,7 +374,7 @@ describe('AI Agent WebSocket Concurrent Simulation', () => {
     // In a real scenario, you'd start the actual WebSocket server
     wsPort = 8080; // Mock port
     wsUrl = `ws://localhost:${wsPort}`;
-    
+
     // Create test board directly via database for WebSocket tests
     boardId = uuidv4();
     await dbConnection.execute(
@@ -400,7 +411,7 @@ describe('AI Agent WebSocket Concurrent Simulation', () => {
     }
 
     // Simulate operations directly on database since WebSocket server isn't running
-    const operations: Promise<void>[] = [];
+    const operations: Array<Promise<void>> = [];
 
     for (let round = 0; round < 5; round++) {
       for (let i = 0; i < numAgents; i++) {
@@ -411,17 +422,25 @@ describe('AI Agent WebSocket Concurrent Simulation', () => {
               `SELECT id FROM columns WHERE board_id = ? AND name = 'Todo' LIMIT 1`,
               [boardId]
             );
-            
+
             // Simulate WebSocket task creation
             await dbConnection.execute(
               `INSERT INTO tasks (id, title, board_id, column_id, status, priority, position, created_at, updated_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
-              [taskId, `WS Agent ${i} Task ${round}`, boardId, columnId[0]?.id || 'default', 'todo', Math.floor(Math.random() * 5) + 1, Date.now()]
+              [
+                taskId,
+                `WS Agent ${i} Task ${round}`,
+                boardId,
+                columnId[0]?.id || 'default',
+                'todo',
+                Math.floor(Math.random() * 5) + 1,
+                Date.now(),
+              ]
             );
 
             // Simulate work
             await new Promise(resolve => setTimeout(resolve, 10 + Math.random() * 50));
-            
+
             // Complete task
             await dbConnection.execute(
               `UPDATE tasks SET status = 'done', updated_at = datetime('now') WHERE id = ?`,
@@ -476,7 +495,7 @@ describe('AI Agent WebSocket Concurrent Simulation', () => {
     ];
 
     // Simulate collaborative work via database (representing WebSocket operations)
-    const operations: Promise<void>[] = [];
+    const operations: Array<Promise<void>> = [];
 
     // Creator creates tasks
     for (let i = 0; i < 10; i++) {
@@ -487,11 +506,19 @@ describe('AI Agent WebSocket Concurrent Simulation', () => {
             `SELECT id FROM columns WHERE board_id = ? AND name = 'Todo' LIMIT 1`,
             [boardId]
           );
-          
+
           await dbConnection.execute(
             `INSERT INTO tasks (id, title, board_id, column_id, status, priority, position, created_at, updated_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
-            [taskId, `WS Collaborative Feature ${i + 1}`, boardId, columnId[0]?.id || 'default', 'todo', (i % 5) + 1, Date.now()]
+            [
+              taskId,
+              `WS Collaborative Feature ${i + 1}`,
+              boardId,
+              columnId[0]?.id || 'default',
+              'todo',
+              (i % 5) + 1,
+              Date.now(),
+            ]
           );
         })()
       );
@@ -507,18 +534,18 @@ describe('AI Agent WebSocket Concurrent Simulation', () => {
               `SELECT id FROM tasks WHERE board_id = ? AND status = 'todo' ORDER BY priority DESC LIMIT 1`,
               [boardId]
             );
-            
+
             if (tasks.length > 0) {
               const taskId = tasks[0].id;
-              
+
               // Update to in_progress then done
               await dbConnection.execute(
                 `UPDATE tasks SET status = 'in_progress', updated_at = datetime('now') WHERE id = ?`,
                 [taskId]
               );
-              
+
               await new Promise(resolve => setTimeout(resolve, 20));
-              
+
               await dbConnection.execute(
                 `UPDATE tasks SET status = 'done', updated_at = datetime('now') WHERE id = ?`,
                 [taskId]
@@ -554,22 +581,22 @@ describe('AI Agent WebSocket Concurrent Simulation', () => {
   it('should handle WebSocket connection and messaging patterns', async () => {
     // This test demonstrates the WebSocket agent structure
     // In a real environment with a running WebSocket server, these would be actual connections
-    
+
     const agent = new WebSocketAIAgent('test-ws-agent', boardId, wsUrl, apiKey);
-    
+
     // Verify agent structure
     expect(agent.getMetrics().agentId).toBe('test-ws-agent');
     expect(agent.getMetrics().actionsPerformed).toBe(0);
     expect(agent.getMetrics().tasksCreated).toBe(0);
     expect(agent.getMetrics().tasksCompleted).toBe(0);
-    
+
     // The agent is ready for WebSocket operations when a server is available
     console.log('\\n=== WebSocket Agent Structure Verified ===');
     console.log(`Agent ID: ${agent.getMetrics().agentId}`);
     console.log(`Board ID: ${boardId}`);
     console.log(`WebSocket URL: ${wsUrl}`);
     console.log('Agent is ready for real-time WebSocket operations');
-    
+
     agent.disconnect();
   });
 });

@@ -920,9 +920,14 @@ Press any key to close...
    */
   private showDebugOverlay(): void {
     const debugInfo = Array.from(this.widgets.entries())
-      .map(([name, widget]) => `${String(name)}: ${widget && typeof widget === 'object' && 'constructor' in widget 
-        ? (widget as { constructor: { name: string } }).constructor.name 
-        : 'Unknown'}`)
+      .map(
+        ([name, widget]) =>
+          `${String(name)}: ${
+            widget && typeof widget === 'object' && 'constructor' in widget
+              ? (widget as { constructor: { name: string } }).constructor.name
+              : 'Unknown'
+          }`
+      )
       .join('\n');
 
     const debugBox = blessed.box({
@@ -957,7 +962,7 @@ ${String(debugInfo)}
   private hideDebugOverlay(): void {
     const debugWidget = this.widgets.get('debug');
     if (debugWidget && typeof debugWidget === 'object' && 'detach' in debugWidget) {
-      this.screen.remove(debugWidget as any);
+      this.screen.remove(debugWidget as blessed.Widgets.Node);
       this.widgets.delete('debug');
       this.screen.render();
     }

@@ -9,14 +9,6 @@
  */
 
 // Mock the service metrics decorator
-jest.mock('../../src/utils/service-metrics', () => ({
-  TrackPerformance: () => () => ({}),
-  serviceMetricsCollector: {
-    collectMetric: jest.fn(),
-    getMetrics: jest.fn(() => ({ total: 0, success: 0, failure: 0 })),
-  },
-}));
-
 import { describe, it, beforeAll, afterAll, expect } from '@jest/globals';
 import { exec } from 'child_process';
 import { promisify } from 'util';
@@ -24,6 +16,14 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Express } from 'express';
 import { createServer } from '../../src/server';
 import { dbConnection } from '../../src/database/connection';
+
+jest.mock('../../src/utils/service-metrics', () => ({
+  TrackPerformance: () => () => ({}),
+  serviceMetricsCollector: {
+    collectMetric: jest.fn(),
+    getMetrics: jest.fn(() => ({ total: 0, success: 0, failure: 0 })),
+  },
+}));
 
 const execAsync = promisify(exec);
 
@@ -582,7 +582,7 @@ describe('User and AI Agent Simulation', () => {
 
     // Start server on random port
     server = app.listen(0);
-    serverPort = (server.address() as any).port;
+    serverPort = server.address().port;
 
     const baseUrl = `http://localhost:${serverPort}`;
     const mcpUrl = `http://localhost:${serverPort}/mcp`;
@@ -595,7 +595,7 @@ describe('User and AI Agent Simulation', () => {
 
   afterAll(async () => {
     if (server) {
-      await new Promise<void>((resolve) => {
+      await new Promise<void>(resolve => {
         server.close(() => resolve());
       });
     }
@@ -656,10 +656,13 @@ describe('User and AI Agent Simulation', () => {
       // Add agent action
       actions.push(
         new Promise(resolve => {
-          setTimeout(async () => {
-            await createAgentAction(i);
-            resolve();
-          }, Math.random() * 200 + 100);
+          setTimeout(
+            async () => {
+              await createAgentAction(i);
+              resolve();
+            },
+            Math.random() * 200 + 100
+          );
         })
       );
     }

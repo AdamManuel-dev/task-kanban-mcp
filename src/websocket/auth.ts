@@ -296,7 +296,7 @@ export class WebSocketAuth {
       logger.warn('JWT generation using default secret - configure JWT_SECRET in production');
     }
 
-    const payload: unknown = {
+    const payload: any = {
       userId: user.id,
       permissions,
     };

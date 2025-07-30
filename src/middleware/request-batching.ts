@@ -12,10 +12,10 @@ import type { Request, Response, NextFunction } from 'express';
 import { Router } from 'express';
 import { performance } from 'perf_hooks';
 import { logger } from '../utils/logger';
-import { requestBatcher, BatchResponse } from '../utils/request-batching';
+import { requestBatcher } from '../utils/request-batching';
 import { requestDeduplicator } from '../utils/request-deduplication';
 import { requestScheduler } from '../utils/request-prioritization';
-import { BaseServiceError, ValidationError } from '../utils/errors';
+import { ValidationError } from '../utils/errors';
 
 // ============================================================================
 // TYPES AND INTERFACES
@@ -441,21 +441,23 @@ export class BatchingController {
       throw new ValidationError('Invalid batch request payload');
     }
 
-    if (!Array.isArray(body.requests)) {
+    const typedBody = body as BatchRequestPayload;
+
+    if (!Array.isArray(typedBody.requests)) {
       throw new ValidationError('Requests must be an array');
     }
 
-    if (body.requests.length === 0) {
+    if (typedBody.requests.length === 0) {
       throw new ValidationError('At least one request must be provided');
     }
 
-    if (body.requests.length > this.options.maxBatchSize) {
+    if (typedBody.requests.length > this.options.maxBatchSize) {
       throw new ValidationError(`Batch size exceeds maximum of ${this.options.maxBatchSize}`);
     }
 
     // Validate each request in the batch
-    for (let i = 0; i < body.requests.length; i++) {
-      const request = body.requests[i];
+    for (let i = 0; i < typedBody.requests.length; i++) {
+      const request = typedBody.requests[i];
 
       if (!request.method || !request.url) {
         throw new ValidationError(`Request ${i} is missing required method or url`);
@@ -466,7 +468,7 @@ export class BatchingController {
       }
     }
 
-    return body as BatchRequestPayload;
+    return typedBody;
   }
 
   /**

@@ -68,7 +68,7 @@ export function validateSortField(
   const cleanField = sortBy.includes('.') ? sortBy.split('.').pop()! : sortBy;
 
   const allowedFields = VALID_SORT_FIELDS[entityType];
-  if (!allowedFields.includes(cleanField as unknown)) {
+  if (!allowedFields.includes(cleanField as any)) {
     logger.warn('SQL injection attempt detected - invalid sort field', {
       entityType,
       attempted: sortBy,
@@ -100,7 +100,7 @@ export function validateSortOrder(sortOrder: string): 'ASC' | 'DESC' {
   }
 
   const normalizedOrder = sortOrder.toLowerCase();
-  if (!VALID_SORT_ORDERS.includes(normalizedOrder as unknown)) {
+  if (!VALID_SORT_ORDERS.includes(normalizedOrder as 'asc' | 'desc')) {
     logger.warn('SQL injection attempt detected - invalid sort order', {
       attempted: sortOrder,
       allowed: VALID_SORT_ORDERS,

@@ -23,14 +23,14 @@
 
 import { Router } from 'express';
 import { z } from 'zod';
-import { TaskService, type CreateTaskRequest } from '@/services/TaskService';
+import { TaskService, type CreateTaskRequest as ServiceCreateTaskRequest, type UpdateTaskRequest as ServiceUpdateTaskRequest } from '@/services/TaskService';
 import { NoteService } from '@/services/NoteService';
 import { TagService } from '@/services/TagService';
 import { dbConnection } from '@/database/connection';
 import { requirePermission } from '@/middleware/auth';
 import { validateRequest } from '@/middleware/validation';
 import { TaskValidation, NoteValidation, validateInput } from '@/utils/validation';
-import type { Task } from '@/types';
+import type { Task, CreateTaskRequest, UpdateTaskRequest } from '@/types';
 import { NotFoundError, ValidationError } from '@/utils/errors';
 
 // Validation schemas
@@ -290,7 +290,7 @@ export function taskRoutes(): Router {
         // Filter out undefined values to comply with exactOptionalPropertyTypes
         const taskData = Object.fromEntries(
           Object.entries(rawTaskData).filter(([, value]) => value !== undefined)
-        ) as unknown as CreateTaskRequest;
+        ) as unknown as ServiceCreateTaskRequest;
         const task = await taskService.createTask(taskData);
         res.status(201).apiSuccess(task);
       } catch (error) {
@@ -763,7 +763,7 @@ export function taskRoutes(): Router {
           Object.entries(rawSubtaskData).filter(([, value]) => value !== undefined)
         );
 
-        const subtask = await taskService.createTask(subtaskData as unknown);
+        const subtask = await taskService.createTask(subtaskData as unknown as ServiceCreateTaskRequest);
         res.status(201).apiSuccess(subtask);
       } catch (error) {
         next(error);
@@ -817,7 +817,7 @@ export function taskRoutes(): Router {
           Object.entries(validatedBody).filter(([, value]) => value !== undefined)
         );
 
-        const updatedSubtask = await taskService.updateTask(id, updateData as unknown);
+        const updatedSubtask = await taskService.updateTask(id, updateData as ServiceUpdateTaskRequest);
         res.apiSuccess(updatedSubtask);
       } catch (error) {
         next(error);

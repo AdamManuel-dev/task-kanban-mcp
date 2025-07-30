@@ -9,9 +9,8 @@
  */
 
 import { describe, it, beforeAll, afterAll, expect } from '@jest/globals';
-import { exec } from 'child_process';
+import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
-import { spawn } from 'child_process';
 import type { ChildProcess } from 'child_process';
 
 const execAsync = promisify(exec);
@@ -38,8 +37,8 @@ interface BoardState {
 
 describe('User and AI Agent Simulation (Simple)', () => {
   let serverProcess: ChildProcess;
-  let serverPort: number = 3456;
-  let apiKey: string = 'test-api-key-123';
+  const serverPort = 3456;
+  const apiKey = 'test-api-key-123';
   const baseUrl = `http://localhost:${serverPort}`;
 
   beforeAll(async () => {
@@ -86,7 +85,7 @@ describe('User and AI Agent Simulation (Simple)', () => {
         }
       };
 
-      serverProcess.on('error', (err) => {
+      serverProcess.on('error', err => {
         clearTimeout(timeout);
         reject(err);
       });
@@ -168,7 +167,7 @@ describe('User and AI Agent Simulation (Simple)', () => {
     for (let i = 0; i < 5; i++) {
       if (i < createdTasks.length) {
         const taskId = createdTasks[i];
-        
+
         try {
           // Update task status to in_progress
           await execAsync(`
@@ -177,7 +176,7 @@ describe('User and AI Agent Simulation (Simple)', () => {
               -H "Content-Type: application/json" \
               -d '{"status": "in_progress"}'
           `);
-          
+
           // Add a note
           await execAsync(`
             curl -s -X POST ${baseUrl}/api/v1/tasks/${taskId}/notes \
@@ -185,7 +184,7 @@ describe('User and AI Agent Simulation (Simple)', () => {
               -H "Content-Type: application/json" \
               -d '{"content": "AI Agent: Working on this task"}'
           `);
-          
+
           // Complete the task
           await execAsync(`
             curl -s -X PATCH ${baseUrl}/api/v1/tasks/${taskId} \
@@ -193,7 +192,7 @@ describe('User and AI Agent Simulation (Simple)', () => {
               -H "Content-Type: application/json" \
               -d '{"status": "done"}'
           `);
-          
+
           logger.info(`AI agent completed task: ${taskId}`);
         } catch (error: any) {
           agentErrors.push(`Agent work on task ${taskId}: ${error.message}`);
@@ -208,14 +207,14 @@ describe('User and AI Agent Simulation (Simple)', () => {
           -H "X-API-Key: ${apiKey}"
       `);
       const response = JSON.parse(stdout);
-      
+
       if (response.success) {
         const tasks = response.data.items;
         const todoCount = tasks.filter((t: any) => t.status === 'todo').length;
         const doneCount = tasks.filter((t: any) => t.status === 'done').length;
-        
+
         logger.info(`Final state - Total: ${tasks.length}, Todo: ${todoCount}, Done: ${doneCount}`);
-        
+
         expect(tasks.length).toBe(10);
         expect(doneCount).toBeGreaterThanOrEqual(3);
       }
@@ -226,7 +225,7 @@ describe('User and AI Agent Simulation (Simple)', () => {
     // Report errors
     logger.info(`User errors: ${userErrors.length}`);
     logger.info(`Agent errors: ${agentErrors.length}`);
-    
+
     expect(userErrors.length).toBeLessThan(3);
     expect(agentErrors.length).toBeLessThan(3);
   }, 60000); // 60 second timeout
@@ -234,7 +233,7 @@ describe('User and AI Agent Simulation (Simple)', () => {
   it('should handle concurrent user and agent actions', async () => {
     let boardId: string | null = null;
     const errors: string[] = [];
-    
+
     // Create a board first
     try {
       const { stdout } = await execAsync(`
@@ -251,7 +250,7 @@ describe('User and AI Agent Simulation (Simple)', () => {
 
     // Run 20 concurrent operations
     const operations = [];
-    
+
     // User operations
     for (let i = 0; i < 10; i++) {
       operations.push(
@@ -270,7 +269,7 @@ describe('User and AI Agent Simulation (Simple)', () => {
         })
       );
     }
-    
+
     // Agent operations (list tasks)
     for (let i = 0; i < 10; i++) {
       operations.push(
@@ -282,12 +281,12 @@ describe('User and AI Agent Simulation (Simple)', () => {
         })
       );
     }
-    
+
     // Execute all operations concurrently
     await Promise.all(operations);
-    
+
     logger.info(`Concurrent operations completed with ${errors.length} errors`);
-    
+
     // Verify system stability
     expect(errors.length).toBeLessThan(5); // Less than 25% error rate
   }, 30000);

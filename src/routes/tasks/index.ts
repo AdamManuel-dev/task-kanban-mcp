@@ -39,11 +39,11 @@ export function taskRoutes(): Router {
   };
 
   // Main task CRUD operations
-  router.get('/', listTasksHandler(services));
-  router.get('/:id', getTaskHandler(services));
-  router.post('/', createTaskHandler(services));
-  router.patch('/:id', updateTaskHandler(services));
-  router.delete('/:id', deleteTaskHandler(services));
+  router.get('/', ...listTasksHandler(services as any));
+  router.get('/:id', ...getTaskHandler(services));
+  router.post('/', ...createTaskHandler(services as any));
+  router.patch('/:id', ...updateTaskHandler(services));
+  router.delete('/:id', ...deleteTaskHandler(services));
 
   // Sub-resource routes
   router.use('/:taskId/notes', taskNotesRoutes(services));

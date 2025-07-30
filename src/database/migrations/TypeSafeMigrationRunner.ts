@@ -14,7 +14,7 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import { promisify } from 'util';
 import { logger } from '../../utils/logger';
-import type { Migration, MigrationFile, AppliedMigration, MigrationOptions } from './types';
+import type { AppliedMigration, MigrationOptions } from './types';
 
 /**
  * Type-safe schema definition for migrations
@@ -126,7 +126,7 @@ export class TypeSafeMigrationRunner {
     const schemaTableName = options.schemaTableName ?? 'schema_versions';
 
     TypeSafeMigrationRunner.validateMigrationTableName(tableName);
-    this.validateMigrationTableName(schemaTableName);
+    TypeSafeMigrationRunner.validateMigrationTableName(schemaTableName);
 
     this.tableName = tableName;
     this.schemaTableName = schemaTableName;
@@ -157,7 +157,7 @@ export class TypeSafeMigrationRunner {
    * Initialize migration and schema tables
    */
   async initialize(): Promise<void> {
-    const run = promisify(this.db.run.bind(this.db));
+    const run = promisify(this.db.run.bind(this.db)) as (sql: string, params?: any) => Promise<any>;
 
     // Create migrations table
     await run(`
@@ -188,7 +188,7 @@ export class TypeSafeMigrationRunner {
    * Get current schema version
    */
   async getCurrentSchemaVersion(): Promise<number> {
-    const get = promisify(this.db.get.bind(this.db));
+    const get = promisify(this.db.get.bind(this.db)) as (sql: string, params?: any) => Promise<any>;
 
     const result = (await get(`
       SELECT version 
@@ -203,7 +203,7 @@ export class TypeSafeMigrationRunner {
    * Save schema version
    */
   async saveSchemaVersion(schema: SchemaVersion): Promise<void> {
-    const run = promisify(this.db.run.bind(this.db));
+    const run = promisify(this.db.run.bind(this.db)) as (sql: string, params?: any) => Promise<any>;
 
     // Mark current version as not current
     await run(`UPDATE ${this.schemaTableName} SET is_current = FALSE`);
@@ -214,9 +214,7 @@ export class TypeSafeMigrationRunner {
       INSERT INTO ${this.schemaTableName} (version, description, schema_definition, is_current)
       VALUES (?, ?, ?, TRUE)
     `,
-      schema.version,
-      schema.description,
-      JSON.stringify(schema, null, 2)
+      [schema.version, schema.description, JSON.stringify(schema, null, 2)]
     );
 
     logger.info('Schema version saved', { version: schema.version });
@@ -269,13 +267,14 @@ export class TypeSafeMigrationRunner {
    * Validate migration structure
    */
   private static validateMigrationStructure(migration: unknown): migration is TypeSafeMigration {
+    const m = migration as Record<string, unknown>;
     return (
-      typeof migration.id === 'string' &&
-      typeof migration.version === 'number' &&
-      typeof migration.description === 'string' &&
-      typeof migration.schema === 'object' &&
-      typeof migration.up === 'function' &&
-      typeof migration.down === 'function'
+      typeof m.id === 'string' &&
+      typeof m.version === 'number' &&
+      typeof m.description === 'string' &&
+      typeof m.schema === 'object' &&
+      typeof m.up === 'function' &&
+      typeof m.down === 'function'
     );
   }
 
@@ -321,7 +320,7 @@ export class TypeSafeMigrationRunner {
       logger.info(`Executing migration: ${migration.id}`);
 
       // Begin transaction
-      const run = promisify(this.db.run.bind(this.db));
+      const run = promisify(this.db.run.bind(this.db)) as (sql: string, params?: any) => Promise<any>;
       await run('BEGIN TRANSACTION');
 
       try {
@@ -347,10 +346,12 @@ export class TypeSafeMigrationRunner {
           INSERT INTO ${this.tableName} (id, checksum, execution_time, schema_version)
           VALUES (?, ?, ?, ?)
         `,
-          migration.id,
-          TypeSafeMigrationRunner.calculateMigrationChecksum(migration),
-          executionTime,
-          migration.version
+          [
+            migration.id,
+            TypeSafeMigrationRunner.calculateMigrationChecksum(migration),
+            executionTime,
+            migration.version,
+          ]
         );
 
         // Commit transaction
@@ -440,7 +441,7 @@ export class TypeSafeMigrationRunner {
     try {
       logger.info(`Rolling back migration: ${migration.id}`);
 
-      const run = promisify(this.db.run.bind(this.db));
+      const run = promisify(this.db.run.bind(this.db)) as (sql: string, params?: any) => Promise<any>;
       await run('BEGIN TRANSACTION');
 
       try {
@@ -540,7 +541,7 @@ export class TypeSafeMigrationRunner {
    * Get applied migrations (reuse from base class)
    */
   async getAppliedMigrations(): Promise<AppliedMigration[]> {
-    const all = promisify(this.db.all.bind(this.db));
+    const all = promisify(this.db.all.bind(this.db)) as (sql: string, params?: any) => Promise<any[]>;
 
     const result = (await all(
       `SELECT id, applied_at, checksum FROM ${this.tableName} ORDER BY id`

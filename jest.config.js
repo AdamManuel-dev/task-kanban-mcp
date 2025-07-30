@@ -31,11 +31,10 @@ module.exports = {
     '^@cli/(.*)$': '<rootDir>/src/cli/$1',
   },
   
-  // Setup files - temporarily disabled to diagnose cache issue
-  // setupFilesAfterEnv: [
-  //   '<rootDir>/tests/jest.setup.ts',
-  //   '<rootDir>/tests/cli-setup.ts'
-  // ],
+  // Setup files
+  setupFilesAfterEnv: [
+    '<rootDir>/tests/jest.setup.ts',
+  ],
   
   // Coverage configuration
   collectCoverage: false,

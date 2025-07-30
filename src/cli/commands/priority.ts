@@ -16,20 +16,21 @@ interface TaskWithPriority {
   priorityReasoning?: string;
 }
 
-interface PriorityUpdateResult {
-  message?: string;
-  updated?: boolean;
-}
+// Removed unused interfaces to fix @typescript-eslint/no-unused-vars
+// interface PriorityUpdateResult {
+//   message?: string;
+//   updated?: boolean;
+// }
 
-interface PriorityAnalysisOptions {
-  reason?: string;
-  priority?: number;
-  limit?: string;
-  json?: boolean;
-  board?: string;
-  days?: string;
-  task?: string;
-}
+// interface PriorityAnalysisOptions {
+//   reason?: string;
+//   priority?: number;
+//   limit?: string;
+//   json?: boolean;
+//   board?: string;
+//   days?: string;
+//   task?: string;
+// }
 
 // Helper functions (declared first to avoid hoisting issues)
 function getTimeAgo(date: Date): string {
@@ -52,8 +53,8 @@ function getTimeAgo(date: Date): string {
 }
 
 function getPriorityChangeIcon(oldPriority: string, newPriority: string): string {
-  const oldNum = parseInt(oldPriority, 10) ?? 0;
-  const newNum = parseInt(newPriority, 10) ?? 0;
+  const oldNum = parseInt(oldPriority, 10) || 0;
+  const newNum = parseInt(newPriority, 10) || 0;
 
   if (newNum > oldNum) {
     return '📈'; // Increasing priority
@@ -65,8 +66,8 @@ function getPriorityChangeIcon(oldPriority: string, newPriority: string): string
 }
 
 function getPriorityChangeColor(oldPriority: string, newPriority: string): typeof chalk.red {
-  const oldNum = parseInt(oldPriority, 10) ?? 0;
-  const newNum = parseInt(newPriority, 10) ?? 0;
+  const oldNum = parseInt(oldPriority, 10) || 0;
+  const newNum = parseInt(newPriority, 10) || 0;
 
   if (newNum > oldNum) {
     return chalk.red; // Increasing priority (red = urgent)
@@ -158,7 +159,7 @@ export function registerPriorityCommands(program: Command): void {
         if (count === 1) {
           const nextTask = await apiClient.getNextTask();
 
-          if (!nextTask) {
+          if (!('data' in nextTask) || !nextTask.data) {
             formatter.info('No prioritized tasks available');
             return;
           }
@@ -173,7 +174,7 @@ export function registerPriorityCommands(program: Command): void {
         } else {
           const priorities = await apiClient.getPriorities();
 
-          if (!priorities || !Array.isArray(priorities) || priorities.length === 0) {
+          if (!Array.isArray(priorities) || priorities.length === 0) {
             formatter.info('No prioritized tasks available');
             return;
           }
@@ -205,7 +206,7 @@ export function registerPriorityCommands(program: Command): void {
       try {
         const priorities = await apiClient.getPriorities();
 
-        if (!priorities || !Array.isArray(priorities) || priorities.length === 0) {
+        if (!Array.isArray(priorities) || priorities.length === 0) {
           formatter.info('No prioritized tasks available');
           return;
         }
@@ -381,11 +382,15 @@ export function registerPriorityCommands(program: Command): void {
           return;
         }
 
+        // eslint-disable-next-line no-console
         console.log(chalk.blue.bold(`\n📈 Priority History for: ${task.title}\n`));
+        // eslint-disable-next-line no-console
         console.log(chalk.dim(`Task ID: ${taskId}`));
+        // eslint-disable-next-line no-console
         console.log(chalk.dim(`Current Priority: ${task.priority}\n`));
 
         if (limitedHistory.length === 0) {
+          // eslint-disable-next-line no-console
           console.log(chalk.yellow('No priority changes recorded for this task.'));
           return;
         }
@@ -399,26 +404,33 @@ export function registerPriorityCommands(program: Command): void {
           const priorityChange = getPriorityChangeIcon(oldPriority, newPriority);
           const changeColor = getPriorityChangeColor(oldPriority, newPriority);
 
+          // eslint-disable-next-line no-console
           console.log(
             `${isLatest ? '⚡' : '📊'} ${changeColor(
               `${oldPriority} → ${newPriority} ${priorityChange}`
             )}`
           );
+          // eslint-disable-next-line no-console
           console.log(`   ${chalk.dim(`Changed ${timeAgo}`)}`);
 
           if (change.reason) {
+            // eslint-disable-next-line no-console
             console.log(`   ${chalk.dim('💭')} ${chalk.italic(change.reason)}`);
           }
 
           if (change.changed_by) {
+            // eslint-disable-next-line no-console
             console.log(`   ${chalk.dim('👤')} Changed by: ${change.changed_by}`);
           }
 
+          // eslint-disable-next-line no-console
           console.log();
         });
 
         if (priorityHistory.length > limitNum) {
+          // eslint-disable-next-line no-console
           console.log(chalk.dim(`... and ${priorityHistory.length - limitNum} more changes`));
+          // eslint-disable-next-line no-console
           console.log(chalk.dim(`Use --limit ${priorityHistory.length} to see all changes`));
         }
       } catch (error) {
@@ -445,34 +457,46 @@ export function registerPriorityCommands(program: Command): void {
           return;
         }
 
+        // eslint-disable-next-line no-console
         console.log(chalk.blue.bold(`\n📊 Priority Analytics: ${analytics.task_title}\n`));
 
+        // eslint-disable-next-line no-console
         console.log(`${chalk.bold('Summary:')}`);
+        // eslint-disable-next-line no-console
         console.log(`   Total Priority Changes: ${chalk.yellow(analytics.total_changes)}`);
+        // eslint-disable-next-line no-console
         console.log(`   Average Priority: ${chalk.cyan(analytics.average_priority)}`);
+        // eslint-disable-next-line no-console
         console.log(
           `   Priority Range: ${chalk.green(analytics.lowest_priority_ever)} - ${chalk.red(analytics.highest_priority_ever)}`
         );
+        // eslint-disable-next-line no-console
         console.log(`   Most Common Priority: ${chalk.blue(analytics.most_common_priority)}`);
+        // eslint-disable-next-line no-console
         console.log();
 
         // Trend analysis
         const trendIcon = getTrendIcon(analytics.priority_trend);
         const trendColor = getTrendColor(analytics.priority_trend);
+        // eslint-disable-next-line no-console
         console.log(`${chalk.bold('Trend Analysis:')}`);
+        // eslint-disable-next-line no-console
         console.log(
           `   Priority Trend: ${trendColor(`${trendIcon} ${analytics.priority_trend.toUpperCase()}`)}`
         );
 
         if (analytics.change_frequency_days > 0) {
+          // eslint-disable-next-line no-console
           console.log(
             `   Change Frequency: Every ${chalk.yellow(analytics.change_frequency_days.toFixed(1))} days`
           );
         }
+        // eslint-disable-next-line no-console
         console.log();
 
         // Recent changes
         if (analytics.recent_changes.length > 0) {
+          // eslint-disable-next-line no-console
           console.log(`${chalk.bold('Recent Changes:')}`);
           analytics.recent_changes.forEach((change, index) => {
             const timeAgo = getTimeAgo(change.changed_at);
@@ -480,20 +504,25 @@ export function registerPriorityCommands(program: Command): void {
             const newPriority = change.new_value ?? 'none';
             const changeIcon = getPriorityChangeIcon(oldPriority, newPriority);
 
+            // eslint-disable-next-line no-console
             console.log(
               `   ${index + 1}. ${oldPriority} → ${newPriority} ${changeIcon} (${timeAgo})`
             );
             if (change.reason) {
+              // eslint-disable-next-line no-console
               console.log(`      💭 ${chalk.italic(change.reason)}`);
             }
           });
+          // eslint-disable-next-line no-console
           console.log();
         }
 
         // Change reasons
         if (analytics.change_reasons.length > 0) {
+          // eslint-disable-next-line no-console
           console.log(`${chalk.bold('Common Change Reasons:')}`);
           analytics.change_reasons.forEach((reason, index) => {
+            // eslint-disable-next-line no-console
             console.log(`   ${index + 1}. ${chalk.cyan(reason.reason)} (${reason.count} times)`);
           });
         }
@@ -524,51 +553,69 @@ export function registerPriorityCommands(program: Command): void {
           return;
         }
 
+        // eslint-disable-next-line no-console
         console.log(chalk.blue.bold('\n📈 Priority Change Patterns\n'));
 
+        // eslint-disable-next-line no-console
         console.log(`${chalk.bold('Overview:')}`);
+        // eslint-disable-next-line no-console
         console.log(`   Total Priority Changes: ${chalk.yellow(patterns.total_priority_changes)}`);
+        // eslint-disable-next-line no-console
         console.log();
 
         // Most active tasks
         if (patterns.most_active_tasks.length > 0) {
+          // eslint-disable-next-line no-console
           console.log(`${chalk.bold('Most Active Tasks (by priority changes):')}`);
           patterns.most_active_tasks.slice(0, 5).forEach((task, index) => {
+            // eslint-disable-next-line no-console
             console.log(
               `   ${index + 1}. ${chalk.cyan(task.task_title)} (${task.change_count} changes)`
             );
+            // eslint-disable-next-line no-console
             console.log(`      ${chalk.dim(`ID: ${task.task_id}`)}`);
           });
+          // eslint-disable-next-line no-console
           console.log();
         }
 
         // Common change reasons
         if (patterns.common_change_reasons.length > 0) {
+          // eslint-disable-next-line no-console
           console.log(`${chalk.bold('Most Common Change Reasons:')}`);
           patterns.common_change_reasons.slice(0, 5).forEach((reason, index) => {
+            // eslint-disable-next-line no-console
             console.log(`   ${index + 1}. ${chalk.green(reason.reason)} (${reason.count} times)`);
           });
+          // eslint-disable-next-line no-console
           console.log();
         }
 
         // Priority distribution
         if (patterns.priority_distribution.length > 0) {
+          // eslint-disable-next-line no-console
           console.log(`${chalk.bold('Priority Distribution:')}`);
           patterns.priority_distribution.forEach(dist => {
             const bar = '█'.repeat(Math.max(1, Math.floor(dist.count / 2)));
+            // eslint-disable-next-line no-console
             console.log(`   Priority ${dist.priority}: ${chalk.blue(bar)} ${dist.count}`);
           });
+          // eslint-disable-next-line no-console
           console.log();
         }
 
         // Trend analysis
+        // eslint-disable-next-line no-console
         console.log(`${chalk.bold('Trend Analysis:')}`);
+        // eslint-disable-next-line no-console
         console.log(
           `   Increasing Priority: ${chalk.green('↗')} ${patterns.trend_analysis.increasing_count} tasks`
         );
+        // eslint-disable-next-line no-console
         console.log(
           `   Decreasing Priority: ${chalk.red('↘')} ${patterns.trend_analysis.decreasing_count} tasks`
         );
+        // eslint-disable-next-line no-console
         console.log(
           `   Stable Priority: ${chalk.blue('→')} ${patterns.trend_analysis.stable_count} tasks`
         );
@@ -606,18 +653,25 @@ export function registerPriorityCommands(program: Command): void {
           return;
         }
 
+        // eslint-disable-next-line no-console
         console.log(chalk.blue.bold(`\n📊 Priority Statistics (Last ${days} days)\n`));
 
         // Summary stats
+        // eslint-disable-next-line no-console
         console.log(`${chalk.bold('Summary:')}`);
+        // eslint-disable-next-line no-console
         console.log(`   Total Priority Changes: ${chalk.yellow(stats.total_changes)}`);
+        // eslint-disable-next-line no-console
         console.log(`   Tasks Affected: ${chalk.cyan(stats.most_changed_tasks.length)}`);
+        // eslint-disable-next-line no-console
         console.log(
           `   Avg Changes per Task: ${chalk.green(stats.avg_changes_per_task.toFixed(1))}`
         );
+        // eslint-disable-next-line no-console
         console.log();
 
         // Priority trends
+        // eslint-disable-next-line no-console
         console.log(`${chalk.bold('Priority Trends:')}`);
         const total =
           stats.priority_trends.increases +
@@ -626,34 +680,43 @@ export function registerPriorityCommands(program: Command): void {
         if (total > 0) {
           const increasesPct = ((stats.priority_trends.increases / total) * 100).toFixed(1);
           const decreasesPct = ((stats.priority_trends.decreases / total) * 100).toFixed(1);
+          // eslint-disable-next-line no-console
           console.log(
             `   📈 Increases: ${chalk.red(`${stats.priority_trends.increases} (${increasesPct}%)`)}`
           );
+          // eslint-disable-next-line no-console
           console.log(
             `   📉 Decreases: ${chalk.green(`${stats.priority_trends.decreases} (${decreasesPct}%)`)}`
           );
         }
+        // eslint-disable-next-line no-console
         console.log();
 
         // Most changed tasks
         if (stats.most_changed_tasks.length > 0) {
+          // eslint-disable-next-line no-console
           console.log(`${chalk.bold('Most Changed Tasks:')}`);
           stats.most_changed_tasks.slice(0, 5).forEach((item, index) => {
             const changeIcon = getChangeFrequencyIcon(item.change_count);
+            // eslint-disable-next-line no-console
             console.log(
               `   ${index + 1}. ${changeIcon} ${item.task.title} (${chalk.yellow(item.change_count)} changes)`
             );
             if (item.latest_reason) {
+              // eslint-disable-next-line no-console
               console.log(`      ${chalk.dim('Last reason:')} ${chalk.italic(item.latest_reason)}`);
             }
           });
+          // eslint-disable-next-line no-console
           console.log();
         }
 
         // Common reasons
         if (stats.common_reasons.length > 0) {
+          // eslint-disable-next-line no-console
           console.log(`${chalk.bold('Common Reasons for Priority Changes:')}`);
           stats.common_reasons.forEach((reason, index) => {
+            // eslint-disable-next-line no-console
             console.log(
               `   ${index + 1}. "${reason.reason}" (${chalk.yellow(reason.count)} times)`
             );
@@ -689,29 +752,39 @@ export function registerPriorityCommands(program: Command): void {
         }
 
         if (patterns.length === 0) {
+          // eslint-disable-next-line no-console
           console.log(chalk.yellow('No significant priority patterns detected.'));
           return;
         }
 
+        // eslint-disable-next-line no-console
         console.log(chalk.blue.bold('\n🔍 Priority Pattern Analysis\n'));
 
         patterns.forEach((pattern, index) => {
           const patternIcon = getPatternIcon(pattern.pattern_type);
           const scoreColor = getScoreColor(pattern.score);
 
+          // eslint-disable-next-line no-console
           console.log(
             `${index + 1}. ${patternIcon} ${chalk.bold(pattern.pattern_type.replace('_', ' ').toUpperCase())}`
           );
+          // eslint-disable-next-line no-console
           console.log(`   Task: ${pattern.task_id}`);
+          // eslint-disable-next-line no-console
           console.log(`   Score: ${scoreColor(pattern.score.toFixed(2))}`);
+          // eslint-disable-next-line no-console
           console.log(`   ${chalk.dim(pattern.description)}`);
+          // eslint-disable-next-line no-console
           console.log();
 
           if (pattern.recommendations.length > 0) {
+            // eslint-disable-next-line no-console
             console.log(`   ${chalk.bold('Recommendations:')}`);
             pattern.recommendations.forEach(rec => {
+              // eslint-disable-next-line no-console
               console.log(`   • ${chalk.cyan(rec)}`);
             });
+            // eslint-disable-next-line no-console
             console.log();
           }
         });
@@ -748,28 +821,39 @@ export function registerPriorityCommands(program: Command): void {
           return;
         }
 
+        // eslint-disable-next-line no-console
         console.log(chalk.blue.bold(`\n📋 Priority Change Summary (Last ${days} days)\n`));
 
+        // eslint-disable-next-line no-console
         console.log(`${chalk.bold('Activity Overview:')}`);
+        // eslint-disable-next-line no-console
         console.log(`   Total Changes: ${chalk.yellow(summary.changes_count)}`);
+        // eslint-disable-next-line no-console
         console.log(`   Tasks Affected: ${chalk.cyan(summary.affected_tasks)}`);
+        // eslint-disable-next-line no-console
         console.log(
           `   Avg Priority Change: ${chalk.green(summary.avg_priority_change.toFixed(1))}`
         );
+        // eslint-disable-next-line no-console
         console.log();
 
         if (summary.most_active_day.changes > 0) {
+          // eslint-disable-next-line no-console
           console.log(`${chalk.bold('Peak Activity:')}`);
+          // eslint-disable-next-line no-console
           console.log(
             `   Most Active Day: ${chalk.yellow(summary.most_active_day.date)} (${summary.most_active_day.changes} changes)`
           );
+          // eslint-disable-next-line no-console
           console.log();
         }
 
         if (summary.busiest_hours.length > 0) {
+          // eslint-disable-next-line no-console
           console.log(`${chalk.bold('Busiest Hours:')}`);
           summary.busiest_hours.slice(0, 3).forEach((hour, index) => {
             const hourStr = `${hour.hour}:00`;
+            // eslint-disable-next-line no-console
             console.log(`   ${index + 1}. ${chalk.cyan(hourStr)} (${hour.changes} changes)`);
           });
         }

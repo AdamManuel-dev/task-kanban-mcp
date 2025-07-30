@@ -12,6 +12,7 @@ import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 import { logger } from '../utils/logger';
 import type { DatabaseConnection, QueryParameters } from '../database/connection';
+import type { ApiKeyRow } from '../database/kyselySchema';
 import { BaseServiceError } from '../utils/errors';
 
 export interface ApiKey {
@@ -136,13 +137,13 @@ export class ApiKeyService {
       const row = await this.db.queryOne(
         `SELECT * FROM api_keys WHERE key_hash = ? AND is_active = 1`,
         [keyHash]
-      ) as any;
+      );
 
       if (!row) {
         return { isValid: false, reason: 'API key not found' };
       }
 
-      const apiKey = this.deserializeApiKey(row);
+      const apiKey = this.deserializeApiKey(row as ApiKeyRow);
 
       // Check if key is expired
       if (apiKey.expiresAt && apiKey.expiresAt < new Date()) {
@@ -299,9 +300,9 @@ export class ApiKeyService {
    */
   async getApiKeyById(keyId: string): Promise<ApiKey | null> {
     try {
-      const row = await this.db.queryOne(`SELECT * FROM api_keys WHERE id = ?`, [keyId]) as any;
+      const row = await this.db.queryOne(`SELECT * FROM api_keys WHERE id = ?`, [keyId]);
 
-      return row ? this.deserializeApiKey(row) : null;
+      return row ? this.deserializeApiKey(row as ApiKeyRow) : null;
     } catch (error) {
       logger.error('Failed to get API key by ID', { error, keyId });
       return null;
@@ -351,7 +352,7 @@ export class ApiKeyService {
       }
 
       const rows = await this.db.query(query, params);
-      return rows.map((row: any) => this.deserializeApiKey(row));
+      return rows.map((row: unknown) => this.deserializeApiKey(row as ApiKeyRow));
     } catch (error) {
       logger.error('Failed to list API keys', { error, options });
       return [];
@@ -438,11 +439,14 @@ export class ApiKeyService {
         expiredKeys: stats?.expiredKeys || 0,
         revokedKeys: stats?.revokedKeys || 0,
         totalUsage: stats?.totalUsage || 0,
-        topUsedKeys: topUsedRows.map((row: any) => ({
-          id: row.id,
-          name: row.name,
-          usageCount: row.usage_count,
-        })),
+        topUsedKeys: topUsedRows.map((row: unknown) => {
+          const apiKeyRow = row as ApiKeyRow;
+          return {
+            id: apiKeyRow.id,
+            name: apiKeyRow.name,
+            usageCount: apiKeyRow.usage_count,
+          };
+        }),
       };
     } catch (error) {
       logger.error('Failed to get usage stats', { error });
@@ -484,7 +488,7 @@ export class ApiKeyService {
     }
   }
 
-  private deserializeApiKey(row: any): ApiKey {
+  private deserializeApiKey(row: ApiKeyRow): ApiKey {
     return {
       id: row.id,
       keyHash: row.key_hash,
