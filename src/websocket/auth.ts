@@ -13,7 +13,7 @@ export class WebSocketAuth {
   private initializeApiKeys(): void {
     // Initialize with API keys from environment - no hardcoded defaults
     const defaultApiKeys = process.env.DEFAULT_API_KEYS?.split(',') ?? [];
-    
+
     // Only add valid API keys (minimum length requirements)
     defaultApiKeys.forEach((key, index) => {
       if (key && key.length >= 32) {

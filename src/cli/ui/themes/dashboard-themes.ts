@@ -317,7 +317,7 @@ export class ThemeHelper {
    * Update theme
    */
   setTheme(themeName: string): void {
-    (this as unknown).theme = getTheme(themeName);
+    (this as any).theme = getTheme(themeName);
   }
 
   /**

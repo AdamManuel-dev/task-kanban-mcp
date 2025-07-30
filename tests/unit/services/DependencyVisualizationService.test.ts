@@ -14,7 +14,7 @@ describe('DependencyVisualizationService', () => {
 
   let testBoardId: string;
   let testColumnId: string;
-  let testTasks: { id: string; title: string }[] = [];
+  let testTasks: Array<{ id: string; title: string }> = [];
 
   beforeAll(async () => {
     await dbConnection.initialize({ skipSchema: false });

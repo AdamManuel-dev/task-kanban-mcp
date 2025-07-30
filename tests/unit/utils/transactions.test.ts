@@ -77,7 +77,7 @@ describe('Transaction Utilities', () => {
 
       it('should handle transaction timeout', async () => {
         const mockOperations = jest.fn().mockImplementation(
-          () =>
+          async () =>
             new Promise<void>(resolve => {
               setTimeout(resolve, 1000);
             })
@@ -220,7 +220,7 @@ describe('Transaction Utilities', () => {
   describe('batchInTransaction utility', () => {
     it('should process items in batches', async () => {
       const items = [1, 2, 3, 4, 5];
-      const mockOperation = jest.fn().mockImplementation(item => Promise.resolve(item * 2));
+      const mockOperation = jest.fn().mockImplementation(async item => Promise.resolve(item * 2));
 
       mockDbConnection.transaction.mockImplementation(async callback => {
         await Promise.resolve();

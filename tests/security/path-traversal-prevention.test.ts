@@ -1,7 +1,7 @@
 /**
  * @fileoverview Path traversal prevention verification tests
  * @lastmodified 2025-07-28T10:30:00Z
- * 
+ *
  * Features: Path traversal attack prevention, file access validation, directory restriction
  * Main APIs: File operations, path validation, security enforcement
  * Constraints: No access outside allowed directories, all paths must be validated
@@ -23,59 +23,59 @@ describe('Path Traversal Prevention Verification', () => {
     '..\\..\\..\\windows\\system32\\config\\sam',
     '../../../root/.ssh/id_rsa',
     '..\\..\\..\\users\\administrator\\desktop\\secret.txt',
-    
+
     // URL encoded path traversal
     '%2e%2e%2f%2e%2e%2f%2e%2e%2f%65%74%63%2f%70%61%73%73%77%64',
     '%2e%2e%5c%2e%2e%5c%2e%2e%5c%77%69%6e%64%6f%77%73%5c%73%79%73%74%65%6d%33%32',
-    
+
     // Double URL encoded
     '%252e%252e%252f%252e%252e%252f%252e%252e%252f%65%74%63%252f%70%61%73%73%77%64',
-    
+
     // Unicode encoded path traversal
     '\\u002e\\u002e\\u002f\\u002e\\u002e\\u002f\\u002e\\u002e\\u002f\\u0065\\u0074\\u0063\\u002f\\u0070\\u0061\\u0073\\u0073\\u0077\\u0064',
-    
+
     // UTF-8 overlong encoding
     '%c0%ae%c0%ae%c0%af%c0%ae%c0%ae%c0%af%c0%ae%c0%ae%c0%af%65%74%63%2f%70%61%73%73%77%64',
-    
+
     // Null byte injection
     '../../../etc/passwd\\x00.txt',
     '..\\..\\..\\windows\\system32\\config\\sam\\x00.log',
-    
+
     // Directory traversal with different separators
     '..../../etc/passwd',
     '..\\\\..\\\\..\\\\windows\\\\system32',
-    
+
     // Nested directory traversal
     'dir/../../../etc/passwd',
     'folder\\..\\..\\..\\windows\\system32',
-    
+
     // Absolute path attempts
     '/etc/passwd',
     'C:\\windows\\system32\\config\\sam',
     '/root/.ssh/id_rsa',
     'C:\\Users\\Administrator\\Desktop\\secret.txt',
-    
+
     // UNC path attempts (Windows)
     '\\\\server\\share\\sensitive\\file.txt',
     '\\\\?\\C:\\windows\\system32\\config\\sam',
-    
+
     // Mix of forward and backward slashes
     '../..\\../etc/passwd',
     '..\\../..\\windows/system32',
-    
+
     // Case variations
     '../../../ETC/PASSWD',
     '..\\..\\..\\WINDOWS\\SYSTEM32\\CONFIG\\SAM',
-    
+
     // Bypassing filters with extra characters
     '....//....//....//etc//passwd',
     '....\\\\....\\\\....\\\\windows\\\\system32',
-    
+
     // Hidden files and directories
     '../../../.ssh/id_rsa',
     '../../../.config/sensitive',
     '..\\..\\..\\AppData\\Local\\secrets',
-    
+
     // System configuration files
     '../../../proc/version',
     '../../../proc/self/environ',
@@ -90,7 +90,7 @@ describe('Path Traversal Prevention Verification', () => {
         '..\\..\\..\\windows\\system32',
         '../../../root/.ssh/id_rsa',
       ];
-      
+
       basicPayloads.forEach(payload => {
         const result = validateFilePath(payload);
         expect(result.safe).toBe(false);
@@ -100,39 +100,35 @@ describe('Path Traversal Prevention Verification', () => {
 
     test('should reject all path traversal attempts', () => {
       const failedPayloads: string[] = [];
-      
+
       PATH_TRAVERSAL_PAYLOADS.forEach(payload => {
         const result = validateFilePath(payload);
-        
+
         if (result.safe) {
           failedPayloads.push(payload);
         }
       });
-      
+
       if (failedPayloads.length > 0) {
         console.warn('Failed to block these payloads:');
         failedPayloads.forEach(p => console.warn(`  - ${p}`));
       }
-      
+
       // Allow some edge cases that might be legitimate but expect most to be blocked
       expect(failedPayloads.length).toBeLessThan(PATH_TRAVERSAL_PAYLOADS.length * 0.2); // Allow up to 20%
     });
 
     test('should allow safe relative paths', () => {
-      const safePaths = [
-        'safe-file.txt',
-        'documents/report.pdf',
-        'readme.md',
-      ];
+      const safePaths = ['safe-file.txt', 'documents/report.pdf', 'readme.md'];
 
       safePaths.forEach(safePath => {
         const result = validateFilePath(safePath);
-        
+
         // Some paths might have warnings but still be safe
         if (!result.safe) {
           console.warn(`Path blocked (might be overly strict): ${safePath}`, result.warnings);
         }
-        
+
         // For now, just ensure basic safe paths work - we can adjust the function later
         if (safePath === 'safe-file.txt' || safePath === 'readme.md') {
           expect(result.safe).toBe(true);
@@ -142,7 +138,7 @@ describe('Path Traversal Prevention Verification', () => {
 
     test('should enforce allowed directory restrictions', () => {
       const allowedDirs = ['/app/data', '/app/logs', '/app/temp'];
-      
+
       // Paths within allowed directories should pass
       const allowedPaths = [
         '/app/data/file.txt',
@@ -186,7 +182,7 @@ describe('Path Traversal Prevention Verification', () => {
 
       dangerousFiles.forEach(dangerousFile => {
         const result = validateFilePath(dangerousFile);
-        
+
         expect(result.warnings.some(w => w.includes('dangerous file extension'))).toBe(true);
       });
     });
@@ -200,7 +196,7 @@ describe('Path Traversal Prevention Verification', () => {
 
       pathsToNormalize.forEach(pathToNormalize => {
         const result = validateFilePath(pathToNormalize);
-        
+
         expect(result.normalizedPath).not.toContain('/..');
         expect(result.normalizedPath).not.toContain('/./');
       });
@@ -214,15 +210,15 @@ describe('Path Traversal Prevention Verification', () => {
         '..\\..\\..\\windows\\system32',
         '%2e%2e%2f%2e%2e%2f%65%74%63%2f%70%61%73%73%77%64',
       ];
-      
+
       maliciousPayloads.forEach(payload => {
         const result = inputSanitizer.sanitizeFilePath(payload);
-        
+
         // Should either be modified or detected as problematic
         if (result.modified) {
           expect(result.warnings.length).toBeGreaterThan(0);
         }
-        
+
         // Should not contain obvious traversal patterns after sanitization
         expect(result.sanitized).not.toMatch(/\.\.[\/\\]/);
       });
@@ -238,7 +234,7 @@ describe('Path Traversal Prevention Verification', () => {
 
       legitimatePaths.forEach(legitPath => {
         const result = inputSanitizer.sanitizeFilePath(legitPath);
-        
+
         // Should not be heavily modified
         expect(result.sanitized).toBe(legitPath);
         expect(result.modified).toBe(false);
@@ -253,10 +249,10 @@ describe('Path Traversal Prevention Verification', () => {
 
       encodedPayloads.forEach(payload => {
         const result = inputSanitizer.sanitizeFilePath(payload);
-        
+
         expect(result.modified).toBe(true);
         expect(result.warnings).toContain('URL encoded content was decoded');
-        
+
         // After decoding and sanitization, should not contain traversal patterns
         expect(result.sanitized).not.toMatch(/\.\.[\/\\]/);
       });
@@ -268,7 +264,7 @@ describe('Path Traversal Prevention Verification', () => {
       // Search for file operations in the codebase
       const srcDir = path.join(__dirname, '../../src');
       const files = getAllTypeScriptFiles(srcDir);
-      
+
       const fileOperations = [
         'fs.readFile',
         'fs.writeFile',
@@ -297,9 +293,9 @@ describe('Path Traversal Prevention Verification', () => {
             if (line.includes(operation)) {
               // Check if this operation validates the path
               const context = lines.slice(Math.max(0, index - 3), index + 3).join('\\n');
-              
+
               // Look for path validation patterns in the context
-              const hasValidation = 
+              const hasValidation =
                 context.includes('validateFilePath') ||
                 context.includes('sanitizeFilePath') ||
                 context.includes('path.resolve') ||
@@ -315,7 +311,7 @@ describe('Path Traversal Prevention Verification', () => {
                 unsafeOperations.push({
                   file: path.relative(process.cwd(), filePath),
                   line: index + 1,
-                  operation
+                  operation,
                 });
               }
             }
@@ -324,18 +320,20 @@ describe('Path Traversal Prevention Verification', () => {
       });
 
       // Allow some operations that are inherently safe or in test files
-      const safeOperations = unsafeOperations.filter(op => 
-        !op.file.includes('/test') &&
-        !op.file.includes('/script') &&
-        !op.file.includes('verify-install.js')
+      const safeOperations = unsafeOperations.filter(
+        op =>
+          !op.file.includes('/test') &&
+          !op.file.includes('/script') &&
+          !op.file.includes('verify-install.js')
       );
 
-      if (safeOperations.length > 5) { // Allow some flexibility
+      if (safeOperations.length > 5) {
+        // Allow some flexibility
         const errorMessage = safeOperations
           .slice(0, 10) // Show first 10
           .map(op => `${op.file}:${op.line} - ${op.operation}`)
           .join('\\n');
-        
+
         console.warn(`File operations without apparent path validation:\\n${errorMessage}`);
       }
 
@@ -347,7 +345,7 @@ describe('Path Traversal Prevention Verification', () => {
       // This is a design pattern test - we should use path validation everywhere
       const srcDir = path.join(__dirname, '../../src');
       const files = getAllTypeScriptFiles(srcDir);
-      
+
       const dangerousPatterns = [
         /path\.join\([^)]*req\.(body|query|params)/i, // Direct join with request data
         /\$\{.*req\.(body|query|params).*\}.*\.(txt|json|log|dat)/i, // Template literal file names
@@ -366,7 +364,7 @@ describe('Path Traversal Prevention Verification', () => {
               violations.push({
                 file: path.relative(process.cwd(), filePath),
                 line: index + 1,
-                pattern: pattern.source
+                pattern: pattern.source,
               });
             }
           });
@@ -377,7 +375,7 @@ describe('Path Traversal Prevention Verification', () => {
         const errorMessage = violations
           .map(v => `${v.file}:${v.line} - Pattern: ${v.pattern}`)
           .join('\\n');
-        
+
         console.warn(`Potential unsafe path construction:\\n${errorMessage}`);
       }
 
@@ -398,7 +396,7 @@ describe('Path Traversal Prevention Verification', () => {
 
       configPaths.forEach(configPath => {
         const result = validateFilePath(configPath);
-        
+
         expect(result.safe).toBe(false);
       });
     });
@@ -413,7 +411,7 @@ describe('Path Traversal Prevention Verification', () => {
 
       legitimateConfigPaths.forEach(configPath => {
         const result = validateFilePath(configPath, allowedDirs);
-        
+
         expect(result.safe).toBe(true);
       });
     });
@@ -431,7 +429,7 @@ describe('Path Traversal Prevention Verification', () => {
 
       systemLogPaths.forEach(logPath => {
         const result = validateFilePath(logPath);
-        
+
         expect(result.safe).toBe(false);
       });
     });
@@ -446,7 +444,7 @@ describe('Path Traversal Prevention Verification', () => {
 
       backupPaths.forEach(backupPath => {
         const result = validateFilePath(backupPath);
-        
+
         expect(result.safe).toBe(false);
       });
     });
@@ -467,9 +465,9 @@ describe('Path Traversal Prevention Verification', () => {
     });
 
     test('should handle very long path traversal attempts', () => {
-      const longTraversalPath = '../'.repeat(50) + 'etc/passwd';
+      const longTraversalPath = `${'../'.repeat(50)}etc/passwd`;
       const result = validateFilePath(longTraversalPath);
-      
+
       expect(result.safe).toBe(false);
       expect(result.warnings).toContain('Path traversal detected');
     });
@@ -482,7 +480,7 @@ describe('Path Traversal Prevention Verification', () => {
 
       nullBytePaths.forEach(nullPath => {
         const result = inputSanitizer.sanitizeFilePath(nullPath);
-        
+
         expect(result.modified).toBe(true);
         expect(result.sanitized).not.toContain('\\x00');
         expect(result.sanitized).not.toContain('\\u0000');
@@ -508,15 +506,15 @@ describe('Path Traversal Prevention Verification', () => {
    */
   function getAllTypeScriptFiles(dir: string): string[] {
     const files: string[] = [];
-    
+
     function scanDirectory(currentDir: string): void {
       try {
         const items = fs.readdirSync(currentDir);
-        
+
         for (const item of items) {
           const fullPath = path.join(currentDir, item);
           const stat = fs.statSync(fullPath);
-          
+
           if (stat.isDirectory() && !item.includes('node_modules')) {
             scanDirectory(fullPath);
           } else if (item.endsWith('.ts') || item.endsWith('.tsx')) {
@@ -527,7 +525,7 @@ describe('Path Traversal Prevention Verification', () => {
         // Skip directories we can't read
       }
     }
-    
+
     scanDirectory(dir);
     return files;
   }

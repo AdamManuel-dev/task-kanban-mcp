@@ -282,13 +282,13 @@ export class MCPPromptRegistry {
         case 'task_planning':
           return await this.generateTaskPlanningPrompt(args);
         case 'task_breakdown':
-          return await PromptService.generateTaskBreakdownBasicPrompt(args);
+          return await MCPPromptRegistry.generateTaskBreakdownBasicPrompt(args);
         case 'sprint_planning':
           return await this.generateSprintPlanningBasicPrompt(args);
         case 'analyze_project_status':
           return await this.generateProjectStatusPrompt(args);
         case 'task_breakdown_assistant':
-          return await PromptService.generateTaskBreakdownPrompt(args);
+          return await MCPPromptRegistry.generateTaskBreakdownPrompt(args);
         case 'blocker_resolution_helper':
           return await this.generateBlockerResolutionPrompt(args);
         case 'sprint_planning_assistant':
@@ -315,7 +315,7 @@ export class MCPPromptRegistry {
   }
 
   // Prompt generators
-  private async generateProjectStatusPrompt(args: unknown): Promise<PromptContent> {
+  private async generateProjectStatusPrompt(args: Record<string, unknown>): Promise<PromptContent> {
     const { board_id: boardId, focus_area: focusArea } = args;
 
     if (!boardId) {
@@ -330,7 +330,7 @@ export class MCPPromptRegistry {
       detail_level: 'comprehensive',
     });
 
-    const analytics = await this.services.boardService.getBoardWithStats(boardId);
+    const analytics = await this.services.boardService.getBoardWithStats(boardId as string);
 
     let focusInstruction = '';
     if (focusArea) {
@@ -368,7 +368,7 @@ Format your response in a clear, actionable manner suitable for stakeholders.`,
     };
   }
 
-  private static generateTaskBreakdownPrompt(args: unknown): PromptContent {
+  private static generateTaskBreakdownPrompt(args: Record<string, unknown>): PromptContent {
     const { task_description: taskDescription, context, timeline } = args;
 
     if (!taskDescription) {
@@ -415,7 +415,9 @@ Format the subtasks in a way that can be easily added to a kanban board.`,
     };
   }
 
-  private async generateBlockerResolutionPrompt(args: unknown): Promise<PromptContent> {
+  private async generateBlockerResolutionPrompt(
+    args: Record<string, unknown>
+  ): Promise<PromptContent> {
     const { board_id: boardId, task_id: taskId } = args;
 
     let blockedTasks;
@@ -423,13 +425,13 @@ Format the subtasks in a way that can be easily added to a kanban board.`,
 
     if (taskId) {
       // Single task analysis
-      const task = await this.services.taskService.getTaskById(taskId);
+      const task = await this.services.taskService.getTaskById(taskId as string);
       if (!task) {
         throw new Error(`Task not found: ${String(taskId)}`);
       }
       blockedTasks = [task];
 
-      const taskContext = await this.services.contextService.getTaskContext(taskId, {
+      const taskContext = await this.services.contextService.getTaskContext(taskId as string, {
         include_completed: true,
         days_back: 30,
         max_items: 100,
@@ -439,7 +441,7 @@ Format the subtasks in a way that can be easily added to a kanban board.`,
       contextInfo = `\nTask Context:\n${String(taskContext)}`;
     } else {
       // Board-wide analysis
-      blockedTasks = await this.services.taskService.getBlockedTasks(boardId);
+      blockedTasks = await this.services.taskService.getBlockedTasks(boardId as string | undefined);
 
       if (boardId) {
         const projectContext = await this.services.contextService.getProjectContext({
@@ -484,7 +486,9 @@ Also provide:
     };
   }
 
-  private async generateSprintPlanningPrompt(args: unknown): Promise<PromptContent> {
+  private async generateSprintPlanningPrompt(
+    args: Record<string, unknown>
+  ): Promise<PromptContent> {
     const {
       board_id: boardId,
       sprint_duration: sprintDuration,
@@ -503,7 +507,7 @@ Also provide:
       detail_level: 'detailed',
     });
 
-    const analytics = await this.services.boardService.getBoardWithStats(boardId);
+    const analytics = await this.services.boardService.getBoardWithStats(boardId as string);
 
     const durationInfo = sprintDuration ? `\nSprint Duration: ${String(sprintDuration)}` : '';
     const capacityInfo = teamCapacity ? `\nTeam Capacity: ${String(teamCapacity)}` : '';
@@ -543,7 +547,9 @@ Format the recommendations in a way that can guide sprint planning meetings.`,
     };
   }
 
-  private async generatePriorityRecommendationPrompt(args: unknown): Promise<PromptContent> {
+  private async generatePriorityRecommendationPrompt(
+    args: Record<string, unknown>
+  ): Promise<PromptContent> {
     const { board_id: boardId, criteria } = args;
 
     if (!boardId) {
@@ -595,7 +601,9 @@ Consider factors like:
     };
   }
 
-  private async generateProgressReportPrompt(args: unknown): Promise<PromptContent> {
+  private async generateProgressReportPrompt(
+    args: Record<string, unknown>
+  ): Promise<PromptContent> {
     const { board_id: boardId, timeframe, audience } = args;
 
     if (!boardId) {
@@ -610,7 +618,7 @@ Consider factors like:
       detail_level: 'comprehensive',
     });
 
-    const analytics = await this.services.boardService.getBoardWithStats(boardId);
+    const analytics = await this.services.boardService.getBoardWithStats(boardId as string);
 
     const timeframeInfo = timeframe ? `\nTimeframe: ${String(timeframe)}` : '';
     const audienceInfo = audience ? `\nTarget Audience: ${String(audience)}` : '';
@@ -666,7 +674,9 @@ Tailor the language and detail level for the specified audience.`,
     };
   }
 
-  private async generateTaskEstimationPrompt(args: unknown): Promise<PromptContent> {
+  private async generateTaskEstimationPrompt(
+    args: Record<string, unknown>
+  ): Promise<PromptContent> {
     const { task_description: taskDescription, board_id: boardId, complexity } = args;
 
     if (!taskDescription) {
@@ -676,7 +686,7 @@ Tailor the language and detail level for the specified audience.`,
     let historicalContext = '';
     if (boardId) {
       const recentTasks = await this.services.taskService.getTasks({
-        board_id: boardId,
+        board_id: boardId as string,
         limit: 50,
         sortBy: 'updated_at',
         sortOrder: 'desc',
@@ -732,7 +742,9 @@ Base your estimates on the historical data provided and industry best practices.
     };
   }
 
-  private async generateWorkflowOptimizationPrompt(args: unknown): Promise<PromptContent> {
+  private async generateWorkflowOptimizationPrompt(
+    args: Record<string, unknown>
+  ): Promise<PromptContent> {
     const { board_id: boardId, optimization_goal: optimizationGoal } = args;
 
     if (!boardId) {
@@ -747,7 +759,7 @@ Base your estimates on the historical data provided and industry best practices.
       detail_level: 'comprehensive',
     });
 
-    const analytics = await this.services.boardService.getBoardWithStats(boardId);
+    const analytics = await this.services.boardService.getBoardWithStats(boardId as string);
 
     const goalInfo = optimizationGoal ? `\nOptimization Goal: ${String(optimizationGoal)}` : '';
 
@@ -802,7 +814,9 @@ Focus on the specified optimization goal while considering overall workflow effi
     };
   }
 
-  private async generateStandupPreparationPrompt(args: unknown): Promise<PromptContent> {
+  private async generateStandupPreparationPrompt(
+    args: Record<string, unknown>
+  ): Promise<PromptContent> {
     const { board_id: boardId, team_member: teamMember, since_date: sinceDate } = args;
 
     if (!boardId) {
@@ -810,11 +824,11 @@ Focus on the specified optimization goal while considering overall workflow effi
     }
 
     const sinceDateObj = sinceDate
-      ? new Date(sinceDate)
+      ? new Date(sinceDate as string | number)
       : new Date(Date.now() - 24 * 60 * 60 * 1000);
 
     const recentTasks = await this.services.taskService.getTasks({
-      board_id: boardId,
+      board_id: boardId as string,
       limit: 100,
       sortBy: 'updated_at',
       sortOrder: 'desc',
@@ -839,7 +853,7 @@ Focus on the specified optimization goal while considering overall workflow effi
             type: 'text',
             text: `Please help prepare standup content based on recent activity:
 
-Recent Task Updates (since ${String(String(sinceDate.toISOString()))}):
+Recent Task Updates (since ${String(sinceDateObj.toISOString())}):
 ${String(String(JSON.stringify(relevantTasks, null, 2)))}${String(memberInfo)}
 
 Please provide standup talking points for:
@@ -875,7 +889,9 @@ Format the content to be concise and suitable for a brief standup meeting (2-3 m
     };
   }
 
-  private async generateRetrospectiveInsightsPrompt(args: unknown): Promise<PromptContent> {
+  private async generateRetrospectiveInsightsPrompt(
+    args: Record<string, unknown>
+  ): Promise<PromptContent> {
     const { board_id: boardId, timeframe, focus_areas: focusAreas } = args;
 
     if (!boardId) {
@@ -890,7 +906,7 @@ Format the content to be concise and suitable for a brief standup meeting (2-3 m
       detail_level: 'comprehensive',
     });
 
-    const analytics = await this.services.boardService.getBoardWithStats(boardId);
+    const analytics = await this.services.boardService.getBoardWithStats(boardId as string);
 
     const timeframeInfo = timeframe ? `\nTimeframe: ${String(timeframe)}` : '';
     const focusInfo = focusAreas ? `\nFocus Areas: ${String(focusAreas)}` : '';
@@ -953,7 +969,7 @@ Format the insights to encourage constructive discussion and actionable outcomes
     };
   }
 
-  private async generateTaskPlanningPrompt(args: unknown): Promise<PromptContent> {
+  private async generateTaskPlanningPrompt(args: Record<string, unknown>): Promise<PromptContent> {
     const boardId = args.board_id ?? args.boardId;
     const planningHorizon = args.planning_horizon ?? args.planningHorizon;
     const focusArea = args.focus_area ?? args.focusArea;
@@ -997,7 +1013,7 @@ Focus on actionable recommendations that will improve team productivity and proj
     };
   }
 
-  private static generateTaskBreakdownBasicPrompt(args: unknown): PromptContent {
+  private static generateTaskBreakdownBasicPrompt(args: Record<string, unknown>): PromptContent {
     // Handle both task_description and taskId (if taskId is provided, create a generic description)
     const taskDescription =
       args.task_description ||
@@ -1040,7 +1056,9 @@ Make sure each subtask is:
     };
   }
 
-  private async generateSprintPlanningBasicPrompt(args: unknown): Promise<PromptContent> {
+  private async generateSprintPlanningBasicPrompt(
+    args: Record<string, unknown>
+  ): Promise<PromptContent> {
     const boardId = args.board_id ?? args.boardId;
     const sprintDuration = args.sprint_duration ?? args.sprintDuration;
     const teamCapacity = args.team_capacity ?? args.teamCapacity;

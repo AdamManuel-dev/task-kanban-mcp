@@ -144,7 +144,7 @@ export function createMigrateSafeCommand(): Command {
     .option('--dry-run', 'Show what would be rolled back without executing')
     .action(async (targetVersion: string, options: RollbackOptions) => {
       const version = parseInt(targetVersion, 10);
-      if (isNaN(version)) {
+      if (Number.isNaN(version)) {
         console.error(chalk.red('❌ Invalid version number'));
         process.exit(1);
       }

@@ -24,7 +24,7 @@ interface AuthenticatedRequest extends Request {
 
 interface Services {
   taskService: {
-    getTasks: (options?: any) => Promise<any>;
+    getTasks: (options?: unknown) => Promise<unknown>;
   };
 }
 

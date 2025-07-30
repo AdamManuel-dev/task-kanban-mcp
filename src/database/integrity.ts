@@ -123,6 +123,14 @@ export class DatabaseIntegrityChecker {
   }
 
   /**
+   * Helper to extract count from query result
+   */
+  private getCountFromResult(result: unknown[]): number {
+    const firstRow = result[0] as { count?: number } | undefined;
+    return firstRow?.count ?? 0;
+  }
+
+  /**
    * Run a comprehensive integrity check covering all aspects
    *
    * @returns {Promise<FullIntegrityCheckResult>} Complete integrity check results
@@ -385,7 +393,7 @@ export class DatabaseIntegrityChecker {
         AND t1.parent_task_id NOT IN (SELECT id FROM tasks WHERE archived = FALSE)
       `);
 
-      const invalidParentCount = invalidParentTasks[0]?.count ?? 0;
+      const invalidParentCount = this.getCountFromResult(invalidParentTasks);
       if (invalidParentCount > 0) {
         warnings.push(`Found ${invalidParentCount} tasks with invalid parent references`);
         metadata.invalidParentTasks = invalidParentCount;
@@ -404,7 +412,7 @@ export class DatabaseIntegrityChecker {
         )
       `);
 
-      const unusedTagsCount = unusedTagsWithReferences[0]?.count ?? 0;
+      const unusedTagsCount = this.getCountFromResult(unusedTagsWithReferences);
       if (unusedTagsCount > 0) {
         warnings.push(`Found ${unusedTagsCount} tags with zero usage count but active references`);
         metadata.unusedTagsWithReferences = unusedTagsCount;
@@ -431,8 +439,8 @@ export class DatabaseIntegrityChecker {
       }
 
       logger.debug('Orphaned records check completed', {
-        invalidParentTasks: invalidParentTasks[0]?.count ?? 0,
-        unusedTags: unusedTagsWithReferences[0]?.count ?? 0,
+        invalidParentTasks: this.getCountFromResult(invalidParentTasks),
+        unusedTags: this.getCountFromResult(unusedTagsWithReferences),
         emptyColumns: emptyColumns.length,
       });
     } catch (error) {
@@ -535,7 +543,7 @@ export class DatabaseIntegrityChecker {
         metadata.affectedTasks = Object.keys(taskGroups).length;
         metadata.sampleCircularPaths = Object.values(taskGroups)
           .slice(0, 3)
-          .map(group => (group as unknown[])[0].path);
+          .map(group => group[0].path);
       }
 
       // Check for self-referencing tasks (parent_task_id = id)
@@ -644,9 +652,10 @@ export class DatabaseIntegrityChecker {
         WHERE priority IS NOT NULL AND priority NOT BETWEEN 0 AND 10
       `);
 
-      if (invalidPriorities[0]?.count > 0) {
-        errors.push(`Found ${invalidPriorities[0].count} tasks with invalid priority values`);
-        metadata.invalidPriorities = invalidPriorities[0].count;
+      const invalidPriorityCount = this.getCountFromResult(invalidPriorities);
+      if (invalidPriorityCount > 0) {
+        errors.push(`Found ${invalidPriorityCount} tasks with invalid priority values`);
+        metadata.invalidPriorities = invalidPriorityCount;
       }
 
       // Check note category values
@@ -656,9 +665,10 @@ export class DatabaseIntegrityChecker {
         WHERE category NOT IN ('general', 'progress', 'blocker', 'decision', 'question')
       `);
 
-      if (invalidNoteCategories[0]?.count > 0) {
-        errors.push(`Found ${invalidNoteCategories[0].count} notes with invalid category values`);
-        metadata.invalidNoteCategories = invalidNoteCategories[0].count;
+      const invalidNoteCategoryCount = this.getCountFromResult(invalidNoteCategories);
+      if (invalidNoteCategoryCount > 0) {
+        errors.push(`Found ${invalidNoteCategoryCount} notes with invalid category values`);
+        metadata.invalidNoteCategories = invalidNoteCategoryCount;
       }
 
       // Check dependency types
@@ -668,9 +678,10 @@ export class DatabaseIntegrityChecker {
         WHERE dependency_type NOT IN ('blocks', 'relates_to', 'duplicates')
       `);
 
-      if (invalidDependencyTypes[0]?.count > 0) {
-        errors.push(`Found ${invalidDependencyTypes[0].count} dependencies with invalid types`);
-        metadata.invalidDependencyTypes = invalidDependencyTypes[0].count;
+      const invalidDependencyCount = this.getCountFromResult(invalidDependencyTypes);
+      if (invalidDependencyCount > 0) {
+        errors.push(`Found ${invalidDependencyCount} dependencies with invalid types`);
+        metadata.invalidDependencyTypes = invalidDependencyCount;
       }
 
       // Check for negative priority values
@@ -680,9 +691,10 @@ export class DatabaseIntegrityChecker {
         WHERE priority < 0
       `);
 
-      if (negativePriorities[0]?.count > 0) {
-        warnings.push(`Found ${negativePriorities[0].count} tasks with negative priority values`);
-        metadata.negativePriorities = negativePriorities[0].count;
+      const negativePriorityCount = this.getCountFromResult(negativePriorities);
+      if (negativePriorityCount > 0) {
+        warnings.push(`Found ${negativePriorityCount} tasks with negative priority values`);
+        metadata.negativePriorities = negativePriorityCount;
       }
 
       // Check for invalid JSON in metadata columns
@@ -709,9 +721,12 @@ export class DatabaseIntegrityChecker {
           warnings.push(
             `Could not validate JSON in ${table}.${column}: ${(error as Error).message}`
           );
-        } else if (invalidJson && invalidJson[0]?.count > 0) {
-          errors.push(`Found ${invalidJson[0].count} invalid JSON values in ${table}.${column}`);
-          metadata[`invalid_json_${table}_${column}`] = invalidJson[0].count;
+        } else if (invalidJson) {
+          const invalidJsonCount = this.getCountFromResult(invalidJson);
+          if (invalidJsonCount > 0) {
+            errors.push(`Found ${invalidJsonCount} invalid JSON values in ${table}.${column}`);
+            metadata[`invalid_json_${table}_${column}`] = invalidJsonCount;
+          }
         }
       }
 
@@ -722,9 +737,10 @@ export class DatabaseIntegrityChecker {
         WHERE percent_complete < 0 OR percent_complete > 100
       `);
 
-      if (invalidProgress[0]?.count > 0) {
-        errors.push(`Found ${invalidProgress[0].count} tasks with invalid progress percentages`);
-        metadata.invalidProgress = invalidProgress[0].count;
+      const invalidProgressCount = this.getCountFromResult(invalidProgress);
+      if (invalidProgressCount > 0) {
+        errors.push(`Found ${invalidProgressCount} tasks with invalid progress percentages`);
+        metadata.invalidProgress = invalidProgressCount;
       }
 
       // Check for inconsistent subtask counts
@@ -734,19 +750,20 @@ export class DatabaseIntegrityChecker {
         WHERE tp.subtasks_completed > tp.subtasks_total
       `);
 
-      if (inconsistentSubtaskCounts[0]?.count > 0) {
+      const inconsistentSubtaskCount = this.getCountFromResult(inconsistentSubtaskCounts);
+      if (inconsistentSubtaskCount > 0) {
         errors.push(
-          `Found ${inconsistentSubtaskCounts[0].count} tasks with more completed than total subtasks`
+          `Found ${inconsistentSubtaskCount} tasks with more completed than total subtasks`
         );
-        metadata.inconsistentSubtaskCounts = inconsistentSubtaskCounts[0].count;
+        metadata.inconsistentSubtaskCounts = inconsistentSubtaskCount;
       }
 
       logger.debug('Data type constraint check completed', {
-        invalidPriorities: invalidPriorities[0]?.count ?? 0,
-        invalidNoteCategories: invalidNoteCategories[0]?.count ?? 0,
-        invalidDependencyTypes: invalidDependencyTypes[0]?.count ?? 0,
-        negativePriorities: negativePriorities[0]?.count ?? 0,
-        invalidProgress: invalidProgress[0]?.count ?? 0,
+        invalidPriorities: this.getCountFromResult(invalidPriorities),
+        invalidNoteCategories: this.getCountFromResult(invalidNoteCategories),
+        invalidDependencyTypes: this.getCountFromResult(invalidDependencyTypes),
+        negativePriorities: this.getCountFromResult(negativePriorities),
+        invalidProgress: this.getCountFromResult(invalidProgress),
       });
     } catch (error) {
       errors.push(`Data type constraint check failed: ${(error as Error).message}`);
@@ -850,9 +867,10 @@ export class DatabaseIntegrityChecker {
         WHERE rowid NOT IN (SELECT rowid FROM tasks_fts)
       `);
 
-      if (missingTasksFts[0]?.count > 0) {
-        warnings.push(`Found ${missingTasksFts[0].count} tasks missing from FTS table`);
-        metadata.missingTasksFts = missingTasksFts[0].count;
+      const missingTasksFtsCount = this.getCountFromResult(missingTasksFts);
+      if (missingTasksFtsCount > 0) {
+        warnings.push(`Found ${missingTasksFtsCount} tasks missing from FTS table`);
+        metadata.missingTasksFts = missingTasksFtsCount;
       }
 
       const missingNotesFts = await this.db.query(`
@@ -861,18 +879,19 @@ export class DatabaseIntegrityChecker {
         WHERE rowid NOT IN (SELECT rowid FROM notes_fts)
       `);
 
-      if (missingNotesFts[0]?.count > 0) {
-        warnings.push(`Found ${missingNotesFts[0].count} notes missing from FTS table`);
-        metadata.missingNotesFts = missingNotesFts[0].count;
+      const missingNotesFtsCount = this.getCountFromResult(missingNotesFts);
+      if (missingNotesFtsCount > 0) {
+        warnings.push(`Found ${missingNotesFtsCount} notes missing from FTS table`);
+        metadata.missingNotesFts = missingNotesFtsCount;
       }
 
       logger.debug('Full-text search consistency check completed', {
         tasksCountMatch: tasksCount?.count === tasksFtsCount?.count,
         notesCountMatch: notesCount?.count === notesFtsCount?.count,
-        orphanedTasksFts: orphanedTasksFts[0]?.count ?? 0,
-        orphanedNotesFts: orphanedNotesFts[0]?.count ?? 0,
-        missingTasksFts: missingTasksFts[0]?.count ?? 0,
-        missingNotesFts: missingNotesFts[0]?.count ?? 0,
+        orphanedTasksFts: this.getCountFromResult(orphanedTasksFts),
+        orphanedNotesFts: this.getCountFromResult(orphanedNotesFts),
+        missingTasksFts: this.getCountFromResult(missingTasksFts),
+        missingNotesFts: this.getCountFromResult(missingNotesFts),
       });
     } catch (error) {
       errors.push(`Full-text search consistency check failed: ${(error as Error).message}`);

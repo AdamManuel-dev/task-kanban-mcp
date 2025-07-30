@@ -1,7 +1,7 @@
 /**
  * @fileoverview Task tags route handlers
  * @lastmodified 2025-07-28T05:15:00Z
- * 
+ *
  * Features: Task tag operations, tag assignment/removal
  * Main APIs: taskTagsRoutes - Express router for task tags
  * Constraints: Requires valid task and tag IDs
@@ -20,12 +20,12 @@ export const taskTagsRoutes = Router({ mergeParams: true });
  */
 taskTagsRoutes.get('/', async (req, res) => {
   const errorHandler = createServiceErrorHandler('getTaskTags', logger);
-  
+
   try {
     const taskId = req.params.id;
     const tagService = new TagService();
     const result = await tagService.getTagsByTask(taskId);
-    
+
     if (result.success) {
       res.json({ success: true, data: result.data });
     } else {
@@ -41,12 +41,12 @@ taskTagsRoutes.get('/', async (req, res) => {
  */
 taskTagsRoutes.post('/:tagId', async (req, res) => {
   const errorHandler = createServiceErrorHandler('addTaskTag', logger);
-  
+
   try {
     const { id: taskId, tagId } = req.params;
     const tagService = new TagService();
     const result = await tagService.addTagToTask(taskId, tagId);
-    
+
     if (result.success) {
       res.json({ success: true, data: result.data });
     } else {
@@ -62,12 +62,12 @@ taskTagsRoutes.post('/:tagId', async (req, res) => {
  */
 taskTagsRoutes.delete('/:tagId', async (req, res) => {
   const errorHandler = createServiceErrorHandler('removeTaskTag', logger);
-  
+
   try {
     const { id: taskId, tagId } = req.params;
     const tagService = new TagService();
     const result = await tagService.removeTagFromTask(taskId, tagId);
-    
+
     if (result.success) {
       res.json({ success: true, message: 'Tag removed from task' });
     } else {

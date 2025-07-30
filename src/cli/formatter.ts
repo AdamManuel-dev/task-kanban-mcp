@@ -136,7 +136,8 @@ export class OutputFormatter {
       return;
     }
 
-    const fieldNames = options?.fields ?? Object.keys(normalizedItems[0] as Record<string, unknown>);
+    const fieldNames =
+      options?.fields ?? Object.keys(normalizedItems[0] as Record<string, unknown>);
     const columnHeaders = options?.headers ?? fieldNames;
 
     // Output headers
@@ -209,7 +210,7 @@ export class OutputFormatter {
     Object.entries(obj as Record<string, unknown>).forEach(([key, value]): void => {
       table.push([
         this.colorize(OutputFormatter.formatHeader(key), 'cyan'),
-        this.formatTableValue(value as unknown, key),
+        this.formatTableValue(value, key),
       ]);
     });
 
@@ -224,7 +225,9 @@ export class OutputFormatter {
       .split('.')
       .reduce(
         (current: unknown, key): unknown =>
-          current && current[key] !== undefined ? current[key] : '',
+          current && typeof current === 'object' && current !== null && key in current
+            ? (current as Record<string, unknown>)[key]
+            : '',
         obj
       );
   }
@@ -402,9 +405,62 @@ export class OutputFormatter {
   }
 
   /**
-   * Format backup schedule information
+   * Formats backup schedule information into a human-readable display format
+   *
+   * Creates a comprehensive display of backup schedule details including status,
+   * timing information, execution history, and configuration details. Uses color
+   * coding and structured formatting for improved readability.
+   *
+   * @param schedule - The backup schedule object to format
+   * @param schedule.name - Display name of the backup schedule
+   * @param schedule.id - Unique identifier for the schedule
+   * @param schedule.backupType - Type of backup (full, incremental, etc.)
+   * @param schedule.enabled - Whether the schedule is currently active
+   * @param schedule.cronExpression - Cron expression for schedule timing
+   * @param schedule.cron - Alternative cron field (fallback)
+   * @param schedule.description - Optional human-readable description
+   * @param schedule.createdAt - ISO timestamp when schedule was created
+   * @param schedule.updatedAt - ISO timestamp when schedule was last modified
+   * @param schedule.lastRunAt - ISO timestamp of last execution (null if never run)
+   * @param schedule.nextRunAt - ISO timestamp of next scheduled execution
+   * @param schedule.next_run - Alternative next run field (database compatibility)
+   * @returns Formatted string representation of the schedule with headers, status, and timing info
+   *
+   * @example <caption>Formatting an active schedule</caption>
+   * const schedule = {
+   *   name: 'Daily Backup',
+   *   id: 'sched-123',
+   *   backupType: 'full',
+   *   enabled: true,
+   *   cronExpression: '0 2 * * *',
+   *   createdAt: '2025-01-01T00:00:00Z',
+   *   updatedAt: '2025-01-15T12:00:00Z'
+   * };
+   * console.log(formatter.formatSchedule(schedule));
+   * // Outputs formatted schedule with headers, status indicators, and timing info
+   *
+   * @since 1.0.0
+   * @see {@link OutputFormatter.formatHeader} - For header formatting
    */
-  formatSchedule(schedule: unknown): string {
+  formatSchedule(schedule: {
+    name: string;
+    id: string;
+    backupType?: string;
+    enabled: boolean;
+    cronExpression?: string;
+    cron?: string;
+    description?: string;
+    createdAt: string;
+    updatedAt: string;
+    lastRunAt?: string | null;
+    nextRunAt?: string | null;
+    next_run?: string | null;
+    runCount?: number;
+    failureCount?: number;
+    retentionDays?: number;
+    compressionEnabled?: boolean;
+    verificationEnabled?: boolean;
+  }): string {
     const lines: string[] = [];
 
     // Header
@@ -414,9 +470,7 @@ export class OutputFormatter {
     // Basic info
     lines.push(`ID: ${schedule.id}`);
     lines.push(`Type: ${schedule.backupType?.toUpperCase() ?? 'N/A'}`);
-    lines.push(
-      `Status: ${schedule.enabled ? chalk.green('ENABLED') : chalk.red('DISABLED')}`
-    );
+    lines.push(`Status: ${schedule.enabled ? chalk.green('ENABLED') : chalk.red('DISABLED')}`);
     lines.push(`Cron: ${schedule.cronExpression ?? schedule.cron ?? 'N/A'}`);
 
     if (schedule.description) {
@@ -434,9 +488,10 @@ export class OutputFormatter {
     }
 
     if (schedule.nextRunAt ?? schedule.next_run) {
-      lines.push(
-        `Next Run: ${new Date(schedule.nextRunAt ?? schedule.next_run).toLocaleString()}`
-      );
+      const nextRunDate = schedule.nextRunAt ?? schedule.next_run;
+      if (nextRunDate) {
+        lines.push(`Next Run: ${new Date(nextRunDate).toLocaleString()}`);
+      }
     }
 
     // Statistics
@@ -445,11 +500,10 @@ export class OutputFormatter {
     lines.push(`Total Runs: ${schedule.runCount ?? 0}`);
     lines.push(`Failures: ${schedule.failureCount ?? 0}`);
 
-    if (schedule.runCount > 0) {
-      const successRate = (
-        ((schedule.runCount - (schedule.failureCount ?? 0)) / schedule.runCount) *
-        100
-      ).toFixed(1);
+    if ((schedule.runCount ?? 0) > 0) {
+      const runCount = schedule.runCount ?? 0;
+      const failureCount = schedule.failureCount ?? 0;
+      const successRate = (((runCount - failureCount) / runCount) * 100).toFixed(1);
       lines.push(`Success Rate: ${successRate}%`);
     }
 
@@ -457,12 +511,8 @@ export class OutputFormatter {
     lines.push('');
     lines.push(OutputFormatter.formatHeader('Configuration:'));
     lines.push(`Retention: ${schedule.retentionDays ?? 30} days`);
-    lines.push(
-      `Compression: ${schedule.compressionEnabled ? 'Enabled' : 'Disabled'}`
-    );
-    lines.push(
-      `Verification: ${schedule.verificationEnabled ? 'Enabled' : 'Disabled'}`
-    );
+    lines.push(`Compression: ${schedule.compressionEnabled ? 'Enabled' : 'Disabled'}`);
+    lines.push(`Verification: ${schedule.verificationEnabled ? 'Enabled' : 'Disabled'}`);
 
     return lines.join('\n');
   }

@@ -213,7 +213,7 @@ export const PLATFORM_DEFAULTS = {
  */
 export const HTTP_METHODS = {
   GET: 'GET',
-  POST: 'POST',  
+  POST: 'POST',
   PUT: 'PUT',
   PATCH: 'PATCH',
   DELETE: 'DELETE',

@@ -43,7 +43,9 @@ export class GitService {
 
       // Get current branch
       const branchResult = await safeExecute('git', ['branch', '--show-current']);
-      const currentBranch = branchResult.success ? branchResult.stdout.trim() || undefined : undefined;
+      const currentBranch = branchResult.success
+        ? branchResult.stdout.trim() || undefined
+        : undefined;
 
       // Check if working directory is clean
       const statusResult = await safeExecute('git', ['status', '--porcelain']);
@@ -108,9 +110,9 @@ export class GitService {
         `--format=%H|%s|%an|%ad`,
         '--date=iso',
         `-n`,
-        String(limit)
+        String(limit),
       ]);
-      
+
       if (!result.success) {
         logger.error('Failed to execute git log command', { error: result.stderr });
         return [];

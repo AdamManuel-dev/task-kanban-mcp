@@ -167,7 +167,10 @@ export async function createTaskPrompt(defaults?: Partial<TaskInput>): Promise<T
           message: 'Due date (optional):',
           initial: defaults?.dueDate,
           hint: 'Format: YYYY-MM-DD',
-          validate: validateDate,
+          validate: (value: unknown): string | boolean => {
+            if (typeof value !== 'string') return 'Invalid date format';
+            return validateDate(value);
+          },
         },
         {
           type: 'numeral',
@@ -175,8 +178,9 @@ export async function createTaskPrompt(defaults?: Partial<TaskInput>): Promise<T
           message: 'Estimated hours (optional):',
           initial: defaults?.estimatedHours,
           float: true,
-          validate: (value: string): string | boolean => {
+          validate: (value: unknown): string | boolean => {
             if (!value) return true;
+            if (typeof value !== 'string') return 'Invalid time estimate';
             return validateTimeEstimate(value);
           },
         },
@@ -371,7 +375,10 @@ export async function bulkTaskActionPrompt(
             type: 'input',
             name: 'column',
             message: 'Target column name:',
-            validate: (value: string) => (value.trim() ? true : 'Column name required'),
+            validate: (value: unknown) => {
+              if (typeof value !== 'string') return 'Invalid column name';
+              return value.trim() ? true : 'Column name required';
+            },
           });
           params.column = column;
           break;
@@ -382,7 +389,10 @@ export async function bulkTaskActionPrompt(
             type: 'input',
             name: 'assignee',
             message: 'Assign to (username or email):',
-            validate: (value: string) => (value.trim() ? true : 'Assignee required'),
+            validate: (value: unknown) => {
+              if (typeof value !== 'string') return 'Invalid assignee';
+              return value.trim() ? true : 'Assignee required';
+            },
           });
           params.assignee = assignee;
           break;
@@ -394,7 +404,10 @@ export async function bulkTaskActionPrompt(
             name: 'tags',
             message: 'Add tags (comma-separated):',
             separator: ',',
-            validate: (value: string[]) => (value.length > 0 ? true : 'At least one tag required'),
+            validate: (value: unknown) => {
+              if (!Array.isArray(value)) return 'Invalid tags';
+              return value.length > 0 ? true : 'At least one tag required';
+            },
           });
           params.tags = tags.map(t => t.trim()).filter(t => t.length > 0);
           break;
@@ -529,13 +542,19 @@ export async function taskFilterPrompt(): Promise<{
           type: 'input',
           name: 'start',
           message: 'Start date (YYYY-MM-DD):',
-          validate: validateDate,
+          validate: (value: unknown): string | boolean => {
+            if (typeof value !== 'string') return 'Invalid date format';
+            return validateDate(value);
+          },
         },
         {
           type: 'input',
           name: 'end',
           message: 'End date (YYYY-MM-DD):',
-          validate: validateDate,
+          validate: (value: unknown): string | boolean => {
+            if (typeof value !== 'string') return 'Invalid date format';
+            return validateDate(value);
+          },
         },
       ]);
       if (dateRange.start && dateRange.end) {

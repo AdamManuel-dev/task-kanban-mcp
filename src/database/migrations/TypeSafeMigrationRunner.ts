@@ -214,7 +214,9 @@ export class TypeSafeMigrationRunner {
       INSERT INTO ${this.schemaTableName} (version, description, schema_definition, is_current)
       VALUES (?, ?, ?, TRUE)
     `,
-      [schema.version, schema.description, JSON.stringify(schema, null, 2)]
+      schema.version,
+      schema.description,
+      JSON.stringify(schema, null, 2)
     );
 
     logger.info('Schema version saved', { version: schema.version });
@@ -345,12 +347,10 @@ export class TypeSafeMigrationRunner {
           INSERT INTO ${this.tableName} (id, checksum, execution_time, schema_version)
           VALUES (?, ?, ?, ?)
         `,
-          [
-            migration.id,
-            TypeSafeMigrationRunner.calculateMigrationChecksum(migration),
-            executionTime,
-            migration.version,
-          ]
+          migration.id,
+          TypeSafeMigrationRunner.calculateMigrationChecksum(migration),
+          executionTime,
+          migration.version
         );
 
         // Commit transaction

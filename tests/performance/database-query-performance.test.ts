@@ -1,7 +1,7 @@
 /**
  * @fileoverview Database query performance testing (< 50ms for simple queries)
  * @lastmodified 2025-07-28T10:30:00Z
- * 
+ *
  * Features: Query performance benchmarking, SQL timing analysis, performance thresholds
  * Main APIs: Database connection, SQL queries, performance measurement
  * Constraints: < 50ms for simple queries, < 200ms for complex queries
@@ -34,7 +34,7 @@ describe('Database Query Performance Testing', () => {
   beforeAll(async () => {
     connection = DatabaseConnection.getInstance();
     await connection.initialize({ skipSchema: false });
-    
+
     taskService = new TaskService(connection);
     boardService = new BoardService(connection);
 
@@ -75,7 +75,7 @@ describe('Database Query Performance Testing', () => {
       const boardId = `perf-board-${(i % 5) + 1}`;
       const columnId = `perf-col-${(i % 5) + 1}-${i % 3}`; // Map to existing columns
       const status = ['todo', 'in_progress', 'done'][i % 3];
-      
+
       await connection.execute(
         `INSERT OR REPLACE INTO tasks (id, board_id, column_id, title, description, status, priority, position, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
@@ -87,7 +87,7 @@ describe('Database Query Performance Testing', () => {
           `Description for performance test task ${i}`,
           status,
           (i % 5) + 1,
-          i // position within column
+          i, // position within column
         ]
       );
     }
@@ -98,12 +98,7 @@ describe('Database Query Performance Testing', () => {
       await connection.execute(
         `INSERT OR REPLACE INTO notes (id, task_id, content, category, created_at, updated_at)
          VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))`,
-        [
-          `perf-note-${i}`,
-          taskId,
-          `Performance test note content ${i}`,
-          'general'
-        ]
+        [`perf-note-${i}`, taskId, `Performance test note content ${i}`, 'general']
       );
     }
   };
@@ -128,30 +123,30 @@ describe('Database Query Performance Testing', () => {
     type: 'simple' | 'complex' | 'join' = 'simple'
   ): Promise<QueryResult> => {
     const start = performance.now();
-    
+
     try {
       const result = await connection.execute(query, params);
       const end = performance.now();
       const duration = end - start;
-      
+
       return {
-        query: query.replace(/\s+/g, ' ').trim().substring(0, 100) + '...',
+        query: `${query.replace(/\s+/g, ' ').trim().substring(0, 100)}...`,
         duration,
         threshold,
         passed: duration < threshold,
         rowCount: Array.isArray(result) ? result.length : 1,
-        type
+        type,
       };
     } catch (error) {
       const end = performance.now();
       const duration = end - start;
-      
+
       return {
-        query: query.replace(/\s+/g, ' ').trim().substring(0, 100) + '...',
+        query: `${query.replace(/\s+/g, ' ').trim().substring(0, 100)}...`,
         duration,
         threshold,
         passed: false,
-        type
+        type,
       };
     }
   };
@@ -164,7 +159,7 @@ describe('Database Query Performance Testing', () => {
     const duration = `${result.duration.toFixed(2)}ms`;
     const threshold = `(< ${result.threshold}ms)`;
     const rows = result.rowCount ? ` [${result.rowCount} rows]` : '';
-    
+
     console.log(`${status} ${result.type.toUpperCase()}: ${duration} ${threshold}${rows}`);
     console.log(`   Query: ${result.query}`);
   };
@@ -353,7 +348,9 @@ describe('Database Query Performance Testing', () => {
   describe('Complex Query Performance (< 200ms)', () => {
     test('Full-text search should complete under 200ms', async () => {
       // First ensure FTS table is populated
-      await connection.execute('INSERT INTO tasks_fts SELECT id, title, description FROM tasks WHERE id LIKE "perf-task-%"');
+      await connection.execute(
+        'INSERT INTO tasks_fts SELECT id, title, description FROM tasks WHERE id LIKE "perf-task-%"'
+      );
 
       const result = await measureQuery(
         `SELECT t.* FROM tasks t
@@ -455,7 +452,7 @@ describe('Database Query Performance Testing', () => {
               `Bulk Task ${i}`,
               `Bulk task description ${i}`,
               'todo',
-              i + 1000 // position
+              i + 1000, // position
             ]
           )
         );
@@ -467,7 +464,7 @@ describe('Database Query Performance Testing', () => {
       const duration = end - start;
 
       console.log(`✅ BULK INSERT: ${duration.toFixed(2)}ms (< 200ms) [20 tasks]`);
-      
+
       expect(duration).toBeLessThan(COMPLEX_QUERY_THRESHOLD_MS);
 
       // Cleanup
@@ -476,7 +473,7 @@ describe('Database Query Performance Testing', () => {
 
     test('Bulk UPDATE should complete under 200ms', async () => {
       const start = performance.now();
-      
+
       await connection.execute(
         `UPDATE tasks 
          SET description = 'Bulk updated description: ' || description,
@@ -484,45 +481,45 @@ describe('Database Query Performance Testing', () => {
          WHERE id LIKE 'perf-task-%' 
          AND status = 'todo'`
       );
-      
+
       const end = performance.now();
       const duration = end - start;
 
       console.log(`✅ BULK UPDATE: ${duration.toFixed(2)}ms (< 200ms)`);
-      
+
       expect(duration).toBeLessThan(COMPLEX_QUERY_THRESHOLD_MS);
     });
 
     test('Transaction with multiple operations should complete under 200ms', async () => {
       const start = performance.now();
-      
+
       await connection.transaction(async () => {
         await connection.execute(
           `INSERT INTO boards (id, name, description, color, created_at, updated_at)
            VALUES ('transaction-board', 'Transaction Test', 'Test Description', '#00FF00', datetime('now'), datetime('now'))`
         );
-        
+
         // First create a column for the transaction board
         await connection.execute(
           `INSERT INTO columns (id, board_id, name, position, created_at, updated_at)
            VALUES ('transaction-col', 'transaction-board', 'Todo', 0, datetime('now'), datetime('now'))`
         );
-        
+
         await connection.execute(
           `INSERT INTO tasks (id, board_id, column_id, title, description, status, position, created_at, updated_at)
            VALUES ('transaction-task', 'transaction-board', 'transaction-col', 'Transaction Task', 'Task Description', 'todo', 1, datetime('now'), datetime('now'))`
         );
-        
+
         await connection.execute(
           `UPDATE boards SET description = 'Updated in transaction' WHERE id = 'transaction-board'`
         );
       });
-      
+
       const end = performance.now();
       const duration = end - start;
 
       console.log(`✅ TRANSACTION: ${duration.toFixed(2)}ms (< 200ms)`);
-      
+
       expect(duration).toBeLessThan(COMPLEX_QUERY_THRESHOLD_MS);
 
       // Cleanup
@@ -534,7 +531,7 @@ describe('Database Query Performance Testing', () => {
 
   describe('Performance Under Load', () => {
     test('concurrent simple queries should maintain performance', async () => {
-      const queries = Array.from({ length: 10 }, (_, i) =>
+      const queries = Array.from({ length: 10 }, async (_, i) =>
         measureQuery(
           'SELECT * FROM tasks WHERE board_id = ? LIMIT 5',
           [`perf-board-${(i % 5) + 1}`],
@@ -544,7 +541,7 @@ describe('Database Query Performance Testing', () => {
       );
 
       const results = await Promise.all(queries);
-      
+
       results.forEach((result, index) => {
         console.log(`Concurrent Query ${index + 1}: ${result.duration.toFixed(2)}ms`);
         expect(result.passed).toBe(true);
@@ -567,20 +564,20 @@ describe('Database Query Performance Testing', () => {
           SIMPLE_QUERY_THRESHOLD_MS,
           'simple'
         );
-        
+
         durations.push(result.duration);
         expect(result.passed).toBe(true);
       }
 
       const firstHalf = durations.slice(0, 10);
       const secondHalf = durations.slice(10);
-      
+
       const firstAvg = firstHalf.reduce((a, b) => a + b) / firstHalf.length;
       const secondAvg = secondHalf.reduce((a, b) => a + b) / secondHalf.length;
-      
+
       console.log(`First 10 queries average: ${firstAvg.toFixed(2)}ms`);
       console.log(`Last 10 queries average: ${secondAvg.toFixed(2)}ms`);
-      
+
       // Performance should not degrade by more than 50%
       expect(secondAvg).toBeLessThan(firstAvg * 1.5);
     }, 15000);

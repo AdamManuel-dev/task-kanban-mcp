@@ -182,7 +182,7 @@ function parseEnvVar(value: string | undefined, defaultValue: unknown): unknown 
   // Handle number values
   if (typeof defaultValue === 'number') {
     const parsed = Number(value);
-    return isNaN(parsed) ? defaultValue : parsed;
+    return Number.isNaN(parsed) ? defaultValue : parsed;
   }
 
   // Handle array values (comma-separated)

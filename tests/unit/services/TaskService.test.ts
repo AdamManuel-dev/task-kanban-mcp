@@ -715,7 +715,7 @@ describe('TaskService', () => {
   describe('Priority Change Tracking', () => {
     // Mock PriorityHistoryService
     const mockRecordPriorityChange = jest.fn();
-    
+
     beforeEach(() => {
       jest.clearAllMocks();
       // Mock PriorityHistoryService

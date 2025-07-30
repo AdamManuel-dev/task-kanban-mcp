@@ -488,7 +488,7 @@ describe('Tasks Routes', () => {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
-      
+
       mockTaskService.getTaskById.mockResolvedValue(mockTask);
     });
 
@@ -607,7 +607,7 @@ describe('Tasks Routes', () => {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
-      
+
       mockTaskService.getTaskById.mockResolvedValue(originalTask);
     });
 
@@ -639,7 +639,10 @@ describe('Tasks Routes', () => {
       expect(response.body.success).toBe(true);
       expect(response.body.data.title).toBe('Updated Task');
       expect(response.body.data.status).toBe('in_progress');
-      expect(mockTaskService.updateTask).toHaveBeenCalledWith(taskId, expect.objectContaining(updateData));
+      expect(mockTaskService.updateTask).toHaveBeenCalledWith(
+        taskId,
+        expect.objectContaining(updateData)
+      );
     });
 
     it('should return 404 for non-existent task', async () => {

@@ -297,8 +297,7 @@ export function formatPercentage(value: number, total: number): string {
  * Format board column with task count
  */
 export function formatBoardColumn(name: string, taskCount: number, maxWidth = 20): string {
-  const truncatedName =
-    name.length > maxWidth ? `${name.substring(0, maxWidth - 3)}...` : name;
+  const truncatedName = name.length > maxWidth ? `${name.substring(0, maxWidth - 3)}...` : name;
 
   return `${chalk.bold(truncatedName)} (${taskCount})`;
 }

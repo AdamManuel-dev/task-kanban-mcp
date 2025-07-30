@@ -19,7 +19,7 @@ import type {
 import { HTTP_METHODS, HTTP_HEADERS, CONTENT_TYPES } from '../constants';
 
 interface RequestOptions {
-  method?: typeof HTTP_METHODS[keyof typeof HTTP_METHODS];
+  method?: (typeof HTTP_METHODS)[keyof typeof HTTP_METHODS];
   body?: unknown;
   params?: Record<string, string> | undefined;
   timeout?: number;

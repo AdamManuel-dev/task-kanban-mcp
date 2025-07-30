@@ -173,8 +173,7 @@ export const formatErrorMessage = (prefix: string, error: unknown): string => {
 /**
  * Type guard for checking if an error is an Error instance
  */
-export const isError = (value: unknown): value is Error => 
-  value instanceof Error;
+export const isError = (value: unknown): value is Error => value instanceof Error;
 
 /**
  * Type guard for checking if value is a record (object with string keys)

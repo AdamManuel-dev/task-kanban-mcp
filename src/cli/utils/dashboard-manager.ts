@@ -32,7 +32,7 @@ export interface DashboardConfig {
 export class DashboardManager {
   private readonly screen: blessed.Widgets.Screen;
 
-  private readonly grid: unknown;
+  private readonly grid: contrib.Widgets.GridElement;
 
   private readonly widgets: Map<string, unknown> = new Map();
 
@@ -46,9 +46,9 @@ export class DashboardManager {
 
   private currentLayout: 'overview' | 'velocity' | 'personal' = 'overview';
 
-  // private readonly focusedWidget: string | null = null;
+  private focusedWidget: string | null = null;
 
-  // private readonly isFullscreen = false;
+  private isFullscreen = false;
 
   // private readonly debugMode = false;
 
@@ -77,7 +77,7 @@ export class DashboardManager {
     });
 
     // Create grid
-    this.grid = contrib.grid({
+    this.grid = new contrib.grid({
       rows: 12,
       cols: 12,
       screen: this.screen,
@@ -237,7 +237,7 @@ export class DashboardManager {
   /**
    * Create large velocity trend chart
    */
-  private createLargeVelocityChart(data: DashboardData): any {
+  private createLargeVelocityChart(data: DashboardData): unknown {
     return this.grid.set(0, 0, 8, 12, contrib.line, {
       style: {
         line: 'cyan',
@@ -258,7 +258,7 @@ export class DashboardManager {
   /**
    * Create team capacity table widget
    */
-  private createTeamCapacityTable(data: DashboardData): any {
+  private createTeamCapacityTable(data: DashboardData): unknown {
     const teamTable = this.grid.set(8, 8, 4, 4, contrib.table, {
       keys: true,
       fg: 'white',
@@ -288,7 +288,7 @@ export class DashboardManager {
   /**
    * Create sprint burndown chart
    */
-  private createBurndownChart(data: DashboardData): any {
+  private createBurndownChart(data: DashboardData): unknown {
     return this.grid.set(8, 0, 4, 8, contrib.line, {
       style: {
         line: 'red',
@@ -313,15 +313,6 @@ export class DashboardManager {
         },
       ],
     });
-
-    const teamTable = this.createTeamCapacityTable(data);
-
-    this.widgets.set('velocityLine', velocityLine);
-    this.widgets.set('burndownLine', burndownLine);
-    this.widgets.set('teamTable', teamTable);
-
-    this.addHeader('📈 Velocity Dashboard');
-    this.addFooter();
   }
 
   /**
@@ -476,9 +467,9 @@ export class DashboardManager {
     const errorBox = blessed.box({
       top: 1,
       right: 1,
-      width: Math.floor((this.screen as unknown).width * 0.4),
+      width: '40%',
       height: 3,
-      border: { type: 'line' as unknown, fg: 'red' as unknown },
+      border: { type: 'line', fg: 1 }, // red color code
       style: { fg: 'white', bg: 'red' },
       label: '⚠️  Error',
       content: message,
@@ -502,9 +493,9 @@ export class DashboardManager {
     const themeBox = blessed.box({
       top: 1,
       left: 1,
-      width: Math.floor((this.screen as unknown).width * 0.3),
+      width: '30%',
       height: 3,
-      border: { type: 'line' as unknown, fg: this.themeHelper.getColor('primary') as unknown },
+      border: { type: 'line', fg: 4 }, // blue color code
       style: {
         fg: this.themeHelper.getColor('foreground'),
         bg: this.themeHelper.getColor('secondary'),
@@ -533,7 +524,7 @@ export class DashboardManager {
       left: 'center',
       width: '50%',
       height: '60%',
-      border: { type: 'line' as unknown, fg: 'yellow' as unknown },
+      border: { type: 'line', fg: 3 }, // yellow color code
       style: { fg: 'white', bg: 'black' },
       label: '📖 Dashboard Help',
       content: `
@@ -704,7 +695,9 @@ Press any key to close this help...
    */
   private clearWidgets(): void {
     for (const widget of this.widgets.values()) {
-      widget.destroy();
+      if (widget && typeof widget === 'object' && 'destroy' in widget) {
+        (widget as { destroy: () => void }).destroy();
+      }
     }
     this.widgets.clear();
   }
@@ -800,16 +793,14 @@ Press any key to close this help...
     const widgetKeys = Array.from(this.widgets.keys());
     if (widgetKeys.length === 0) return;
 
-    const currentIndex = (this as unknown).focusedWidget
-      ? widgetKeys.indexOf((this as unknown).focusedWidget)
-      : -1;
+    const currentIndex = this.focusedWidget ? widgetKeys.indexOf(this.focusedWidget) : -1;
     const nextIndex = (currentIndex + 1) % widgetKeys.length;
 
-    (this as unknown).focusedWidget = widgetKeys[nextIndex];
-    const widget = this.widgets.get((this as unknown).focusedWidget);
+    this.focusedWidget = widgetKeys[nextIndex];
+    const widget = this.widgets.get(this.focusedWidget);
 
-    if (widget?.focus) {
-      widget.focus();
+    if (widget && typeof widget === 'object' && 'focus' in widget) {
+      (widget as { focus: () => void }).focus();
       this.screen.render();
     }
   }
@@ -821,16 +812,14 @@ Press any key to close this help...
     const widgetKeys = Array.from(this.widgets.keys());
     if (widgetKeys.length === 0) return;
 
-    const currentIndex = (this as unknown).focusedWidget
-      ? widgetKeys.indexOf((this as unknown).focusedWidget)
-      : -1;
+    const currentIndex = this.focusedWidget ? widgetKeys.indexOf(this.focusedWidget) : -1;
     const prevIndex = currentIndex <= 0 ? widgetKeys.length - 1 : currentIndex - 1;
 
-    (this as unknown).focusedWidget = widgetKeys[prevIndex];
-    const widget = this.widgets.get((this as unknown).focusedWidget);
+    this.focusedWidget = widgetKeys[prevIndex];
+    const widget = this.widgets.get(this.focusedWidget);
 
-    if (widget?.focus) {
-      widget.focus();
+    if (widget && typeof widget === 'object' && 'focus' in widget) {
+      (widget as { focus: () => void }).focus();
       this.screen.render();
     }
   }
@@ -839,16 +828,16 @@ Press any key to close this help...
    * Toggle fullscreen mode for focused widget
    */
   private toggleFullscreen(): void {
-    if (!(this as unknown).focusedWidget) {
+    if (!this.focusedWidget) {
       this.showNotification('No widget focused. Use Tab to focus a widget first.');
       return;
     }
 
-    (this as unknown).isFullscreen = !(this as unknown).isFullscreen;
+    this.isFullscreen = !this.isFullscreen;
 
-    if ((this as unknown).isFullscreen) {
+    if (this.isFullscreen) {
       this.showNotification(
-        `Fullscreen mode: ${String(String((this as unknown).focusedWidget))} (press F or F11 to exit)`
+        `Fullscreen mode: ${String(this.focusedWidget)} (press F or F11 to exit)`
       );
       // In a real implementation, this would resize the focused widget to full screen
     } else {
@@ -866,7 +855,7 @@ Press any key to close this help...
       left: 'center',
       width: '60%',
       height: '50%',
-      border: { type: 'line' as unknown, fg: this.themeHelper.getColor('primary') as unknown },
+      border: { type: 'line', fg: 4 }, // blue color code
       style: {
         fg: this.themeHelper.getColor('foreground'),
         bg: this.themeHelper.getColor('background'),
@@ -939,14 +928,14 @@ Press any key to close...
       right: 0,
       width: '25%',
       height: '30%',
-      border: { type: 'line' as unknown, fg: 'yellow' as unknown },
+      border: { type: 'line', fg: 3 }, // yellow color code
       style: { fg: 'yellow', bg: 'black' },
       label: '🐛 Debug Info',
       content: `
 Widgets: ${String(String(this.widgets.size))}
-Focused: ${String(String((this as unknown).focusedWidget ?? 'none'))}
+Focused: ${String(this.focusedWidget ?? 'none')}
 Layout: ${String(String(this.currentLayout))}
-Fullscreen: ${String(String((this as unknown).isFullscreen))}
+Fullscreen: ${String(this.isFullscreen)}
 Theme: ${String(String(this.themeHelper.getTheme().name))}
 
 Active Widgets:
@@ -976,8 +965,8 @@ ${String(debugInfo)}
    * Reset view to default state
    */
   private resetView(): void {
-    (this as unknown).isFullscreen = false;
-    (this as unknown).focusedWidget = null;
+    this.isFullscreen = false;
+    this.focusedWidget = null;
     (this as unknown).debugMode = false;
     this.hideDebugOverlay();
     void this.refreshData();

@@ -1,7 +1,7 @@
 /**
  * @fileoverview Command response time validation tests
  * @lastmodified 2025-07-28T10:30:00Z
- * 
+ *
  * Features: Response time benchmarking, performance thresholds, operation timing
  * Main APIs: CLI commands, API endpoints, service operations
  * Constraints: < 500ms for basic operations, accurate timing measurement
@@ -37,7 +37,7 @@ describe('Command Response Time Validation', () => {
   beforeAll(async () => {
     connection = DatabaseConnection.getInstance();
     await connection.initialize({ skipSchema: false });
-    
+
     taskService = new TaskService(connection);
     boardService = new BoardService(connection);
     noteService = new NoteService(connection);
@@ -46,7 +46,9 @@ describe('Command Response Time Validation', () => {
   beforeEach(async () => {
     // Clean up test data
     await connection.execute('DELETE FROM tasks WHERE title LIKE "%Response Time Test%"');
-    await connection.execute('DELETE FROM columns WHERE board_id IN (SELECT id FROM boards WHERE name LIKE "%Response Time Test%")');
+    await connection.execute(
+      'DELETE FROM columns WHERE board_id IN (SELECT id FROM boards WHERE name LIKE "%Response Time Test%")'
+    );
     await connection.execute('DELETE FROM boards WHERE name LIKE "%Response Time Test%"');
   });
 
@@ -63,29 +65,29 @@ describe('Command Response Time Validation', () => {
     threshold: number = BASIC_OPERATION_THRESHOLD_MS
   ): Promise<TimingResult> => {
     const start = performance.now();
-    
+
     try {
       const result = await fn();
       const end = performance.now();
       const duration = end - start;
-      
+
       return {
         operation,
         duration,
         threshold,
         passed: duration < threshold,
-        details: { success: true, resultType: typeof result }
+        details: { success: true, resultType: typeof result },
       };
     } catch (error) {
       const end = performance.now();
       const duration = end - start;
-      
+
       return {
         operation,
         duration,
         threshold,
         passed: false,
-        details: { success: false, error: (error as Error).message }
+        details: { success: false, error: (error as Error).message },
       };
     }
   };
@@ -97,9 +99,9 @@ describe('Command Response Time Validation', () => {
     const status = result.passed ? '✅' : '❌';
     const duration = `${result.duration.toFixed(2)}ms`;
     const threshold = `(threshold: ${result.threshold}ms)`;
-    
+
     console.log(`${status} ${result.operation}: ${duration} ${threshold}`);
-    
+
     if (!result.passed && result.details?.error) {
       console.log(`   Error: ${result.details.error}`);
     }
@@ -109,10 +111,11 @@ describe('Command Response Time Validation', () => {
     test('board creation should complete within 500ms', async () => {
       const result = await measureOperation(
         'Board Creation',
-        () => boardService.createBoard({
-          name: 'Response Time Test Board',
-          description: 'Testing board creation performance',
-        }),
+        async () =>
+          boardService.createBoard({
+            name: 'Response Time Test Board',
+            description: 'Testing board creation performance',
+          }),
         BASIC_OPERATION_THRESHOLD_MS
       );
 
@@ -132,7 +135,9 @@ describe('Command Response Time Validation', () => {
         'Task Creation',
         async () => {
           const boardWithColumns = await boardService.getBoardWithColumns(board.id);
-          const todoColumn = boardWithColumns?.columns.find(col => col.name === 'Todo') || boardWithColumns?.columns[0];
+          const todoColumn =
+            boardWithColumns?.columns.find(col => col.name === 'Todo') ||
+            boardWithColumns?.columns[0];
           return taskService.createTask({
             title: 'Response Time Test Task',
             description: 'Testing task creation performance',
@@ -157,8 +162,9 @@ describe('Command Response Time Validation', () => {
       });
 
       const boardWithColumns = await boardService.getBoardWithColumns(board.id);
-      const todoColumn = boardWithColumns?.columns.find(col => col.name === 'Todo') || boardWithColumns?.columns[0];
-      
+      const todoColumn =
+        boardWithColumns?.columns.find(col => col.name === 'Todo') || boardWithColumns?.columns[0];
+
       await taskService.createTask({
         title: 'Response Time Test Task',
         description: 'Testing task retrieval performance',
@@ -169,7 +175,7 @@ describe('Command Response Time Validation', () => {
 
       const result = await measureOperation(
         'Task Retrieval',
-        () => taskService.getTasks({ board_id: board.id }),
+        async () => taskService.getTasks({ board_id: board.id }),
         BASIC_OPERATION_THRESHOLD_MS
       );
 
@@ -186,7 +192,7 @@ describe('Command Response Time Validation', () => {
 
       const result = await measureOperation(
         'Board Retrieval',
-        () => boardService.getBoardById(board.id),
+        async () => boardService.getBoardById(board.id),
         BASIC_OPERATION_THRESHOLD_MS
       );
 
@@ -203,8 +209,9 @@ describe('Command Response Time Validation', () => {
       });
 
       const boardWithColumns = await boardService.getBoardWithColumns(board.id);
-      const todoColumn = boardWithColumns?.columns.find(col => col.name === 'Todo') || boardWithColumns?.columns[0];
-      
+      const todoColumn =
+        boardWithColumns?.columns.find(col => col.name === 'Todo') || boardWithColumns?.columns[0];
+
       const task = await taskService.createTask({
         title: 'Response Time Test Task',
         description: 'Testing task update performance',
@@ -215,10 +222,11 @@ describe('Command Response Time Validation', () => {
 
       const result = await measureOperation(
         'Task Update',
-        () => taskService.updateTask(task.id, {
-          title: 'Updated Response Time Test Task',
-          status: 'in_progress',
-        }),
+        async () =>
+          taskService.updateTask(task.id, {
+            title: 'Updated Response Time Test Task',
+            status: 'in_progress',
+          }),
         BASIC_OPERATION_THRESHOLD_MS
       );
 
@@ -235,8 +243,9 @@ describe('Command Response Time Validation', () => {
       });
 
       const boardWithColumns = await boardService.getBoardWithColumns(board.id);
-      const todoColumn = boardWithColumns?.columns.find(col => col.name === 'Todo') || boardWithColumns?.columns[0];
-      
+      const todoColumn =
+        boardWithColumns?.columns.find(col => col.name === 'Todo') || boardWithColumns?.columns[0];
+
       const task = await taskService.createTask({
         title: 'Response Time Test Task',
         description: 'Testing task deletion performance',
@@ -247,7 +256,7 @@ describe('Command Response Time Validation', () => {
 
       const result = await measureOperation(
         'Task Deletion',
-        () => taskService.deleteTask(task.id),
+        async () => taskService.deleteTask(task.id),
         BASIC_OPERATION_THRESHOLD_MS
       );
 
@@ -307,12 +316,10 @@ describe('Command Response Time Validation', () => {
       const result = await measureOperation(
         'Board Creation Endpoint',
         async () => {
-          const response = await request(app)
-            .post('/api/boards')
-            .send({
-              name: 'API Response Time Test Board',
-              description: 'Testing API response time',
-            });
+          const response = await request(app).post('/api/boards').send({
+            name: 'API Response Time Test Board',
+            description: 'Testing API response time',
+          });
           return response.status;
         },
         API_ENDPOINT_THRESHOLD_MS
@@ -325,26 +332,22 @@ describe('Command Response Time Validation', () => {
 
     test('task creation endpoint should respond within 1000ms', async () => {
       // Create board first
-      const boardResponse = await request(app)
-        .post('/api/boards')
-        .send({
-          name: 'API Response Time Test Board',
-          description: 'For task creation',
-        });
+      const boardResponse = await request(app).post('/api/boards').send({
+        name: 'API Response Time Test Board',
+        description: 'For task creation',
+      });
 
       const boardId = boardResponse.body.data.id;
 
       const result = await measureOperation(
         'Task Creation Endpoint',
         async () => {
-          const response = await request(app)
-            .post('/api/tasks')
-            .send({
-              title: 'API Response Time Test Task',
-              description: 'Testing API task creation',
-              boardId: boardId,
-              status: 'todo',
-            });
+          const response = await request(app).post('/api/tasks').send({
+            title: 'API Response Time Test Task',
+            description: 'Testing API task creation',
+            boardId,
+            status: 'todo',
+          });
           return response.status;
         },
         API_ENDPOINT_THRESHOLD_MS
@@ -367,9 +370,11 @@ describe('Command Response Time Validation', () => {
         'Bulk Task Creation (10 tasks)',
         async () => {
           const boardWithColumns = await boardService.getBoardWithColumns(board.id);
-          const todoColumn = boardWithColumns?.columns.find(col => col.name === 'Todo') || boardWithColumns?.columns[0];
-          
-          const promises = Array.from({ length: 10 }, (_, i) =>
+          const todoColumn =
+            boardWithColumns?.columns.find(col => col.name === 'Todo') ||
+            boardWithColumns?.columns[0];
+
+          const promises = Array.from({ length: 10 }, async (_, i) =>
             taskService.createTask({
               title: `Bulk Response Time Test Task ${i + 1}`,
               description: `Task ${i + 1} for bulk creation timing`,
@@ -397,11 +402,12 @@ describe('Command Response Time Validation', () => {
 
       // Get column for tasks
       const boardWithColumns = await boardService.getBoardWithColumns(board.id);
-      const todoColumn = boardWithColumns?.columns.find(col => col.name === 'Todo') || boardWithColumns?.columns[0];
-      
+      const todoColumn =
+        boardWithColumns?.columns.find(col => col.name === 'Todo') || boardWithColumns?.columns[0];
+
       // Create multiple tasks
       await Promise.all(
-        Array.from({ length: 20 }, (_, i) =>
+        Array.from({ length: 20 }, async (_, i) =>
           taskService.createTask({
             title: `Complex Response Time Test Task ${i + 1}`,
             description: `Task ${i + 1} for complex retrieval timing`,
@@ -414,7 +420,7 @@ describe('Command Response Time Validation', () => {
 
       const result = await measureOperation(
         'Board with Tasks Retrieval',
-        () => boardService.getBoardWithStats(board.id),
+        async () => boardService.getBoardWithStats(board.id),
         COMPLEX_OPERATION_THRESHOLD_MS
       );
 
@@ -431,10 +437,11 @@ describe('Command Response Time Validation', () => {
       });
 
       const boardWithColumns = await boardService.getBoardWithColumns(board.id);
-      const todoColumn = boardWithColumns?.columns.find(col => col.name === 'Todo') || boardWithColumns?.columns[0];
-      
+      const todoColumn =
+        boardWithColumns?.columns.find(col => col.name === 'Todo') || boardWithColumns?.columns[0];
+
       await Promise.all(
-        Array.from({ length: 50 }, (_, i) =>
+        Array.from({ length: 50 }, async (_, i) =>
           taskService.createTask({
             title: `Search Test Task ${i + 1}`,
             description: `Searchable task description ${i + 1}`,
@@ -447,10 +454,11 @@ describe('Command Response Time Validation', () => {
 
       const result = await measureOperation(
         'Task Search',
-        () => taskService.getTasks({ 
-          board_id: board.id,
-          search: 'Search Test'
-        }),
+        async () =>
+          taskService.getTasks({
+            board_id: board.id,
+            search: 'Search Test',
+          }),
         API_ENDPOINT_THRESHOLD_MS
       );
 
@@ -464,7 +472,7 @@ describe('Command Response Time Validation', () => {
     test('database health check should complete within 100ms', async () => {
       const result = await measureOperation(
         'Database Health Check',
-        () => connection.execute('SELECT 1 as health'),
+        async () => connection.execute('SELECT 1 as health'),
         100 // Very fast threshold for simple query
       );
 
@@ -476,7 +484,8 @@ describe('Command Response Time Validation', () => {
     test('database statistics query should complete within 500ms', async () => {
       const result = await measureOperation(
         'Database Statistics Query',
-        () => connection.execute(`
+        async () =>
+          connection.execute(`
           SELECT 
             (SELECT COUNT(*) FROM tasks) as task_count,
             (SELECT COUNT(*) FROM boards) as board_count,
@@ -493,7 +502,8 @@ describe('Command Response Time Validation', () => {
     test('complex join query should complete within 1000ms', async () => {
       const result = await measureOperation(
         'Complex Join Query',
-        () => connection.execute(`
+        async () =>
+          connection.execute(`
           SELECT 
             b.name as board_name,
             COUNT(t.id) as task_count,
@@ -523,7 +533,9 @@ describe('Command Response Time Validation', () => {
       const operations = [
         measureOperation('Concurrent Task Creation 1', async () => {
           const boardWithColumns = await boardService.getBoardWithColumns(board.id);
-          const todoColumn = boardWithColumns?.columns.find(col => col.name === 'Todo') || boardWithColumns?.columns[0];
+          const todoColumn =
+            boardWithColumns?.columns.find(col => col.name === 'Todo') ||
+            boardWithColumns?.columns[0];
           return taskService.createTask({
             title: 'Concurrent Test Task 1',
             description: 'Testing concurrent performance',
@@ -534,7 +546,9 @@ describe('Command Response Time Validation', () => {
         }),
         measureOperation('Concurrent Task Creation 2', async () => {
           const boardWithColumns = await boardService.getBoardWithColumns(board.id);
-          const todoColumn = boardWithColumns?.columns.find(col => col.name === 'Todo') || boardWithColumns?.columns[0];
+          const todoColumn =
+            boardWithColumns?.columns.find(col => col.name === 'Todo') ||
+            boardWithColumns?.columns[0];
           return taskService.createTask({
             title: 'Concurrent Test Task 2',
             description: 'Testing concurrent performance',
@@ -543,15 +557,13 @@ describe('Command Response Time Validation', () => {
             status: 'todo',
           } as any);
         }),
-        measureOperation('Concurrent Board Retrieval', () =>
+        measureOperation('Concurrent Board Retrieval', async () =>
           boardService.getBoardById(board.id)
         ),
-        measureOperation('Concurrent Task List', () =>
+        measureOperation('Concurrent Task List', async () =>
           taskService.getTasks({ board_id: board.id })
         ),
-        measureOperation('Concurrent Board List', () =>
-          boardService.getBoards({})
-        ),
+        measureOperation('Concurrent Board List', async () => boardService.getBoards({})),
       ];
 
       const results = await Promise.all(operations);

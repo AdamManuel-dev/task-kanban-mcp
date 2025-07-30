@@ -2,35 +2,35 @@
  * @fileoverview Tests for error reporting utilities
  */
 
-import { 
+import {
   ErrorReporter,
   TrendAnalyzer,
   DiagnosticsCollector,
   RootCauseAnalyzer,
   generateErrorReport,
-  getQuickHealthSummary
+  getQuickHealthSummary,
 } from '../../../src/utils/error-reporting';
 import type { ErrorEvent } from '../../../src/utils/error-monitoring';
 import { BaseServiceError } from '../../../src/utils/errors';
 
 // Mock dependencies
 jest.mock('../../../src/utils/logger', () => ({
-  logger: { info: jest.fn(), error: jest.fn(), debug: jest.fn() }
+  logger: { info: jest.fn(), error: jest.fn(), debug: jest.fn() },
 }));
 
 jest.mock('../../../src/utils/error-monitoring', () => ({
   errorMonitor: {
     getErrors: jest.fn(),
-    getMetrics: jest.fn()
+    getMetrics: jest.fn(),
   },
   getErrorMetrics: jest.fn(),
-  getSystemHealth: jest.fn()
+  getSystemHealth: jest.fn(),
 }));
 
 jest.mock('../../../src/utils/error-recovery', () => ({
   errorRecoveryManager: {
-    getSystemHealth: jest.fn()
-  }
+    getSystemHealth: jest.fn(),
+  },
 }));
 
 describe('TrendAnalyzer', () => {
@@ -79,7 +79,7 @@ describe('TrendAnalyzer', () => {
         createMockErrorEvent('high'),
         createMockErrorEvent('high'),
         createMockErrorEvent('medium'),
-        createMockErrorEvent('low')
+        createMockErrorEvent('low'),
       ];
 
       const distribution = TrendAnalyzer.calculateSeverityDistribution(events);
@@ -88,7 +88,7 @@ describe('TrendAnalyzer', () => {
         low: 1,
         medium: 1,
         high: 2,
-        critical: 1
+        critical: 1,
       });
     });
 
@@ -99,7 +99,7 @@ describe('TrendAnalyzer', () => {
         low: 0,
         medium: 0,
         high: 0,
-        critical: 0
+        critical: 0,
       });
     });
   });
@@ -112,7 +112,7 @@ describe('TrendAnalyzer', () => {
         createMockErrorEvent('high', 'fingerprint-1', 'Error A'),
         createMockErrorEvent('medium', 'fingerprint-2', 'Error B'),
         createMockErrorEvent('medium', 'fingerprint-2', 'Error B'),
-        createMockErrorEvent('low', 'fingerprint-3', 'Error C')
+        createMockErrorEvent('low', 'fingerprint-3', 'Error C'),
       ];
 
       const topErrors = TrendAnalyzer.identifyTopErrors(events, 3);
@@ -123,12 +123,12 @@ describe('TrendAnalyzer', () => {
         message: 'Error A',
         count: 3,
         percentage: 50,
-        severity: 'high'
+        severity: 'high',
       });
       expect(topErrors[1]).toMatchObject({
         fingerprint: 'fingerprint-2',
         count: 2,
-        percentage: expect.closeTo(33.33, 1)
+        percentage: expect.closeTo(33.33, 1),
       });
     });
 
@@ -156,11 +156,11 @@ describe('DiagnosticsCollector', () => {
     errorRecoveryManager.getSystemHealth.mockReturnValue({
       healthy: true,
       circuitBreakers: {
-        'test-breaker': { state: 'CLOSED' }
+        'test-breaker': { state: 'CLOSED' },
       },
       bulkheads: {
-        'test-bulkhead': { activeRequests: 2, maxConcurrency: 10 }
-      }
+        'test-bulkhead': { activeRequests: 2, maxConcurrency: 10 },
+      },
     });
   });
 
@@ -174,21 +174,21 @@ describe('DiagnosticsCollector', () => {
           nodeVersion: expect.any(String),
           platform: expect.any(String),
           uptime: expect.any(Number),
-          memoryUsage: expect.any(Object)
+          memoryUsage: expect.any(Object),
         },
         application: {
           version: expect.any(String),
           environment: expect.any(String),
-          configuredFeatures: expect.any(Array)
+          configuredFeatures: expect.any(Array),
         },
         database: {
-          connected: expect.any(Boolean)
+          connected: expect.any(Boolean),
         },
         services: {
           activeServices: expect.any(Array),
           circuitBreakerStates: expect.any(Object),
-          bulkheadUtilization: expect.any(Object)
-        }
+          bulkheadUtilization: expect.any(Object),
+        },
       });
     });
 
@@ -196,7 +196,7 @@ describe('DiagnosticsCollector', () => {
       const diagnostics = await DiagnosticsCollector.collect();
 
       expect(diagnostics.services.circuitBreakerStates).toEqual({
-        'test-breaker': 'CLOSED'
+        'test-breaker': 'CLOSED',
       });
     });
 
@@ -204,7 +204,7 @@ describe('DiagnosticsCollector', () => {
       const diagnostics = await DiagnosticsCollector.collect();
 
       expect(diagnostics.services.bulkheadUtilization).toEqual({
-        'test-bulkhead': 20 // 2/10 * 100
+        'test-bulkhead': 20, // 2/10 * 100
       });
     });
 
@@ -229,7 +229,7 @@ describe('RootCauseAnalyzer', () => {
       const events: ErrorEvent[] = [
         createMockErrorEventWithCode('DATABASE_CONNECTION_ERROR'),
         createMockErrorEventWithCode('DATABASE_TIMEOUT'),
-        createMockErrorEvent('high', 'fp1', 'database connection failed')
+        createMockErrorEvent('high', 'fp1', 'database connection failed'),
       ];
 
       const rootCauses = RootCauseAnalyzer.analyzeRootCauses(events);
@@ -257,7 +257,7 @@ describe('RootCauseAnalyzer', () => {
       const events: ErrorEvent[] = [
         createMockErrorEventWithCode('EXTERNAL_SERVICE_ERROR'),
         createMockErrorEvent('high', 'fp1', 'network timeout occurred'),
-        createMockErrorEvent('medium', 'fp2', 'request timeout')
+        createMockErrorEvent('medium', 'fp2', 'request timeout'),
       ];
 
       const rootCauses = RootCauseAnalyzer.analyzeRootCauses(events);
@@ -269,9 +269,7 @@ describe('RootCauseAnalyzer', () => {
     });
 
     it('should handle events with no clear root causes', () => {
-      const events: ErrorEvent[] = [
-        createMockErrorEvent('low', 'fp1', 'Generic error')
-      ];
+      const events: ErrorEvent[] = [createMockErrorEvent('low', 'fp1', 'Generic error')];
 
       const rootCauses = RootCauseAnalyzer.analyzeRootCauses(events);
 
@@ -281,7 +279,7 @@ describe('RootCauseAnalyzer', () => {
     it('should extract affected services', () => {
       const events: ErrorEvent[] = [
         createMockErrorEventWithServiceContext('DATABASE_ERROR', 'ServiceA'),
-        createMockErrorEventWithServiceContext('DATABASE_ERROR', 'ServiceB')
+        createMockErrorEventWithServiceContext('DATABASE_ERROR', 'ServiceB'),
       ];
 
       const rootCauses = RootCauseAnalyzer.analyzeRootCauses(events);
@@ -302,35 +300,35 @@ describe('ErrorReporter', () => {
     errorMonitor.getMetrics.mockReturnValue({
       errorCount: 0,
       errorRate: 0,
-      topErrors: []
+      topErrors: [],
     });
 
     errorRecoveryManager.getSystemHealth.mockReturnValue({
       healthy: true,
       circuitBreakers: {},
-      bulkheads: {}
+      bulkheads: {},
     });
   });
 
   describe('generateReport', () => {
     it('should generate comprehensive error report', async () => {
       const { errorMonitor } = require('../../../src/utils/error-monitoring');
-      
+
       const mockEvents = [
         createMockErrorEvent('high', 'fp1', 'Test error 1'),
-        createMockErrorEvent('medium', 'fp2', 'Test error 2')
+        createMockErrorEvent('medium', 'fp2', 'Test error 2'),
       ];
 
       errorMonitor.getErrors.mockReturnValue(mockEvents);
       errorMonitor.getMetrics.mockReturnValue({
         errorCount: 2,
         errorRate: 0.5,
-        topErrors: []
+        topErrors: [],
       });
 
       const timeRange = {
         start: new Date('2023-01-01T00:00:00Z'),
-        end: new Date('2023-01-01T23:59:59Z')
+        end: new Date('2023-01-01T23:59:59Z'),
       };
 
       const report = await ErrorReporter.generateReport(timeRange);
@@ -343,36 +341,34 @@ describe('ErrorReporter', () => {
           totalErrors: 2,
           uniqueErrors: 2,
           errorRate: 0.5,
-          topErrors: expect.any(Array)
+          topErrors: expect.any(Array),
         },
         trends: {
           errorCountTrend: expect.any(String),
           errorRateTrend: expect.any(String),
-          severityDistribution: expect.any(Object)
+          severityDistribution: expect.any(Object),
         },
         services: expect.any(Array),
         rootCauses: expect.any(Array),
         systemHealth: {
           overall: expect.any(String),
           circuitBreakers: expect.any(Object),
-          bulkheads: expect.any(Object)
+          bulkheads: expect.any(Object),
         },
-        recommendations: expect.any(Array)
+        recommendations: expect.any(Array),
       });
     });
 
     it('should determine critical health status', async () => {
       const { errorMonitor } = require('../../../src/utils/error-monitoring');
-      
-      const criticalEvents = [
-        createMockErrorEvent('critical', 'fp1', 'Critical error')
-      ];
+
+      const criticalEvents = [createMockErrorEvent('critical', 'fp1', 'Critical error')];
 
       errorMonitor.getErrors.mockReturnValue(criticalEvents);
 
       const timeRange = {
         start: new Date('2023-01-01T00:00:00Z'),
-        end: new Date('2023-01-01T23:59:59Z')
+        end: new Date('2023-01-01T23:59:59Z'),
       };
 
       const report = await ErrorReporter.generateReport(timeRange);
@@ -382,7 +378,7 @@ describe('ErrorReporter', () => {
 
     it('should determine degraded health status', async () => {
       const { errorMonitor } = require('../../../src/utils/error-monitoring');
-      
+
       // Create 15 recent errors (more than 10 threshold)
       const recentEvents = Array.from({ length: 15 }, (_, i) =>
         createMockErrorEvent('medium', `fp${i}`, `Error ${i}`, new Date())
@@ -392,7 +388,7 @@ describe('ErrorReporter', () => {
 
       const timeRange = {
         start: new Date('2023-01-01T00:00:00Z'),
-        end: new Date('2023-01-01T23:59:59Z')
+        end: new Date('2023-01-01T23:59:59Z'),
       };
 
       const report = await ErrorReporter.generateReport(timeRange);
@@ -402,24 +398,24 @@ describe('ErrorReporter', () => {
 
     it('should analyze service errors correctly', async () => {
       const { errorMonitor } = require('../../../src/utils/error-monitoring');
-      
+
       const mockEvents = [
         createMockErrorEventWithServiceContext('TEST_ERROR', 'ServiceA', 'methodX'),
         createMockErrorEventWithServiceContext('TEST_ERROR', 'ServiceA', 'methodY'),
-        createMockErrorEventWithServiceContext('TEST_ERROR', 'ServiceB', 'methodZ')
+        createMockErrorEventWithServiceContext('TEST_ERROR', 'ServiceB', 'methodZ'),
       ];
 
       errorMonitor.getErrors.mockReturnValue(mockEvents);
 
       const timeRange = {
         start: new Date('2023-01-01T00:00:00Z'),
-        end: new Date('2023-01-01T23:59:59Z')
+        end: new Date('2023-01-01T23:59:59Z'),
       };
 
       const report = await ErrorReporter.generateReport(timeRange);
 
       expect(report.services).toHaveLength(2);
-      
+
       const serviceA = report.services.find(s => s.name === 'ServiceA');
       expect(serviceA).toMatchObject({
         name: 'ServiceA',
@@ -427,14 +423,14 @@ describe('ErrorReporter', () => {
         errorRate: expect.any(Number),
         topMethods: expect.arrayContaining([
           { method: 'methodX', errorCount: 1 },
-          { method: 'methodY', errorCount: 1 }
-        ])
+          { method: 'methodY', errorCount: 1 },
+        ]),
       });
     });
 
     it('should generate appropriate recommendations', async () => {
       const { errorMonitor } = require('../../../src/utils/error-monitoring');
-      
+
       // Create many errors to trigger high volume recommendation
       const manyErrors = Array.from({ length: 150 }, (_, i) =>
         createMockErrorEvent('medium', `fp${i}`, `Error ${i}`)
@@ -444,7 +440,7 @@ describe('ErrorReporter', () => {
 
       const timeRange = {
         start: new Date('2023-01-01T00:00:00Z'),
-        end: new Date('2023-01-01T23:59:59Z')
+        end: new Date('2023-01-01T23:59:59Z'),
       };
 
       const report = await ErrorReporter.generateReport(timeRange);
@@ -466,22 +462,22 @@ describe('Convenience functions', () => {
     errorMonitor.getMetrics.mockReturnValue({
       errorCount: 0,
       errorRate: 0,
-      topErrors: []
+      topErrors: [],
     });
 
     errorRecoveryManager.getSystemHealth.mockReturnValue({
       healthy: true,
       circuitBreakers: {},
-      bulkheads: {}
+      bulkheads: {},
     });
 
     getErrorMetrics.mockReturnValue({
       errorCount: 5,
-      errorRate: 0.1
+      errorRate: 0.1,
     });
 
     getSystemHealth.mockReturnValue({
-      isHealthy: true
+      isHealthy: true,
     });
   });
 
@@ -491,7 +487,7 @@ describe('Convenience functions', () => {
 
       expect(report).toHaveProperty('id');
       expect(report).toHaveProperty('timeRange');
-      
+
       const timeSpan = report.timeRange.end.getTime() - report.timeRange.start.getTime();
       expect(timeSpan).toBe(24 * 60 * 60 * 1000); // 24 hours in milliseconds
     });
@@ -512,7 +508,7 @@ describe('Convenience functions', () => {
         status: 'healthy',
         errorCount: 5,
         criticalErrors: 0,
-        recommendations: ['System is operating normally']
+        recommendations: ['System is operating normally'],
       });
     });
 
@@ -526,16 +522,16 @@ describe('Convenience functions', () => {
         status: 'degraded',
         errorCount: 5,
         criticalErrors: 0,
-        recommendations: ['Check error logs', 'Review system health']
+        recommendations: ['Check error logs', 'Review system health'],
       });
     });
 
     it('should count critical errors correctly', () => {
       const { errorMonitor } = require('../../../src/utils/error-monitoring');
-      
+
       const criticalEvents = [
         createMockErrorEvent('critical', 'fp1', 'Critical error 1'),
-        createMockErrorEvent('critical', 'fp2', 'Critical error 2')
+        createMockErrorEvent('critical', 'fp2', 'Critical error 2'),
       ];
 
       errorMonitor.getErrors.mockReturnValue(criticalEvents);
@@ -550,8 +546,8 @@ describe('Convenience functions', () => {
 // Helper functions for creating mock data
 function createMockErrorEvent(
   severity: 'low' | 'medium' | 'high' | 'critical',
-  fingerprint: string = 'default-fingerprint',
-  message: string = 'Test error',
+  fingerprint = 'default-fingerprint',
+  message = 'Test error',
   timestamp: Date = new Date()
 ): ErrorEvent {
   return {
@@ -563,8 +559,8 @@ function createMockErrorEvent(
     tags: {},
     context: {
       service: 'TestService',
-      method: 'testMethod'
-    }
+      method: 'testMethod',
+    },
   };
 }
 
@@ -578,15 +574,15 @@ function createMockErrorEventWithCode(code: string): ErrorEvent {
     tags: {},
     context: {
       service: 'TestService',
-      method: 'testMethod'
-    }
+      method: 'testMethod',
+    },
   };
 }
 
 function createMockErrorEventWithServiceContext(
   code: string,
   service: string,
-  method: string = 'testMethod'
+  method = 'testMethod'
 ): ErrorEvent {
   return {
     id: `error-${Math.random().toString(36).substr(2, 9)}`,
@@ -597,7 +593,7 @@ function createMockErrorEventWithServiceContext(
     tags: {},
     context: {
       service,
-      method
-    }
+      method,
+    },
   };
 }

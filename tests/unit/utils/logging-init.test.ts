@@ -2,19 +2,19 @@
  * @fileoverview Tests for logging initialization utilities
  */
 
-import { 
-  initializeLogging, 
-  setupLogRotation, 
+import fs from 'fs';
+import path from 'path';
+import {
+  initializeLogging,
+  setupLogRotation,
   updateLoggingConfig,
   getCurrentLoggingConfig,
   startLoggingHealthMonitor,
   createChildLogger,
   flushLogs,
-  getLoggingStats
+  getLoggingStats,
 } from '../../../src/utils/logging-init';
 import type { LoggingConfig, LogRotationConfig } from '../../../src/utils/logging-init';
-import fs from 'fs';
-import path from 'path';
 
 // Mock fs module
 jest.mock('fs');
@@ -34,8 +34,8 @@ jest.mock('winston', () => ({
     child: jest.fn(() => ({
       info: jest.fn(),
       error: jest.fn(),
-      debug: jest.fn()
-    }))
+      debug: jest.fn(),
+    })),
   })),
   format: {
     combine: jest.fn(),
@@ -44,13 +44,13 @@ jest.mock('winston', () => ({
     json: jest.fn(),
     colorize: jest.fn(),
     simple: jest.fn(),
-    printf: jest.fn()
+    printf: jest.fn(),
   },
   transports: {
     File: jest.fn(),
     Console: jest.fn(),
-    Http: jest.fn()
-  }
+    Http: jest.fn(),
+  },
 }));
 
 // Mock logger
@@ -67,9 +67,9 @@ jest.mock('../../../src/utils/logger', () => ({
     child: jest.fn(() => ({
       info: jest.fn(),
       error: jest.fn(),
-      debug: jest.fn()
-    }))
-  }
+      debug: jest.fn(),
+    })),
+  },
 }));
 
 // Mock advanced logging
@@ -77,12 +77,12 @@ jest.mock('../../../src/utils/advanced-logging', () => ({
   contextLogger: { init: jest.fn() },
   auditLogger: { init: jest.fn() },
   performanceLogger: { init: jest.fn() },
-  logAnalytics: { init: jest.fn() }
+  logAnalytics: { init: jest.fn() },
 }));
 
 // Mock errors
 jest.mock('../../../src/utils/errors', () => ({
-  enableErrorMonitoring: jest.fn()
+  enableErrorMonitoring: jest.fn(),
 }));
 
 describe('initializeLogging', () => {
@@ -104,7 +104,7 @@ describe('initializeLogging', () => {
       enableAudit: true,
       enablePerformance: true,
       enableAnalytics: true,
-      enableErrorMonitoring: true
+      enableErrorMonitoring: true,
     };
 
     await expect(initializeLogging(config)).resolves.not.toThrow();
@@ -120,18 +120,17 @@ describe('initializeLogging', () => {
 
   it('should create required log directories', async () => {
     mockFs.existsSync.mockReturnValue(false);
-    
+
     await initializeLogging();
 
-    expect(mockFs.mkdirSync).toHaveBeenCalledWith(
-      expect.stringContaining('logs'),
-      { recursive: true }
-    );
+    expect(mockFs.mkdirSync).toHaveBeenCalledWith(expect.stringContaining('logs'), {
+      recursive: true,
+    });
   });
 
   it('should enable error monitoring when configured', async () => {
     const { enableErrorMonitoring } = require('../../../src/utils/errors');
-    
+
     await initializeLogging({ enableErrorMonitoring: true });
 
     expect(enableErrorMonitoring).toHaveBeenCalled();
@@ -139,7 +138,7 @@ describe('initializeLogging', () => {
 
   it('should skip error monitoring when disabled', async () => {
     const { enableErrorMonitoring } = require('../../../src/utils/errors');
-    
+
     await initializeLogging({ enableErrorMonitoring: false });
 
     expect(enableErrorMonitoring).not.toHaveBeenCalled();
@@ -153,7 +152,7 @@ describe('setupLogRotation', () => {
     mockFs.existsSync.mockReturnValue(true);
     mockFs.statSync.mockReturnValue({
       size: 5 * 1024 * 1024, // 5MB
-      mtime: new Date()
+      mtime: new Date(),
     } as any);
     mockFs.readdir.mockResolvedValue([]);
   });
@@ -167,7 +166,7 @@ describe('setupLogRotation', () => {
       frequency: 'daily',
       maxSize: '10MB',
       maxFiles: 5,
-      compress: true
+      compress: true,
     };
 
     await expect(setupLogRotation(config)).resolves.not.toThrow();
@@ -176,14 +175,14 @@ describe('setupLogRotation', () => {
   it('should handle log rotation for large files', async () => {
     mockFs.statSync.mockReturnValue({
       size: 15 * 1024 * 1024, // 15MB (exceeds 10MB limit)
-      mtime: new Date()
+      mtime: new Date(),
     } as any);
 
     const config: LogRotationConfig = {
       frequency: 'daily',
       maxSize: '10MB',
       maxFiles: 5,
-      compress: true
+      compress: true,
     };
 
     await setupLogRotation(config);
@@ -202,7 +201,7 @@ describe('setupLogRotation', () => {
         frequency,
         maxSize: '10MB',
         maxFiles: 5,
-        compress: true
+        compress: true,
       };
 
       await expect(setupLogRotation(config)).resolves.not.toThrow();
@@ -213,7 +212,7 @@ describe('setupLogRotation', () => {
     mockFs.existsSync.mockReturnValue(false);
     mockFs.statSync.mockReturnValue({
       size: 15 * 1024 * 1024, // Large file
-      mtime: new Date()
+      mtime: new Date(),
     } as any);
 
     const config: LogRotationConfig = {
@@ -221,16 +220,13 @@ describe('setupLogRotation', () => {
       maxSize: '10MB',
       maxFiles: 5,
       compress: true,
-      archivePath: '/custom/archive/path'
+      archivePath: '/custom/archive/path',
     };
 
     await setupLogRotation(config);
     jest.advanceTimersByTime(24 * 60 * 60 * 1000);
 
-    expect(mockFs.mkdirSync).toHaveBeenCalledWith(
-      '/custom/archive/path',
-      { recursive: true }
-    );
+    expect(mockFs.mkdirSync).toHaveBeenCalledWith('/custom/archive/path', { recursive: true });
   });
 });
 
@@ -255,10 +251,7 @@ describe('updateLoggingConfig', () => {
 
     updateLoggingConfig({ level: 'info' });
 
-    expect(logger.info).not.toHaveBeenCalledWith(
-      'Log level updated',
-      { newLevel: 'info' }
-    );
+    expect(logger.info).not.toHaveBeenCalledWith('Log level updated', { newLevel: 'info' });
   });
 
   it('should enable console logging', () => {
@@ -287,11 +280,11 @@ describe('getCurrentLoggingConfig', () => {
   it('should return current logging configuration', () => {
     const winston = require('winston');
     const { logger } = require('../../../src/utils/logger');
-    
+
     logger.level = 'debug';
     logger.transports = [
       new winston.transports.Console(),
-      new winston.transports.File({ filename: 'test.log' })
+      new winston.transports.File({ filename: 'test.log' }),
     ];
 
     const config = getCurrentLoggingConfig();
@@ -299,13 +292,13 @@ describe('getCurrentLoggingConfig', () => {
     expect(config).toEqual({
       level: 'debug',
       enableConsole: true,
-      enableFile: true
+      enableFile: true,
     });
   });
 
   it('should handle empty transports', () => {
     const { logger } = require('../../../src/utils/logger');
-    
+
     logger.level = 'info';
     logger.transports = [];
 
@@ -314,7 +307,7 @@ describe('getCurrentLoggingConfig', () => {
     expect(config).toEqual({
       level: 'info',
       enableConsole: false,
-      enableFile: false
+      enableFile: false,
     });
   });
 });
@@ -325,7 +318,7 @@ describe('startLoggingHealthMonitor', () => {
     mockFs.accessSync.mockImplementation(() => {});
     mockFs.statSync.mockReturnValue({
       size: 1024,
-      mtime: new Date()
+      mtime: new Date(),
     } as any);
   });
 
@@ -346,10 +339,7 @@ describe('startLoggingHealthMonitor', () => {
     // Fast-forward 5 minutes
     jest.advanceTimersByTime(5 * 60 * 1000);
 
-    expect(logger.debug).toHaveBeenCalledWith(
-      'Logging health check passed',
-      expect.any(Object)
-    );
+    expect(logger.debug).toHaveBeenCalledWith('Logging health check passed', expect.any(Object));
   });
 
   it('should handle file access errors', () => {
@@ -362,10 +352,7 @@ describe('startLoggingHealthMonitor', () => {
     startLoggingHealthMonitor();
     jest.advanceTimersByTime(5 * 60 * 1000);
 
-    expect(logger.error).toHaveBeenCalledWith(
-      'Log file not accessible',
-      expect.any(Object)
-    );
+    expect(logger.error).toHaveBeenCalledWith('Log file not accessible', expect.any(Object));
   });
 
   it('should handle health check errors gracefully', () => {
@@ -378,10 +365,7 @@ describe('startLoggingHealthMonitor', () => {
     startLoggingHealthMonitor();
     jest.advanceTimersByTime(5 * 60 * 1000);
 
-    expect(logger.error).toHaveBeenCalledWith(
-      'Logging health check failed',
-      expect.any(Object)
-    );
+    expect(logger.error).toHaveBeenCalledWith('Logging health check failed', expect.any(Object));
   });
 });
 
@@ -401,19 +385,19 @@ describe('flushLogs', () => {
   it('should flush all file transports', async () => {
     const winston = require('winston');
     const { logger } = require('../../../src/utils/logger');
-    
+
     const fileTransport1 = new winston.transports.File({ filename: 'test1.log' });
     const fileTransport2 = new winston.transports.File({ filename: 'test2.log' });
     const consoleTransport = new winston.transports.Console();
-    
+
     // Mock _flush method
-    fileTransport1._flush = jest.fn((callback) => callback());
-    fileTransport2._flush = jest.fn((callback) => callback());
-    
+    fileTransport1._flush = jest.fn(callback => callback());
+    fileTransport2._flush = jest.fn(callback => callback());
+
     logger.transports = [fileTransport1, fileTransport2, consoleTransport];
 
     await expect(flushLogs()).resolves.not.toThrow();
-    
+
     expect(fileTransport1._flush).toHaveBeenCalled();
     expect(fileTransport2._flush).toHaveBeenCalled();
   });
@@ -421,10 +405,10 @@ describe('flushLogs', () => {
   it('should handle transports without flush method', async () => {
     const winston = require('winston');
     const { logger } = require('../../../src/utils/logger');
-    
+
     const fileTransport = new winston.transports.File({ filename: 'test.log' });
     // Don't add _flush method
-    
+
     logger.transports = [fileTransport];
 
     await expect(flushLogs()).resolves.not.toThrow();
@@ -433,7 +417,7 @@ describe('flushLogs', () => {
   it('should resolve immediately when no file transports', async () => {
     const winston = require('winston');
     const { logger } = require('../../../src/utils/logger');
-    
+
     logger.transports = [new winston.transports.Console()];
 
     await expect(flushLogs()).resolves.not.toThrow();
@@ -456,11 +440,11 @@ describe('getLoggingStats', () => {
   it('should return logging statistics', () => {
     const winston = require('winston');
     const { logger } = require('../../../src/utils/logger');
-    
+
     logger.level = 'debug';
     logger.transports = [
       new winston.transports.Console(),
-      new winston.transports.File({ filename: 'test.log' })
+      new winston.transports.File({ filename: 'test.log' }),
     ];
 
     const stats = getLoggingStats();
@@ -472,23 +456,23 @@ describe('getLoggingStats', () => {
         expect.objectContaining({
           file: 'logs/combined.log',
           size: 1024,
-          lastModified: new Date('2023-01-01')
+          lastModified: new Date('2023-01-01'),
         }),
         expect.objectContaining({
           file: 'logs/error.log',
           size: 512,
-          lastModified: new Date('2023-01-02')
-        })
-      ])
+          lastModified: new Date('2023-01-02'),
+        }),
+      ]),
     });
   });
 
   it('should handle missing log files', () => {
     const { logger } = require('../../../src/utils/logger');
-    
+
     logger.level = 'info';
     logger.transports = [];
-    
+
     // All files will throw errors
     mockFs.statSync.mockImplementation(() => {
       throw new Error('File not found');
@@ -500,8 +484,8 @@ describe('getLoggingStats', () => {
       expect.arrayContaining([
         expect.objectContaining({
           size: 0,
-          lastModified: new Date(0)
-        })
+          lastModified: new Date(0),
+        }),
       ])
     );
   });

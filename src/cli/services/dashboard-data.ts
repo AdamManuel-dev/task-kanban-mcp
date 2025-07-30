@@ -92,12 +92,15 @@ export class DashboardDataService {
     const now = new Date();
 
     tasks.forEach(task => {
+      if (!task || typeof task !== 'object') return;
+      const taskObj = task as { status?: string; priority?: string; due_date?: string };
+
       // Count by status
-      const status = task.status ?? 'todo';
+      const status = taskObj.status ?? 'todo';
       byStatus[status] = (byStatus[status] ?? 0) + 1;
 
       // Count by priority
-      const priority = task.priority ?? 'P3';
+      const priority = taskObj.priority ?? 'P3';
       byPriority[priority] = (byPriority[priority] ?? 0) + 1;
 
       // Count completed
@@ -106,7 +109,7 @@ export class DashboardDataService {
       }
 
       // Count overdue
-      if (task.due_date && new Date(task.due_date) < now && status !== 'done') {
+      if (taskObj.due_date && new Date(taskObj.due_date) < now && status !== 'done') {
         overdue += 1;
       }
     });
@@ -139,7 +142,10 @@ export class DashboardDataService {
         ('data' in response && Array.isArray(response.data) ? response.data : []).map(
           (item: unknown, index: number) => ({
             period: `W${String(index + 1)}`,
-            completed: item.completed_count ?? 0,
+            completed:
+              item && typeof item === 'object' && 'completed_count' in item
+                ? ((item as { completed_count?: number }).completed_count ?? 0)
+                : 0,
           })
         ) || DashboardDataService.generateSampleVelocity()
       );
@@ -157,11 +163,19 @@ export class DashboardDataService {
 
       return (
         ('data' in response && Array.isArray(response.data) ? response.data : []).map(
-          (member: unknown) => ({
-            name: member.name ?? member.username,
-            taskCount: member.active_tasks ?? 0,
-            load: member.workload_percentage ?? 0,
-          })
+          (member: unknown) => {
+            const memberObj = member as {
+              name?: string;
+              username?: string;
+              active_tasks?: number;
+              workload_percentage?: number;
+            };
+            return {
+              name: memberObj.name ?? memberObj.username ?? 'Unknown',
+              taskCount: memberObj.active_tasks ?? 0,
+              load: memberObj.workload_percentage ?? 0,
+            };
+          }
         ) || DashboardDataService.generateSampleTeamMembers()
       );
     } catch (error) {
@@ -178,11 +192,18 @@ export class DashboardDataService {
 
       return (
         ('data' in response && Array.isArray(response.data) ? response.data : []).map(
-          (item: unknown) => ({
-            day: item.day,
-            remaining: item.remaining_tasks ?? 0,
-            ideal: item.ideal_remaining ?? 0,
-          })
+          (item: unknown) => {
+            const itemObj = item as {
+              day?: string;
+              remaining_tasks?: number;
+              ideal_remaining?: number;
+            };
+            return {
+              day: itemObj.day ?? '',
+              remaining: itemObj.remaining_tasks ?? 0,
+              ideal: itemObj.ideal_remaining ?? 0,
+            };
+          }
         ) || DashboardDataService.generateSampleBurndown()
       );
     } catch (error) {
@@ -194,24 +215,41 @@ export class DashboardDataService {
    * Transform activity data for display
    */
   private static transformActivityData(activities: unknown[]): DashboardData['activity'] {
-    return activities.slice(0, 10).map(activity => ({
-      timestamp: new Date(activity.created_at).toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
-      event: this.formatActivityEvent(activity),
-      user: activity.user?.name ?? activity.user?.username ?? 'System',
-    }));
+    return activities.slice(0, 10).map(activity => {
+      const activityObj = activity as {
+        created_at?: string;
+        user?: { name?: string; username?: string };
+      };
+      return {
+        timestamp: activityObj.created_at
+          ? new Date(activityObj.created_at).toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit',
+            })
+          : 'Unknown',
+        event: this.formatActivityEvent(activity),
+        user: activityObj.user?.name ?? activityObj.user?.username ?? 'System',
+      };
+    });
   }
 
   /**
    * Format activity event for display
    */
   private static formatActivityEvent(activity: unknown): string {
-    const action = activity.action ?? 'updated';
-    const entityType = activity.entity_type ?? 'task';
+    const activityObj = activity as {
+      action?: string;
+      entity_type?: string;
+      entity?: { title?: string; name?: string };
+      entity_name?: string;
+      entity_id?: string;
+      details?: { new_status?: string; assignee?: string };
+    };
+    const action = activityObj.action ?? 'updated';
+    const entityType = activityObj.entity_type ?? 'task';
     const entityName =
-      activity.entity_name ?? `${String(entityType)} #${String(String(activity.entity_id))}`;
+      activityObj.entity_name ??
+      `${String(entityType)} #${String(activityObj.entity_id ?? 'Unknown')}`;
 
     switch (action) {
       case 'create':
@@ -221,9 +259,9 @@ export class DashboardDataService {
       case 'delete':
         return `Deleted ${String(entityType)}: ${String(entityName)}`;
       case 'move':
-        return `Moved ${String(entityName)} to ${String(String(activity.details?.new_status))}`;
+        return `Moved ${String(entityName)} to ${String(activityObj.details?.new_status ?? 'unknown')}`;
       case 'assign':
-        return `Assigned ${String(entityName)} to ${String(String(activity.details?.assignee))}`;
+        return `Assigned ${String(entityName)} to ${String(activityObj.details?.assignee ?? 'unknown')}`;
       case 'comment':
         return `Commented on ${String(entityName)}`;
       default:

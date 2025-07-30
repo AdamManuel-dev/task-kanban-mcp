@@ -1,7 +1,7 @@
 /**
  * @fileoverview SQL injection prevention verification tests
  * @lastmodified 2025-07-28T10:30:00Z
- * 
+ *
  * Features: SQL injection attack prevention, parameterized query validation, security testing
  * Main APIs: Database queries, user input handling, SQL parameter binding
  * Constraints: All queries must use parameterized statements, no string concatenation
@@ -22,7 +22,7 @@ describe('SQL Injection Prevention Verification', () => {
   beforeAll(async () => {
     connection = DatabaseConnection.getInstance();
     await connection.initialize({ skipSchema: false });
-    
+
     taskService = new TaskService(connection);
     boardService = new BoardService(connection);
     noteService = new NoteService(connection);
@@ -67,32 +67,32 @@ describe('SQL Injection Prevention Verification', () => {
     "' OR 'a'='a",
     "'; DELETE FROM boards; --",
     "' UNION SELECT * FROM boards --",
-    
+
     // Boolean-based blind SQL injection
     "' AND 1=1 --",
     "' AND 1=2 --",
     "' OR EXISTS(SELECT * FROM sqlite_master) --",
-    
+
     // Time-based blind SQL injection
     "'; WAITFOR DELAY '00:00:05' --",
     "' OR (SELECT COUNT(*) FROM sqlite_master) > 0 --",
-    
+
     // Union-based SQL injection
     "' UNION SELECT id,name,description,NULL,NULL,NULL FROM boards --",
     "' UNION ALL SELECT NULL,NULL,NULL,id,title,description FROM tasks --",
-    
+
     // Error-based SQL injection
     "' AND (SELECT COUNT(*) FROM (SELECT 1 UNION SELECT 2 UNION SELECT 3) t) --",
     "' AND EXTRACTVALUE(1, CONCAT(0x7e, (SELECT version()), 0x7e)) --",
-    
+
     // Stacked queries
     "'; INSERT INTO tasks (id,board_id,column_id,title,description,status,position) VALUES ('inject','inject','inject','inject','inject','todo',1); --",
     "'; UPDATE tasks SET title='HACKED' WHERE 1=1; --",
-    
+
     // Comment-based injections
     "' /* comment */ OR 1=1 --",
     "' # comment \n OR 1=1 --",
-    
+
     // Encoding-based injections
     "' %4f%52 1=1 --", // URL encoded OR
     "' %55%4e%49%4f%4e --", // URL encoded UNION
@@ -147,11 +147,10 @@ describe('SQL Injection Prevention Verification', () => {
 
           // Should return empty results or results matching the literal payload text
           expect(Array.isArray(results)).toBe(true);
-          
+
           // Verify database integrity after search
           const taskCount = await connection.execute('SELECT COUNT(*) as count FROM tasks');
           expect(Array.isArray(taskCount)).toBe(true);
-          
         } catch (error) {
           // Any error should be a service error, not a SQL syntax error
           expect((error as Error).message).not.toContain('SQLITE_ERROR');
@@ -173,7 +172,8 @@ describe('SQL Injection Prevention Verification', () => {
         status: 'todo',
       });
 
-      for (const payload of SQL_INJECTION_PAYLOADS.slice(0, 5)) { // Test subset for updates
+      for (const payload of SQL_INJECTION_PAYLOADS.slice(0, 5)) {
+        // Test subset for updates
         try {
           const updatedTask = await taskService.updateTask(testTask.id, {
             title: `Updated with payload: ${payload}`,
@@ -187,7 +187,6 @@ describe('SQL Injection Prevention Verification', () => {
           // Verify database integrity
           const taskExists = await taskService.getTask(testTask.id);
           expect(taskExists).toBeDefined();
-          
         } catch (error) {
           expect((error as Error).message).not.toContain('SQLITE_ERROR');
           expect((error as Error).message).not.toContain('syntax error');
@@ -201,7 +200,8 @@ describe('SQL Injection Prevention Verification', () => {
 
   describe('Board Service SQL Injection Prevention', () => {
     test('board creation should prevent SQL injection in all fields', async () => {
-      for (const payload of SQL_INJECTION_PAYLOADS.slice(0, 10)) { // Test subset
+      for (const payload of SQL_INJECTION_PAYLOADS.slice(0, 10)) {
+        // Test subset
         try {
           const board = await boardService.createBoard({
             name: `Test Board ${payload}`,
@@ -218,7 +218,6 @@ describe('SQL Injection Prevention Verification', () => {
 
           // Clean up
           await boardService.deleteBoard(board.id);
-          
         } catch (error) {
           expect((error as Error).message).not.toContain('SQLITE_ERROR');
           expect((error as Error).message).not.toContain('syntax error');
@@ -239,7 +238,6 @@ describe('SQL Injection Prevention Verification', () => {
           // Verify database integrity
           const boardCount = await connection.execute('SELECT COUNT(*) as count FROM boards');
           expect(Array.isArray(boardCount)).toBe(true);
-          
         } catch (error) {
           expect((error as Error).message).not.toContain('SQLITE_ERROR');
           expect((error as Error).message).not.toContain('syntax error');
@@ -262,7 +260,8 @@ describe('SQL Injection Prevention Verification', () => {
         status: 'todo',
       });
 
-      for (const payload of SQL_INJECTION_PAYLOADS.slice(0, 5)) { // Test subset
+      for (const payload of SQL_INJECTION_PAYLOADS.slice(0, 5)) {
+        // Test subset
         try {
           const note = await noteService.createNote({
             task_id: testTask.id,
@@ -279,7 +278,6 @@ describe('SQL Injection Prevention Verification', () => {
 
           // Clean up
           await noteService.deleteNote(note.id);
-          
         } catch (error) {
           expect((error as Error).message).not.toContain('SQLITE_ERROR');
           expect((error as Error).message).not.toContain('syntax error');
@@ -296,10 +294,9 @@ describe('SQL Injection Prevention Verification', () => {
       for (const payload of SQL_INJECTION_PAYLOADS.slice(0, 10)) {
         try {
           // Test parameterized queries directly
-          const results = await connection.execute(
-            'SELECT * FROM tasks WHERE title = ?',
-            [payload]
-          );
+          const results = await connection.execute('SELECT * FROM tasks WHERE title = ?', [
+            payload,
+          ]);
 
           // Should execute safely and return results (or empty array)
           expect(Array.isArray(results)).toBe(true);
@@ -307,7 +304,6 @@ describe('SQL Injection Prevention Verification', () => {
           // Verify database integrity after query
           const taskCount = await connection.execute('SELECT COUNT(*) as count FROM tasks');
           expect(Array.isArray(taskCount)).toBe(true);
-          
         } catch (error) {
           // Should not be SQL syntax errors
           expect((error as Error).message).not.toContain('syntax error');
@@ -319,15 +315,14 @@ describe('SQL Injection Prevention Verification', () => {
       // This test verifies that we don't accidentally use string concatenation
       // Note: We're not actually testing string concatenation (which would be vulnerable)
       // but ensuring our parameterized approach works correctly
-      
+
       const maliciousInput = "'; DROP TABLE tasks; --";
-      
+
       try {
         // This should be safe because we use parameterized queries
-        const results = await connection.execute(
-          'SELECT * FROM tasks WHERE title LIKE ?',
-          [`%${maliciousInput}%`]
-        );
+        const results = await connection.execute('SELECT * FROM tasks WHERE title LIKE ?', [
+          `%${maliciousInput}%`,
+        ]);
 
         expect(Array.isArray(results)).toBe(true);
 
@@ -337,7 +332,6 @@ describe('SQL Injection Prevention Verification', () => {
         );
         expect(Array.isArray(tableExists)).toBe(true);
         expect(tableExists.length).toBeGreaterThan(0);
-        
       } catch (error) {
         expect((error as Error).message).not.toContain('no such table');
       }
@@ -347,15 +341,18 @@ describe('SQL Injection Prevention Verification', () => {
   describe('Complex Query SQL Injection Prevention', () => {
     test('join queries should prevent SQL injection', async () => {
       const payload = "' UNION SELECT id,name,description,NULL,NULL,NULL FROM boards --";
-      
+
       try {
         // Test a complex join query with potential injection point
-        const results = await connection.execute(`
+        const results = await connection.execute(
+          `
           SELECT t.*, b.name as board_name 
           FROM tasks t 
           JOIN boards b ON t.board_id = b.id 
           WHERE t.title = ?
-        `, [payload]);
+        `,
+          [payload]
+        );
 
         expect(Array.isArray(results)).toBe(true);
 
@@ -367,7 +364,6 @@ describe('SQL Injection Prevention Verification', () => {
           // Should not have extra columns from injection attempt
           expect(typeof result.title).toBe('string');
         }
-        
       } catch (error) {
         expect((error as Error).message).not.toContain('syntax error');
       }
@@ -375,21 +371,23 @@ describe('SQL Injection Prevention Verification', () => {
 
     test('aggregate queries should prevent SQL injection', async () => {
       const payload = "'; SELECT COUNT(*) FROM boards; --";
-      
+
       try {
-        const results = await connection.execute(`
+        const results = await connection.execute(
+          `
           SELECT COUNT(*) as count 
           FROM tasks 
           WHERE status = ? AND title LIKE ?
-        `, ['todo', `%${payload}%`]);
+        `,
+          ['todo', `%${payload}%`]
+        );
 
         expect(Array.isArray(results)).toBe(true);
         expect(results.length).toBe(1);
-        
+
         const result = results[0] as any;
         expect(result).toHaveProperty('count');
         expect(typeof result.count).toBe('number');
-        
       } catch (error) {
         expect((error as Error).message).not.toContain('syntax error');
       }
@@ -397,17 +395,19 @@ describe('SQL Injection Prevention Verification', () => {
 
     test('subquery protection should prevent SQL injection', async () => {
       const payload = "') OR EXISTS(SELECT * FROM boards WHERE name='admin') --";
-      
+
       try {
-        const results = await connection.execute(`
+        const results = await connection.execute(
+          `
           SELECT * FROM tasks 
           WHERE board_id IN (
             SELECT id FROM boards WHERE name = ?
           )
-        `, [payload]);
+        `,
+          [payload]
+        );
 
         expect(Array.isArray(results)).toBe(true);
-        
       } catch (error) {
         expect((error as Error).message).not.toContain('syntax error');
       }
@@ -417,16 +417,12 @@ describe('SQL Injection Prevention Verification', () => {
   describe('Input Validation and Sanitization', () => {
     test('should handle null and undefined inputs safely', async () => {
       const testInputs = [null, undefined, '', '   '];
-      
+
       for (const input of testInputs) {
         try {
-          const results = await connection.execute(
-            'SELECT * FROM tasks WHERE title = ?',
-            [input]
-          );
+          const results = await connection.execute('SELECT * FROM tasks WHERE title = ?', [input]);
 
           expect(Array.isArray(results)).toBe(true);
-          
         } catch (error) {
           // Should handle null/undefined gracefully
           expect((error as Error).message).not.toContain('SQLITE_ERROR');
@@ -435,13 +431,12 @@ describe('SQL Injection Prevention Verification', () => {
     });
 
     test('should handle very long inputs safely', async () => {
-      const longPayload = 'A'.repeat(10000) + "'; DROP TABLE tasks; --";
-      
+      const longPayload = `${'A'.repeat(10000)}'; DROP TABLE tasks; --`;
+
       try {
-        const results = await connection.execute(
-          'SELECT * FROM tasks WHERE title = ?',
-          [longPayload]
-        );
+        const results = await connection.execute('SELECT * FROM tasks WHERE title = ?', [
+          longPayload,
+        ]);
 
         expect(Array.isArray(results)).toBe(true);
 
@@ -451,7 +446,6 @@ describe('SQL Injection Prevention Verification', () => {
         );
         expect(Array.isArray(tableExists)).toBe(true);
         expect(tableExists.length).toBeGreaterThan(0);
-        
       } catch (error) {
         // Long inputs might cause other errors, but not SQL injection
         expect((error as Error).message).not.toContain('syntax error');
@@ -461,16 +455,14 @@ describe('SQL Injection Prevention Verification', () => {
 
     test('should handle special characters safely', async () => {
       const specialChars = ["'", '"', '\\', '\n', '\r', '\t', '\0', '%', '_'];
-      
+
       for (const char of specialChars) {
         try {
-          const results = await connection.execute(
-            'SELECT * FROM tasks WHERE title LIKE ?',
-            [`%${char}%`]
-          );
+          const results = await connection.execute('SELECT * FROM tasks WHERE title LIKE ?', [
+            `%${char}%`,
+          ]);
 
           expect(Array.isArray(results)).toBe(true);
-          
         } catch (error) {
           expect((error as Error).message).not.toContain('syntax error');
         }
@@ -480,15 +472,15 @@ describe('SQL Injection Prevention Verification', () => {
     test('database should maintain integrity after all injection attempts', async () => {
       // Final verification that all tables and data are intact
       const tables = ['tasks', 'boards', 'notes', 'columns', 'tags'];
-      
+
       for (const table of tables) {
         const tableExists = await connection.execute(
           `SELECT name FROM sqlite_master WHERE type='table' AND name='${table}'`
         );
-        
+
         expect(Array.isArray(tableExists)).toBe(true);
         expect(tableExists.length).toBeGreaterThan(0);
-        
+
         // Verify basic operations still work
         const count = await connection.execute(`SELECT COUNT(*) as count FROM ${table}`);
         expect(Array.isArray(count)).toBe(true);

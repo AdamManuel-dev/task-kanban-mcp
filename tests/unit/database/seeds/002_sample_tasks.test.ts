@@ -1,7 +1,7 @@
 /**
  * @fileoverview Test for sample tasks seed migration
  * @lastmodified 2025-07-28T04:40:00Z
- * 
+ *
  * Features: Task creation validation, subtasks relationships
  * Main APIs: Sample tasks seed testing
  * Constraints: Database integration test
@@ -10,15 +10,15 @@
 
 import { Database } from 'sqlite3';
 import { promisify } from 'util';
-import { run, name, description } from '../../../../src/database/seeds/002_sample_tasks';
 import path from 'path';
 import fs from 'fs/promises';
+import { run, name, description } from '../../../../src/database/seeds/002_sample_tasks';
 
 // Mock database interface to match the sqlite wrapper
 interface MockDatabase {
-  run(sql: string, params?: any[]): Promise<any>;
-  all(sql: string, params?: any[]): Promise<any[]>;
-  get(sql: string, params?: any[]): Promise<any>;
+  run: (sql: string, params?: any[]) => Promise<any>;
+  all: (sql: string, params?: any[]) => Promise<any[]>;
+  get: (sql: string, params?: any[]) => Promise<any>;
 }
 
 interface Task {
@@ -43,7 +43,7 @@ describe('002_sample_tasks seed', () => {
   beforeEach(async () => {
     // Create temporary database for testing
     tempDbPath = path.join(__dirname, 'test-sample-tasks.db');
-    
+
     // Remove existing test database
     try {
       await fs.unlink(tempDbPath);
@@ -59,15 +59,9 @@ describe('002_sample_tasks seed', () => {
     const get = promisify(db.get.bind(db));
 
     mockDb = {
-      run: async (sql: string, params?: any[]) => {
-        return await run(sql, params || []);
-      },
-      all: async (sql: string, params?: any[]) => {
-        return await all(sql, params || []);
-      },
-      get: async (sql: string, params?: any[]) => {
-        return await get(sql, params || []);
-      }
+      run: async (sql: string, params?: any[]) => await run(sql, params || []),
+      all: async (sql: string, params?: any[]) => await all(sql, params || []),
+      get: async (sql: string, params?: any[]) => await get(sql, params || []),
     };
 
     // Create required tables
@@ -97,7 +91,8 @@ describe('002_sample_tasks seed', () => {
           )
         `);
 
-        db.run(`
+        db.run(
+          `
           CREATE TABLE tasks (
             id TEXT PRIMARY KEY,
             title TEXT NOT NULL,
@@ -117,10 +112,12 @@ describe('002_sample_tasks seed', () => {
             FOREIGN KEY (board_id) REFERENCES boards(id) ON DELETE CASCADE,
             FOREIGN KEY (parent_task_id) REFERENCES tasks(id) ON DELETE CASCADE
           )
-        `, (err) => {
-          if (err) reject(err);
-          else resolve();
-        });
+        `,
+          err => {
+            if (err) reject(err);
+            else resolve();
+          }
+        );
       });
     });
 
@@ -152,7 +149,7 @@ describe('002_sample_tasks seed', () => {
 
   afterEach(async () => {
     // Close database and clean up
-    await new Promise<void>((resolve) => {
+    await new Promise<void>(resolve => {
       db.close(() => resolve());
     });
 
@@ -165,7 +162,9 @@ describe('002_sample_tasks seed', () => {
 
   test('should have correct metadata', () => {
     expect(name).toBe('Sample Tasks');
-    expect(description).toBe('Create sample tasks with various statuses, priorities, and relationships');
+    expect(description).toBe(
+      'Create sample tasks with various statuses, priorities, and relationships'
+    );
   });
 
   test('should create development board tasks', async () => {
@@ -173,10 +172,10 @@ describe('002_sample_tasks seed', () => {
     await run(mockDb as any);
 
     // Verify development board tasks
-    const devTasks = await mockDb.all(
+    const devTasks = (await mockDb.all(
       'SELECT * FROM tasks WHERE board_id = ? AND parent_task_id IS NULL ORDER BY id',
       ['board-1']
-    ) as Task[];
+    )) as Task[];
 
     expect(devTasks).toHaveLength(7);
 
@@ -188,7 +187,7 @@ describe('002_sample_tasks seed', () => {
       column_id: 'col-3',
       status: 'in_progress',
       priority: 100,
-      estimated_hours: 16.0
+      estimated_hours: 16.0,
     });
 
     expect(devTasks[1]).toMatchObject({
@@ -198,7 +197,7 @@ describe('002_sample_tasks seed', () => {
       column_id: 'col-6',
       status: 'done',
       priority: 90,
-      estimated_hours: 8.0
+      estimated_hours: 8.0,
     });
 
     // Verify due dates are set for some tasks
@@ -211,10 +210,9 @@ describe('002_sample_tasks seed', () => {
     await run(mockDb as any);
 
     // Verify personal tasks
-    const personalTasks = await mockDb.all(
-      'SELECT * FROM tasks WHERE board_id = ? ORDER BY id',
-      ['board-2']
-    ) as Task[];
+    const personalTasks = (await mockDb.all('SELECT * FROM tasks WHERE board_id = ? ORDER BY id', [
+      'board-2',
+    ])) as Task[];
 
     expect(personalTasks).toHaveLength(3);
 
@@ -224,28 +222,28 @@ describe('002_sample_tasks seed', () => {
         title: 'Exercise routine',
         column_id: 'col-9',
         status: 'done',
-        priority: 40
+        priority: 40,
       },
       {
         id: 'task-8',
         title: 'Buy groceries',
         column_id: 'col-7',
         status: 'todo',
-        priority: 50
+        priority: 50,
       },
       {
         id: 'task-9',
         title: 'Read Node.js book',
         column_id: 'col-8',
         status: 'in_progress',
-        priority: 30
-      }
+        priority: 30,
+      },
     ];
 
     expectedTasks.forEach((expected, index) => {
       expect(personalTasks[index]).toMatchObject({
         ...expected,
-        board_id: 'board-2'
+        board_id: 'board-2',
       });
     });
   });
@@ -255,10 +253,10 @@ describe('002_sample_tasks seed', () => {
     await run(mockDb as any);
 
     // Verify project planning tasks
-    const planningTasks = await mockDb.all(
+    const planningTasks = (await mockDb.all(
       'SELECT * FROM tasks WHERE board_id = ? AND parent_task_id IS NULL ORDER BY id',
       ['board-3']
-    ) as Task[];
+    )) as Task[];
 
     expect(planningTasks).toHaveLength(3);
 
@@ -269,7 +267,7 @@ describe('002_sample_tasks seed', () => {
         column_id: 'col-11',
         status: 'todo',
         priority: 90,
-        estimated_hours: 160.0
+        estimated_hours: 160.0,
       },
       {
         id: 'task-12',
@@ -277,7 +275,7 @@ describe('002_sample_tasks seed', () => {
         column_id: 'col-10',
         status: 'todo',
         priority: 70,
-        estimated_hours: 24.0
+        estimated_hours: 24.0,
       },
       {
         id: 'task-13',
@@ -285,14 +283,14 @@ describe('002_sample_tasks seed', () => {
         column_id: 'col-12',
         status: 'in_progress',
         priority: 80,
-        estimated_hours: 32.0
-      }
+        estimated_hours: 32.0,
+      },
     ];
 
     expectedTasks.forEach((expected, index) => {
       expect(planningTasks[index]).toMatchObject({
         ...expected,
-        board_id: 'board-3'
+        board_id: 'board-3',
       });
     });
   });
@@ -302,9 +300,9 @@ describe('002_sample_tasks seed', () => {
     await run(mockDb as any);
 
     // Verify subtasks
-    const subtasks = await mockDb.all(
+    const subtasks = (await mockDb.all(
       'SELECT * FROM tasks WHERE parent_task_id IS NOT NULL ORDER BY id'
-    ) as Task[];
+    )) as Task[];
 
     expect(subtasks).toHaveLength(4);
 
@@ -321,29 +319,29 @@ describe('002_sample_tasks seed', () => {
         title: 'Set up JWT middleware',
         column_id: 'col-3',
         status: 'in_progress',
-        estimated_hours: 4.0
+        estimated_hours: 4.0,
       },
       {
         id: 'task-15',
         title: 'Create login API endpoint',
         column_id: 'col-2',
         status: 'todo',
-        estimated_hours: 3.0
+        estimated_hours: 3.0,
       },
       {
         id: 'task-16',
         title: 'Create logout API endpoint',
         column_id: 'col-2',
         status: 'todo',
-        estimated_hours: 2.0
+        estimated_hours: 2.0,
       },
       {
         id: 'task-17',
         title: 'Add password hashing',
         column_id: 'col-6',
         status: 'done',
-        estimated_hours: 2.0
-      }
+        estimated_hours: 2.0,
+      },
     ];
 
     expectedSubtasks.forEach((expected, index) => {
@@ -351,7 +349,7 @@ describe('002_sample_tasks seed', () => {
         ...expected,
         parent_task_id: 'task-1',
         board_id: 'board-1',
-        priority: 100
+        priority: 100,
       });
     });
   });
@@ -361,26 +359,26 @@ describe('002_sample_tasks seed', () => {
     await run(mockDb as any);
 
     // Verify priority distribution
-    const highPriorityTasks = await mockDb.all(
+    const highPriorityTasks = (await mockDb.all(
       'SELECT * FROM tasks WHERE priority >= 90'
-    ) as Task[];
+    )) as Task[];
 
-    const mediumPriorityTasks = await mockDb.all(
+    const mediumPriorityTasks = (await mockDb.all(
       'SELECT * FROM tasks WHERE priority >= 60 AND priority < 90'
-    ) as Task[];
+    )) as Task[];
 
-    const lowPriorityTasks = await mockDb.all(
+    const lowPriorityTasks = (await mockDb.all(
       'SELECT * FROM tasks WHERE priority < 60'
-    ) as Task[];
+    )) as Task[];
 
     expect(highPriorityTasks.length).toBeGreaterThan(0);
     expect(mediumPriorityTasks.length).toBeGreaterThan(0);
     expect(lowPriorityTasks.length).toBeGreaterThan(0);
 
     // All subtasks should have priority 100
-    const subtasks = await mockDb.all(
+    const subtasks = (await mockDb.all(
       'SELECT * FROM tasks WHERE parent_task_id IS NOT NULL'
-    ) as Task[];
+    )) as Task[];
 
     subtasks.forEach(subtask => {
       expect(subtask.priority).toBe(100);
@@ -392,20 +390,17 @@ describe('002_sample_tasks seed', () => {
     await run(mockDb as any);
 
     // Verify status distribution
-    const todoTasks = await mockDb.all(
-      'SELECT * FROM tasks WHERE status = ?',
-      ['todo']
-    ) as Task[];
+    const todoTasks = (await mockDb.all('SELECT * FROM tasks WHERE status = ?', [
+      'todo',
+    ])) as Task[];
 
-    const inProgressTasks = await mockDb.all(
-      'SELECT * FROM tasks WHERE status = ?',
-      ['in_progress']
-    ) as Task[];
+    const inProgressTasks = (await mockDb.all('SELECT * FROM tasks WHERE status = ?', [
+      'in_progress',
+    ])) as Task[];
 
-    const doneTasks = await mockDb.all(
-      'SELECT * FROM tasks WHERE status = ?',
-      ['done']
-    ) as Task[];
+    const doneTasks = (await mockDb.all('SELECT * FROM tasks WHERE status = ?', [
+      'done',
+    ])) as Task[];
 
     expect(todoTasks.length).toBeGreaterThan(0);
     expect(inProgressTasks.length).toBeGreaterThan(0);
@@ -421,24 +416,18 @@ describe('002_sample_tasks seed', () => {
     await run(mockDb as any);
 
     // Verify estimated hours are set for appropriate tasks
-    const tasksWithEstimates = await mockDb.all(
+    const tasksWithEstimates = (await mockDb.all(
       'SELECT * FROM tasks WHERE estimated_hours IS NOT NULL'
-    ) as Task[];
+    )) as Task[];
 
     expect(tasksWithEstimates.length).toBeGreaterThan(0);
 
     // Check some specific values
-    const task1 = await mockDb.get(
-      'SELECT * FROM tasks WHERE id = ?',
-      ['task-1']
-    ) as Task;
+    const task1 = (await mockDb.get('SELECT * FROM tasks WHERE id = ?', ['task-1'])) as Task;
 
     expect(task1.estimated_hours).toBe(16.0);
 
-    const task11 = await mockDb.get(
-      'SELECT * FROM tasks WHERE id = ?',
-      ['task-11']
-    ) as Task;
+    const task11 = (await mockDb.get('SELECT * FROM tasks WHERE id = ?', ['task-11'])) as Task;
 
     expect(task11.estimated_hours).toBe(160.0);
   });
@@ -448,9 +437,9 @@ describe('002_sample_tasks seed', () => {
     await run(mockDb as any);
 
     // Verify some tasks have due dates
-    const tasksWithDueDates = await mockDb.all(
+    const tasksWithDueDates = (await mockDb.all(
       'SELECT * FROM tasks WHERE due_date IS NOT NULL'
-    ) as Task[];
+    )) as Task[];
 
     expect(tasksWithDueDates.length).toBeGreaterThan(0);
 
@@ -465,12 +454,12 @@ describe('002_sample_tasks seed', () => {
   test('should handle duplicate execution gracefully', async () => {
     // Run the seed twice
     await run(mockDb as any);
-    
+
     // This should fail due to primary key constraints
     await expect(run(mockDb as any)).rejects.toThrow();
 
     // Verify data integrity - still only 17 tasks
-    const allTasks = await mockDb.all('SELECT * FROM tasks') as Task[];
+    const allTasks = (await mockDb.all('SELECT * FROM tasks')) as Task[];
     expect(allTasks).toHaveLength(17);
   });
 
@@ -479,7 +468,7 @@ describe('002_sample_tasks seed', () => {
     await run(mockDb as any);
 
     // Verify total task count
-    const allTasks = await mockDb.all('SELECT * FROM tasks') as Task[];
+    const allTasks = (await mockDb.all('SELECT * FROM tasks')) as Task[];
     expect(allTasks).toHaveLength(17); // 7 dev + 3 personal + 3 planning + 4 subtasks
 
     // Verify all tasks have valid board references
@@ -499,28 +488,26 @@ describe('002_sample_tasks seed', () => {
     await run(mockDb as any);
 
     // Verify all parent_task_id references exist
-    const tasksWithParents = await mockDb.all(
+    const tasksWithParents = (await mockDb.all(
       'SELECT * FROM tasks WHERE parent_task_id IS NOT NULL'
-    ) as Task[];
+    )) as Task[];
 
     for (const task of tasksWithParents) {
-      const parent = await mockDb.get(
-        'SELECT * FROM tasks WHERE id = ?',
-        [task.parent_task_id]
-      ) as Task;
+      const parent = (await mockDb.get('SELECT * FROM tasks WHERE id = ?', [
+        task.parent_task_id,
+      ])) as Task;
 
       expect(parent).toBeDefined();
       expect(parent.id).toBe(task.parent_task_id);
     }
 
     // Verify all board_id references exist
-    const allTasks = await mockDb.all('SELECT DISTINCT board_id FROM tasks') as { board_id: string }[];
-    
+    const allTasks = (await mockDb.all('SELECT DISTINCT board_id FROM tasks')) as Array<{
+      board_id: string;
+    }>;
+
     for (const { board_id } of allTasks) {
-      const board = await mockDb.get(
-        'SELECT * FROM boards WHERE id = ?',
-        [board_id]
-      );
+      const board = await mockDb.get('SELECT * FROM boards WHERE id = ?', [board_id]);
 
       expect(board).toBeDefined();
     }

@@ -480,7 +480,7 @@ describe('CRITICAL SECURITY: CLI Security Utilities', () => {
         };
 
         mockSecurityUtils.createSecureWrapper.mockImplementation(config => ({
-          execute: command => {
+          execute: async command => {
             // Simulate security checks
             if (!config.allowedCommands.includes(command.split(' ')[0])) {
               throw new Error('Command not in whitelist');
@@ -502,7 +502,7 @@ describe('CRITICAL SECURITY: CLI Security Utilities', () => {
         const timeout = 1000; // 1 second
 
         mockSecurityUtils.executeWithSafetyChecks.mockImplementation(
-          (command, options) =>
+          async (command, options) =>
             new Promise((resolve, reject) => {
               const timer = setTimeout(() => {
                 reject(new Error('Command execution timeout'));
@@ -531,7 +531,7 @@ describe('CRITICAL SECURITY: CLI Security Utilities', () => {
       test('should limit output size', async () => {
         const maxOutputSize = 100; // 100 bytes
 
-        mockSecurityUtils.executeWithSafetyChecks.mockImplementation((command, options) => {
+        mockSecurityUtils.executeWithSafetyChecks.mockImplementation(async (command, options) => {
           const output = 'x'.repeat(200); // 200 bytes
 
           if (output.length > options.maxOutputSize) {
@@ -547,7 +547,7 @@ describe('CRITICAL SECURITY: CLI Security Utilities', () => {
       });
 
       test('should handle command execution errors', async () => {
-        mockSecurityUtils.executeWithSafetyChecks.mockImplementation(command => {
+        mockSecurityUtils.executeWithSafetyChecks.mockImplementation(async command => {
           if (command === 'failing_command') {
             return Promise.resolve({
               stdout: '',
@@ -675,7 +675,11 @@ describe('CRITICAL SECURITY: CLI Security Utilities', () => {
         }
 
         // Check for dangerous patterns in normalized form
-        if (normalized.includes('eval') || normalized.includes('echo') || normalized.includes('ls')) {
+        if (
+          normalized.includes('eval') ||
+          normalized.includes('echo') ||
+          normalized.includes('ls')
+        ) {
           throw new Error('Bypass attempt detected');
         }
         return cmd;
@@ -742,7 +746,7 @@ describe('CRITICAL SECURITY: CLI Security Utilities', () => {
 
       mockSecurityUtils.sanitizeUserInput.mockImplementation(input => input);
 
-      const promises = concurrentInputs.map(input =>
+      const promises = concurrentInputs.map(async input =>
         Promise.resolve(mockSecurityUtils.sanitizeUserInput(input))
       );
 
@@ -801,10 +805,7 @@ export const SecurityTestHelpers = {
   /**
    * Test security utility with comprehensive payload set
    */
-  testSecurityFunction: (
-    securityFn: (...args: unknown[]) => unknown,
-    shouldBlock: boolean = true
-  ) => {
+  testSecurityFunction: (securityFn: (...args: unknown[]) => unknown, shouldBlock = true) => {
     const payloads = SecurityTestHelpers.generateInjectionPayloads();
 
     payloads.forEach(payload => {
@@ -821,7 +822,7 @@ export const SecurityTestHelpers = {
    */
   benchmarkSecurityFunction: async (
     securityFn: (...args: unknown[]) => unknown,
-    iterations: number = 1000
+    iterations = 1000
   ) => {
     const testInput = 'normal safe input';
     const startTime = Date.now();

@@ -150,7 +150,7 @@ describe('Performance Regression Detection', () => {
   async function measureOperation(
     operation: string,
     testFunction: () => Promise<void>,
-    samples: number = 10
+    samples = 10
   ): Promise<{ avgTime: number; maxTime: number; minTime: number; samples: number }> {
     const times: number[] = [];
 

@@ -423,7 +423,7 @@ describe('Real-world Integration Scenarios', () => {
     concurrentMonitor.start();
 
     // Run multiple operations concurrently
-    const operations = Array.from({ length: 5 }, (_, i) =>
+    const operations = Array.from({ length: 5 }, async (_, i) =>
       trackResourceUsage(`operation-${i}`, async () => {
         await new Promise(resolve => setTimeout(resolve, 20));
         return `result-${i}`;

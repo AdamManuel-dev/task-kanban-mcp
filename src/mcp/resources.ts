@@ -7,6 +7,13 @@ export interface ResourceContent {
   mimeType?: string;
 }
 
+interface ParsedUri {
+  type: string;
+  action?: string;
+  id: string;
+  params?: Record<string, string>;
+}
+
 export class MCPResourceRegistry {
   private readonly services: MCPServices;
 
@@ -160,12 +167,7 @@ export class MCPResourceRegistry {
     }
   }
 
-  private static parseUri(uri: string): {
-    type: string;
-    action?: string;
-    id: string;
-    params?: Record<string, string>;
-  } {
+  private static parseUri(uri: string): ParsedUri {
     const url = new URL(uri);
     const pathParts = url.pathname.split('/').filter(Boolean);
 
@@ -190,7 +192,7 @@ export class MCPResourceRegistry {
   }
 
   // Resource readers
-  private async readBoards(parsedUri: unknown): Promise<ResourceContent> {
+  private async readBoards(parsedUri: ParsedUri): Promise<ResourceContent> {
     if (parsedUri.id) {
       // Specific board
       const board = await this.services.boardService.getBoardWithColumns(parsedUri.id);
@@ -254,7 +256,7 @@ export class MCPResourceRegistry {
     };
   }
 
-  private async readTasks(parsedUri: unknown): Promise<ResourceContent> {
+  private async readTasks(parsedUri: ParsedUri): Promise<ResourceContent> {
     if (parsedUri.id) {
       // Specific task
       const task = await this.services.taskService.getTaskWithSubtasks(parsedUri.id);
@@ -357,9 +359,9 @@ export class MCPResourceRegistry {
     }
   }
 
-  private async readNotes(parsedUri: unknown): Promise<ResourceContent> {
+  private async readNotes(parsedUri: ParsedUri): Promise<ResourceContent> {
     if (parsedUri.action === 'search') {
-      const query = parsedUri.params.q;
+      const query = parsedUri.params?.q;
       if (!query) {
         throw new Error('Search query required');
       }
@@ -396,7 +398,7 @@ export class MCPResourceRegistry {
     };
   }
 
-  private async readTags(parsedUri: unknown): Promise<ResourceContent> {
+  private async readTags(parsedUri: ParsedUri): Promise<ResourceContent> {
     if (parsedUri.action === 'hierarchy') {
       const tagTree = await this.services.tagService.getTagHierarchy();
 
@@ -430,7 +432,7 @@ export class MCPResourceRegistry {
     };
   }
 
-  private async readAnalytics(parsedUri: unknown): Promise<ResourceContent> {
+  private async readAnalytics(parsedUri: ParsedUri): Promise<ResourceContent> {
     if (parsedUri.action === 'boards' && parsedUri.id) {
       const analytics = await this.services.boardService.getBoardWithStats(parsedUri.id);
 
@@ -442,7 +444,7 @@ export class MCPResourceRegistry {
     throw new Error('Board ID required for analytics');
   }
 
-  private async readContext(parsedUri: unknown): Promise<ResourceContent> {
+  private async readContext(parsedUri: ParsedUri): Promise<ResourceContent> {
     if (parsedUri.action === 'project' && parsedUri.id) {
       const context = await this.services.contextService.getProjectContext({
         include_completed: false,
@@ -474,7 +476,7 @@ export class MCPResourceRegistry {
     throw new Error('Invalid context resource URI');
   }
 
-  private async readReports(parsedUri: unknown): Promise<ResourceContent> {
+  private async readReports(parsedUri: ParsedUri): Promise<ResourceContent> {
     switch (parsedUri.action) {
       case 'summary':
         const summary = await this.services.contextService.getProjectContext({
@@ -493,7 +495,18 @@ export class MCPResourceRegistry {
       case 'workload':
         // Get all tasks grouped by assignee
         const allTasks = await this.services.taskService.getTasks({ limit: 1000 });
-        const workloadMap: Record<string, unknown> = {};
+        interface WorkloadStats {
+          assignee: string;
+          total_tasks: number;
+          todo: number;
+          in_progress: number;
+          done: number;
+          blocked: number;
+          overdue: number;
+          high_priority: number;
+          [key: string]: string | number; // Allow dynamic status keys
+        }
+        const workloadMap: Record<string, WorkloadStats> = {};
 
         allTasks.forEach(task => {
           const assignee = task.assignee ?? 'unassigned';
@@ -510,8 +523,11 @@ export class MCPResourceRegistry {
             };
           }
 
-          workloadMap[assignee].total_tasks++;
-          workloadMap[assignee][task.status]++;
+          const stats = workloadMap[assignee];
+          stats.total_tasks++;
+          if (task.status in stats) {
+            (stats as unknown)[task.status]++;
+          }
 
           if (task.priority >= 4) {
             workloadMap[assignee].high_priority++;
@@ -540,7 +556,7 @@ export class MCPResourceRegistry {
     }
   }
 
-  private async readExports(parsedUri: unknown): Promise<ResourceContent> {
+  private async readExports(parsedUri: ParsedUri): Promise<ResourceContent> {
     if (parsedUri.action === 'board' && parsedUri.id) {
       const board = await this.services.boardService.getBoardWithColumns(parsedUri.id);
       if (!board) {

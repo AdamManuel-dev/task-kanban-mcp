@@ -115,25 +115,26 @@ describe.skip('WebSocket Stress Tests', () => {
         logger.log(`✓ Average connection time: ${String(duration / connectionCount)}ms`);
       } finally {
         // Clean up all connections with proper async handling
-        const closePromises = connections.map(({ ws }) => {
-          return new Promise<void>((resolve) => {
-            if (ws.readyState === WebSocket.OPEN) {
-              ws.once('close', () => resolve());
-              ws.close();
-            } else {
-              resolve();
-            }
-          });
-        });
+        const closePromises = connections.map(
+          async ({ ws }) =>
+            new Promise<void>(resolve => {
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.once('close', () => resolve());
+                ws.close();
+              } else {
+                resolve();
+              }
+            })
+        );
 
         // Wait for all connections to close
         await Promise.all(closePromises);
-        
+
         // Additional wait for server cleanup
         await new Promise<void>(resolve => {
           setTimeout(resolve, 2000);
         });
-        
+
         // Check cleanup with retry logic
         let retries = 5;
         while (retries > 0 && webSocketManager.getClientCount() > 0) {
@@ -142,7 +143,7 @@ describe.skip('WebSocket Stress Tests', () => {
           });
           retries--;
         }
-        
+
         expect(webSocketManager.getClientCount()).toBe(0);
       }
     }, 30000);
@@ -235,7 +236,7 @@ describe.skip('WebSocket Stress Tests', () => {
         }
 
         const startTime = Date.now();
-        const allMessagePromises: Promise<void>[] = [];
+        const allMessagePromises: Array<Promise<void>> = [];
 
         // Each client sends messages concurrently
         connections.forEach(({ ws }, clientIndex) => {

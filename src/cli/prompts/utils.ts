@@ -26,7 +26,7 @@ export async function safePrompt<T>(promptConfig: PromptConfig | PromptConfig[])
       throw new CancellationError('Prompt operation');
     }
 
-    return result;
+    return result as T;
   } catch (error) {
     // Check if it's a cancellation (Ctrl+C, ESC, etc.)
     if (error instanceof Error) {

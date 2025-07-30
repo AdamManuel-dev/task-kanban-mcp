@@ -55,7 +55,7 @@ import { validatePagination } from '../utils/sql-security';
 // Cache duration constants for improved readability
 const CACHE_DURATIONS = {
   TASK_CACHE_MS: 2 * 60 * 1000, // 2 minutes
-  NULL_RESULT_CACHE_MS: 30 * 1000, // 30 seconds  
+  NULL_RESULT_CACHE_MS: 30 * 1000, // 30 seconds
   BATCH_OPERATIONS_CACHE_MS: 5 * 60 * 1000, // 5 minutes
 } as const;
 
@@ -216,7 +216,7 @@ export class TaskService {
       });
     }
 
-    if (!validationResult?.column_exists) {
+    if (!validationResult.column_exists) {
       throw TaskService.createError('INVALID_COLUMN_ID', 'Column not found', {
         column_id: data.column_id,
       });

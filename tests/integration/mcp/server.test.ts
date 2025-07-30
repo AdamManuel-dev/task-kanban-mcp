@@ -542,7 +542,7 @@ describe('MCP Server Integration Tests', () => {
       const toolRegistry = server.getToolRegistry();
 
       // Create multiple tasks concurrently
-      const taskPromises = Array.from({ length: 5 }, (_, i) =>
+      const taskPromises = Array.from({ length: 5 }, async (_, i) =>
         toolRegistry.callTool('create_task', {
           title: `Concurrent Task ${String(i + 1)}`,
           boardId: testBoard.id,

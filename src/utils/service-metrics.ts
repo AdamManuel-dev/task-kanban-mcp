@@ -244,12 +244,17 @@ export const serviceMetricsCollector = new ServiceMetricsCollector();
  * Decorator to track performance of service methods
  */
 export function TrackPerformance(serviceName?: string) {
-  return function <T>(target: T, propertyKey: string, descriptor: PropertyDescriptor): PropertyDescriptor {
-    if (!descriptor || !descriptor.value) {
-      return descriptor;
+  return function <T>(
+    target: T,
+    propertyKey: string,
+    descriptor: PropertyDescriptor
+  ): PropertyDescriptor {
+    if (!descriptor.value) {
+      return descriptor || { configurable: true, writable: true };
     }
     const originalMethod = descriptor.value;
-    const actualServiceName = serviceName || (target && typeof target === 'object' && target.constructor?.name) || 'Unknown';
+    const actualServiceName =
+      serviceName || (target && typeof target === 'object' && target.constructor.name) || 'Unknown';
 
     descriptor.value = async function (this: T, ...args: unknown[]) {
       const startTime = performance.now();
@@ -349,13 +354,22 @@ export function createMetricsMiddleware(serviceName = 'HTTP') {
     const startTime = performance.now();
 
     // Type guard for Express request/response objects
-    if (!req || typeof req !== 'object' || !res || typeof res !== 'object' || typeof next !== 'function') {
+    if (
+      !req ||
+      typeof req !== 'object' ||
+      !res ||
+      typeof res !== 'object' ||
+      typeof next !== 'function'
+    ) {
       if (typeof next === 'function') next();
       return;
     }
 
     const request = req as { method?: string; route?: { path?: string }; path?: string };
-    const response = res as { statusCode?: number; on?: (event: string, callback: () => void) => void };
+    const response = res as {
+      statusCode?: number;
+      on?: (event: string, callback: () => void) => void;
+    };
 
     if (typeof response.on === 'function') {
       response.on('finish', () => {

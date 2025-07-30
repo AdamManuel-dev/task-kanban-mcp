@@ -1,12 +1,28 @@
 import React from 'react';
-// Temporarily disabled ink imports to fix module resolution
-// TODO: Re-enable once ink module resolution is fixed
+// Temporarily using fallback components due to module resolution issues
 // import { Box, Text } from 'ink';
 import type { Board, Column, Task } from '@/types';
 
-// Fallback components for when ink is disabled
-const Box = ({ children }: { children: React.ReactNode }) => <div>{children}</div>;
-const Text = ({ children }: { children: React.ReactNode }) => <span>{children}</span>;
+// Enhanced fallback components that accept Ink props but render as text
+interface BoxProps {
+  children: React.ReactNode;
+  marginBottom?: number;
+  marginTop?: number;
+  flexDirection?: 'row' | 'column' | 'row-reverse' | 'column-reverse';
+  [key: string]: unknown; // Accept any other Ink props
+}
+
+interface TextProps {
+  children: React.ReactNode;
+  color?: string;
+  bold?: boolean;
+  [key: string]: unknown; // Accept any other Ink props
+}
+
+const Box: React.FC<BoxProps> = ({ children }) => <div>{children}</div>;
+const Text: React.FC<TextProps> = ({ children, color, bold }) => (
+  <span style={{ color, fontWeight: bold ? 'bold' : 'normal' }}>{children}</span>
+);
 
 interface BoardViewProps {
   board: Board;
@@ -145,7 +161,7 @@ const renderColumn = (
             <Text color="gray">Empty column</Text>
           </Box>
         ) : (
-          visibleTasks.map((task, index) =>
+          visibleTasks.map(async (task, index) =>
             renderTaskItem(task, columnWidth, task.id === selectedTaskId, scrollOffset + index)
           )
         )}
@@ -154,11 +170,7 @@ const renderColumn = (
       {/* Show scroll indicator if there are more tasks below */}
       {column.tasks.length > scrollOffset + maxColumnHeight && (
         <Box>
-          <Text
-            color="gray"
-          >
-            ⬇ {column.tasks.length - scrollOffset - maxColumnHeight} more
-          </Text>
+          <Text color="gray">⬇ {column.tasks.length - scrollOffset - maxColumnHeight} more</Text>
         </Box>
       )}
     </Box>
@@ -176,7 +188,7 @@ const renderSummary = (
   const completionRate = totalTasks > 0 ? ((completedTasks / totalTasks) * 100).toFixed(1) : '0';
 
   return (
-    <Box flexDirection="column" marginTop={1}>
+    <Box>
       <Text color="gray">{'═'.repeat(80)}</Text>
       <Box>
         <Text>
@@ -241,7 +253,7 @@ const BoardView: React.FC<BoardViewProps> = ({
 
       {/* Columns */}
       <Box flexDirection="row">
-        {columnsWithTasks.map(column =>
+        {columnsWithTasks.map(async column =>
           renderColumn(column, columnWidth, maxColumnHeight, 0, _selectedTaskId)
         )}
       </Box>

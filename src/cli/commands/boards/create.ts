@@ -219,7 +219,7 @@ export function registerCreateCommand(boardCmd: Command): void {
           const templateKey = options.template as keyof typeof templates;
           if (!templates[templateKey]) {
             formatter.error(
-              `Invalid template: ${String(options.template)}. Available: ${Object.keys(templates).join(', ')}`
+              `Invalid template: ${options.template}. Available: ${Object.keys(templates).join(', ')}`
             );
             process.exit(1);
           }

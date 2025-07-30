@@ -997,7 +997,7 @@ export class BackupService extends EventEmitter {
     await this.ensureMetadataTable();
 
     let query = 'SELECT * FROM backup_metadata WHERE 1=1';
-    const params: unknown[] = [];
+    const params: QueryParameters = [];
 
     if (options.type) {
       query += ' AND type = ?';
@@ -1021,8 +1021,8 @@ export class BackupService extends EventEmitter {
       params.push(options.offset);
     }
 
-    const rows = await this.db.query<unknown>(query, params as QueryParameters);
-    return rows.map(row => BackupService.deserializeBackupMetadata(row));
+    const rows = await this.db.query<unknown>(query, params);
+    return rows.map((row: unknown) => BackupService.deserializeBackupMetadata(row));
   }
 
   /**
@@ -1478,19 +1478,19 @@ export class BackupService extends EventEmitter {
   }> {
     try {
       // Check for orphaned tasks (no valid board)
-      const orphanedTasks = await this.db.queryOne(
+      const orphanedTasks = (await this.db.queryOne(
         'SELECT COUNT(*) as count FROM tasks t LEFT JOIN boards b ON t.board_id = b.id WHERE b.id IS NULL'
-      );
+      )) as { count: number } | null;
 
       // Check for orphaned task_tags (no valid task or tag)
-      const orphanedTaskTags = await this.db.queryOne(
+      const orphanedTaskTags = (await this.db.queryOne(
         'SELECT COUNT(*) as count FROM task_tags tt LEFT JOIN tasks t ON tt.task_id = t.id LEFT JOIN tags tag ON tt.tag_id = tag.id WHERE t.id IS NULL OR tag.id IS NULL'
-      );
+      )) as { count: number } | null;
 
       // Check for orphaned task_dependencies (no valid task)
-      const orphanedDependencies = await this.db.queryOne(
+      const orphanedDependencies = (await this.db.queryOne(
         'SELECT COUNT(*) as count FROM task_dependencies td LEFT JOIN tasks t1 ON td.task_id = t1.id LEFT JOIN tasks t2 ON td.depends_on_id = t2.id WHERE t1.id IS NULL OR t2.id IS NULL'
-      );
+      )) as { count: number } | null;
 
       const totalOrphaned =
         (orphanedTasks?.count ?? 0) +
@@ -1526,26 +1526,26 @@ export class BackupService extends EventEmitter {
       const issues: string[] = [];
 
       // Check for tasks with invalid status values
-      const invalidStatus = await this.db.queryOne(
+      const invalidStatus = (await this.db.queryOne(
         "SELECT COUNT(*) as count FROM tasks WHERE status NOT IN ('todo', 'in_progress', 'done', 'blocked', 'archived')"
-      );
-      if (invalidStatus?.count && invalidStatus.count > 0) {
+      )) as { count: number } | null;
+      if (invalidStatus && invalidStatus.count > 0) {
         issues.push(`${invalidStatus.count} tasks with invalid status`);
       }
 
       // Check for tasks with invalid priority values
-      const invalidPriority = await this.db.queryOne(
+      const invalidPriority = (await this.db.queryOne(
         'SELECT COUNT(*) as count FROM tasks WHERE priority < 1 OR priority > 5'
-      );
-      if (invalidPriority?.count && invalidPriority.count > 0) {
+      )) as { count: number } | null;
+      if (invalidPriority && invalidPriority.count > 0) {
         issues.push(`${invalidPriority.count} tasks with invalid priority`);
       }
 
       // Check for tasks with negative position values
-      const negativePosition = await this.db.queryOne(
+      const negativePosition = (await this.db.queryOne(
         'SELECT COUNT(*) as count FROM tasks WHERE position < 0'
-      );
-      if (negativePosition?.count && negativePosition.count > 0) {
+      )) as { count: number } | null;
+      if (negativePosition && negativePosition.count > 0) {
         issues.push(`${negativePosition.count} tasks with negative position`);
       }
 
@@ -1579,7 +1579,7 @@ export class BackupService extends EventEmitter {
     try {
       // Check if required indexes exist
       const indexes = await this.db.query("SELECT name FROM sqlite_master WHERE type='index'");
-      const indexNames = indexes.map(idx => idx.name);
+      const indexNames = indexes.map((idx: unknown) => idx.name);
 
       const requiredIndexes = [
         'idx_tasks_board_id',
@@ -1622,17 +1622,17 @@ export class BackupService extends EventEmitter {
       const orphanedRecords: string[] = [];
 
       // Check for notes without tasks
-      const orphanedNotes = await this.db.queryOne(
+      const orphanedNotes = (await this.db.queryOne(
         'SELECT COUNT(*) as count FROM notes n LEFT JOIN tasks t ON n.task_id = t.id WHERE t.id IS NULL'
-      );
+      )) as { count: number } | null;
       if (orphanedNotes?.count && orphanedNotes.count > 0) {
         orphanedRecords.push(`${orphanedNotes.count} notes`);
       }
 
       // Check for columns without boards
-      const orphanedColumns = await this.db.queryOne(
+      const orphanedColumns = (await this.db.queryOne(
         'SELECT COUNT(*) as count FROM columns c LEFT JOIN boards b ON c.board_id = b.id WHERE b.id IS NULL'
-      );
+      )) as { count: number } | null;
       if (orphanedColumns?.count && orphanedColumns.count > 0) {
         orphanedRecords.push(`${orphanedColumns.count} columns`);
       }
@@ -1661,7 +1661,7 @@ export class BackupService extends EventEmitter {
     try {
       // This is a simplified check. In a real implementation, you'd use a more sophisticated algorithm
       // to detect cycles in the dependency graph
-      const result = await this.db.queryOne(`
+      const result = (await this.db.queryOne(`
         WITH RECURSIVE deps AS (
           SELECT task_id, depends_on_id, 1 as depth
           FROM task_dependencies
@@ -1675,7 +1675,7 @@ export class BackupService extends EventEmitter {
         FROM deps d1
         JOIN deps d2 ON d1.task_id = d2.depends_on_id AND d1.depends_on_id = d2.task_id
         WHERE d1.task_id != d1.depends_on_id
-      `);
+      `)) as { count: number } | null;
 
       return result?.count ?? 0;
     } catch (error) {
@@ -1790,7 +1790,7 @@ export class BackupService extends EventEmitter {
         sql += `${schema.sql};\n\n`;
       }
       for (const row of data) {
-        const columns = Object.keys(row);
+        const columns = Object.keys(row as Record<string, unknown>);
         const values = columns.map(col => {
           const value = row[col];
           if (value === null || value === undefined) return 'NULL';
@@ -1986,9 +1986,16 @@ export class BackupService extends EventEmitter {
     try {
       await this.ensureProgressTable();
 
-      const row = await this.db.queryOne('SELECT * FROM restore_progress WHERE id = ?', [
+      const row = (await this.db.queryOne('SELECT * FROM restore_progress WHERE id = ?', [
         progressId,
-      ]);
+      ])) as {
+        id: string;
+        total_steps: number;
+        current_step: number;
+        progress: number;
+        message: string;
+        updated_at: string;
+      } | null;
 
       if (!row) return null;
 

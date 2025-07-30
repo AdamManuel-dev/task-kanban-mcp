@@ -214,7 +214,8 @@ async function main(): Promise<void> {
     // Instantiate services
     const taskService = new TaskService(db);
     const boardService = new BoardService(db);
-    const noteService = new NoteService(db);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const _noteService = new NoteService(db);
     analyzer.captureProfile('After Service Instantiation');
 
     // Simulate some basic operations

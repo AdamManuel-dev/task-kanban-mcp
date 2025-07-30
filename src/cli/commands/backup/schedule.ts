@@ -77,7 +77,7 @@ export function registerScheduleCommands(backupCmd: Command): void {
 
           const schedule = await apiClient.createBackupSchedule(scheduleOptions);
 
-          if (typeof schedule === 'object' && schedule && 'data' in schedule) {
+          if ('data' in schedule && schedule.data) {
             const scheduleData = schedule.data as { id: string };
             showSuccess(`Schedule created: ${scheduleData.id}`);
           } else {

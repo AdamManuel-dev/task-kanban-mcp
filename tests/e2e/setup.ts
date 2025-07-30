@@ -72,7 +72,7 @@ export const testUtils = {
   /**
    * Create a temporary test directory
    */
-  createTestDir: async (prefix: string = 'e2e-test'): Promise<string> => {
+  createTestDir: async (prefix = 'e2e-test'): Promise<string> => {
     const testDir = join(
       tmpdir(),
       `${String(prefix)}-${String(String(Date.now()))}-${String(String(Math.random().toString(36).substr(2, 9)))}`
@@ -111,8 +111,8 @@ export const testUtils = {
    */
   waitFor: async (
     condition: () => boolean | Promise<boolean>,
-    timeout: number = 5000,
-    interval: number = 100
+    timeout = 5000,
+    interval = 100
   ): Promise<void> => {
     const startTime = Date.now();
 
@@ -194,8 +194,8 @@ export { TEST_CONFIG };
 
 // Jest custom matchers
 interface CustomMatchers<R = unknown> {
-  toContainSanitizedInput(original: string, safe: string): R;
-  toBeValidCliOutput(): R;
+  toContainSanitizedInput: (original: string, safe: string) => R;
+  toBeValidCliOutput: () => R;
 }
 
 declare global {

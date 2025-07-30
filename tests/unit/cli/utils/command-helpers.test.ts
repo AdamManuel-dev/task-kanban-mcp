@@ -540,7 +540,7 @@ describe('CLI Command Helpers', () => {
       const mockOperation = jest.fn().mockResolvedValue('result');
       const wrappedOperation = withErrorHandling('concurrent test', mockOperation);
 
-      const promises = Array.from({ length: 10 }, () => wrappedOperation());
+      const promises = Array.from({ length: 10 }, async () => wrappedOperation());
       const results = await Promise.all(promises);
 
       expect(results).toHaveLength(10);
@@ -607,7 +607,7 @@ describe('CLI Command Helpers', () => {
     test('should handle timeout scenarios', async () => {
       const slowOperation = jest
         .fn()
-        .mockImplementation(() => new Promise(resolve => setTimeout(resolve, 1000)));
+        .mockImplementation(async () => new Promise(resolve => setTimeout(resolve, 1000)));
 
       const spinnerOperation = withSpinner(
         'Slow operation',

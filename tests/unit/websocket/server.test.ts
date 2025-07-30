@@ -1,7 +1,7 @@
 /**
  * @fileoverview Tests for WebSocket server implementation
  * @lastmodified 2025-07-28T12:00:00Z
- * 
+ *
  * Features: Connection handling, message routing, authentication, rate limiting
  * Test Coverage: Server lifecycle, client connections, message handling, error scenarios
  * Test Tools: Jest, ws library, mock clients, test utilities
@@ -69,7 +69,7 @@ describe('WebSocketServer', () => {
   beforeEach(() => {
     // Create HTTP server for WebSocket attachment
     httpServer = new HttpServer();
-    
+
     // Reset all mocks
     jest.clearAllMocks();
     mockAuth.authenticateWebSocket.mockResolvedValue({
@@ -84,7 +84,7 @@ describe('WebSocketServer', () => {
       await wsServer.stop();
     }
     if (httpServer.listening) {
-      await new Promise<void>((resolve) => {
+      await new Promise<void>(resolve => {
         httpServer.close(() => resolve());
       });
     }
@@ -125,7 +125,7 @@ describe('WebSocketServer', () => {
     it('should start server successfully', async () => {
       wsServer = new WebSocketServer(httpServer, { port: testPort });
 
-      await new Promise<void>((resolve) => {
+      await new Promise<void>(resolve => {
         httpServer.listen(testPort, () => resolve());
       });
 
@@ -142,7 +142,7 @@ describe('WebSocketServer', () => {
     it('should stop server gracefully', async () => {
       wsServer = new WebSocketServer(httpServer, { port: testPort });
 
-      await new Promise<void>((resolve) => {
+      await new Promise<void>(resolve => {
         httpServer.listen(testPort, () => resolve());
       });
 
@@ -166,13 +166,13 @@ describe('WebSocketServer', () => {
   describe('Client Connections', () => {
     beforeEach(async () => {
       wsServer = new WebSocketServer(httpServer, { port: testPort });
-      await new Promise<void>((resolve) => {
+      await new Promise<void>(resolve => {
         httpServer.listen(testPort, () => resolve());
       });
       await wsServer.start();
     });
 
-    it('should accept valid client connections', (done) => {
+    it('should accept valid client connections', done => {
       const client = new WebSocket(`ws://localhost:${testPort}`);
 
       client.on('open', () => {
@@ -190,7 +190,7 @@ describe('WebSocketServer', () => {
       client.on('error', done);
     });
 
-    it('should reject connections when authentication fails', (done) => {
+    it('should reject connections when authentication fails', done => {
       mockAuth.authenticateWebSocket.mockResolvedValue({
         user: null,
         isValid: false,
@@ -215,7 +215,7 @@ describe('WebSocketServer', () => {
       });
     });
 
-    it('should reject connections when rate limited', (done) => {
+    it('should reject connections when rate limited', done => {
       mockRateLimit.checkLimit.mockResolvedValue(false);
 
       const client = new WebSocket(`ws://localhost:${testPort}`);
@@ -238,12 +238,12 @@ describe('WebSocketServer', () => {
 
     it('should handle maximum connection limit', async () => {
       const maxConnections = 2;
-      wsServer = new WebSocketServer(httpServer, { 
-        port: testPort + 1, 
-        maxConnections 
+      wsServer = new WebSocketServer(httpServer, {
+        port: testPort + 1,
+        maxConnections,
       });
-      
-      await new Promise<void>((resolve) => {
+
+      await new Promise<void>(resolve => {
         httpServer.listen(testPort + 1, () => resolve());
       });
       await wsServer.start();
@@ -254,16 +254,16 @@ describe('WebSocketServer', () => {
       for (let i = 0; i < maxConnections; i++) {
         const client = new WebSocket(`ws://localhost:${testPort + 1}`);
         clients.push(client);
-        await new Promise<void>((resolve) => {
+        await new Promise<void>(resolve => {
           client.on('open', () => resolve());
         });
       }
 
       // Try to create one more connection (should be rejected)
       const extraClient = new WebSocket(`ws://localhost:${testPort + 1}`);
-      
-      await new Promise<void>((resolve) => {
-        extraClient.on('close', (code) => {
+
+      await new Promise<void>(resolve => {
+        extraClient.on('close', code => {
           expect(code).toBe(1013); // Try again later
           resolve();
         });
@@ -273,7 +273,7 @@ describe('WebSocketServer', () => {
       clients.forEach(client => client.close());
     });
 
-    it('should handle client disconnections', (done) => {
+    it('should handle client disconnections', done => {
       const client = new WebSocket(`ws://localhost:${testPort}`);
 
       client.on('open', () => {
@@ -299,13 +299,13 @@ describe('WebSocketServer', () => {
 
     beforeEach(async () => {
       wsServer = new WebSocketServer(httpServer, { port: testPort });
-      await new Promise<void>((resolve) => {
+      await new Promise<void>(resolve => {
         httpServer.listen(testPort, () => resolve());
       });
       await wsServer.start();
 
       client = new WebSocket(`ws://localhost:${testPort}`);
-      await new Promise<void>((resolve) => {
+      await new Promise<void>(resolve => {
         client.on('open', () => resolve());
       });
     });
@@ -316,7 +316,7 @@ describe('WebSocketServer', () => {
       }
     });
 
-    it('should handle valid JSON messages', (done) => {
+    it('should handle valid JSON messages', done => {
       const testMessage = {
         type: 'test_message',
         data: { test: 'data' },
@@ -329,7 +329,7 @@ describe('WebSocketServer', () => {
         requestId: 'test-request-123',
       });
 
-      client.on('message', (data) => {
+      client.on('message', data => {
         const response = JSON.parse(data.toString());
         expect(response.type).toBe('test_response');
         expect(response.requestId).toBe('test-request-123');
@@ -339,8 +339,8 @@ describe('WebSocketServer', () => {
       client.send(JSON.stringify(testMessage));
     });
 
-    it('should handle invalid JSON messages', (done) => {
-      client.on('message', (data) => {
+    it('should handle invalid JSON messages', done => {
+      client.on('message', data => {
         const response = JSON.parse(data.toString());
         expect(response.type).toBe('error');
         expect(response.error).toBe('Invalid JSON format');
@@ -350,13 +350,13 @@ describe('WebSocketServer', () => {
       client.send('invalid json');
     });
 
-    it('should handle messages without required fields', (done) => {
+    it('should handle messages without required fields', done => {
       const invalidMessage = {
         data: { test: 'data' },
         // Missing type and requestId
       };
 
-      client.on('message', (data) => {
+      client.on('message', data => {
         const response = JSON.parse(data.toString());
         expect(response.type).toBe('error');
         expect(response.error).toContain('Missing required field');
@@ -366,7 +366,7 @@ describe('WebSocketServer', () => {
       client.send(JSON.stringify(invalidMessage));
     });
 
-    it('should handle handler errors gracefully', (done) => {
+    it('should handle handler errors gracefully', done => {
       const testMessage = {
         type: 'error_test',
         data: {},
@@ -375,7 +375,7 @@ describe('WebSocketServer', () => {
 
       mockHandlers.handleMessage.mockRejectedValue(new Error('Handler error'));
 
-      client.on('message', (data) => {
+      client.on('message', data => {
         const response = JSON.parse(data.toString());
         expect(response.type).toBe('error');
         expect(response.error).toBe('Internal server error');
@@ -386,10 +386,10 @@ describe('WebSocketServer', () => {
       client.send(JSON.stringify(testMessage));
     });
 
-    it('should handle binary messages', (done) => {
+    it('should handle binary messages', done => {
       const binaryData = Buffer.from('binary test data', 'utf-8');
 
-      client.on('message', (data) => {
+      client.on('message', data => {
         const response = JSON.parse(data.toString());
         expect(response.type).toBe('error');
         expect(response.error).toBe('Binary messages not supported');
@@ -399,7 +399,7 @@ describe('WebSocketServer', () => {
       client.send(binaryData);
     });
 
-    it('should handle large messages', (done) => {
+    it('should handle large messages', done => {
       const largeMessage = {
         type: 'large_message',
         data: { payload: 'x'.repeat(10000) },
@@ -412,7 +412,7 @@ describe('WebSocketServer', () => {
         requestId: 'large-test-123',
       });
 
-      client.on('message', (data) => {
+      client.on('message', data => {
         const response = JSON.parse(data.toString());
         expect(response.type).toBe('large_response');
         expect(response.requestId).toBe('large-test-123');
@@ -425,21 +425,21 @@ describe('WebSocketServer', () => {
 
   describe('Ping/Pong Mechanism', () => {
     beforeEach(async () => {
-      wsServer = new WebSocketServer(httpServer, { 
+      wsServer = new WebSocketServer(httpServer, {
         port: testPort,
         pingInterval: 1000, // 1 second for testing
-        pongTimeout: 500,   // 0.5 seconds for testing
+        pongTimeout: 500, // 0.5 seconds for testing
       });
-      await new Promise<void>((resolve) => {
+      await new Promise<void>(resolve => {
         httpServer.listen(testPort, () => resolve());
       });
       await wsServer.start();
     });
 
-    it('should send ping messages at configured intervals', (done) => {
+    it('should send ping messages at configured intervals', done => {
       const client = new WebSocket(`ws://localhost:${testPort}`);
 
-      client.on('ping', (data) => {
+      client.on('ping', data => {
         expect(data).toBeDefined();
         client.pong(data); // Respond to ping
         done();
@@ -450,10 +450,10 @@ describe('WebSocketServer', () => {
       });
     });
 
-    it('should close connection if pong timeout exceeded', (done) => {
+    it('should close connection if pong timeout exceeded', done => {
       const client = new WebSocket(`ws://localhost:${testPort}`);
 
-      client.on('ping', (data) => {
+      client.on('ping', data => {
         // Don't respond to ping to trigger timeout
         logger.debug('Received ping, not responding to test timeout');
       });
@@ -478,13 +478,13 @@ describe('WebSocketServer', () => {
   describe('Error Handling', () => {
     beforeEach(async () => {
       wsServer = new WebSocketServer(httpServer, { port: testPort });
-      await new Promise<void>((resolve) => {
+      await new Promise<void>(resolve => {
         httpServer.listen(testPort, () => resolve());
       });
       await wsServer.start();
     });
 
-    it('should handle WebSocket errors', (done) => {
+    it('should handle WebSocket errors', done => {
       const client = new WebSocket(`ws://localhost:${testPort}`);
 
       client.on('open', () => {
@@ -496,7 +496,7 @@ describe('WebSocketServer', () => {
           } catch (error) {
             // Expected error
           }
-          
+
           setTimeout(() => {
             expect(logger.error).toHaveBeenCalledWith(
               'WebSocket error',
@@ -513,7 +513,7 @@ describe('WebSocketServer', () => {
     it('should handle server errors gracefully', async () => {
       // Simulate server error by trying to start on occupied port
       const conflictingServer = new WebSocketServer(httpServer, { port: testPort });
-      
+
       await expect(conflictingServer.start()).rejects.toThrow();
       expect(logger.error).toHaveBeenCalledWith(
         'Failed to start WebSocket server',
@@ -521,12 +521,12 @@ describe('WebSocketServer', () => {
       );
     });
 
-    it('should handle authentication service errors', (done) => {
+    it('should handle authentication service errors', done => {
       mockAuth.authenticateWebSocket.mockRejectedValue(new Error('Auth service down'));
 
       const client = new WebSocket(`ws://localhost:${testPort}`);
 
-      client.on('close', (code) => {
+      client.on('close', code => {
         expect(code).toBe(1011); // Internal error
         expect(logger.error).toHaveBeenCalledWith(
           'Authentication error during connection',
@@ -538,12 +538,12 @@ describe('WebSocketServer', () => {
       });
     });
 
-    it('should handle rate limiter service errors', (done) => {
+    it('should handle rate limiter service errors', done => {
       mockRateLimit.checkLimit.mockRejectedValue(new Error('Rate limiter service down'));
 
       const client = new WebSocket(`ws://localhost:${testPort}`);
 
-      client.on('close', (code) => {
+      client.on('close', code => {
         expect(code).toBe(1011); // Internal error
         expect(logger.error).toHaveBeenCalledWith(
           'Rate limiting error during connection',
@@ -559,7 +559,7 @@ describe('WebSocketServer', () => {
   describe('Statistics and Monitoring', () => {
     beforeEach(async () => {
       wsServer = new WebSocketServer(httpServer, { port: testPort });
-      await new Promise<void>((resolve) => {
+      await new Promise<void>(resolve => {
         httpServer.listen(testPort, () => resolve());
       });
       await wsServer.start();
@@ -570,8 +570,8 @@ describe('WebSocketServer', () => {
       const client2 = new WebSocket(`ws://localhost:${testPort}`);
 
       await Promise.all([
-        new Promise<void>((resolve) => client1.on('open', () => resolve())),
-        new Promise<void>((resolve) => client2.on('open', () => resolve())),
+        new Promise<void>(resolve => client1.on('open', () => resolve())),
+        new Promise<void>(resolve => client2.on('open', () => resolve())),
       ]);
 
       const stats = wsServer.getStats();
@@ -579,7 +579,7 @@ describe('WebSocketServer', () => {
       expect(stats.activeConnections).toBe(2);
 
       client1.close();
-      await new Promise<void>((resolve) => setTimeout(resolve, 100));
+      await new Promise<void>(resolve => setTimeout(resolve, 100));
 
       const updatedStats = wsServer.getStats();
       expect(updatedStats.activeConnections).toBe(1);
@@ -590,7 +590,7 @@ describe('WebSocketServer', () => {
 
     it('should track message statistics', async () => {
       const client = new WebSocket(`ws://localhost:${testPort}`);
-      await new Promise<void>((resolve) => client.on('open', () => resolve()));
+      await new Promise<void>(resolve => client.on('open', () => resolve()));
 
       const message = {
         type: 'test_stats',
@@ -599,7 +599,7 @@ describe('WebSocketServer', () => {
       };
 
       client.send(JSON.stringify(message));
-      await new Promise<void>((resolve) => setTimeout(resolve, 100));
+      await new Promise<void>(resolve => setTimeout(resolve, 100));
 
       const stats = wsServer.getStats();
       expect(stats.totalMessages).toBeGreaterThan(0);
@@ -609,7 +609,7 @@ describe('WebSocketServer', () => {
 
     it('should provide detailed connection information', async () => {
       const client = new WebSocket(`ws://localhost:${testPort}`);
-      await new Promise<void>((resolve) => client.on('open', () => resolve()));
+      await new Promise<void>(resolve => client.on('open', () => resolve()));
 
       const connections = wsServer.getConnections();
       expect(connections).toHaveLength(1);
@@ -624,7 +624,7 @@ describe('WebSocketServer', () => {
   describe('Integration Tests', () => {
     beforeEach(async () => {
       wsServer = new WebSocketServer(httpServer, { port: testPort });
-      await new Promise<void>((resolve) => {
+      await new Promise<void>(resolve => {
         httpServer.listen(testPort, () => resolve());
       });
       await wsServer.start();
@@ -632,7 +632,7 @@ describe('WebSocketServer', () => {
 
     it('should handle realistic WebSocket workflow', async () => {
       const client = new WebSocket(`ws://localhost:${testPort}`);
-      await new Promise<void>((resolve) => client.on('open', () => resolve()));
+      await new Promise<void>(resolve => client.on('open', () => resolve()));
 
       // Send authentication message
       const authMessage = {
@@ -650,8 +650,8 @@ describe('WebSocketServer', () => {
       client.send(JSON.stringify(authMessage));
 
       // Wait for response
-      const authResponse = await new Promise<any>((resolve) => {
-        client.on('message', (data) => {
+      const authResponse = await new Promise<any>(resolve => {
+        client.on('message', data => {
           resolve(JSON.parse(data.toString()));
         });
       });
@@ -675,8 +675,8 @@ describe('WebSocketServer', () => {
       client.send(JSON.stringify(dataMessage));
 
       // Wait for response
-      const dataResponse = await new Promise<any>((resolve) => {
-        client.on('message', (data) => {
+      const dataResponse = await new Promise<any>(resolve => {
+        client.on('message', data => {
           resolve(JSON.parse(data.toString()));
         });
       });
@@ -695,11 +695,11 @@ describe('WebSocketServer', () => {
       for (let i = 0; i < clientCount; i++) {
         const client = new WebSocket(`ws://localhost:${testPort}`);
         clients.push(client);
-        await new Promise<void>((resolve) => client.on('open', () => resolve()));
+        await new Promise<void>(resolve => client.on('open', () => resolve()));
       }
 
       // Send messages from all clients
-      const promises = clients.map((client, index) => {
+      const promises = clients.map(async (client, index) => {
         const message = {
           type: 'concurrent_test',
           data: { clientIndex: index },
@@ -714,8 +714,8 @@ describe('WebSocketServer', () => {
 
         client.send(JSON.stringify(message));
 
-        return new Promise<any>((resolve) => {
-          client.on('message', (data) => {
+        return new Promise<any>(resolve => {
+          client.on('message', data => {
             resolve(JSON.parse(data.toString()));
           });
         });

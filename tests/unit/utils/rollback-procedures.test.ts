@@ -2,16 +2,16 @@
  * @fileoverview Tests for rollback procedures utilities
  */
 
-import { 
-  StateSnapshotManager, 
-  RollbackManager, 
-  RecoveryProcedures,
-  createEmergencySnapshot,
-  quickRollback
-} from '../../../src/utils/rollback-procedures';
-import type { StateSnapshot, RollbackPlan } from '../../../src/utils/rollback-procedures';
 import fs from 'fs/promises';
 import path from 'path';
+import {
+  StateSnapshotManager,
+  RollbackManager,
+  RecoveryProcedures,
+  createEmergencySnapshot,
+  quickRollback,
+} from '../../../src/utils/rollback-procedures';
+import type { StateSnapshot, RollbackPlan } from '../../../src/utils/rollback-procedures';
 
 // Mock fs/promises
 jest.mock('fs/promises');
@@ -23,8 +23,8 @@ jest.mock('../../../src/utils/logger', () => ({
     info: jest.fn(),
     error: jest.fn(),
     warn: jest.fn(),
-    debug: jest.fn()
-  }
+    debug: jest.fn(),
+  },
 }));
 
 describe('StateSnapshotManager', () => {
@@ -44,7 +44,7 @@ describe('StateSnapshotManager', () => {
       const metadata = {
         version: '1.0.0',
         environment: 'test',
-        operation: 'backup'
+        operation: 'backup',
       };
 
       const snapshot = await snapshotManager.createSnapshot('database', metadata);
@@ -52,7 +52,7 @@ describe('StateSnapshotManager', () => {
       expect(snapshot).toMatchObject({
         type: 'database',
         metadata,
-        size: 1024
+        size: 1024,
       });
       expect(snapshot.id).toBeDefined();
       expect(snapshot.timestamp).toBeInstanceOf(Date);
@@ -64,7 +64,7 @@ describe('StateSnapshotManager', () => {
       const metadata = {
         version: '1.0.0',
         environment: 'test',
-        operation: 'config_backup'
+        operation: 'config_backup',
       };
 
       const snapshot = await snapshotManager.createSnapshot('configuration', metadata);
@@ -77,7 +77,7 @@ describe('StateSnapshotManager', () => {
       const metadata = {
         version: '1.0.0',
         environment: 'test',
-        operation: 'app_backup'
+        operation: 'app_backup',
       };
 
       const snapshot = await snapshotManager.createSnapshot('application', metadata);
@@ -90,7 +90,7 @@ describe('StateSnapshotManager', () => {
       const metadata = {
         version: '1.0.0',
         environment: 'test',
-        operation: 'full_backup'
+        operation: 'full_backup',
       };
 
       const snapshot = await snapshotManager.createSnapshot('full', metadata);
@@ -103,88 +103,92 @@ describe('StateSnapshotManager', () => {
       const metadata = {
         version: '1.0.0',
         environment: 'test',
-        operation: 'backup'
+        operation: 'backup',
       };
 
-      await expect(
-        snapshotManager.createSnapshot('invalid' as any, metadata)
-      ).rejects.toThrow('Unsupported snapshot type: invalid');
+      await expect(snapshotManager.createSnapshot('invalid' as any, metadata)).rejects.toThrow(
+        'Unsupported snapshot type: invalid'
+      );
     });
 
     it('should handle snapshot creation errors', async () => {
       mockFs.mkdir.mockRejectedValue(new Error('Permission denied'));
-      
+
       const metadata = {
         version: '1.0.0',
         environment: 'test',
-        operation: 'backup'
+        operation: 'backup',
       };
 
-      await expect(
-        snapshotManager.createSnapshot('database', metadata)
-      ).rejects.toThrow('Failed to create database snapshot');
+      await expect(snapshotManager.createSnapshot('database', metadata)).rejects.toThrow(
+        'Failed to create database snapshot'
+      );
     });
   });
 
   describe('restoreFromSnapshot', () => {
     beforeEach(() => {
-      mockFs.readFile.mockResolvedValue(JSON.stringify({
-        id: 'test-snapshot',
-        timestamp: new Date().toISOString(),
-        type: 'database',
-        checksum: 'test-checksum',
-        size: 1024,
-        metadata: { version: '1.0.0', environment: 'test' },
-        dataPath: '/path/to/snapshot'
-      }));
+      mockFs.readFile.mockResolvedValue(
+        JSON.stringify({
+          id: 'test-snapshot',
+          timestamp: new Date().toISOString(),
+          type: 'database',
+          checksum: 'test-checksum',
+          size: 1024,
+          metadata: { version: '1.0.0', environment: 'test' },
+          dataPath: '/path/to/snapshot',
+        })
+      );
     });
 
     it('should restore from snapshot successfully', async () => {
       // Mock snapshot integrity verification
-      mockFs.readFile.mockResolvedValueOnce(JSON.stringify({
-        id: 'test-snapshot',
-        timestamp: new Date().toISOString(),
-        type: 'database',
-        checksum: 'test-checksum',
-        size: 1024,
-        metadata: { version: '1.0.0', environment: 'test' },
-        dataPath: '/path/to/snapshot'
-      }));
-      
+      mockFs.readFile.mockResolvedValueOnce(
+        JSON.stringify({
+          id: 'test-snapshot',
+          timestamp: new Date().toISOString(),
+          type: 'database',
+          checksum: 'test-checksum',
+          size: 1024,
+          metadata: { version: '1.0.0', environment: 'test' },
+          dataPath: '/path/to/snapshot',
+        })
+      );
+
       // Mock snapshot data for integrity check
       mockFs.readFile.mockResolvedValueOnce('snapshot data');
 
-      await expect(
-        snapshotManager.restoreFromSnapshot('test-snapshot')
-      ).resolves.not.toThrow();
+      await expect(snapshotManager.restoreFromSnapshot('test-snapshot')).resolves.not.toThrow();
     });
 
     it('should handle non-existent snapshot', async () => {
       mockFs.readFile.mockRejectedValue(new Error('File not found'));
 
-      await expect(
-        snapshotManager.restoreFromSnapshot('non-existent')
-      ).rejects.toThrow('Snapshot non-existent not found');
+      await expect(snapshotManager.restoreFromSnapshot('non-existent')).rejects.toThrow(
+        'Snapshot non-existent not found'
+      );
     });
 
     it('should handle corrupted snapshot', async () => {
       // Mock snapshot metadata
-      mockFs.readFile.mockResolvedValueOnce(JSON.stringify({
-        id: 'test-snapshot',
-        timestamp: new Date().toISOString(),
-        type: 'database',
-        checksum: 'expected-checksum',
-        size: 1024,
-        metadata: { version: '1.0.0', environment: 'test' },
-        dataPath: '/path/to/snapshot'
-      }));
-      
+      mockFs.readFile.mockResolvedValueOnce(
+        JSON.stringify({
+          id: 'test-snapshot',
+          timestamp: new Date().toISOString(),
+          type: 'database',
+          checksum: 'expected-checksum',
+          size: 1024,
+          metadata: { version: '1.0.0', environment: 'test' },
+          dataPath: '/path/to/snapshot',
+        })
+      );
+
       // Mock different data that won't match checksum
       mockFs.readFile.mockResolvedValueOnce('different data');
 
-      await expect(
-        snapshotManager.restoreFromSnapshot('test-snapshot')
-      ).rejects.toThrow('Snapshot integrity check failed');
+      await expect(snapshotManager.restoreFromSnapshot('test-snapshot')).rejects.toThrow(
+        'Snapshot integrity check failed'
+      );
     });
   });
 
@@ -198,21 +202,21 @@ describe('StateSnapshotManager', () => {
           checksum: 'checksum1',
           size: 1024,
           metadata: { version: '1.0.0', environment: 'test' },
-          dataPath: '/path/1'
+          dataPath: '/path/1',
         },
         {
-          id: 'snapshot-2', 
+          id: 'snapshot-2',
           timestamp: '2023-01-02T00:00:00Z',
           type: 'configuration',
           checksum: 'checksum2',
           size: 2048,
           metadata: { version: '1.0.1', environment: 'test' },
-          dataPath: '/path/2'
-        }
+          dataPath: '/path/2',
+        },
       ];
 
       mockFs.readdir.mockResolvedValue(['snapshot-1.json', 'snapshot-2.json'] as any);
-      mockFs.readFile.mockImplementation((filePath: string) => {
+      mockFs.readFile.mockImplementation(async (filePath: string) => {
         if (filePath.includes('snapshot-1.json')) {
           return Promise.resolve(JSON.stringify(snapshots[0]));
         }
@@ -263,22 +267,22 @@ describe('StateSnapshotManager', () => {
 
   describe('deleteSnapshot', () => {
     beforeEach(() => {
-      mockFs.readFile.mockResolvedValue(JSON.stringify({
-        id: 'test-snapshot',
-        timestamp: new Date().toISOString(),
-        type: 'database',
-        checksum: 'test-checksum',
-        size: 1024,
-        metadata: { version: '1.0.0', environment: 'test' },
-        dataPath: '/path/to/snapshot'
-      }));
+      mockFs.readFile.mockResolvedValue(
+        JSON.stringify({
+          id: 'test-snapshot',
+          timestamp: new Date().toISOString(),
+          type: 'database',
+          checksum: 'test-checksum',
+          size: 1024,
+          metadata: { version: '1.0.0', environment: 'test' },
+          dataPath: '/path/to/snapshot',
+        })
+      );
       mockFs.rm.mockResolvedValue(undefined);
     });
 
     it('should delete snapshot successfully', async () => {
-      await expect(
-        snapshotManager.deleteSnapshot('test-snapshot')
-      ).resolves.not.toThrow();
+      await expect(snapshotManager.deleteSnapshot('test-snapshot')).resolves.not.toThrow();
 
       expect(mockFs.rm).toHaveBeenCalledTimes(2); // Data and metadata
     });
@@ -286,17 +290,17 @@ describe('StateSnapshotManager', () => {
     it('should handle non-existent snapshot', async () => {
       mockFs.readFile.mockRejectedValue(new Error('File not found'));
 
-      await expect(
-        snapshotManager.deleteSnapshot('non-existent')
-      ).rejects.toThrow('Snapshot non-existent not found');
+      await expect(snapshotManager.deleteSnapshot('non-existent')).rejects.toThrow(
+        'Snapshot non-existent not found'
+      );
     });
 
     it('should handle deletion errors', async () => {
       mockFs.rm.mockRejectedValue(new Error('Permission denied'));
 
-      await expect(
-        snapshotManager.deleteSnapshot('test-snapshot')
-      ).rejects.toThrow('Failed to delete snapshot');
+      await expect(snapshotManager.deleteSnapshot('test-snapshot')).rejects.toThrow(
+        'Failed to delete snapshot'
+      );
     });
   });
 });
@@ -310,7 +314,7 @@ describe('RollbackManager', () => {
       createSnapshot: jest.fn(),
       restoreFromSnapshot: jest.fn(),
       listSnapshots: jest.fn(),
-      deleteSnapshot: jest.fn()
+      deleteSnapshot: jest.fn(),
     } as any;
 
     rollbackManager = new RollbackManager(mockSnapshotManager);
@@ -324,8 +328,8 @@ describe('RollbackManager', () => {
           description: 'Restore database',
           timestamp: new Date(),
           execute: jest.fn(),
-          verify: jest.fn()
-        }
+          verify: jest.fn(),
+        },
       ];
 
       const plan = rollbackManager.createRollbackPlan(
@@ -338,7 +342,7 @@ describe('RollbackManager', () => {
         name: 'Test Plan',
         description: 'Test rollback plan',
         riskLevel: 'medium',
-        approvalRequired: false
+        approvalRequired: false,
       });
       expect(plan.operations).toHaveLength(1);
       expect(plan.operations[0].id).toBeDefined();
@@ -353,8 +357,8 @@ describe('RollbackManager', () => {
           description: 'Emergency restore',
           timestamp: new Date(),
           execute: jest.fn(),
-          verify: jest.fn()
-        }
+          verify: jest.fn(),
+        },
       ];
 
       const plan = rollbackManager.createRollbackPlan(
@@ -364,7 +368,7 @@ describe('RollbackManager', () => {
         {
           riskLevel: 'critical',
           approvalRequired: true,
-          dependencies: ['service-1', 'service-2']
+          dependencies: ['service-1', 'service-2'],
         }
       );
 
@@ -385,7 +389,7 @@ describe('RollbackManager', () => {
         description: 'Test operation',
         timestamp: new Date(),
         execute: jest.fn().mockResolvedValue(undefined),
-        verify: jest.fn().mockResolvedValue(true)
+        verify: jest.fn().mockResolvedValue(true),
       };
 
       plan = {
@@ -397,7 +401,7 @@ describe('RollbackManager', () => {
         estimatedDuration: 30000,
         riskLevel: 'medium',
         approvalRequired: false,
-        createdAt: new Date()
+        createdAt: new Date(),
       };
     });
 
@@ -445,18 +449,18 @@ describe('RollbackManager', () => {
         checksum: 'checksum',
         size: 1024,
         metadata: { version: '1.0.0', environment: 'test' },
-        dataPath: '/path'
+        dataPath: '/path',
       });
 
-      const result = await rollbackManager.executeRollbackPlan(plan, { 
-        createCheckpoint: true 
+      const result = await rollbackManager.executeRollbackPlan(plan, {
+        createCheckpoint: true,
       });
 
       expect(result.success).toBe(true);
       expect(mockSnapshotManager.createSnapshot).toHaveBeenCalledWith(
         'full',
         expect.objectContaining({
-          operation: 'rollback_checkpoint_plan-1'
+          operation: 'rollback_checkpoint_plan-1',
         })
       );
     });
@@ -472,9 +476,9 @@ describe('RollbackManager', () => {
     it('should skip validation when requested', async () => {
       mockSnapshotManager.createSnapshot.mockRejectedValue(new Error('Checkpoint failed'));
 
-      const result = await rollbackManager.executeRollbackPlan(plan, { 
+      const result = await rollbackManager.executeRollbackPlan(plan, {
         createCheckpoint: true,
-        skipValidation: true 
+        skipValidation: true,
       });
 
       expect(result.success).toBe(true);
@@ -559,27 +563,27 @@ describe('RecoveryProcedures', () => {
         checksum: 'checksum',
         size: 1024,
         metadata: { version: '1.0.0', environment: 'test' },
-        dataPath: '/path'
+        dataPath: '/path',
       };
 
-      jest.spyOn(recoveryProcedures['snapshotManager'], 'listSnapshots')
+      jest
+        .spyOn(recoveryProcedures.snapshotManager, 'listSnapshots')
         .mockResolvedValue([mockSnapshot]);
 
-      jest.spyOn(recoveryProcedures['rollbackManager'], 'executeRollbackPlan')
-        .mockResolvedValue({
-          success: true,
-          executedOperations: ['op-1']
-        });
+      jest.spyOn(recoveryProcedures.rollbackManager, 'executeRollbackPlan').mockResolvedValue({
+        success: true,
+        executedOperations: ['op-1'],
+      });
 
       await expect(recoveryProcedures.emergencyRecovery()).resolves.not.toThrow();
     });
 
     it('should handle no recovery snapshots available', async () => {
-      jest.spyOn(recoveryProcedures['snapshotManager'], 'listSnapshots')
-        .mockResolvedValue([]);
+      jest.spyOn(recoveryProcedures.snapshotManager, 'listSnapshots').mockResolvedValue([]);
 
-      await expect(recoveryProcedures.emergencyRecovery())
-        .rejects.toThrow('No recovery snapshots available');
+      await expect(recoveryProcedures.emergencyRecovery()).rejects.toThrow(
+        'No recovery snapshots available'
+      );
     });
 
     it('should handle emergency recovery failure', async () => {
@@ -590,21 +594,22 @@ describe('RecoveryProcedures', () => {
         checksum: 'checksum',
         size: 1024,
         metadata: { version: '1.0.0', environment: 'test' },
-        dataPath: '/path'
+        dataPath: '/path',
       };
 
-      jest.spyOn(recoveryProcedures['snapshotManager'], 'listSnapshots')
+      jest
+        .spyOn(recoveryProcedures.snapshotManager, 'listSnapshots')
         .mockResolvedValue([mockSnapshot]);
 
-      jest.spyOn(recoveryProcedures['rollbackManager'], 'executeRollbackPlan')
-        .mockResolvedValue({
-          success: false,
-          executedOperations: [],
-          error: 'Recovery failed'
-        });
+      jest.spyOn(recoveryProcedures.rollbackManager, 'executeRollbackPlan').mockResolvedValue({
+        success: false,
+        executedOperations: [],
+        error: 'Recovery failed',
+      });
 
-      await expect(recoveryProcedures.emergencyRecovery())
-        .rejects.toThrow('Emergency recovery failed: Recovery failed');
+      await expect(recoveryProcedures.emergencyRecovery()).rejects.toThrow(
+        'Emergency recovery failed: Recovery failed'
+      );
     });
   });
 
@@ -617,33 +622,31 @@ describe('RecoveryProcedures', () => {
         checksum: 'checksum',
         size: 1024,
         metadata: { version: '1.0.0', environment: 'test' },
-        dataPath: '/path'
+        dataPath: '/path',
       };
 
-      jest.spyOn(recoveryProcedures['snapshotManager'], 'listSnapshots')
+      jest
+        .spyOn(recoveryProcedures.snapshotManager, 'listSnapshots')
         .mockResolvedValue([mockSnapshot]);
 
-      jest.spyOn(recoveryProcedures['rollbackManager'], 'executeRollbackPlan')
-        .mockResolvedValue({
-          success: true,
-          executedOperations: ['op-1']
-        });
+      jest.spyOn(recoveryProcedures.rollbackManager, 'executeRollbackPlan').mockResolvedValue({
+        success: true,
+        executedOperations: ['op-1'],
+      });
 
-      jest.spyOn(recoveryProcedures['snapshotManager'], 'createSnapshot')
+      jest
+        .spyOn(recoveryProcedures.snapshotManager, 'createSnapshot')
         .mockResolvedValue(mockSnapshot);
 
-      await expect(
-        recoveryProcedures.gracefulRecovery('target-snapshot')
-      ).resolves.not.toThrow();
+      await expect(recoveryProcedures.gracefulRecovery('target-snapshot')).resolves.not.toThrow();
     });
 
     it('should handle target snapshot not found', async () => {
-      jest.spyOn(recoveryProcedures['snapshotManager'], 'listSnapshots')
-        .mockResolvedValue([]);
+      jest.spyOn(recoveryProcedures.snapshotManager, 'listSnapshots').mockResolvedValue([]);
 
-      await expect(
-        recoveryProcedures.gracefulRecovery('non-existent')
-      ).rejects.toThrow('Target snapshot non-existent not found');
+      await expect(recoveryProcedures.gracefulRecovery('non-existent')).rejects.toThrow(
+        'Target snapshot non-existent not found'
+      );
     });
 
     it('should use most recent verified snapshot when no target specified', async () => {
@@ -655,7 +658,7 @@ describe('RecoveryProcedures', () => {
           checksum: 'checksum2',
           size: 2048,
           metadata: { version: '1.0.1', environment: 'test', tags: ['verified'] },
-          dataPath: '/path2'
+          dataPath: '/path2',
         },
         {
           id: 'older-snapshot',
@@ -664,20 +667,21 @@ describe('RecoveryProcedures', () => {
           checksum: 'checksum1',
           size: 1024,
           metadata: { version: '1.0.0', environment: 'test' },
-          dataPath: '/path1'
-        }
+          dataPath: '/path1',
+        },
       ];
 
-      jest.spyOn(recoveryProcedures['snapshotManager'], 'listSnapshots')
+      jest
+        .spyOn(recoveryProcedures.snapshotManager, 'listSnapshots')
         .mockResolvedValue(mockSnapshots);
 
-      jest.spyOn(recoveryProcedures['rollbackManager'], 'executeRollbackPlan')
-        .mockResolvedValue({
-          success: true,
-          executedOperations: ['op-1']
-        });
+      jest.spyOn(recoveryProcedures.rollbackManager, 'executeRollbackPlan').mockResolvedValue({
+        success: true,
+        executedOperations: ['op-1'],
+      });
 
-      jest.spyOn(recoveryProcedures['snapshotManager'], 'createSnapshot')
+      jest
+        .spyOn(recoveryProcedures.snapshotManager, 'createSnapshot')
         .mockResolvedValue(mockSnapshots[0]);
 
       await expect(recoveryProcedures.gracefulRecovery()).resolves.not.toThrow();
@@ -699,7 +703,7 @@ describe('Convenience functions', () => {
         checksum: 'checksum',
         size: 1024,
         metadata: { version: '1.0.0', environment: 'test', tags: ['emergency', 'system-failure'] },
-        dataPath: '/path'
+        dataPath: '/path',
       };
 
       const { stateSnapshotManager } = require('../../../src/utils/rollback-procedures');
@@ -712,7 +716,7 @@ describe('Convenience functions', () => {
         'full',
         expect.objectContaining({
           operation: 'emergency_snapshot',
-          tags: ['emergency', 'system-failure']
+          tags: ['emergency', 'system-failure'],
         })
       );
     });
@@ -727,7 +731,7 @@ describe('Convenience functions', () => {
         checksum: 'checksum',
         size: 1024,
         metadata: { version: '1.0.0', environment: 'test' },
-        dataPath: '/path'
+        dataPath: '/path',
       };
 
       const { stateSnapshotManager } = require('../../../src/utils/rollback-procedures');

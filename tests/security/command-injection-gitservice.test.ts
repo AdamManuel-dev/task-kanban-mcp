@@ -1,7 +1,7 @@
 /**
  * @fileoverview Command injection prevention tests for GitService
  * @lastmodified 2025-07-28T12:00:00Z
- * 
+ *
  * Features: GitService command injection prevention, safe git execution
  * Main APIs: GitService with secure command execution
  * Constraints: All git commands must go through safeExecute
@@ -34,16 +34,16 @@ describe('GitService Command Injection Prevention', () => {
           exitCode: 0,
           duration: 100,
           command: 'git',
-          args: ['remote', 'get-url', 'origin']
+          args: ['remote', 'get-url', 'origin'],
         })
         .mockResolvedValueOnce({
-          success: true, 
+          success: true,
           stdout: 'main',
           stderr: '',
           exitCode: 0,
           duration: 50,
           command: 'git',
-          args: ['branch', '--show-current']
+          args: ['branch', '--show-current'],
         })
         .mockResolvedValueOnce({
           success: true,
@@ -52,7 +52,7 @@ describe('GitService Command Injection Prevention', () => {
           exitCode: 0,
           duration: 75,
           command: 'git',
-          args: ['status', '--porcelain']
+          args: ['status', '--porcelain'],
         });
 
       // Call the private method via reflection for testing
@@ -63,14 +63,14 @@ describe('GitService Command Injection Prevention', () => {
       expect(mockSafeExecute).toHaveBeenNthCalledWith(1, 'git', ['remote', 'get-url', 'origin']);
       expect(mockSafeExecute).toHaveBeenNthCalledWith(2, 'git', ['branch', '--show-current']);
       expect(mockSafeExecute).toHaveBeenNthCalledWith(3, 'git', ['status', '--porcelain']);
-      
+
       // Verify the result structure
       expect(result).toMatchObject({
         path: '/fake/path',
         name: 'path',
         remoteUrl: 'https://github.com/user/repo.git',
         currentBranch: 'main',
-        isClean: true
+        isClean: true,
       });
     });
 
@@ -84,7 +84,7 @@ describe('GitService Command Injection Prevention', () => {
           exitCode: 128,
           duration: 10,
           command: 'git',
-          args: ['remote', 'get-url', 'origin']
+          args: ['remote', 'get-url', 'origin'],
         })
         .mockResolvedValueOnce({
           success: false,
@@ -93,7 +93,7 @@ describe('GitService Command Injection Prevention', () => {
           exitCode: 128,
           duration: 10,
           command: 'git',
-          args: ['branch', '--show-current']
+          args: ['branch', '--show-current'],
         })
         .mockResolvedValueOnce({
           success: false,
@@ -102,7 +102,7 @@ describe('GitService Command Injection Prevention', () => {
           exitCode: 128,
           duration: 10,
           command: 'git',
-          args: ['status', '--porcelain']
+          args: ['status', '--porcelain'],
         });
 
       const result = await (GitService as any).parseRepository('/fake/path');
@@ -110,7 +110,7 @@ describe('GitService Command Injection Prevention', () => {
       expect(result).toMatchObject({
         remoteUrl: undefined,
         currentBranch: undefined,
-        isClean: false
+        isClean: false,
       });
     });
   });
@@ -124,7 +124,7 @@ describe('GitService Command Injection Prevention', () => {
         exitCode: 0,
         duration: 100,
         command: 'git',
-        args: ['branch', '-v']
+        args: ['branch', '-v'],
       });
 
       const result = await GitService.getBranches('/fake/path');
@@ -134,7 +134,7 @@ describe('GitService Command Injection Prevention', () => {
       expect(result[0]).toMatchObject({
         name: 'main',
         isActive: true,
-        lastCommit: 'abc123'
+        lastCommit: 'abc123',
       });
     });
 
@@ -146,7 +146,7 @@ describe('GitService Command Injection Prevention', () => {
         exitCode: 128,
         duration: 10,
         command: 'git',
-        args: ['branch', '-v']
+        args: ['branch', '-v'],
       });
 
       const result = await GitService.getBranches('/fake/path');
@@ -159,12 +159,13 @@ describe('GitService Command Injection Prevention', () => {
     it('should use safeExecute for git log command', async () => {
       mockSafeExecute.mockResolvedValueOnce({
         success: true,
-        stdout: 'abc123|Initial commit|John Doe|2023-01-01 10:00:00 +0000\ndef456|Second commit|Jane Doe|2023-01-02 10:00:00 +0000\n',
+        stdout:
+          'abc123|Initial commit|John Doe|2023-01-01 10:00:00 +0000\ndef456|Second commit|Jane Doe|2023-01-02 10:00:00 +0000\n',
         stderr: '',
         exitCode: 0,
         duration: 150,
         command: 'git',
-        args: ['log', '--oneline', '--format=%H|%s|%an|%ad', '--date=iso', '-n', '10']
+        args: ['log', '--oneline', '--format=%H|%s|%an|%ad', '--date=iso', '-n', '10'],
       });
 
       const result = await GitService.getCommitHistory('/fake/path', 10);
@@ -175,13 +176,13 @@ describe('GitService Command Injection Prevention', () => {
         '--format=%H|%s|%an|%ad',
         '--date=iso',
         '-n',
-        '10'
+        '10',
       ]);
       expect(result).toHaveLength(2);
       expect(result[0]).toMatchObject({
         hash: 'abc123',
         message: 'Initial commit',
-        author: 'John Doe'
+        author: 'John Doe',
       });
     });
 
@@ -193,7 +194,7 @@ describe('GitService Command Injection Prevention', () => {
         exitCode: 128,
         duration: 10,
         command: 'git',
-        args: ['log', '--oneline', '--format=%H|%s|%an|%ad', '--date=iso', '-n', '10']
+        args: ['log', '--oneline', '--format=%H|%s|%an|%ad', '--date=iso', '-n', '10'],
       });
 
       const result = await GitService.getCommitHistory('/fake/path');
@@ -206,7 +207,7 @@ describe('GitService Command Injection Prevention', () => {
     it('should never call child_process.exec directly', () => {
       // This test ensures that GitService doesn't have any direct exec calls
       const gitServiceCode = GitService.toString();
-      
+
       expect(gitServiceCode).not.toMatch(/exec\s*\(/);
       expect(gitServiceCode).not.toMatch(/execAsync\s*\(/);
       expect(gitServiceCode).not.toMatch(/child_process/);
@@ -217,14 +218,14 @@ describe('GitService Command Injection Prevention', () => {
       mockSafeExecute.mockImplementation(async (command, args) => {
         // Simulate command injection prevention blocking malicious args
         const maliciousPatterns = [';', '&&', '||', '|', '$(', '`'];
-        const hasMalicious = args.some(arg => 
+        const hasMalicious = args.some(arg =>
           maliciousPatterns.some(pattern => arg.includes(pattern))
         );
-        
+
         if (hasMalicious) {
           throw new Error('Command execution blocked: Dangerous pattern detected');
         }
-        
+
         return {
           success: true,
           stdout: 'safe output',
@@ -232,13 +233,13 @@ describe('GitService Command Injection Prevention', () => {
           exitCode: 0,
           duration: 10,
           command,
-          args
+          args,
         };
       });
 
       // This should work fine
       await expect(GitService.getBranches('/safe/path')).resolves.not.toThrow();
-      
+
       // Even if someone tried to modify the limit parameter maliciously,
       // it goes through String() conversion and safeExecute validation
       await expect(GitService.getCommitHistory('/safe/path', 5)).resolves.not.toThrow();

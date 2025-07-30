@@ -319,7 +319,7 @@ const migration: TypeSafeMigration = {
       for (const index of schemaV1.indexes) {
         const indexExists = await get(
           "SELECT name FROM sqlite_master WHERE type='index' AND name=?",
-          [index.name]
+          index.name
         );
 
         if (!indexExists) {
@@ -329,14 +329,15 @@ const migration: TypeSafeMigration = {
       }
 
       // Test basic operations
-      await run('INSERT INTO tasks_v2 (id, board_id, column_id, title) VALUES (?, ?, ?, ?)', [
+      await run(
+        'INSERT INTO tasks_v2 (id, board_id, column_id, title) VALUES (?, ?, ?, ?)',
         'test-validation-id',
         'test-board',
         'todo',
-        'Test Task',
-      ]);
+        'Test Task'
+      );
 
-      await run('DELETE FROM tasks_v2 WHERE id = ?', ['test-validation-id']);
+      await run('DELETE FROM tasks_v2 WHERE id = ?', 'test-validation-id');
 
       return true;
     } catch (error) {

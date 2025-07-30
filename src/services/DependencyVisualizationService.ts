@@ -69,7 +69,7 @@ export class DependencyVisualizationService {
 
       // Build the graph
       const nodes = new Map<string, DependencyNode>();
-      const edges: TaskDependency[] = dependencies.map(dep => ({
+      const edges: TaskDependency[] = dependencies.map((dep: unknown) => ({
         id: dep.id,
         task_id: dep.task_id,
         depends_on_task_id: dep.depends_on_task_id,

@@ -1,16 +1,16 @@
 /**
  * @fileoverview Tests for MCP prompt management system
  * @lastmodified 2025-07-28T11:30:00Z
- * 
+ *
  * Features: Prompt registry, task planning, breakdown, prioritization, review
  * Test Coverage: CRUD operations, validation, error handling, integration
  * Test Tools: Jest, mock services, test fixtures
  * Patterns: Unit tests, integration tests, mocking, assertions
  */
 
+import type { Prompt, PromptArgument } from '@modelcontextprotocol/sdk/types.js';
 import { MCPPromptRegistry, type PromptContent } from '../../../src/mcp/prompts';
 import type { MCPServices } from '../../../src/mcp/tools';
-import type { Prompt, PromptArgument } from '@modelcontextprotocol/sdk/types.js';
 
 // Mock the logger to avoid console output during tests
 jest.mock('../../../src/utils/logger', () => ({
@@ -95,7 +95,7 @@ describe('MCPPromptRegistry', () => {
         expect(prompt).toHaveProperty('description');
         expect(prompt.name).toBeTruthy();
         expect(prompt.description).toBeTruthy();
-        
+
         if (prompt.arguments) {
           expect(prompt.arguments).toBeInstanceOf(Array);
           prompt.arguments.forEach((arg: PromptArgument) => {
@@ -114,7 +114,7 @@ describe('MCPPromptRegistry', () => {
       expect(taskPlanningPrompt).toBeDefined();
       expect(taskPlanningPrompt?.description).toContain('plan and organize tasks');
       expect(taskPlanningPrompt?.arguments).toBeDefined();
-      
+
       const boardIdArg = taskPlanningPrompt?.arguments?.find(arg => arg.name === 'board_id');
       expect(boardIdArg).toBeDefined();
       expect(boardIdArg?.required).toBe(true);
@@ -127,8 +127,10 @@ describe('MCPPromptRegistry', () => {
       expect(taskBreakdownPrompt).toBeDefined();
       expect(taskBreakdownPrompt?.description).toContain('Break down complex tasks');
       expect(taskBreakdownPrompt?.arguments).toBeDefined();
-      
-      const taskDescArg = taskBreakdownPrompt?.arguments?.find(arg => arg.name === 'task_description');
+
+      const taskDescArg = taskBreakdownPrompt?.arguments?.find(
+        arg => arg.name === 'task_description'
+      );
       expect(taskDescArg).toBeDefined();
       expect(taskDescArg?.required).toBe(true);
     });
@@ -257,9 +259,9 @@ describe('MCPPromptRegistry', () => {
     });
 
     it('should require task_description parameter', async () => {
-      await expect(
-        promptRegistry.getPrompt('task_breakdown', {})
-      ).rejects.toThrow('task_description is required');
+      await expect(promptRegistry.getPrompt('task_breakdown', {})).rejects.toThrow(
+        'task_description is required'
+      );
     });
   });
 
@@ -385,15 +387,15 @@ describe('MCPPromptRegistry', () => {
 
   describe('Error Handling', () => {
     it('should throw error for unknown prompt', async () => {
-      await expect(
-        promptRegistry.getPrompt('unknown_prompt', {})
-      ).rejects.toThrow('Unknown prompt: unknown_prompt');
+      await expect(promptRegistry.getPrompt('unknown_prompt', {})).rejects.toThrow(
+        'Unknown prompt: unknown_prompt'
+      );
     });
 
     it('should validate required parameters', async () => {
-      await expect(
-        promptRegistry.getPrompt('task_planning', {})
-      ).rejects.toThrow('board_id is required');
+      await expect(promptRegistry.getPrompt('task_planning', {})).rejects.toThrow(
+        'board_id is required'
+      );
     });
 
     it('should handle service unavailability', async () => {
@@ -491,7 +493,7 @@ describe('MCPPromptRegistry', () => {
       mockMCPServices.taskService.getTasks.mockResolvedValue(largeMockTasks);
 
       const startTime = Date.now();
-      
+
       const content = await promptRegistry.getPrompt('task_prioritization', {
         board_id: 'board-123',
       });
@@ -506,7 +508,7 @@ describe('MCPPromptRegistry', () => {
     it('should timeout gracefully for slow services', async () => {
       // Mock a slow service call
       mockMCPServices.boardService.getBoard.mockImplementation(
-        () => new Promise(resolve => setTimeout(() => resolve(null), 10000))
+        async () => new Promise(resolve => setTimeout(() => resolve(null), 10000))
       );
 
       // This should timeout or handle gracefully

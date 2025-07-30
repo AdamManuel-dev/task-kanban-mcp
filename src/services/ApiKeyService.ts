@@ -366,11 +366,11 @@ export class ApiKeyService {
       const now = new Date();
 
       // First, get count of expired keys
-      const countResult = await this.db.queryOne(
+      const countResult = (await this.db.queryOne(
         `SELECT COUNT(*) as count FROM api_keys 
          WHERE expires_at IS NOT NULL AND expires_at < ? AND is_active = 1`,
         [now.toISOString()]
-      );
+      )) as { count: number } | null;
 
       const expiredCount = countResult?.count || 0;
 
@@ -408,7 +408,7 @@ export class ApiKeyService {
     topUsedKeys: Array<{ id: string; name: string; usageCount: number }>;
   }> {
     try {
-      const stats = await this.db.queryOne(`
+      const stats = (await this.db.queryOne(`
         SELECT 
           COUNT(*) as totalKeys,
           SUM(CASE WHEN is_active = 1 AND (expires_at IS NULL OR expires_at > datetime('now')) THEN 1 ELSE 0 END) as activeKeys,
@@ -416,7 +416,13 @@ export class ApiKeyService {
           SUM(CASE WHEN revoked_at IS NOT NULL THEN 1 ELSE 0 END) as revokedKeys,
           SUM(usage_count) as totalUsage
         FROM api_keys
-      `);
+      `)) as {
+        totalKeys: number;
+        activeKeys: number;
+        expiredKeys: number;
+        revokedKeys: number;
+        totalUsage: number;
+      } | null;
 
       const topUsedRows = await this.db.query(`
         SELECT id, name, usage_count 

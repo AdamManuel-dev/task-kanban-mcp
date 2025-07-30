@@ -148,7 +148,12 @@ export function registerSubtaskCommands(program: Command): void {
           }
 
           const subtask = await apiClient.createTask(subtaskData as CreateTaskRequest);
-          if ('data' in subtask && subtask.data && typeof subtask.data === 'object' && 'id' in subtask.data) {
+          if (
+            'data' in subtask &&
+            subtask.data &&
+            typeof subtask.data === 'object' &&
+            'id' in subtask.data
+          ) {
             formatter.success(`Subtask created successfully: ${String(subtask.data.id)}`);
             formatter.output(subtask);
           } else {
@@ -184,7 +189,11 @@ export function registerSubtaskCommands(program: Command): void {
 
         const subtasksResponse = await apiClient.getTasks(params);
 
-        if (!('data' in subtasksResponse) || !subtasksResponse.data || (subtasksResponse as TasksResponse).data.length === 0) {
+        if (
+          !('data' in subtasksResponse) ||
+          !subtasksResponse.data ||
+          (subtasksResponse as TasksResponse).data.length === 0
+        ) {
           formatter.info(`No subtasks found for task ${String(parentId)}`);
           return;
         }
@@ -261,6 +270,7 @@ export function registerSubtaskCommands(program: Command): void {
         if (options.blocked) {
           // Show tasks that are blocked by this task
           const blockedTasksResponse = await apiClient.request<TasksResponse>(
+            'GET',
             `/api/tasks/${String(taskId)}/blocking`
           );
 
@@ -277,6 +287,7 @@ export function registerSubtaskCommands(program: Command): void {
         } else {
           // Show dependencies of this task
           const dependenciesResponse = await apiClient.request<TasksResponse>(
+            'GET',
             `/api/tasks/${String(taskId)}/dependencies`
           );
 

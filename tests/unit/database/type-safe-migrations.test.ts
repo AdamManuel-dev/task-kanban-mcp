@@ -1,18 +1,18 @@
 /**
  * @fileoverview Type-safe migration system tests
  * @lastmodified 2025-07-28T10:30:00Z
- * 
+ *
  * Features: Migration system testing, schema validation, rollback testing
  * Main APIs: TypeSafeMigrationRunner test suite
  * Constraints: Integration tests, requires database setup
  * Patterns: Test isolation, comprehensive validation, error handling
  */
 
-import { TypeSafeMigrationRunner } from '../../../src/database/migrations/TypeSafeMigrationRunner';
-import { DatabaseConnection } from '../../../src/database/connection';
 import sqlite3 from 'sqlite3';
 import path from 'path';
 import fs from 'fs/promises';
+import { DatabaseConnection } from '../../../src/database/connection';
+import { TypeSafeMigrationRunner } from '../../../src/database/migrations/TypeSafeMigrationRunner';
 
 describe('TypeSafeMigrationRunner', () => {
   let db: sqlite3.Database;
@@ -22,7 +22,7 @@ describe('TypeSafeMigrationRunner', () => {
   beforeAll(async () => {
     // Create temporary database for testing
     tempDbPath = path.join(__dirname, 'test-migrations.db');
-    
+
     // Remove existing test database
     try {
       await fs.unlink(tempDbPath);
@@ -31,12 +31,12 @@ describe('TypeSafeMigrationRunner', () => {
     }
 
     db = new sqlite3.Database(tempDbPath);
-    
+
     // Initialize migration runner
     migrationRunner = new TypeSafeMigrationRunner(db, {
       migrationsPath: path.join(__dirname, '../../../src/database/migrations'),
       tableName: 'test_schema_migrations',
-      schemaTableName: 'test_schema_versions'
+      schemaTableName: 'test_schema_versions',
     });
 
     await migrationRunner.initialize();
@@ -44,7 +44,7 @@ describe('TypeSafeMigrationRunner', () => {
 
   afterAll(async () => {
     // Close database and clean up
-    await new Promise<void>((resolve) => {
+    await new Promise<void>(resolve => {
       db.close(() => resolve());
     });
 
@@ -57,9 +57,9 @@ describe('TypeSafeMigrationRunner', () => {
 
   beforeEach(async () => {
     // Clean up tables before each test
-    const run = (sql: string, params?: any[]) => 
+    const run = async (sql: string, params?: any[]) =>
       new Promise<void>((resolve, reject) => {
-        db.run(sql, params, (err) => {
+        db.run(sql, params, err => {
           if (err) reject(err);
           else resolve();
         });
@@ -74,7 +74,7 @@ describe('TypeSafeMigrationRunner', () => {
 
   describe('Initialization', () => {
     test('should create migration tables', async () => {
-      const get = (sql: string) => 
+      const get = async (sql: string) =>
         new Promise<any>((resolve, reject) => {
           db.get(sql, (err, row) => {
             if (err) reject(err);
@@ -106,16 +106,18 @@ describe('TypeSafeMigrationRunner', () => {
   describe('Migration Loading', () => {
     test('should load type-safe migrations', async () => {
       const migrations = await migrationRunner.loadTypeSafeMigrations();
-      
+
       expect(Array.isArray(migrations)).toBe(true);
-      
+
       // Should find our example migration
       const exampleMigration = migrations.find(m => m.id === 'ts_001_enhanced_task_management');
       expect(exampleMigration).toBeDefined();
-      
+
       if (exampleMigration) {
         expect(exampleMigration.version).toBe(1);
-        expect(exampleMigration.description).toBe('Add enhanced task management features with type safety');
+        expect(exampleMigration.description).toBe(
+          'Add enhanced task management features with type safety'
+        );
         expect(typeof exampleMigration.up).toBe('function');
         expect(typeof exampleMigration.down).toBe('function');
         expect(exampleMigration.schema).toBeDefined();
@@ -124,7 +126,7 @@ describe('TypeSafeMigrationRunner', () => {
 
     test('should validate migration structure', async () => {
       const migrations = await migrationRunner.loadTypeSafeMigrations();
-      
+
       migrations.forEach(migration => {
         expect(typeof migration.id).toBe('string');
         expect(typeof migration.version).toBe('number');
@@ -140,10 +142,10 @@ describe('TypeSafeMigrationRunner', () => {
   describe('Migration Execution', () => {
     test('should execute pending migrations', async () => {
       const results = await migrationRunner.runPendingMigrations();
-      
+
       expect(Array.isArray(results)).toBe(true);
       expect(results.length).toBeGreaterThan(0);
-      
+
       // All migrations should succeed
       results.forEach(result => {
         expect(result.success).toBe(true);
@@ -154,7 +156,7 @@ describe('TypeSafeMigrationRunner', () => {
 
     test('should update schema version after migration', async () => {
       await migrationRunner.runPendingMigrations();
-      
+
       const version = await migrationRunner.getCurrentSchemaVersion();
       expect(version).toBeGreaterThan(0);
     });
@@ -163,7 +165,7 @@ describe('TypeSafeMigrationRunner', () => {
       // Run migrations first time
       const firstRun = await migrationRunner.runPendingMigrations();
       expect(firstRun.length).toBeGreaterThan(0);
-      
+
       // Run again - should have no pending migrations
       const secondRun = await migrationRunner.runPendingMigrations();
       expect(secondRun.length).toBe(0);
@@ -173,7 +175,7 @@ describe('TypeSafeMigrationRunner', () => {
   describe('Schema Validation', () => {
     test('should validate schema after migration', async () => {
       await migrationRunner.runPendingMigrations();
-      
+
       const validation = await migrationRunner.validateCurrentSchema();
       expect(validation.valid).toBe(true);
       expect(validation.errors).toHaveLength(0);
@@ -181,7 +183,7 @@ describe('TypeSafeMigrationRunner', () => {
 
     test('should create table with correct structure', async () => {
       await migrationRunner.runPendingMigrations();
-      
+
       const tableInfo = await new Promise<any[]>((resolve, reject) => {
         db.all('PRAGMA table_info(tasks_v2)', (err, rows) => {
           if (err) reject(err);
@@ -190,7 +192,7 @@ describe('TypeSafeMigrationRunner', () => {
       });
 
       expect(tableInfo.length).toBeGreaterThan(0);
-      
+
       // Check for expected columns
       const columnNames = tableInfo.map(col => col.name);
       expect(columnNames).toContain('id');
@@ -202,19 +204,22 @@ describe('TypeSafeMigrationRunner', () => {
 
     test('should create indexes', async () => {
       await migrationRunner.runPendingMigrations();
-      
+
       const indexes = await new Promise<any[]>((resolve, reject) => {
-        db.all(`
+        db.all(
+          `
           SELECT name FROM sqlite_master 
           WHERE type='index' AND tbl_name='tasks_v2' AND name LIKE 'idx_%'
-        `, (err, rows) => {
-          if (err) reject(err);
-          else resolve(rows || []);
-        });
+        `,
+          (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows || []);
+          }
+        );
       });
 
       expect(indexes.length).toBeGreaterThan(0);
-      
+
       const indexNames = indexes.map(idx => idx.name);
       expect(indexNames).toContain('idx_tasks_v2_board_id');
       expect(indexNames).toContain('idx_tasks_v2_status');
@@ -229,13 +234,13 @@ describe('TypeSafeMigrationRunner', () => {
         columns: {
           id: { type: 'TEXT' as const, nullable: false },
           name: { type: 'TEXT' as const, nullable: false },
-          count: { type: 'INTEGER' as const, nullable: true, defaultValue: 0 }
+          count: { type: 'INTEGER' as const, nullable: true, defaultValue: 0 },
         },
-        primaryKey: 'id'
+        primaryKey: 'id',
       };
 
       const sql = migrationRunner.generateCreateTableSQL(tableDefinition);
-      
+
       expect(sql).toContain('CREATE TABLE test_table');
       expect(sql).toContain('id TEXT NOT NULL');
       expect(sql).toContain('name TEXT NOT NULL');
@@ -248,20 +253,24 @@ describe('TypeSafeMigrationRunner', () => {
         name: 'child_table',
         columns: {
           id: { type: 'TEXT' as const, nullable: false },
-          parent_id: { type: 'TEXT' as const, nullable: false }
+          parent_id: { type: 'TEXT' as const, nullable: false },
         },
         primaryKey: 'id',
-        foreignKeys: [{
-          column: 'parent_id',
-          referencesTable: 'parent_table',
-          referencesColumn: 'id',
-          onDelete: 'CASCADE' as const
-        }]
+        foreignKeys: [
+          {
+            column: 'parent_id',
+            referencesTable: 'parent_table',
+            referencesColumn: 'id',
+            onDelete: 'CASCADE' as const,
+          },
+        ],
       };
 
       const sql = migrationRunner.generateCreateTableSQL(tableDefinition);
-      
-      expect(sql).toContain('FOREIGN KEY (parent_id) REFERENCES parent_table(id) ON DELETE CASCADE');
+
+      expect(sql).toContain(
+        'FOREIGN KEY (parent_id) REFERENCES parent_table(id) ON DELETE CASCADE'
+      );
     });
   });
 
@@ -277,18 +286,18 @@ describe('TypeSafeMigrationRunner', () => {
           description: 'Failing schema',
           tables: {},
           indexes: [],
-          constraints: []
+          constraints: [],
         },
         up: async () => {
           throw new Error('Intentional migration failure');
         },
         down: async () => {
           // No-op
-        }
+        },
       };
 
       const result = await migrationRunner.executeMigration(failingMigration);
-      
+
       expect(result.success).toBe(false);
       expect(result.error).toBeDefined();
       expect(result.error?.message).toBe('Intentional migration failure');
@@ -296,9 +305,9 @@ describe('TypeSafeMigrationRunner', () => {
 
     test('should validate invalid schema correctly', async () => {
       // Force an invalid state by manually modifying schema version
-      const run = (sql: string, params?: any[]) => 
+      const run = async (sql: string, params?: any[]) =>
         new Promise<void>((resolve, reject) => {
-          db.run(sql, params, (err) => {
+          db.run(sql, params, err => {
             if (err) reject(err);
             else resolve();
           });

@@ -24,11 +24,11 @@ interface AuthenticatedRequest extends Request {
 
 interface Services {
   taskService: {
-    createTask: (data: any) => Promise<any>;
+    createTask: (data: unknown) => Promise<unknown>;
     setTaskTags: (taskId: string, tags: string[]) => Promise<void>;
   };
   noteService: {
-    createNote: (data: any) => Promise<void>;
+    createNote: (data: unknown) => Promise<void>;
   };
 }
 

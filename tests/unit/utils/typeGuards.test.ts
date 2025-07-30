@@ -58,7 +58,7 @@ describe('Type Guards', () => {
       expect(isArray([])).toBe(true);
       expect(isArray([1, 2, 3])).toBe(true);
       expect(isArray(['a', 'b'])).toBe(true);
-      expect(isArray(new Array())).toBe(true);
+      expect(isArray([])).toBe(true);
     });
 
     it('should return false for non-arrays', () => {

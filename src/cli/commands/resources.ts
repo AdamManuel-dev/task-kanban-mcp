@@ -330,7 +330,7 @@ export function registerResourceCommands(program: Command): void {
     .description('Show current monitoring configuration')
     .action(
       withErrorHandling('show resource config', async () => {
-        const config = resourceMonitor.config;
+        const { config } = resourceMonitor;
 
         formatOutput(
           {
@@ -383,7 +383,7 @@ export function registerResourceCommands(program: Command): void {
           const memUsage = getMemoryUsage();
 
           process.stdout.write('📊 Real-time Resource Dashboard\n');
-          process.stdout.write('='.repeat(50) + '\n');
+          process.stdout.write(`${'='.repeat(50)}\n`);
           process.stdout.write(`Last updated: ${new Date().toLocaleTimeString()}\n`);
           process.stdout.write('\n');
 

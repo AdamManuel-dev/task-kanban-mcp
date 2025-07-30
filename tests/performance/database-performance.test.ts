@@ -59,7 +59,7 @@ describe('Database Performance Tests', () => {
     await dbConnection.close();
   });
 
-  async function seedTasks(count: number, batchSize: number = 100): Promise<Task[]> {
+  async function seedTasks(count: number, batchSize = 100): Promise<Task[]> {
     const tasks: Task[] = [];
     const startTime = Date.now();
 
@@ -535,7 +535,7 @@ describe('Database Performance Tests', () => {
       const startTime = Date.now();
 
       // Execute many queries simultaneously to test connection handling
-      const queryPromises = Array.from({ length: simultaneousQueries }, (_, i) =>
+      const queryPromises = Array.from({ length: simultaneousQueries }, async (_, i) =>
         dbConnection.query(
           `
           SELECT t.id, t.title, t.status, COUNT(n.id) as note_count

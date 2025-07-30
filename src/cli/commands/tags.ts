@@ -254,7 +254,7 @@ export function registerTagCommands(program: Command): void {
 
       try {
         const createdTag = await apiClient.createTag(tagData as CreateTagRequest);
-        const tagWithId = createdTag as { id: string; name: string };
+        const tagWithId = createdTag.data;
         formatter.success(`Tag created successfully: ${tagWithId.id}`);
         formatter.output(createdTag);
       } catch (error) {
@@ -430,12 +430,12 @@ export function registerTagCommands(program: Command): void {
         if (!options.force) {
           const fromTagResponse = await apiClient.getTag(fromId);
           const toTagResponse = await apiClient.getTag(toId);
-          
+
           if (!isTag(fromTagResponse) || !isTag(toTagResponse)) {
             formatter.error('One or both tags not found');
             process.exit(1);
           }
-          
+
           const fromTag = fromTagResponse;
           const toTag = toTagResponse;
 

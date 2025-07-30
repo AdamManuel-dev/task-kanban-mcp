@@ -1,7 +1,7 @@
 /**
  * @fileoverview Comprehensive input sanitization testing
  * @lastmodified 2025-07-28T10:30:00Z
- * 
+ *
  * Features: Complete input validation, sanitization testing, edge case handling
  * Main APIs: InputSanitizer, validation functions, security checks
  * Constraints: All inputs must be sanitized, no malicious content allowed
@@ -11,7 +11,6 @@
 import { inputSanitizer, InputSanitizer } from '@/cli/utils/input-sanitizer';
 
 describe('Comprehensive Input Sanitization Testing', () => {
-  
   /**
    * XSS attack payloads for testing
    */
@@ -105,7 +104,7 @@ describe('Comprehensive Input Sanitization Testing', () => {
     '*)(|(objectClass=*))',
     '*)(&(objectClass=user)(uid=*',
     '*))%00',
-    '*()|%26\'',
+    "*()|%26'",
     '*)(uid=*))%00',
     '*))(|(cn=*',
     '*)(|(password=*))',
@@ -137,7 +136,7 @@ describe('Comprehensive Input Sanitization Testing', () => {
     'value\\r\\nLocation: http://evil.com',
     'normal\\r\\n\\r\\n<script>alert("XSS")</script>',
     'test\\nContent-Type: text/html',
-     'value\\r\\nX-Frame-Options: ALLOWALL',
+    'value\\r\\nX-Frame-Options: ALLOWALL',
     'input\\r\\nContent-Length: 0\\r\\n\\r\\nHTTP/1.1 200 OK',
     'test\\x0d\\x0aSet-Cookie: admin=true',
     'value\\u000d\\u000aLocation: javascript:alert(1)',
@@ -160,20 +159,20 @@ describe('Comprehensive Input Sanitization Testing', () => {
         const result = inputSanitizer.sanitizeText(payload, {
           allowHtml: false,
           preventInjection: true,
-          escapeSpecialChars: true
+          escapeSpecialChars: true,
         });
 
         // Should be sanitized
         expect(result.modified).toBe(true);
         expect(result.warnings.length).toBeGreaterThan(0);
-        
+
         // Should not contain dangerous script tags or unescaped event handlers
         expect(result.sanitized).not.toMatch(/<script[^>]*>/i);
         expect(result.sanitized).not.toMatch(/on\w+\s*=/i);
         expect(result.sanitized).not.toMatch(/<iframe[^>]*>/i);
         expect(result.sanitized).not.toMatch(/<svg[^>]*>/i);
         expect(result.sanitized).not.toMatch(/<img[^>]*onerror/i);
-        
+
         // javascript: should be blocked
         if (payload.includes('javascript:')) {
           expect(result.sanitized).not.toMatch(/javascript:/i);
@@ -184,15 +183,16 @@ describe('Comprehensive Input Sanitization Testing', () => {
     test('should detect XSS attempts in security analysis', () => {
       XSS_PAYLOADS.forEach(payload => {
         const suspicious = InputSanitizer.detectSuspiciousPatterns(payload);
-        
+
         expect(suspicious.suspicious).toBe(true);
         expect(suspicious.patterns.length).toBeGreaterThan(0);
-        
+
         // Should detect specific XSS patterns
-        const hasXSSPattern = suspicious.patterns.some(pattern => 
-          pattern.includes('Script tag') || 
-          pattern.includes('Event handler') ||
-          pattern.includes('JavaScript protocol')
+        const hasXSSPattern = suspicious.patterns.some(
+          pattern =>
+            pattern.includes('Script tag') ||
+            pattern.includes('Event handler') ||
+            pattern.includes('JavaScript protocol')
         );
         expect(hasXSSPattern).toBe(true);
       });
@@ -201,9 +201,13 @@ describe('Comprehensive Input Sanitization Testing', () => {
     test('should generate appropriate security reports for XSS', () => {
       XSS_PAYLOADS.forEach(payload => {
         const report = inputSanitizer.generateSecurityReport(payload);
-        
+
         // Most XSS payloads should be detected as unsafe
-        if (payload.includes('<script') || payload.includes('javascript:') || payload.includes('onerror=')) {
+        if (
+          payload.includes('<script') ||
+          payload.includes('javascript:') ||
+          payload.includes('onerror=')
+        ) {
           expect(report.score).toBeLessThan(90); // Allow some to pass if properly sanitized
         }
       });
@@ -215,7 +219,7 @@ describe('Comprehensive Input Sanitization Testing', () => {
       SQL_INJECTION_PAYLOADS.forEach(payload => {
         const result = inputSanitizer.sanitizeText(payload, {
           preventInjection: true,
-          escapeSpecialChars: true
+          escapeSpecialChars: true,
         });
 
         // Should escape or remove dangerous SQL patterns
@@ -232,13 +236,13 @@ describe('Comprehensive Input Sanitization Testing', () => {
     test('should detect SQL injection patterns', () => {
       SQL_INJECTION_PAYLOADS.forEach(payload => {
         const suspicious = InputSanitizer.detectSuspiciousPatterns(payload);
-        
+
         // Some SQL patterns might not be in our basic detection
         // but most should trigger warnings after sanitization
         const result = inputSanitizer.sanitizeText(payload, {
-          preventInjection: true
+          preventInjection: true,
         });
-        
+
         expect(result.warnings.length).toBeGreaterThan(0);
       });
     });
@@ -249,7 +253,7 @@ describe('Comprehensive Input Sanitization Testing', () => {
       COMMAND_INJECTION_PAYLOADS.forEach(payload => {
         const result = inputSanitizer.sanitizeText(payload, {
           preventInjection: true,
-          escapeSpecialChars: true
+          escapeSpecialChars: true,
         });
 
         // Should remove command injection patterns
@@ -265,9 +269,9 @@ describe('Comprehensive Input Sanitization Testing', () => {
     test('should detect command injection patterns', () => {
       COMMAND_INJECTION_PAYLOADS.forEach(payload => {
         const result = inputSanitizer.sanitizeText(payload, {
-          preventInjection: true
+          preventInjection: true,
         });
-        
+
         expect(result.modified).toBe(true);
         expect(result.warnings).toContain('Potential command injection patterns removed');
       });
@@ -281,7 +285,7 @@ describe('Comprehensive Input Sanitization Testing', () => {
 
         // Should remove or modify path traversal patterns
         expect(result.sanitized).not.toMatch(/\.\.[\/\\]/);
-        
+
         if (result.modified) {
           expect(result.warnings.length).toBeGreaterThan(0);
         }
@@ -291,7 +295,7 @@ describe('Comprehensive Input Sanitization Testing', () => {
     test('should detect path traversal in security analysis', () => {
       PATH_TRAVERSAL_PAYLOADS.forEach(payload => {
         const result = inputSanitizer.sanitizeFilePath(payload);
-        
+
         // Path traversal should be detected and sanitized
         expect(result.sanitized).not.toContain('../');
         expect(result.sanitized).not.toContain('..\\');
@@ -304,7 +308,7 @@ describe('Comprehensive Input Sanitization Testing', () => {
       NOSQL_INJECTION_PAYLOADS.forEach(payload => {
         const result = inputSanitizer.sanitizeText(payload, {
           preventInjection: true,
-          escapeSpecialChars: true
+          escapeSpecialChars: true,
         });
 
         // Should escape or remove dangerous patterns
@@ -320,7 +324,7 @@ describe('Comprehensive Input Sanitization Testing', () => {
       NOSQL_INJECTION_PAYLOADS.forEach(payload => {
         const result = inputSanitizer.sanitizeText(payload, {
           allowHtml: false,
-          preventInjection: true
+          preventInjection: true,
         });
 
         // Should be modified to remove dangerous operators
@@ -336,7 +340,7 @@ describe('Comprehensive Input Sanitization Testing', () => {
       TEMPLATE_INJECTION_PAYLOADS.forEach(payload => {
         const result = inputSanitizer.sanitizeText(payload, {
           preventInjection: true,
-          escapeSpecialChars: true
+          escapeSpecialChars: true,
         });
 
         // Should remove or escape template injection patterns
@@ -350,12 +354,13 @@ describe('Comprehensive Input Sanitization Testing', () => {
     test('should detect template patterns in security analysis', () => {
       TEMPLATE_INJECTION_PAYLOADS.forEach(payload => {
         const suspicious = InputSanitizer.detectSuspiciousPatterns(payload);
-        
-        const hasTemplatePattern = suspicious.patterns.some(pattern => 
-          pattern.includes('Template literal injection') || 
-          pattern.includes('Template engine injection')
+
+        const hasTemplatePattern = suspicious.patterns.some(
+          pattern =>
+            pattern.includes('Template literal injection') ||
+            pattern.includes('Template engine injection')
         );
-        
+
         if (payload.includes('${') || payload.includes('{{')) {
           expect(hasTemplatePattern).toBe(true);
         }
@@ -368,12 +373,12 @@ describe('Comprehensive Input Sanitization Testing', () => {
       HTTP_HEADER_INJECTION_PAYLOADS.forEach(payload => {
         const result = inputSanitizer.sanitizeText(payload, {
           stripControlChars: true,
-          preventInjection: true
+          preventInjection: true,
         });
 
         // Should handle CRLF injection attempts (may be escaped or removed)
         expect(result.modified).toBe(true);
-        
+
         // Literal \r\n strings should be handled
         if (payload.includes('\\r\\n')) {
           expect(result.warnings.length).toBeGreaterThan(0);
@@ -384,7 +389,7 @@ describe('Comprehensive Input Sanitization Testing', () => {
     test('should remove control characters from headers', () => {
       HTTP_HEADER_INJECTION_PAYLOADS.forEach(payload => {
         const result = inputSanitizer.sanitizeText(payload, {
-          stripControlChars: true
+          stripControlChars: true,
         });
 
         // Should be modified if it contained control chars
@@ -402,7 +407,7 @@ describe('Comprehensive Input Sanitization Testing', () => {
       XXE_INJECTION_PAYLOADS.forEach(payload => {
         const result = inputSanitizer.sanitizeText(payload, {
           allowHtml: false,
-          preventInjection: true
+          preventInjection: true,
         });
 
         // Should remove or escape XML entities and DOCTYPE
@@ -416,7 +421,7 @@ describe('Comprehensive Input Sanitization Testing', () => {
     test('should detect XML patterns in security analysis', () => {
       XXE_INJECTION_PAYLOADS.forEach(payload => {
         const result = inputSanitizer.sanitizeText(payload, {
-          allowHtml: false
+          allowHtml: false,
         });
 
         // XML should be stripped since HTML is not allowed
@@ -430,7 +435,7 @@ describe('Comprehensive Input Sanitization Testing', () => {
     test('should handle extremely long inputs', () => {
       const longInput = 'A'.repeat(50000);
       const result = inputSanitizer.sanitizeText(longInput, {
-        maxLength: 1000
+        maxLength: 1000,
       });
 
       expect(result.sanitized.length).toBeLessThanOrEqual(1000);
@@ -440,12 +445,12 @@ describe('Comprehensive Input Sanitization Testing', () => {
 
     test('should handle empty and null inputs', () => {
       const inputs = ['', null, undefined];
-      
+
       inputs.forEach(input => {
         const result = inputSanitizer.sanitizeText(input as any);
-        
+
         expect(typeof result.sanitized).toBe('string');
-        
+
         if (input === null || input === undefined) {
           expect(result.warnings).toContain('Input was converted to string');
         }
@@ -455,7 +460,7 @@ describe('Comprehensive Input Sanitization Testing', () => {
     test('should handle inputs with only special characters', () => {
       const specialInput = '!@#$%^&*()_+-=[]{}|;:,.<>?';
       const result = inputSanitizer.sanitizeText(specialInput, {
-        escapeSpecialChars: true
+        escapeSpecialChars: true,
       });
 
       expect(result.sanitized).toBeDefined();
@@ -516,14 +521,14 @@ describe('Comprehensive Input Sanitization Testing', () => {
         title: '<script>alert("XSS")</script>Title',
         description: 'Description with <img src=x onerror=alert("XSS")>',
         email: 'user<script>@example.com',
-        url: 'javascript:alert("XSS")'
+        url: 'javascript:alert("XSS")',
       };
 
       const sanitizers = {
         title: inputSanitizer.sanitizeTaskTitle.bind(inputSanitizer),
         description: inputSanitizer.sanitizeDescription.bind(inputSanitizer),
         email: inputSanitizer.sanitizeEmail.bind(inputSanitizer),
-        url: inputSanitizer.sanitizeUrl.bind(inputSanitizer)
+        url: inputSanitizer.sanitizeUrl.bind(inputSanitizer),
       };
 
       const results = inputSanitizer.sanitizeBatch(inputs, sanitizers);
@@ -545,7 +550,7 @@ describe('Comprehensive Input Sanitization Testing', () => {
       expect(report.score).toBeLessThan(90); // Should be flagged as suspicious
       expect(report.issues.length).toBeGreaterThan(0);
       expect(report.recommendations.length).toBeGreaterThan(0);
-      
+
       expect(report.issues.some(issue => issue.includes('Suspicious patterns'))).toBe(true);
     });
 
@@ -554,12 +559,12 @@ describe('Comprehensive Input Sanitization Testing', () => {
         'Normal task title',
         'Regular description with safe content',
         'user@example.com',
-        'https://example.com'
+        'https://example.com',
       ];
 
       safeInputs.forEach(safeInput => {
         const report = inputSanitizer.generateSecurityReport(safeInput);
-        
+
         expect(report.safe).toBe(true);
         expect(report.score).toBeGreaterThan(70);
         expect(report.issues.length).toBe(0);
@@ -582,7 +587,7 @@ describe('Comprehensive Input Sanitization Testing', () => {
     test('should handle mixed encoding attacks', () => {
       const mixedEncoding = '%3Cscript%3Ealert(%22XSS%22)%3C%2Fscript%3E';
       const result = inputSanitizer.sanitizeText(mixedEncoding, {
-        preventInjection: true
+        preventInjection: true,
       });
 
       expect(result.sanitized).not.toContain('<script>');
@@ -594,7 +599,7 @@ describe('Comprehensive Input Sanitization Testing', () => {
       const nestedPattern = '<<script>alert("XSS")</script>script>alert("XSS")<<//script>script>';
       const result = inputSanitizer.sanitizeText(nestedPattern, {
         allowHtml: false,
-        preventInjection: true
+        preventInjection: true,
       });
 
       expect(result.sanitized).not.toMatch(/<script/i);
@@ -602,9 +607,9 @@ describe('Comprehensive Input Sanitization Testing', () => {
     });
 
     test('should handle binary and non-printable characters', () => {
-      const binaryInput = String.fromCharCode(0, 1, 2, 3, 4, 5) + 'normal text';
+      const binaryInput = `${String.fromCharCode(0, 1, 2, 3, 4, 5)}normal text`;
       const result = inputSanitizer.sanitizeText(binaryInput, {
-        stripControlChars: true
+        stripControlChars: true,
       });
 
       expect(result.sanitized).toBe('normal text');

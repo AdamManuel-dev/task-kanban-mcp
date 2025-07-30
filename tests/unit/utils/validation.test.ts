@@ -308,7 +308,7 @@ describe('Validation Utilities', () => {
       });
 
       it('should validate note categories', () => {
-        const validCategories = ['general', 'progress', 'blocker', 'decision', 'question'];
+        const validCategories = ['general', 'implementation', 'research', 'blocker', 'idea'];
         const invalidCategory = { ...validNoteData, category: 'invalid' };
 
         validCategories.forEach(category => {
@@ -333,7 +333,7 @@ describe('Validation Utilities', () => {
         const searchData = {
           query: 'test search',
           task_id: '123e4567-e89b-12d3-a456-426614174000',
-          category: 'progress' as const,
+          category: 'general' as const,
           pinned_only: true,
           highlight: true,
           limit: 10,

@@ -10,6 +10,7 @@
 
 import type { Command } from 'commander';
 import type { CliComponents } from '../../types';
+import type { Task } from '../../../types';
 
 /**
  * Register the next command
@@ -51,7 +52,7 @@ export function registerNextCommand(taskCmd: Command): void {
           // Call the API endpoint for next task recommendation
           const response = await apiClient.request('GET', '/api/tasks/next', undefined, params);
 
-          if (!response || !(response as unknown).next_task) {
+          if (!response?.next_task) {
             formatter.info('No tasks available matching your criteria');
             if (options.json) {
               formatter.output({ next_task: null, reasoning: 'No available tasks found' });
@@ -59,7 +60,7 @@ export function registerNextCommand(taskCmd: Command): void {
             return;
           }
 
-          const { next_task: nextTask, reasoning } = response as unknown;
+          const { next_task: nextTask, reasoning } = response;
 
           if (options.json) {
             formatter.output({ next_task: nextTask, reasoning });

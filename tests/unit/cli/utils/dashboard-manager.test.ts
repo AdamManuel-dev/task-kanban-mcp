@@ -315,7 +315,7 @@ describe('DashboardManager', () => {
 
     test('should handle service timeouts', async () => {
       mockTaskService.getTasks.mockImplementation(
-        () => new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 100))
+        async () => new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 100))
       );
 
       await dashboardManager.initialize();

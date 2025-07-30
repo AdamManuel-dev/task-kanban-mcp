@@ -4,6 +4,7 @@
  */
 
 import { dbConnection } from '@/database/connection';
+import type { QueryParameter } from '@/database/connection';
 import { logger } from '@/utils/logger';
 import type { Task } from '@/types';
 
@@ -158,7 +159,7 @@ export class PriorityHistoryService {
         [taskId]
       );
 
-      return rows.map(row => ({
+      return rows.map((row: unknown) => ({
         id: row.id,
         task_id: row.task_id,
         old_priority: row.old_priority,
@@ -190,7 +191,7 @@ export class PriorityHistoryService {
         JOIN tasks t ON ph.task_id = t.id
         WHERE 1=1
       `;
-      const params: unknown[] = [];
+      const params: QueryParameter[] = [];
 
       if (boardId) {
         baseQuery += ' AND t.board_id = ?';
@@ -208,22 +209,24 @@ export class PriorityHistoryService {
       const totalChanges = changes.length;
 
       // Calculate average changes per task
-      const uniqueTasks = new Set(changes.map(c => c.task_id));
+      const uniqueTasks = new Set(changes.map((c: unknown) => c.task_id));
       const avgChangesPerTask = uniqueTasks.size > 0 ? totalChanges / uniqueTasks.size : 0;
 
       // Find most changed tasks
       const taskChangeCounts = new Map<string, number>();
-      const taskDetails = new Map<string, unknown>();
+      const taskDetails = new Map<string, Task>();
       const taskLatestReasons = new Map<string, string>();
 
-      changes.forEach(change => {
+      changes.forEach((change: unknown) => {
         taskChangeCounts.set(change.task_id, (taskChangeCounts.get(change.task_id) ?? 0) + 1);
         taskDetails.set(change.task_id, {
           id: change.task_id,
           title: change.title,
           board_id: change.board_id,
           status: change.status,
-        });
+          created_at: change.created_at,
+          updated_at: change.updated_at,
+        } as Task);
         if (change.reason) {
           taskLatestReasons.set(change.task_id, change.reason);
         }
@@ -244,7 +247,7 @@ export class PriorityHistoryService {
       let decreases = 0;
       let unchanged = 0;
 
-      changes.forEach(change => {
+      changes.forEach((change: unknown) => {
         const oldPri = change.old_priority ?? 0;
         const newPri = change.new_priority;
 
@@ -255,7 +258,7 @@ export class PriorityHistoryService {
 
       // Count common reasons
       const reasonCounts = new Map<string, number>();
-      changes.forEach(change => {
+      changes.forEach((change: unknown) => {
         if (change.reason) {
           reasonCounts.set(change.reason, (reasonCounts.get(change.reason) ?? 0) + 1);
         }
@@ -296,7 +299,7 @@ export class PriorityHistoryService {
         JOIN tasks t ON ph.task_id = t.id
         WHERE 1=1
       `;
-      const params: unknown[] = [];
+      const params: QueryParameter[] = [];
 
       if (taskId) {
         query += ' AND ph.task_id = ?';
@@ -313,7 +316,7 @@ export class PriorityHistoryService {
 
       // Group changes by task
       const taskChanges = new Map<string, unknown[]>();
-      changes.forEach(change => {
+      changes.forEach((change: unknown) => {
         if (!taskChanges.has(change.task_id)) {
           taskChanges.set(change.task_id, []);
         }
@@ -328,7 +331,7 @@ export class PriorityHistoryService {
 
         // Pattern 1: Frequent changes (>5 changes in 30 days)
         const recentChanges = taskChangeList.filter(
-          c => new Date(c.timestamp) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+          (c: unknown) => new Date(c.timestamp) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
         );
 
         if (recentChanges.length > 5) {
@@ -363,7 +366,7 @@ export class PriorityHistoryService {
 
         // Pattern 3: Emergency bumps (sudden large increases)
         const emergencyBumps = taskChangeList.filter(
-          (change, i) =>
+          (change: unknown, i: number) =>
             i > 0 && change.new_priority - (taskChangeList[i - 1].new_priority ?? 0) >= 5
         );
 
@@ -436,12 +439,12 @@ export class PriorityHistoryService {
       const changes = await dbConnection.query(query, params);
 
       const changesCount = changes.length;
-      const affectedTasks = new Set(changes.map(c => c.task_id)).size;
+      const affectedTasks = new Set(changes.map((c: unknown) => c.task_id)).size;
 
       // Calculate average priority change
       const priorityChanges = changes
-        .filter(c => c.old_priority !== null)
-        .map(c => Math.abs(c.new_priority - c.old_priority));
+        .filter((c: unknown) => c.old_priority !== null)
+        .map((c: unknown) => Math.abs(c.new_priority - c.old_priority));
       const avgPriorityChange =
         priorityChanges.length > 0
           ? priorityChanges.reduce((a, b) => a + b, 0) / priorityChanges.length
@@ -449,7 +452,7 @@ export class PriorityHistoryService {
 
       // Find most active day
       const dayChanges = new Map<string, number>();
-      changes.forEach(change => {
+      changes.forEach((change: unknown) => {
         const day = new Date(change.timestamp).toISOString().split('T')[0];
         dayChanges.set(day, (dayChanges.get(day) ?? 0) + 1);
       });
@@ -461,7 +464,7 @@ export class PriorityHistoryService {
 
       // Find busiest hours
       const hourChanges = new Map<number, number>();
-      changes.forEach(change => {
+      changes.forEach((change: unknown) => {
         const hour = new Date(change.timestamp).getHours();
         hourChanges.set(hour, (hourChanges.get(hour) ?? 0) + 1);
       });
@@ -489,7 +492,7 @@ export class PriorityHistoryService {
   private calculatePriorityTrend(changes: unknown[]): number {
     if (changes.length < 3) return 0;
 
-    const priorities = changes.map(c => c.new_priority);
+    const priorities = changes.map((c: unknown) => c.new_priority);
     const n = priorities.length;
     let sumX = 0;
     let sumY = 0;

@@ -2,12 +2,12 @@
  * @fileoverview Tests for advanced logging utilities
  */
 
-import { 
-  ContextLogger, 
-  AuditLogger, 
-  PerformanceLogger, 
+import {
+  ContextLogger,
+  AuditLogger,
+  PerformanceLogger,
   StructuredLogger,
-  logAnalytics
+  logAnalytics,
 } from '../../../src/utils/advanced-logging';
 
 describe('ContextLogger', () => {
@@ -18,14 +18,14 @@ describe('ContextLogger', () => {
   describe('setContext', () => {
     it('should set logging context', () => {
       const context = { userId: 'user123', service: 'TestService' };
-      
+
       expect(() => ContextLogger.setContext(context)).not.toThrow();
     });
 
     it('should merge with existing context', () => {
       ContextLogger.setContext({ userId: 'user123' });
       ContextLogger.setContext({ service: 'TestService' });
-      
+
       // Context should be merged (verified by not throwing)
       expect(() => ContextLogger.getContext()).not.toThrow();
     });
@@ -35,7 +35,7 @@ describe('ContextLogger', () => {
     it('should log with context', () => {
       const context = { userId: 'user123', service: 'TestService' };
       ContextLogger.setContext(context);
-      
+
       expect(() => ContextLogger.log('info', 'Test message')).not.toThrow();
     });
 
@@ -45,7 +45,7 @@ describe('ContextLogger', () => {
 
     it('should handle different log levels', () => {
       const levels = ['debug', 'info', 'warn', 'error'] as const;
-      
+
       levels.forEach(level => {
         expect(() => ContextLogger.log(level, `Test ${level} message`)).not.toThrow();
       });
@@ -53,7 +53,7 @@ describe('ContextLogger', () => {
 
     it('should include metadata in logs', () => {
       const metadata = { requestId: 'req123', operation: 'test' };
-      
+
       expect(() => ContextLogger.log('info', 'Test message', metadata)).not.toThrow();
     });
   });
@@ -62,10 +62,10 @@ describe('ContextLogger', () => {
     it('should create child logger with additional context', () => {
       const parentContext = { service: 'TestService' };
       const childContext = { method: 'testMethod' };
-      
+
       ContextLogger.setContext(parentContext);
       const childLogger = ContextLogger.child(childContext);
-      
+
       expect(childLogger).toBeDefined();
       expect(() => childLogger.info('Test message')).not.toThrow();
     });
@@ -75,7 +75,7 @@ describe('ContextLogger', () => {
     it('should clear all context', () => {
       ContextLogger.setContext({ userId: 'user123' });
       ContextLogger.clearContext();
-      
+
       // Should work without context
       expect(() => ContextLogger.log('info', 'Test message')).not.toThrow();
     });
@@ -96,7 +96,7 @@ describe('AuditLogger', () => {
         action: 'CREATE_TASK',
         resource: 'tasks',
         resourceId: 'task123',
-        details: { title: 'New Task' }
+        details: { title: 'New Task' },
       };
 
       expect(() => auditLogger.logAction(action)).not.toThrow();
@@ -106,7 +106,7 @@ describe('AuditLogger', () => {
       const action = {
         userId: 'user123',
         action: 'LOGIN',
-        resource: 'auth'
+        resource: 'auth',
       };
 
       expect(() => auditLogger.logAction(action)).not.toThrow();
@@ -117,7 +117,7 @@ describe('AuditLogger', () => {
         userId: 'system',
         action: 'SYSTEM_CLEANUP',
         resource: 'tasks',
-        details: { deletedCount: 5 }
+        details: { deletedCount: 5 },
       };
 
       expect(() => auditLogger.logAction(action)).not.toThrow();
@@ -131,7 +131,7 @@ describe('AuditLogger', () => {
         userId: 'user123',
         ip: '192.168.1.1',
         userAgent: 'Mozilla/5.0...',
-        details: { attempts: 3 }
+        details: { attempts: 3 },
       };
 
       expect(() => auditLogger.logSecurityEvent(event)).not.toThrow();
@@ -140,7 +140,7 @@ describe('AuditLogger', () => {
     it('should log security events without optional fields', () => {
       const event = {
         type: 'SUSPICIOUS_ACTIVITY',
-        ip: '192.168.1.100'
+        ip: '192.168.1.100',
       };
 
       expect(() => auditLogger.logSecurityEvent(event)).not.toThrow();
@@ -152,7 +152,7 @@ describe('AuditLogger', () => {
       const event = {
         type: 'SERVICE_START',
         service: 'TaskService',
-        details: { version: '1.0.0', port: 3000 }
+        details: { version: '1.0.0', port: 3000 },
       };
 
       expect(() => auditLogger.logSystemEvent(event)).not.toThrow();
@@ -160,14 +160,14 @@ describe('AuditLogger', () => {
 
     it('should log system events with different types', () => {
       const eventTypes = ['SERVICE_START', 'SERVICE_STOP', 'ERROR', 'WARNING'];
-      
+
       eventTypes.forEach(type => {
         const event = {
           type,
           service: 'TestService',
-          details: { test: true }
+          details: { test: true },
         };
-        
+
         expect(() => auditLogger.logSystemEvent(event)).not.toThrow();
       });
     });
@@ -181,22 +181,22 @@ describe('AuditLogger', () => {
           userId: 'user123',
           action: 'CREATE_TASK',
           resource: 'tasks',
-          resourceId: 'task1'
+          resourceId: 'task1',
         },
         {
           userId: 'user456',
           action: 'UPDATE_TASK',
           resource: 'tasks',
-          resourceId: 'task2'
+          resourceId: 'task2',
         },
         {
           userId: 'user123',
           action: 'DELETE_TASK',
           resource: 'tasks',
-          resourceId: 'task3'
-        }
+          resourceId: 'task3',
+        },
       ];
-      
+
       actions.forEach(action => auditLogger.logAction(action));
     });
 
@@ -241,15 +241,15 @@ describe('AuditLogger', () => {
         { userId: 'user1', action: 'CREATE_TASK', resource: 'tasks' },
         { userId: 'user1', action: 'UPDATE_TASK', resource: 'tasks' },
         { userId: 'user2', action: 'CREATE_TASK', resource: 'tasks' },
-        { userId: 'user2', action: 'DELETE_TASK', resource: 'tasks' }
+        { userId: 'user2', action: 'DELETE_TASK', resource: 'tasks' },
       ];
-      
+
       testActions.forEach(action => auditLogger.logAction(action));
     });
 
     it('should generate audit report', () => {
       const report = auditLogger.generateAuditReport();
-      
+
       expect(report).toHaveProperty('totalEvents');
       expect(report).toHaveProperty('uniqueUsers');
       expect(report).toHaveProperty('topActions');
@@ -262,7 +262,7 @@ describe('AuditLogger', () => {
     it('should generate report for specific time range', () => {
       const since = new Date(Date.now() - 60000); // 1 minute ago
       const report = auditLogger.generateAuditReport({ since });
-      
+
       expect(report).toHaveProperty('totalEvents');
       expect(report.timeRange).toHaveProperty('since');
     });
@@ -286,7 +286,7 @@ describe('PerformanceLogger', () => {
     it('should handle multiple concurrent timers', () => {
       const timer1 = performanceLogger.startTimer('operation-1');
       const timer2 = performanceLogger.startTimer('operation-2');
-      
+
       expect(timer1).toBeDefined();
       expect(timer2).toBeDefined();
       expect(timer1).not.toBe(timer2);
@@ -296,21 +296,21 @@ describe('PerformanceLogger', () => {
   describe('timer operations', () => {
     it('should measure operation time', async () => {
       const timer = performanceLogger.startTimer('test-operation');
-      
+
       // Simulate some work
       await new Promise(resolve => setTimeout(resolve, 10));
-      
+
       expect(() => timer.end()).not.toThrow();
     });
 
     it('should measure time with metadata', async () => {
       const timer = performanceLogger.startTimer('test-operation', {
         userId: 'user123',
-        requestId: 'req123'
+        requestId: 'req123',
       });
-      
+
       await new Promise(resolve => setTimeout(resolve, 10));
-      
+
       expect(() => timer.end({ status: 'success' })).not.toThrow();
     });
   });
@@ -321,7 +321,7 @@ describe('PerformanceLogger', () => {
         name: 'response_time',
         value: 150,
         unit: 'ms',
-        tags: { endpoint: '/api/tasks', method: 'GET' }
+        tags: { endpoint: '/api/tasks', method: 'GET' },
       };
 
       expect(() => performanceLogger.logMetric(metric)).not.toThrow();
@@ -331,7 +331,7 @@ describe('PerformanceLogger', () => {
       const metric = {
         name: 'cpu_usage',
         value: 75.5,
-        unit: '%'
+        unit: '%',
       };
 
       expect(() => performanceLogger.logMetric(metric)).not.toThrow();
@@ -345,9 +345,9 @@ describe('PerformanceLogger', () => {
         { name: 'response_time', value: 100, unit: 'ms' },
         { name: 'response_time', value: 150, unit: 'ms' },
         { name: 'cpu_usage', value: 75, unit: '%' },
-        { name: 'memory_usage', value: 60, unit: '%' }
+        { name: 'memory_usage', value: 60, unit: '%' },
       ];
-      
+
       metrics.forEach(metric => performanceLogger.logMetric(metric));
     });
 
@@ -384,15 +384,15 @@ describe('PerformanceLogger', () => {
         { name: 'response_time', value: 100, unit: 'ms' },
         { name: 'response_time', value: 200, unit: 'ms' },
         { name: 'response_time', value: 150, unit: 'ms' },
-        { name: 'response_time', value: 300, unit: 'ms' }
+        { name: 'response_time', value: 300, unit: 'ms' },
       ];
-      
+
       responseTimeMetrics.forEach(metric => performanceLogger.logMetric(metric));
     });
 
     it('should calculate performance statistics', () => {
       const stats = performanceLogger.getStats('response_time');
-      
+
       expect(stats).toHaveProperty('count');
       expect(stats).toHaveProperty('avg');
       expect(stats).toHaveProperty('min');
@@ -401,7 +401,7 @@ describe('PerformanceLogger', () => {
       expect(stats).toHaveProperty('p90');
       expect(stats).toHaveProperty('p95');
       expect(stats).toHaveProperty('p99');
-      
+
       expect(stats.count).toBe(4);
       expect(stats.min).toBe(100);
       expect(stats.max).toBe(300);
@@ -410,7 +410,7 @@ describe('PerformanceLogger', () => {
 
     it('should return empty stats for non-existent metric', () => {
       const stats = performanceLogger.getStats('non_existent_metric');
-      
+
       expect(stats.count).toBe(0);
       expect(stats.avg).toBe(0);
       expect(stats.min).toBe(0);
@@ -431,7 +431,7 @@ describe('StructuredLogger', () => {
         type: 'USER_ACTION',
         category: 'tasks',
         data: { action: 'create', taskId: 'task123' },
-        metadata: { source: 'web', version: '1.0.0' }
+        metadata: { source: 'web', version: '1.0.0' },
       };
 
       expect(() => structuredLogger.logEvent(event)).not.toThrow();
@@ -440,7 +440,7 @@ describe('StructuredLogger', () => {
     it('should log events without optional fields', () => {
       const event = {
         type: 'SYSTEM_EVENT',
-        category: 'health'
+        category: 'health',
       };
 
       expect(() => structuredLogger.logEvent(event)).not.toThrow();
@@ -458,7 +458,7 @@ describe('StructuredLogger', () => {
 
     it('should build and log event using builder', () => {
       const builder = structuredLogger.createEventBuilder('USER_ACTION');
-      
+
       expect(() => {
         builder
           .category('tasks')
@@ -474,13 +474,13 @@ describe('logAnalytics', () => {
   describe('generateReport', () => {
     it('should generate analytics report', () => {
       const report = logAnalytics.generateReport();
-      
+
       expect(report).toHaveProperty('logCounts');
       expect(report).toHaveProperty('topServices');
       expect(report).toHaveProperty('errorRates');
       expect(report).toHaveProperty('timeRange');
       expect(report).toHaveProperty('generatedAt');
-      
+
       expect(typeof report.logCounts).toBe('object');
       expect(Array.isArray(report.topServices)).toBe(true);
       expect(typeof report.errorRates).toBe('object');
@@ -489,7 +489,7 @@ describe('logAnalytics', () => {
     it('should generate report for specific time range', () => {
       const since = new Date(Date.now() - 3600000); // 1 hour ago
       const report = logAnalytics.generateReport({ since });
-      
+
       expect(report.timeRange).toHaveProperty('since');
       expect(report.timeRange.since).toEqual(since);
     });
@@ -498,13 +498,13 @@ describe('logAnalytics', () => {
   describe('getLogTrends', () => {
     it('should get log trends', () => {
       const trends = logAnalytics.getLogTrends();
-      
+
       expect(Array.isArray(trends)).toBe(true);
     });
 
     it('should get trends for specific period', () => {
       const trends = logAnalytics.getLogTrends('1h');
-      
+
       expect(Array.isArray(trends)).toBe(true);
     });
   });
@@ -512,12 +512,12 @@ describe('logAnalytics', () => {
   describe('getErrorAnalysis', () => {
     it('should get error analysis', () => {
       const analysis = logAnalytics.getErrorAnalysis();
-      
+
       expect(analysis).toHaveProperty('totalErrors');
       expect(analysis).toHaveProperty('errorsByType');
       expect(analysis).toHaveProperty('errorsByService');
       expect(analysis).toHaveProperty('errorTrends');
-      
+
       expect(typeof analysis.totalErrors).toBe('number');
       expect(typeof analysis.errorsByType).toBe('object');
       expect(typeof analysis.errorsByService).toBe('object');

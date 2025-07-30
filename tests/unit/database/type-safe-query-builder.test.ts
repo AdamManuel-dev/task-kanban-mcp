@@ -1,23 +1,23 @@
 /**
  * @fileoverview Type-safe query builder tests
  * @lastmodified 2025-07-28T10:30:00Z
- * 
+ *
  * Features: Query builder testing, type safety validation, SQL generation
  * Main APIs: TypeSafeQueryBuilder test suite
  * Constraints: Integration tests, requires database setup
  * Patterns: Test isolation, comprehensive validation, error handling
  */
 
-import { 
-  TypeSafeQueryBuilder, 
-  DefaultSchema, 
-  sql,
-  createQueryBuilder,
-  type TableSchema
-} from '../../../src/database/TypeSafeQueryBuilder';
 import sqlite3 from 'sqlite3';
 import path from 'path';
 import fs from 'fs/promises';
+import {
+  TypeSafeQueryBuilder,
+  DefaultSchema,
+  sql,
+  createQueryBuilder,
+  type TableSchema,
+} from '../../../src/database/TypeSafeQueryBuilder';
 
 describe('TypeSafeQueryBuilder', () => {
   let db: sqlite3.Database;
@@ -27,7 +27,7 @@ describe('TypeSafeQueryBuilder', () => {
   beforeAll(async () => {
     // Create temporary database for testing
     tempDbPath = path.join(__dirname, 'test-query-builder.db');
-    
+
     // Remove existing test database
     try {
       await fs.unlink(tempDbPath);
@@ -59,7 +59,8 @@ describe('TypeSafeQueryBuilder', () => {
           )
         `);
 
-        db.run(`
+        db.run(
+          `
           CREATE TABLE boards (
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
@@ -67,17 +68,19 @@ describe('TypeSafeQueryBuilder', () => {
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
           )
-        `, (err) => {
-          if (err) reject(err);
-          else resolve();
-        });
+        `,
+          err => {
+            if (err) reject(err);
+            else resolve();
+          }
+        );
       });
     });
   });
 
   afterAll(async () => {
     // Close database and clean up
-    await new Promise<void>((resolve) => {
+    await new Promise<void>(resolve => {
       db.close(() => resolve());
     });
 
@@ -93,7 +96,7 @@ describe('TypeSafeQueryBuilder', () => {
     await new Promise<void>((resolve, reject) => {
       db.serialize(() => {
         db.run('DELETE FROM tasks');
-        db.run('DELETE FROM boards', (err) => {
+        db.run('DELETE FROM boards', err => {
           if (err) reject(err);
           else resolve();
         });
@@ -118,37 +121,41 @@ describe('TypeSafeQueryBuilder', () => {
   describe('SELECT Queries', () => {
     beforeEach(async () => {
       // Insert test data
-      await queryBuilder.insert('boards', {
-        id: 'board-1',
-        name: 'Test Board',
-        description: 'Test board description'
-      }).execute();
+      await queryBuilder
+        .insert('boards', {
+          id: 'board-1',
+          name: 'Test Board',
+          description: 'Test board description',
+        })
+        .execute();
 
-      await queryBuilder.insert('tasks', {
-        id: 'task-1',
-        board_id: 'board-1',
-        column_id: 'todo',
-        title: 'Task 1',
-        description: 'First task',
-        status: 'todo',
-        priority: 5
-      }).execute();
+      await queryBuilder
+        .insert('tasks', {
+          id: 'task-1',
+          board_id: 'board-1',
+          column_id: 'todo',
+          title: 'Task 1',
+          description: 'First task',
+          status: 'todo',
+          priority: 5,
+        })
+        .execute();
 
-      await queryBuilder.insert('tasks', {
-        id: 'task-2',
-        board_id: 'board-1',
-        column_id: 'in_progress',
-        title: 'Task 2',
-        description: 'Second task',
-        status: 'in_progress',
-        priority: 8
-      }).execute();
+      await queryBuilder
+        .insert('tasks', {
+          id: 'task-2',
+          board_id: 'board-1',
+          column_id: 'in_progress',
+          title: 'Task 2',
+          description: 'Second task',
+          status: 'in_progress',
+          priority: 8,
+        })
+        .execute();
     });
 
     test('should select all columns', async () => {
-      const result = await queryBuilder
-        .select('tasks')
-        .execute();
+      const result = await queryBuilder.select('tasks').execute();
 
       expect(result.rows).toHaveLength(2);
       expect(result.rows[0]).toHaveProperty('id');
@@ -157,9 +164,7 @@ describe('TypeSafeQueryBuilder', () => {
     });
 
     test('should select specific columns', async () => {
-      const result = await queryBuilder
-        .select('tasks', ['id', 'title', 'status'])
-        .execute();
+      const result = await queryBuilder.select('tasks', ['id', 'title', 'status']).execute();
 
       expect(result.rows).toHaveLength(2);
       expect(result.rows[0]).toHaveProperty('id');
@@ -181,11 +186,7 @@ describe('TypeSafeQueryBuilder', () => {
     test('should apply multiple WHERE conditions', async () => {
       const result = await queryBuilder
         .select('tasks')
-        .where(w => w
-          .equals('board_id', 'board-1')
-          .and()
-          .equals('status', 'in_progress')
-        )
+        .where(w => w.equals('board_id', 'board-1').and().equals('status', 'in_progress'))
         .execute();
 
       expect(result.rows).toHaveLength(1);
@@ -222,10 +223,7 @@ describe('TypeSafeQueryBuilder', () => {
     });
 
     test('should apply ORDER BY', async () => {
-      const result = await queryBuilder
-        .select('tasks')
-        .orderBy('priority', 'DESC')
-        .execute();
+      const result = await queryBuilder.select('tasks').orderBy('priority', 'DESC').execute();
 
       expect(result.rows).toHaveLength(2);
       expect(result.rows[0].priority).toBe(8);
@@ -281,7 +279,7 @@ describe('TypeSafeQueryBuilder', () => {
           board_id: 'board-1',
           column_id: 'todo',
           title: 'New Task',
-          status: 'todo'
+          status: 'todo',
         })
         .execute();
 
@@ -299,30 +297,34 @@ describe('TypeSafeQueryBuilder', () => {
 
     test('should validate column names', async () => {
       await expect(
-        queryBuilder.insert('tasks', {
-          id: 'test',
-          invalid_column: 'value'
-        } as any).execute()
+        queryBuilder
+          .insert('tasks', {
+            id: 'test',
+            invalid_column: 'value',
+          } as any)
+          .execute()
       ).rejects.toThrow("Column 'invalid_column' does not exist in table 'tasks'");
     });
   });
 
   describe('UPDATE Queries', () => {
     beforeEach(async () => {
-      await queryBuilder.insert('tasks', {
-        id: 'update-task',
-        board_id: 'board-1',
-        column_id: 'todo',
-        title: 'Original Title',
-        status: 'todo'
-      }).execute();
+      await queryBuilder
+        .insert('tasks', {
+          id: 'update-task',
+          board_id: 'board-1',
+          column_id: 'todo',
+          title: 'Original Title',
+          status: 'todo',
+        })
+        .execute();
     });
 
     test('should update existing record', async () => {
       const result = await queryBuilder
         .update('tasks', {
           title: 'Updated Title',
-          status: 'in_progress'
+          status: 'in_progress',
         })
         .where(w => w.equals('id', 'update-task'))
         .execute();
@@ -341,24 +343,27 @@ describe('TypeSafeQueryBuilder', () => {
 
     test('should validate column names', async () => {
       await expect(
-        queryBuilder.update('tasks', {
-          invalid_column: 'value'
-        } as any)
-        .where(w => w.equals('id', 'update-task'))
-        .execute()
+        queryBuilder
+          .update('tasks', {
+            invalid_column: 'value',
+          } as any)
+          .where(w => w.equals('id', 'update-task'))
+          .execute()
       ).rejects.toThrow("Column 'invalid_column' does not exist in table 'tasks'");
     });
   });
 
   describe('DELETE Queries', () => {
     beforeEach(async () => {
-      await queryBuilder.insert('tasks', {
-        id: 'delete-task',
-        board_id: 'board-1',
-        column_id: 'todo',
-        title: 'To Delete',
-        status: 'todo'
-      }).execute();
+      await queryBuilder
+        .insert('tasks', {
+          id: 'delete-task',
+          board_id: 'board-1',
+          column_id: 'todo',
+          title: 'To Delete',
+          status: 'todo',
+        })
+        .execute();
     });
 
     test('should delete existing record', async () => {
@@ -379,9 +384,9 @@ describe('TypeSafeQueryBuilder', () => {
     });
 
     test('should require WHERE clause', async () => {
-      await expect(
-        queryBuilder.delete('tasks').execute()
-      ).rejects.toThrow('DELETE queries must include a WHERE clause for safety');
+      await expect(queryBuilder.delete('tasks').execute()).rejects.toThrow(
+        'DELETE queries must include a WHERE clause for safety'
+      );
     });
   });
 
@@ -389,7 +394,7 @@ describe('TypeSafeQueryBuilder', () => {
     test('should create parameterized query', () => {
       const taskId = 'test-task';
       const status = 'done';
-      
+
       const { query, parameters } = sql`
         SELECT * FROM tasks 
         WHERE id = ${taskId} AND status = ${status}
@@ -409,13 +414,15 @@ describe('TypeSafeQueryBuilder', () => {
 
   describe('Raw Queries', () => {
     beforeEach(async () => {
-      await queryBuilder.insert('tasks', {
-        id: 'raw-task',
-        board_id: 'board-1',
-        column_id: 'todo',
-        title: 'Raw Query Task',
-        status: 'todo'
-      }).execute();
+      await queryBuilder
+        .insert('tasks', {
+          id: 'raw-task',
+          board_id: 'board-1',
+          column_id: 'todo',
+          title: 'Raw Query Task',
+          status: 'todo',
+        })
+        .execute();
     });
 
     test('should execute raw SQL', async () => {
@@ -437,29 +444,31 @@ describe('TypeSafeQueryBuilder', () => {
 
   describe('Error Handling', () => {
     test('should handle invalid SQL', async () => {
-      await expect(
-        queryBuilder.raw('INVALID SQL STATEMENT')
-      ).rejects.toThrow();
+      await expect(queryBuilder.raw('INVALID SQL STATEMENT')).rejects.toThrow();
     });
 
     test('should handle database constraint violations', async () => {
       // Try to insert duplicate primary key
-      await queryBuilder.insert('tasks', {
-        id: 'duplicate-task',
-        board_id: 'board-1',
-        column_id: 'todo',
-        title: 'First Task',
-        status: 'todo'
-      }).execute();
-
-      await expect(
-        queryBuilder.insert('tasks', {
+      await queryBuilder
+        .insert('tasks', {
           id: 'duplicate-task',
           board_id: 'board-1',
           column_id: 'todo',
-          title: 'Duplicate Task',
-          status: 'todo'
-        }).execute()
+          title: 'First Task',
+          status: 'todo',
+        })
+        .execute();
+
+      await expect(
+        queryBuilder
+          .insert('tasks', {
+            id: 'duplicate-task',
+            board_id: 'board-1',
+            column_id: 'todo',
+            title: 'Duplicate Task',
+            status: 'todo',
+          })
+          .execute()
       ).rejects.toThrow();
     });
   });
@@ -467,17 +476,13 @@ describe('TypeSafeQueryBuilder', () => {
   describe('Type Safety', () => {
     test('should prevent LIKE on non-text columns', async () => {
       expect(() => {
-        queryBuilder
-          .select('tasks')
-          .where(w => w.like('priority' as any, '%5%'))
+        queryBuilder.select('tasks').where(w => w.like('priority' as any, '%5%'));
       }).toThrow("LIKE operation requires TEXT column, but 'priority' is INTEGER");
     });
 
     test('should validate IN condition parameters', async () => {
       expect(() => {
-        queryBuilder
-          .select('tasks')
-          .where(w => w.in('status', []))
+        queryBuilder.select('tasks').where(w => w.in('status', []));
       }).toThrow('IN condition requires at least one value');
     });
 

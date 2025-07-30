@@ -357,7 +357,7 @@ describe('Result Pattern Implementation', () => {
         id: string
       ): Promise<ServiceResult<{ id: number; name: string }>> =>
         wrapServiceOperation(
-          () => mockDbOperation(false),
+          async () => mockDbOperation(false),
           'USER_FETCH_FAILED',
           `Failed to fetch user ${id}`
         );
@@ -376,7 +376,7 @@ describe('Result Pattern Implementation', () => {
         id: string
       ): Promise<ServiceResult<{ id: number; name: string }>> =>
         wrapServiceOperation(
-          () => mockDbOperation(true),
+          async () => mockDbOperation(true),
           'USER_FETCH_FAILED',
           `Failed to fetch user ${id}`
         );

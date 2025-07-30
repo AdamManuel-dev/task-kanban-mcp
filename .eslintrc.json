@@ -332,6 +332,13 @@
         "import/extensions": "off",
         "import/no-unresolved": "off"
       }
+    },
+    {
+      "files": ["scripts/**/*.ts"],
+      "rules": {
+        "no-console": "off",
+        "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }]
+      }
     }
   ]
 }

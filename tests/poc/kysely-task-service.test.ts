@@ -1,7 +1,7 @@
 /**
  * @fileoverview Kysely TaskService Proof of Concept Tests
  * @lastmodified 2025-07-28T10:30:00Z
- * 
+ *
  * Features: Type-safe query testing, integration tests, performance validation
  * Main APIs: TaskServiceKysely testing, query result validation
  * Constraints: Requires database setup, integration test environment
@@ -20,7 +20,7 @@ describe('Kysely TaskService Proof of Concept', () => {
     // Initialize database connection
     dbConnection = DatabaseConnection.getInstance();
     await dbConnection.initialize({ skipSchema: false });
-    
+
     // Initialize TaskService
     taskService = new TaskServiceKysely();
   });
@@ -35,11 +35,17 @@ describe('Kysely TaskService Proof of Concept', () => {
     const db = dbConnection.getDatabase();
     await db.run('DELETE FROM tasks');
     await db.run('DELETE FROM boards');
-    
+
     // Insert test board
     await db.run(
       'INSERT INTO boards (id, name, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
-      ['test-board-1', 'Test Board', 'Test description', new Date().toISOString(), new Date().toISOString()]
+      [
+        'test-board-1',
+        'Test Board',
+        'Test description',
+        new Date().toISOString(),
+        new Date().toISOString(),
+      ]
     );
   });
 
@@ -47,7 +53,7 @@ describe('Kysely TaskService Proof of Concept', () => {
     test('should provide compile-time type checking for queries', async () => {
       // This test mainly validates that TypeScript compilation succeeds
       // The real value is in the IDE experience and compile-time errors
-      
+
       const tasks = await taskService.getTasks({
         board_id: 'test-board-1',
         status: 'todo', // TypeScript ensures this is a valid status
@@ -56,7 +62,7 @@ describe('Kysely TaskService Proof of Concept', () => {
         limit: 10,
         offset: 0,
         sortBy: 'created_at', // TypeScript ensures this is a valid column
-        sortOrder: 'desc'
+        sortOrder: 'desc',
       });
 
       expect(Array.isArray(tasks)).toBe(true);
@@ -186,7 +192,7 @@ describe('Kysely TaskService Proof of Concept', () => {
 
       // Measure query performance
       const startTime = Date.now();
-      
+
       const tasks = await taskService.getTasks({
         board_id: 'test-board-1',
         priority_min: 5,
@@ -198,7 +204,7 @@ describe('Kysely TaskService Proof of Concept', () => {
 
       expect(tasks.length).toBeGreaterThan(0);
       expect(duration).toBeLessThan(100); // Should be fast
-      
+
       console.log(`Kysely query took ${duration}ms for ${tasks.length} results`);
     });
   });
@@ -217,7 +223,13 @@ describe('Kysely TaskService Proof of Concept', () => {
       const db = dbConnection.getDatabase();
       await db.run(
         'INSERT INTO boards (id, name, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
-        ['test-board-2', 'Test Board 2', 'Second board', new Date().toISOString(), new Date().toISOString()]
+        [
+          'test-board-2',
+          'Test Board 2',
+          'Second board',
+          new Date().toISOString(),
+          new Date().toISOString(),
+        ]
       );
 
       // Move task to different board using transaction
@@ -236,9 +248,9 @@ describe('Kysely TaskService Proof of Concept', () => {
     });
 
     test('should throw appropriate errors for invalid operations', async () => {
-      await expect(
-        taskService.updateTask('non-existent-id', { title: 'Updated' })
-      ).rejects.toThrow('Task with id non-existent-id not found');
+      await expect(taskService.updateTask('non-existent-id', { title: 'Updated' })).rejects.toThrow(
+        'Task with id non-existent-id not found'
+      );
     });
   });
 });

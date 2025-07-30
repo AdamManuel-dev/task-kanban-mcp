@@ -42,11 +42,7 @@ require('dotenv').config();
 
 // Dotenv loaded, starting imports
 
-// Global CLI components
-declare global {
-  // eslint-disable-next-line no-var
-  var cliComponents: CliComponents;
-}
+// Global CLI components are declared in ./types.ts
 
 const program = new Command();
 
@@ -195,9 +191,9 @@ const main = async (): Promise<void> => {
     // Add templates and dependencies commands using createCommand pattern
     const templatesCmd = createTemplatesCommand();
     const dependenciesCmd = createDependenciesCommand();
-    (program as unknown).addCommand(templatesCmd);
-    (program as unknown).addCommand(dependenciesCmd);
-    (program as unknown).addCommand(recoveryCommand);
+    program.addCommand(templatesCmd);
+    program.addCommand(dependenciesCmd);
+    program.addCommand(recoveryCommand);
 
     // Parse command line arguments
     program.parse(process.argv);

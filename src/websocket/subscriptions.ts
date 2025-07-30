@@ -166,6 +166,17 @@ export class SubscriptionManager {
     return unsubscribedCount;
   }
 
+  // Update subscription activity timestamp
+  updateSubscriptionActivity(subscriptionId: string): boolean {
+    const subscription = this.subscriptions.get(subscriptionId);
+    if (!subscription) {
+      return false;
+    }
+
+    subscription.lastActivity = new Date();
+    return true;
+  }
+
   // Publish message to all subscribers of a channel
   publishToChannel(
     channel: SubscriptionChannel,

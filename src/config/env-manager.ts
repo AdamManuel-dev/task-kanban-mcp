@@ -119,25 +119,30 @@ export const ENV_RULES: readonly EnvValidationRule[] = [
   // Security configuration
   {
     key: 'JWT_SECRET',
-    schema: z.string().min(32).refine(
-      (val) => {
-        // In production, reject default/weak secrets
-        if (process.env.NODE_ENV === 'production') {
-          const weakSecrets = [
-            'dev-jwt-secret-change-in-production-min-32-chars',
-            'dev-secret-key-change-in-production',
-            'default-jwt-secret',
-            'change-me',
-            'secret'
-          ];
-          if (weakSecrets.includes(val)) {
-            throw new Error('Production deployment requires strong JWT_SECRET. Default/weak secrets are not allowed.');
+    schema: z
+      .string()
+      .min(32)
+      .refine(
+        val => {
+          // In production, reject default/weak secrets
+          if (process.env.NODE_ENV === 'production') {
+            const weakSecrets = [
+              'dev-jwt-secret-change-in-production-min-32-chars',
+              'dev-secret-key-change-in-production',
+              'default-jwt-secret',
+              'change-me',
+              'secret',
+            ];
+            if (weakSecrets.includes(val)) {
+              throw new Error(
+                'Production deployment requires strong JWT_SECRET. Default/weak secrets are not allowed.'
+              );
+            }
           }
-        }
-        return true;
-      },
-      { message: 'Production requires strong, unique JWT_SECRET' }
-    ),
+          return true;
+        },
+        { message: 'Production requires strong, unique JWT_SECRET' }
+      ),
     required: false,
     sensitive: true,
     description: 'JWT signing secret (minimum 32 characters, must be unique in production)',

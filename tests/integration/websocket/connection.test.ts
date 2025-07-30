@@ -74,7 +74,7 @@ describe('WebSocket Connection Integration Tests', () => {
       // Create multiple connections
       const promises = Array.from(
         { length: connectionCount },
-        () =>
+        async () =>
           new Promise<void>((resolve, reject) => {
             const ws = new WebSocket(wsUrl);
             connections.push(ws);

@@ -246,7 +246,7 @@ async function demonstrateResultChaining(taskId: string): Promise<ServiceResult<
     return updateResult;
   }
 
-  return Ok(`Task ${(updateResult.data as Task).title} is now in progress`);
+  return Ok(`Task ${updateResult.data.title} is now in progress`);
 }
 
 /**

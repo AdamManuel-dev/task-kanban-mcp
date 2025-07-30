@@ -196,8 +196,7 @@ export const cliTestUtils = {
   /**
    * Wait for async operations
    */
-  waitFor: async (ms: number = 100): Promise<void> =>
-    new Promise<void>(resolve => setTimeout(resolve, ms)),
+  waitFor: async (ms = 100): Promise<void> => new Promise<void>(resolve => setTimeout(resolve, ms)),
 
   /**
    * Create test task data

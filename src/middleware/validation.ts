@@ -36,14 +36,14 @@ export function requestValidationMiddleware(
   // Validate query parameters
   if (req.query.limit) {
     const limit = parseInt(req.query.limit as string, 10);
-    if (isNaN(limit) || limit <= 0 || limit > 1000) {
+    if (Number.isNaN(limit) || limit <= 0 || limit > 1000) {
       return next(new ValidationError('Invalid limit parameter'));
     }
   }
 
   if (req.query.offset) {
     const offset = parseInt(req.query.offset as string, 10);
-    if (isNaN(offset) || offset < 0) {
+    if (Number.isNaN(offset) || offset < 0) {
       return next(new ValidationError('Invalid offset parameter'));
     }
   }

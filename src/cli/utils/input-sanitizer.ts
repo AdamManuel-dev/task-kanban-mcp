@@ -524,15 +524,42 @@ export const detectSuspicious = (input: string): { suspicious: boolean; patterns
   InputSanitizer.detectSuspiciousPatterns(input);
 
 /**
- * Safe prompt wrapper that automatically sanitizes input
+ * Creates a type-safe prompt validator that automatically sanitizes input and performs security checks
+ *
+ * This function wraps prompt validation logic to handle unknown input types (required by prompt libraries)
+ * while maintaining type safety. It performs comprehensive input sanitization, security validation,
+ * and optional custom validation logic.
+ *
+ * @param sanitizeFunction - Function to sanitize and analyze input, should return SanitizationResult
+ * @param additionalValidation - Optional custom validation logic that returns true for valid input or error message
+ * @returns A validator function compatible with prompt libraries (accepts unknown, returns string|boolean)
+ *
+ * @example <caption>Basic usage with title validation</caption>
+ * const titleValidator = createSafePromptValidator(
+ *   sanitizeTaskTitle,
+ *   (input: string) => input.length >= 3 ? true : 'Title too short'
+ * );
+ *
+ * @example <caption>Usage in prompt configuration</caption>
+ * const prompt = {
+ *   type: 'input',
+ *   message: 'Enter task title:',
+ *   validate: createSafePromptValidator(sanitizeTaskTitle, validateTaskTitle)
+ * };
+ *
+ * @since 1.0.0
+ * @see {@link SanitizationResult} - For sanitization result structure
+ * @see {@link inputSanitizer} - For security report generation
  */
 export function createSafePromptValidator(
   sanitizeFunction: (input: string) => SanitizationResult,
   additionalValidation?: (input: string) => true | string
 ) {
-  return (input: string): true | string => {
+  return (input: unknown): string | boolean => {
+    // Convert unknown input to string
+    const stringInput = typeof input === 'string' ? input : String(input);
     // First, sanitize the input
-    const sanitized = sanitizeFunction(input);
+    const sanitized = sanitizeFunction(stringInput);
 
     // Check if input was modified significantly
     if (sanitized.modified && sanitized.warnings.length > 0) {
@@ -540,14 +567,15 @@ export function createSafePromptValidator(
     }
 
     // Check security score
-    const securityReport = inputSanitizer.generateSecurityReport(input);
+    const securityReport = inputSanitizer.generateSecurityReport(stringInput);
     if (!securityReport.safe) {
       return `Security issues detected: ${String(String(securityReport.issues.join(', ')))}`;
     }
 
     // Run additional validation if provided
     if (additionalValidation) {
-      return additionalValidation(sanitized.sanitized);
+      const result = additionalValidation(sanitized.sanitized);
+      return result === true ? true : result;
     }
 
     return true;

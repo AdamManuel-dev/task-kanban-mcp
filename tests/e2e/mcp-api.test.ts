@@ -590,7 +590,7 @@ describe('MCP API E2E Tests', () => {
       // Send multiple concurrent requests
       const requests = Array(10)
         .fill(null)
-        .map((_, index) => {
+        .map(async (_, index) => {
           const message: MCPMessage = {
             jsonrpc: '2.0',
             id: messageId++,

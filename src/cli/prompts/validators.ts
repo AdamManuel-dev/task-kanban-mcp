@@ -140,7 +140,7 @@ export const validateUrl = createSafePromptValidator(
 export function validateGitRepoUrl(input: string): true | string {
   const urlValidation = validateUrl(input);
   if (urlValidation !== true) {
-    return urlValidation;
+    return urlValidation as string;
   }
 
   const gitUrlRegex =
@@ -478,25 +478,25 @@ export function validateAndSanitizeInput(
 
     switch (type) {
       case 'title':
-        validator = validateTaskTitle;
+        validator = (input: string): string | true => validateTaskTitle(input);
         break;
       case 'description':
-        validator = validateTaskDescription;
+        validator = (input: string): string | true => validateTaskDescription(input);
         break;
       case 'name':
-        validator = validateBoardName;
+        validator = (input: string): string | true => validateBoardName(input);
         break;
       case 'tag':
-        validator = validateTagName;
+        validator = (input: string): string | true => validateTagName(input);
         break;
       case 'email':
-        validator = validateEmail;
+        validator = (input: string): string | true => validateEmail(input);
         break;
       case 'url':
-        validator = validateUrl;
+        validator = (input: string): string | true => validateUrl(input);
         break;
       case 'assignee':
-        validator = validateAssignee;
+        validator = (input: string): string | true => validateAssignee(input);
         break;
       default:
         return { valid: false, sanitized: input, error: 'Unknown validation type' };

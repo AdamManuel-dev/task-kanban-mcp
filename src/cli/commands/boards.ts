@@ -381,11 +381,6 @@ export function registerBoardCommands(program: Command): void {
           }
         );
 
-        if (!boardData) {
-          formatter.error(`Board ${String(boardId)} not found`);
-          process.exit(1);
-        }
-
         // Transform API data to component format
         const apiResponse = boardData as ApiBoardResponse;
         const board: Board = {
@@ -410,6 +405,7 @@ export function registerBoardCommands(program: Command): void {
         let refreshInterval: NodeJS.Timeout | null = null;
         let shouldRefresh = false;
 
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const InteractiveBoardView = (): React.ReactElement => {
           const [currentBoard, setCurrentBoard] = React.useState<BoardData>({
             id: board.id,
@@ -432,31 +428,29 @@ export function registerBoardCommands(program: Command): void {
                 (async (): Promise<void> => {
                   try {
                     const refreshedData = await apiClient.getBoard(boardId);
-                    if (refreshedData) {
-                      const refreshedApiResponse = refreshedData as ApiBoardResponse;
-                      const refreshedBoard: Board = {
-                        id: refreshedApiResponse.id,
-                        name: refreshedApiResponse.name,
-                        description: refreshedApiResponse.description,
-                        color: '#2196F3', // Default color
-                        created_at: new Date(),
-                        updated_at: new Date(),
-                        archived: false,
-                      };
+                    const refreshedApiResponse = refreshedData as ApiBoardResponse;
+                    const refreshedBoard: Board = {
+                      id: refreshedApiResponse.id,
+                      name: refreshedApiResponse.name,
+                      description: refreshedApiResponse.description,
+                      color: '#2196F3', // Default color
+                      created_at: new Date(),
+                      updated_at: new Date(),
+                      archived: false,
+                    };
 
-                      // Process refreshed board data with proper typing
-                      const boardWithContent: BoardData = {
-                        id: refreshedBoard.id,
-                        name: refreshedBoard.name,
-                        description: refreshedBoard.description ?? undefined,
-                        archived: refreshedBoard.archived,
-                        createdAt: refreshedBoard.created_at.toISOString(),
-                        updatedAt: refreshedBoard.updated_at.toISOString(),
-                        columns: (refreshedApiResponse.columns ?? []) as Column[],
-                        tasks: [],
-                      };
-                      setCurrentBoard(boardWithContent);
-                    }
+                    // Process refreshed board data with proper typing
+                    const boardWithContent: BoardData = {
+                      id: refreshedBoard.id,
+                      name: refreshedBoard.name,
+                      description: refreshedBoard.description ?? undefined,
+                      archived: refreshedBoard.archived,
+                      createdAt: refreshedBoard.created_at.toISOString(),
+                      updatedAt: refreshedBoard.updated_at.toISOString(),
+                      columns: (refreshedApiResponse.columns ?? []) as Column[],
+                      tasks: [],
+                    };
+                    setCurrentBoard(boardWithContent);
                   } catch (error) {
                     // Silently fail refresh
                   }
@@ -502,7 +496,7 @@ export function registerBoardCommands(program: Command): void {
 
         // TODO: Re-enable interactive view once ink module resolution is fixed
         // const { render } = await import('ink');
-        // render(React.createElement(InteractiveBoardView));
+        // render(React.createElement(_InteractiveBoardView));
         formatter.info('Interactive mode temporarily disabled - showing board data instead');
         formatter.output(board);
       } catch (error) {
@@ -892,7 +886,7 @@ export function registerBoardCommands(program: Command): void {
           const templateKey = options.template as keyof typeof templates;
           if (!templates[templateKey]) {
             formatter.error(
-              `Invalid template: ${String(String(options.template))}. Available: ${String(String(Object.keys(templates).join(', ')))}`
+              `Invalid template: ${String(options.template)}. Available: ${String(Object.keys(templates).join(', '))}`
             );
             process.exit(1);
           }

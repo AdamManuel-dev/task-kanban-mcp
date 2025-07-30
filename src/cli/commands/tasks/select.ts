@@ -337,7 +337,9 @@ export function registerSelectCommand(taskCmd: Command): void {
 
         // Render the interactive task selector
         // render(React.createElement(InteractiveTaskSelector));
-        formatter.info('Interactive task selector temporarily disabled - showing task list instead');
+        formatter.info(
+          'Interactive task selector temporarily disabled - showing task list instead'
+        );
         const taskListOutput = TaskList({
           tasks: taskList,
           maxHeight: 15,

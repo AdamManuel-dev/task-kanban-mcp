@@ -593,7 +593,7 @@ describe('WebSocketAuth', () => {
       // Run multiple authentications concurrently
       const promises = Array(5)
         .fill(null)
-        .map(() => webSocketAuth.authenticate({ apiKey: 'concurrent-key' }));
+        .map(async () => webSocketAuth.authenticate({ apiKey: 'concurrent-key' }));
 
       const results = await Promise.all(promises);
 

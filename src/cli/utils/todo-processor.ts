@@ -246,7 +246,10 @@ export class TodoProcessor {
   /**
    * Generate implementation report
    */
-  private static async generateReport(todos: Map<string, TodoItem>, todoFile: string): Promise<void> {
+  private static async generateReport(
+    todos: Map<string, TodoItem>,
+    todoFile: string
+  ): Promise<void> {
     const reportPath = todoFile.replace('.md', '-report.md');
     const completed = Array.from(todos.values()).filter(t => t.completed);
     const pending = Array.from(todos.values()).filter(t => !t.completed);

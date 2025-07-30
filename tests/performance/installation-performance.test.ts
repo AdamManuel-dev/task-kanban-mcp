@@ -299,7 +299,7 @@ describe('Installation Performance Tests', () => {
         process.chdir(testInstallDir);
         await Promise.all(
           concurrentCommands.map(
-            cmd =>
+            async cmd =>
               new Promise((resolve, reject) => {
                 try {
                   cmd();
