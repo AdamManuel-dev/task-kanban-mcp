@@ -53,7 +53,7 @@ router.get(
       const db = dbConnection;
       const exportService = new ExportService(db);
 
-      // Build options object omitting undefined values  
+      // Build options object omitting undefined values
       const options: ExportOptions = {
         format: validated.format,
       };
@@ -77,9 +77,10 @@ router.get(
       await exportService.exportToCSV(options);
 
       // Send file as download
-      return res.download(filePath, 'kanban-export.csv', err => {
+      res.download(filePath, 'kanban-export.csv', err => {
         if (err) {
-          return next(err);
+          next(err);
+          return;
         }
         // Clean up temp file
         require('fs').unlinkSync(filePath);
@@ -129,7 +130,7 @@ router.post(
 router.post(
   '/convert',
   requirePermission('write'),
-  async (req: Request, res: Response, next: NextFunction) => {
+  (req: Request, res: Response, next: NextFunction) => {
     try {
       const ConvertSchema = z.object({
         inputPath: z.string(),
@@ -145,13 +146,14 @@ router.post(
       // TODO: Implement convertFormat method in ExportService
       throw new Error('Convert format not implemented yet');
 
-      return res.apiSuccess({
-        message: 'Format conversion completed successfully',
-        outputPath: validated.outputPath,
-        format: validated.outputFormat,
-      });
+      // This code is unreachable due to throw above - removing the return for now
+      // return res.apiSuccess({
+      //   message: 'Format conversion completed successfully',
+      //   outputPath: validated.outputPath,
+      //   format: validated.outputFormat,
+      // });
     } catch (error) {
-      return next(error);
+      next(error);
     }
   }
 );

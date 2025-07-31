@@ -430,12 +430,7 @@ export function updateLoggingConfig(updates: Partial<LoggingConfig>): void {
  * Get current logging configuration
  */
 export function getCurrentLoggingConfig(): Partial<LoggingConfig> {
-  return {
-    level: logger.level,
-    enableConsole: logger.transports.some(t => t instanceof winston.transports.Console),
-    enableFile: logger.transports.some(t => t instanceof winston.transports.File),
-    // Add other config properties as needed
-  };
+  return { level: logger.level, enableConsole: logger.transports.some(t => t instanceof winston.transports.Console), enableFile: logger.transports.some(t => t instanceof winston.transports.File), // Add other config properties as needed };
 }
 
 // ============================================================================
@@ -553,23 +548,11 @@ export function getLoggingStats(): {
     const fullPath = path.join(process.cwd(), file);
     try {
       const stats = fs.statSync(fullPath);
-      return {
-        file,
-        size: stats.size,
-        lastModified: stats.mtime,
-      };
+      return { file, size: stats.size, lastModified: stats.mtime };
     } catch {
-      return {
-        file,
-        size: 0,
-        lastModified: new Date(0),
-      };
+      return { file, size: 0, lastModified: new Date(0) };
     }
   });
 
-  return {
-    logLevel: logger.level,
-    transports: logger.transports.length,
-    logFiles,
-  };
+  return { logLevel: logger.level, transports: logger.transports.length, logFiles };
 }

@@ -130,7 +130,7 @@ export class TagServiceKysely {
       }
 
       if (filters.name_search) {
-        query = query.where('name', 'like', `%${String(filters.name_search)}%`);
+        query = query.where('name', 'like', `%${filters.name_search}%`);
       }
 
       // Pagination with type safety
@@ -306,10 +306,7 @@ export class TagServiceKysely {
         .selectFrom('tags')
         .selectAll()
         .where(eb =>
-          eb.or([
-            eb('name', 'like', `%${String(query)}%`),
-            eb('description', 'like', `%${String(query)}%`),
-          ])
+          eb.or([eb('name', 'like', `%${query}%`), eb('description', 'like', `%${query}%`)])
         )
         .orderBy('name', 'asc')
         .limit(limit)

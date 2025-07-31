@@ -433,6 +433,10 @@ export const setupGracefulShutdown = (cleanup?: () => Promise<void>): void => {
     }
   };
 
-  process.on('SIGTERM', async () => handleShutdown('SIGTERM'));
-  process.on('SIGINT', async () => handleShutdown('SIGINT'));
+  process.on('SIGTERM', () => {
+    void handleShutdown('SIGTERM');
+  });
+  process.on('SIGINT', () => {
+    void handleShutdown('SIGINT');
+  });
 };

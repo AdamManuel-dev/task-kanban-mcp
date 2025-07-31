@@ -45,40 +45,53 @@ mcp-kanban/
 ## Module Organization
 
 ### `/src/config/`
+
 Configuration management, environment variables, and application settings.
 
 ### `/src/services/`
+
 Business logic layer containing service classes for tasks, boards, notes, tags, etc.
 
 ### `/src/repositories/`
+
 Data access layer implementing repository pattern for database operations.
 
 ### `/src/controllers/`
+
 Express.js controllers handling HTTP requests and responses.
 
 ### `/src/middleware/`
+
 Express.js middleware for authentication, validation, logging, etc.
 
 ### `/src/utils/`
+
 Utility functions and helper modules used across the application.
 
 ### `/src/types/`
+
 TypeScript type definitions, interfaces, and enums.
 
 ### `/src/mcp/`
+
 MCP (Model Context Protocol) server implementation and tools.
 
 ### `/src/cli/`
+
 Command-line interface implementation.
 
 ### `/src/database/`
+
 Database schema, migrations, and seed files.
 
 ### `/tests/`
+
 All test files organized by type (unit, integration, e2e).
 
 ### `/docs/`
+
 Project documentation including API docs, guides, and specifications.
 
 ### `/scripts/`
+
 Build, deployment, and maintenance scripts.

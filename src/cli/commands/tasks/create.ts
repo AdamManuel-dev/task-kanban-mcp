@@ -144,15 +144,15 @@ export function registerCreateCommand(taskCmd: Command): void {
           spinner.succeed(`Using template: ${template.name}`);
         }
 
-        if (options.interactive ?? !options.title) {
+        if (options.interactive || !options.title) {
           // Enhanced interactive mode with AI size estimation
           spinner.info('Starting interactive task creation...');
 
           try {
             const defaults = {
-              title: options.title ?? '',
-              description: options.description ?? '',
-              dueDate: options.due ?? '',
+              title: options.title || '',
+              description: options.description || '',
+              dueDate: options.due || '',
               tags: options.tags ? options.tags.split(',').map((t: string) => t.trim()) : [],
             };
 
@@ -172,7 +172,7 @@ export function registerCreateCommand(taskCmd: Command): void {
 
             // Convert priority from P1-P5 to 1-10 scale
             if (promptResult.priority) {
-              taskData.priority = PRIORITY_MAPPING[promptResult.priority] ?? 5;
+              taskData.priority = PRIORITY_MAPPING[promptResult.priority] || 5;
             }
           } catch (error) {
             if (error instanceof PromptCancelledError) {
@@ -184,18 +184,18 @@ export function registerCreateCommand(taskCmd: Command): void {
         }
 
         // Use command line options or answers
-        taskData.title = options.title ?? taskData.title;
-        taskData.description = options.description ?? taskData.description;
-        taskData.boardId = ensureBoardId(options.board ?? (taskData.board as string));
-        taskData.columnId = options.column ?? taskData.column;
-        taskData.priority = parseInt(options.priority ?? String(taskData.priority ?? ''), 10);
+        taskData.title = options.title || taskData.title;
+        taskData.description = options.description || taskData.description;
+        taskData.boardId = ensureBoardId(options.board || (taskData.board as string));
+        taskData.columnId = options.column || taskData.column;
+        taskData.priority = parseInt(options.priority || String(taskData.priority || ''), 10);
 
-        if (options.due ?? taskData.dueDate) {
-          taskData.dueDate = options.due ?? taskData.dueDate;
+        if (options.due || taskData.dueDate) {
+          taskData.dueDate = options.due || taskData.dueDate;
         }
 
-        if (options.tags ?? taskData.tags) {
-          const tagsStr = options.tags ?? String(taskData.tags ?? '');
+        if (options.tags || taskData.tags) {
+          const tagsStr = options.tags || String(taskData.tags || '');
           taskData.tags = tagsStr.split(',').map((tag: string) => tag.trim());
         }
 
@@ -241,7 +241,7 @@ export function registerCreateCommand(taskCmd: Command): void {
               });
               return task;
             }
-            throw new Error(response.error?.message ?? 'Unknown error');
+            throw new Error(response.error?.message || 'Unknown error');
           }
         );
 

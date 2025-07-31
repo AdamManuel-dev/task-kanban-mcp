@@ -8,7 +8,7 @@ import { tmpdir } from 'os';
 import { promises as fs } from 'fs';
 
 describe('Database Schema Debug', () => {
-  let db: any;
+  let db: unknown;
   let testDbPath: string;
 
   beforeAll(async () => {
@@ -17,7 +17,7 @@ describe('Database Schema Debug', () => {
 
     const sqlite3 = require('sqlite3');
     db = await new Promise((resolve, reject) => {
-      const database = new sqlite3.Database(testDbPath, (err: any) => {
+      const database = new sqlite3.Database(testDbPath, (err: unknown) => {
         if (err) reject(err);
         else resolve(database);
       });
@@ -79,7 +79,7 @@ describe('Database Schema Debug', () => {
       `;
 
       await new Promise<void>((resolve, reject) => {
-        db.exec(schemaSQL, (err: any) => {
+        db.exec(schemaSQL, (err: unknown) => {
           if (err) reject(err);
           else resolve();
         });

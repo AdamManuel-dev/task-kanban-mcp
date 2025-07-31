@@ -81,7 +81,7 @@ const mockApiClient = {
   deleteTask: jest.fn(),
 };
 
-const mockServices = {} as any;
+const mockServices: Record<string, unknown> = {};
 
 const mockComponents: CliComponents = {
   config: mockConfig,

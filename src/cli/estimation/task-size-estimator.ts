@@ -226,8 +226,7 @@ export class TaskSizeEstimator {
     }
 
     // Keywords in title/description
-    const text =
-      `${String(String(task.title))} ${String(String(task.description ?? ''))}`.toLowerCase();
+    const text = `${task.title} ${task.description || ''}`.toLowerCase();
     const complexKeywords = [
       'refactor',
       'migrate',
@@ -347,8 +346,7 @@ export class TaskSizeEstimator {
     }
 
     // Check for complexity indicators in text
-    const text =
-      `${String(String(task.title))} ${String(String(task.description ?? ''))}`.toLowerCase();
+    const text = `${task.title} ${task.description || ''}`.toLowerCase();
 
     // API work is complex
     if (text.includes('api') || text.includes('rest') || text.includes('endpoint')) {
@@ -396,8 +394,7 @@ export class TaskSizeEstimator {
     if (task.tags && task.tags.length > 0) confidenceScore += 1;
 
     // Clear scope increases confidence
-    const text =
-      `${String(String(task.title))} ${String(String(task.description ?? ''))}`.toLowerCase();
+    const text = `${task.title} ${task.description || ''}`.toLowerCase();
     if (text.includes('specifically') || text.includes('exactly') || text.includes('only')) {
       confidenceScore += 1;
     }
@@ -477,8 +474,7 @@ export class TaskSizeEstimator {
     }
 
     // Check for specific technologies/patterns
-    const text =
-      `${String(String(task.title))} ${String(String(task.description ?? ''))}`.toLowerCase();
+    const text = `${task.title} ${task.description || ''}`.toLowerCase();
 
     if (text.includes('api') || text.includes('rest') || text.includes('endpoint')) {
       reasons.push('API');

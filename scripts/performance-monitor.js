@@ -1,6 +1,6 @@
 /**
  * Performance Monitoring System
- * 
+ *
  * Provides real-time monitoring of system performance during scale testing,
  * including resource usage, response times, and system health metrics.
  */
@@ -20,7 +20,7 @@ class PerformanceMonitor {
       enableNetworkMetrics: options.enableNetworkMetrics !== false,
       serverUrl: options.serverUrl || 'http://localhost:3000',
       apiKey: options.apiKey || 'dev-key-1',
-      ...options
+      ...options,
     };
 
     this.isMonitoring = false;
@@ -31,7 +31,7 @@ class PerformanceMonitor {
       processes: [],
       network: [],
       eventLoop: [],
-      applicationHealth: []
+      applicationHealth: [],
     };
 
     this.setupOutputDirectory();
@@ -55,15 +55,15 @@ class PerformanceMonitor {
 
     this.isMonitoring = true;
     this.startTime = Date.now();
-    
+
     // Start monitoring loops
     this.startSystemMonitoring();
     this.startEventLoopMonitoring();
     this.startApplicationHealthChecks();
-    
+
     // Setup periodic data export
     this.setupDataExport();
-    
+
     console.log('✅ Performance monitoring started');
   }
 
@@ -75,11 +75,11 @@ class PerformanceMonitor {
 
     console.log('🛑 Stopping performance monitoring...');
     this.isMonitoring = false;
-    
+
     // Export final data
     this.exportData();
     this.generateReport();
-    
+
     console.log('✅ Performance monitoring stopped');
   }
 
@@ -96,7 +96,7 @@ class PerformanceMonitor {
         this.metrics.cpu.push(cpuUsage);
       }
 
-      // Memory Metrics  
+      // Memory Metrics
       if (this.options.enableProcessMetrics) {
         const memoryUsage = this.getMemoryUsage();
         this.metrics.memory.push(memoryUsage);
@@ -108,11 +108,13 @@ class PerformanceMonitor {
 
       // Network Metrics (if available)
       if (this.options.enableNetworkMetrics) {
-        this.collectNetworkMetrics().then(networkMetrics => {
-          this.metrics.network.push(networkMetrics);
-        }).catch(err => {
-          console.warn('Network metrics collection failed:', err.message);
-        });
+        this.collectNetworkMetrics()
+          .then(networkMetrics => {
+            this.metrics.network.push(networkMetrics);
+          })
+          .catch(err => {
+            console.warn('Network metrics collection failed:', err.message);
+          });
       }
 
       setTimeout(collectMetrics, this.options.interval);
@@ -128,11 +130,11 @@ class PerformanceMonitor {
       const start = process.hrtime.bigint();
       setImmediate(() => {
         if (!this.isMonitoring) return;
-        
+
         const lag = Number(process.hrtime.bigint() - start) / 1e6; // Convert to milliseconds
         this.metrics.eventLoop.push({
           timestamp: Date.now(),
-          lag: lag
+          lag,
         });
 
         setTimeout(measureEventLoopLag, this.options.interval);
@@ -150,13 +152,13 @@ class PerformanceMonitor {
         const healthCheck = await this.performHealthCheck();
         this.metrics.applicationHealth.push({
           timestamp: Date.now(),
-          ...healthCheck
+          ...healthCheck,
         });
       } catch (error) {
         this.metrics.applicationHealth.push({
           timestamp: Date.now(),
           healthy: false,
-          error: error.message
+          error: error.message,
         });
       }
 
@@ -180,19 +182,9 @@ class PerformanceMonitor {
 
     const idle = totalIdle / cpus.length;
     const total = totalTick / cpus.length;
-    const usage = 100 - ~~(100 * idle / total);
+    const usage = 100 - ~~((100 * idle) / total);
 
-    return {
-      timestamp: Date.now(),
-      cores: cpus.length,
-      usage: usage,
-      loadAverage: os.loadavg(),
-      details: cpus.map(cpu => ({
-        model: cpu.model,
-        speed: cpu.speed,
-        times: cpu.times
-      }))
-    };
+    return { timestamp: Date.now(), cores: cpus.length, usage, loadAverage: os.loadavg(), details: cpus.map(cpu => ({ model: cpu.model, speed: cpu.speed, times: cpu.times })) };
   }
 
   getMemoryUsage() {
@@ -200,38 +192,14 @@ class PerformanceMonitor {
     const systemMemory = {
       total: os.totalmem(),
       free: os.freemem(),
-      used: os.totalmem() - os.freemem()
+      used: os.totalmem() - os.freemem(),
     };
 
-    return {
-      timestamp: Date.now(),
-      process: {
-        rss: Math.round(processMemory.rss / 1024 / 1024), // MB
-        heapTotal: Math.round(processMemory.heapTotal / 1024 / 1024), // MB
-        heapUsed: Math.round(processMemory.heapUsed / 1024 / 1024), // MB
-        external: Math.round(processMemory.external / 1024 / 1024), // MB
-        arrayBuffers: Math.round(processMemory.arrayBuffers / 1024 / 1024) // MB
-      },
-      system: {
-        total: Math.round(systemMemory.total / 1024 / 1024), // MB
-        free: Math.round(systemMemory.free / 1024 / 1024), // MB
-        used: Math.round(systemMemory.used / 1024 / 1024), // MB
-        usagePercent: Math.round((systemMemory.used / systemMemory.total) * 100)
-      }
-    };
+    return { timestamp: Date.now(), process: { rss: Math.round(processMemory.rss / 1024 / 1024), heapTotal: Math.round(processMemory.heapTotal / 1024 / 1024), heapUsed: Math.round(processMemory.heapUsed / 1024 / 1024), external: Math.round(processMemory.external / 1024 / 1024), arrayBuffers: Math.round(processMemory.arrayBuffers / 1024 / 1024) }, system: { total: Math.round(systemMemory.total / 1024 / 1024), free: Math.round(systemMemory.free / 1024 / 1024), used: Math.round(systemMemory.used / 1024 / 1024), usagePercent: Math.round((systemMemory.used / systemMemory.total) * 100) } };
   }
 
   getProcessMetrics() {
-    return {
-      timestamp: Date.now(),
-      pid: process.pid,
-      uptime: process.uptime(),
-      version: process.version,
-      platform: process.platform,
-      arch: process.arch,
-      activeHandles: process._getActiveHandles ? process._getActiveHandles().length : 0,
-      activeRequests: process._getActiveRequests ? process._getActiveRequests().length : 0
-    };
+    return { timestamp: Date.now(), pid: process.pid, uptime: process.uptime(), version: process.version, platform: process.platform, arch: process.arch, activeHandles: process._getActiveHandles ? process._getActiveHandles().length : 0, activeRequests: process._getActiveRequests ? process._getActiveRequests().length : 0 };
   }
 
   async collectNetworkMetrics() {
@@ -248,13 +216,13 @@ class PerformanceMonitor {
           family: iface.family,
           mac: iface.mac,
           internal: iface.internal,
-          cidr: iface.cidr
+          cidr: iface.cidr,
         }));
       });
 
       resolve({
         timestamp: Date.now(),
-        interfaces: networkStats
+        interfaces: networkStats,
       });
     });
   }
@@ -266,42 +234,45 @@ class PerformanceMonitor {
 
       const startTime = Date.now();
       const parsedUrl = url.parse(`${this.options.serverUrl}/api/v1/health`);
-      
-      const req = http.request({
-        hostname: parsedUrl.hostname,
-        port: parsedUrl.port || 3000,
-        path: parsedUrl.path,
-        method: 'GET',
-        headers: {
-          'X-API-Key': this.options.apiKey,
-          'User-Agent': 'PerformanceMonitor'
-        }
-      }, (res) => {
-        let data = '';
-        res.on('data', chunk => data += chunk);
-        res.on('end', () => {
-          const responseTime = Date.now() - startTime;
-          
-          try {
-            const healthData = JSON.parse(data);
-            resolve({
-              healthy: res.statusCode === 200,
-              statusCode: res.statusCode,
-              responseTime: responseTime,
-              data: healthData
-            });
-          } catch (error) {
-            resolve({
-              healthy: res.statusCode === 200,
-              statusCode: res.statusCode,
-              responseTime: responseTime,
-              parseError: error.message
-            });
-          }
-        });
-      });
 
-      req.on('error', (error) => {
+      const req = http.request(
+        {
+          hostname: parsedUrl.hostname,
+          port: parsedUrl.port || 3000,
+          path: parsedUrl.path,
+          method: 'GET',
+          headers: {
+            'X-API-Key': this.options.apiKey,
+            'User-Agent': 'PerformanceMonitor',
+          },
+        },
+        res => {
+          let data = '';
+          res.on('data', chunk => (data += chunk));
+          res.on('end', () => {
+            const responseTime = Date.now() - startTime;
+
+            try {
+              const healthData = JSON.parse(data);
+              resolve({
+                healthy: res.statusCode === 200,
+                statusCode: res.statusCode,
+                responseTime,
+                data: healthData,
+              });
+            } catch (error) {
+              resolve({
+                healthy: res.statusCode === 200,
+                statusCode: res.statusCode,
+                responseTime,
+                parseError: error.message,
+              });
+            }
+          });
+        }
+      );
+
+      req.on('error', error => {
         reject(error);
       });
 
@@ -321,32 +292,32 @@ class PerformanceMonitor {
         clearInterval(exportInterval);
         return;
       }
-      
+
       this.exportData(false); // Don't generate full report during monitoring
     }, 60000); // Every minute
   }
 
   exportData(final = true) {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename = final 
+    const filename = final
       ? `performance-final-${timestamp}.json`
       : `performance-snapshot-${timestamp}.json`;
-    
+
     const filePath = path.join(this.options.outputDir, filename);
-    
+
     const exportData = {
       monitoring: {
         startTime: this.startTime,
         endTime: final ? Date.now() : null,
         duration: Date.now() - this.startTime,
-        options: this.options
+        options: this.options,
       },
       metrics: this.metrics,
-      summary: this.generateSummary()
+      summary: this.generateSummary(),
     };
 
     fs.writeFileSync(filePath, JSON.stringify(exportData, null, 2));
-    
+
     if (final) {
       console.log(`📁 Performance data exported to: ${filePath}`);
     }
@@ -362,7 +333,7 @@ class PerformanceMonitor {
         average: Math.round(cpuUsages.reduce((a, b) => a + b, 0) / cpuUsages.length),
         min: Math.min(...cpuUsages),
         max: Math.max(...cpuUsages),
-        samples: cpuUsages.length
+        samples: cpuUsages.length,
       };
     }
 
@@ -370,20 +341,20 @@ class PerformanceMonitor {
     if (this.metrics.memory.length > 0) {
       const processMemory = this.metrics.memory.map(m => m.process.heapUsed);
       const systemMemory = this.metrics.memory.map(m => m.system.usagePercent);
-      
+
       summary.memory = {
         process: {
           average: Math.round(processMemory.reduce((a, b) => a + b, 0) / processMemory.length),
           min: Math.min(...processMemory),
           max: Math.max(...processMemory),
-          unit: 'MB'
+          unit: 'MB',
         },
         system: {
           average: Math.round(systemMemory.reduce((a, b) => a + b, 0) / systemMemory.length),
           min: Math.min(...systemMemory),
           max: Math.max(...systemMemory),
-          unit: '%'
-        }
+          unit: '%',
+        },
       };
     }
 
@@ -391,11 +362,11 @@ class PerformanceMonitor {
     if (this.metrics.eventLoop.length > 0) {
       const lags = this.metrics.eventLoop.map(e => e.lag);
       summary.eventLoop = {
-        averageLag: Math.round(lags.reduce((a, b) => a + b, 0) / lags.length * 100) / 100,
+        averageLag: Math.round((lags.reduce((a, b) => a + b, 0) / lags.length) * 100) / 100,
         minLag: Math.min(...lags),
         maxLag: Math.max(...lags),
         samples: lags.length,
-        unit: 'ms'
+        unit: 'ms',
       };
     }
 
@@ -405,12 +376,12 @@ class PerformanceMonitor {
       const responseTimes = this.metrics.applicationHealth
         .filter(h => h.responseTime)
         .map(h => h.responseTime);
-      
+
       summary.applicationHealth = {
         uptime: Math.round((healthyChecks / this.metrics.applicationHealth.length) * 100),
         totalChecks: this.metrics.applicationHealth.length,
-        healthyChecks: healthyChecks,
-        failedChecks: this.metrics.applicationHealth.length - healthyChecks
+        healthyChecks,
+        failedChecks: this.metrics.applicationHealth.length - healthyChecks,
       };
 
       if (responseTimes.length > 0) {
@@ -418,7 +389,7 @@ class PerformanceMonitor {
           average: Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length),
           min: Math.min(...responseTimes),
           max: Math.max(...responseTimes),
-          unit: 'ms'
+          unit: 'ms',
         };
       }
     }
@@ -429,35 +400,40 @@ class PerformanceMonitor {
   generateReport() {
     const summary = this.generateSummary();
     const duration = Date.now() - this.startTime;
-    
+
     console.log('\n📊 PERFORMANCE MONITORING REPORT');
-    console.log('=' .repeat(50));
+    console.log('='.repeat(50));
     console.log(`⏱️  Duration: ${Math.round(duration / 1000)}s`);
     console.log(`📈 Samples: ${this.metrics.timestamp.length}`);
-    
-    if (summary.cpu) {
+
+    if (this.metrics.cpu.length > 0) {
       console.log(`\n🖥️  CPU Usage:`);
       console.log(`   Average: ${summary.cpu.average}%`);
       console.log(`   Range: ${summary.cpu.min}% - ${summary.cpu.max}%`);
     }
-    
-    if (summary.memory) {
+
+    if (this.metrics.memory.length > 0) {
       console.log(`\n💾 Memory Usage:`);
-      console.log(`   Process: ${summary.memory.process.average}MB avg (${summary.memory.process.min}-${summary.memory.process.max}MB)`);
-      console.log(`   System: ${summary.memory.system.average}% avg (${summary.memory.system.min}-${summary.memory.system.max}%)`);
+      console.log(
+        `   Process: ${summary.memory.process.average}MB avg (${summary.memory.process.min}-${summary.memory.process.max}MB)`
+      );
+      console.log(
+        `   System: ${summary.memory.system.average}% avg (${summary.memory.system.min}-${summary.memory.system.max}%)`
+      );
     }
-    
-    if (summary.eventLoop) {
+
+    if (this.metrics.eventLoop.length > 0) {
       console.log(`\n🔄 Event Loop:`);
       console.log(`   Average Lag: ${summary.eventLoop.averageLag}ms`);
       console.log(`   Max Lag: ${summary.eventLoop.maxLag}ms`);
     }
-    
-    if (summary.applicationHealth) {
-      console.log(`\n🏥 Application Health:`);
-      console.log(`   Uptime: ${summary.applicationHealth.uptime}%`);
-      console.log(`   Health Checks: ${summary.applicationHealth.healthyChecks}/${summary.applicationHealth.totalChecks}`);
-      
+
+    console.log(`\n🏥 Application Health:`);
+    console.log(`   Uptime: ${summary.applicationHealth.uptime}%`);
+    console.log(
+      `   Health Checks: ${summary.applicationHealth.healthyChecks}/${summary.applicationHealth.totalChecks}`
+    );
+
       if (summary.applicationHealth.responseTime) {
         console.log(`   Avg Response: ${summary.applicationHealth.responseTime.average}ms`);
       }
@@ -465,8 +441,10 @@ class PerformanceMonitor {
 
     // Performance assessment
     const assessment = this.assessPerformance(summary);
-    console.log(`\n${assessment.overall === 'good' ? '✅' : assessment.overall === 'warning' ? '⚠️' : '❌'} Overall Assessment: ${assessment.overall.toUpperCase()}`);
-    
+    console.log(
+      `\n${assessment.overall === 'good' ? '✅' : assessment.overall === 'warning' ? '⚠️' : '❌'} Overall Assessment: ${assessment.overall.toUpperCase()}`
+    );
+
     if (assessment.issues.length > 0) {
       console.log('\n🚨 Issues Detected:');
       assessment.issues.forEach(issue => {
@@ -486,7 +464,7 @@ class PerformanceMonitor {
     const assessment = {
       overall: 'good',
       issues: [],
-      recommendations: []
+      recommendations: [],
     };
 
     // CPU Assessment
@@ -507,7 +485,9 @@ class PerformanceMonitor {
         assessment.recommendations.push('Investigate memory leaks and optimize memory usage');
       } else if (summary.memory.process.average > 256) {
         if (assessment.overall === 'good') assessment.overall = 'warning';
-        assessment.issues.push(`Elevated memory usage: ${summary.memory.process.average}MB average`);
+        assessment.issues.push(
+          `Elevated memory usage: ${summary.memory.process.average}MB average`
+        );
       }
     }
 
@@ -536,12 +516,12 @@ class PerformanceMonitor {
 if (require.main === module) {
   const args = process.argv.slice(2);
   const options = {};
-  
+
   // Parse command line arguments
   for (let i = 0; i < args.length; i += 2) {
     const key = args[i].replace(/^--/, '');
     const value = args[i + 1];
-    
+
     if (key && value) {
       if (/^\d+$/.test(value)) {
         options[key] = parseInt(value, 10);
@@ -554,7 +534,7 @@ if (require.main === module) {
   }
 
   const monitor = new PerformanceMonitor(options);
-  
+
   // Handle graceful shutdown
   process.on('SIGINT', () => {
     console.log('\n🛑 Received SIGINT, stopping monitoring...');

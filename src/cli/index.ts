@@ -72,12 +72,7 @@ const initializeComponents = async (): Promise<CliComponents> => {
     enableLogging: process.env.DEBUG === 'true',
   });
 
-  return {
-    config: configManager,
-    apiClient,
-    formatter,
-    services,
-  };
+  return { config: configManager, apiClient, formatter, services };
 };
 
 // Global error handler for CLI
@@ -96,24 +91,28 @@ const setupGlobalErrorHandler = (): void => {
   });
 
   // Graceful shutdown handling (Ctrl+C)
-  process.on('SIGINT', async () => {
+  process.on('SIGINT', () => {
     logger.info('👋 Shutting down gracefully...');
-    try {
-      await shutdownCLIServices();
-    } catch (error) {
-      logger.error('Error during shutdown', { error });
-    }
-    process.exit(0);
+    shutdownCLIServices()
+      .then(() => {
+        process.exit(0);
+      })
+      .catch(error => {
+        logger.error('Error during shutdown', { error });
+        process.exit(1);
+      });
   });
 
-  process.on('SIGTERM', async () => {
+  process.on('SIGTERM', () => {
     logger.info('👋 Shutting down gracefully...');
-    try {
-      await shutdownCLIServices();
-    } catch (error) {
-      logger.error('Error during shutdown', { error });
-    }
-    process.exit(0);
+    shutdownCLIServices()
+      .then(() => {
+        process.exit(0);
+      })
+      .catch(error => {
+        logger.error('Error during shutdown', { error });
+        process.exit(1);
+      });
   });
 };
 

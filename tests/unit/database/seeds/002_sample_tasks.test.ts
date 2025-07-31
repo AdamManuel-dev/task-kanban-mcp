@@ -16,9 +16,9 @@ import { run, name, description } from '../../../../src/database/seeds/002_sampl
 
 // Mock database interface to match the sqlite wrapper
 interface MockDatabase {
-  run: (sql: string, params?: any[]) => Promise<any>;
-  all: (sql: string, params?: any[]) => Promise<any[]>;
-  get: (sql: string, params?: any[]) => Promise<any>;
+  run: (sql: string, params?: unknown[]) => Promise<unknown>;
+  all: (sql: string, params?: unknown[]) => Promise<unknown[]>;
+  get: (sql: string, params?: unknown[]) => Promise<unknown>;
 }
 
 interface Task {
@@ -54,14 +54,14 @@ describe('002_sample_tasks seed', () => {
     db = new Database(tempDbPath);
 
     // Create mock database interface that matches the sqlite wrapper
-    const run = promisify(db.run.bind(db));
+    const dbRun = promisify(db.run.bind(db));
     const all = promisify(db.all.bind(db));
     const get = promisify(db.get.bind(db));
 
     mockDb = {
-      run: async (sql: string, params?: any[]) => await run(sql, params || []),
-      all: async (sql: string, params?: any[]) => await all(sql, params || []),
-      get: async (sql: string, params?: any[]) => await get(sql, params || []),
+      run: async (sql: string, params?: unknown[]) => await dbRun(sql, params || []),
+      all: async (sql: string, params?: unknown[]) => await all(sql, params || []),
+      get: async (sql: string, params?: unknown[]) => await get(sql, params || []),
     };
 
     // Create required tables

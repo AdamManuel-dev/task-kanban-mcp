@@ -43,7 +43,7 @@ export const BoardSchema = z.object({
   description: z
     .string()
     .nullable()
-    .transform(val => val ?? undefined),
+    .transform(val => val),
   color: z.string(),
   created_at: sqliteDate,
   updated_at: sqliteDate,
@@ -61,7 +61,7 @@ export const ColumnSchema = z.object({
   wip_limit: z
     .number()
     .nullable()
-    .transform(val => val ?? undefined),
+    .transform(val => val),
   created_at: sqliteDate,
   updated_at: sqliteDate,
 });
@@ -80,7 +80,7 @@ export const TaskSchema = z.object({
   description: z
     .string()
     .nullable()
-    .transform(val => val ?? undefined),
+    .transform(val => val),
   board_id: z.string(),
   column_id: z.string(),
   position: z.number(),
@@ -89,20 +89,20 @@ export const TaskSchema = z.object({
   assignee: z
     .string()
     .nullable()
-    .transform(val => val ?? undefined),
+    .transform(val => val),
   due_date: sqliteDateOptional,
   estimated_hours: z
     .number()
     .nullable()
-    .transform(val => val ?? undefined),
+    .transform(val => val),
   actual_hours: z
     .number()
     .nullable()
-    .transform(val => val ?? undefined),
+    .transform(val => val),
   parent_task_id: z
     .string()
     .nullable()
-    .transform(val => val ?? undefined),
+    .transform(val => val),
   created_at: sqliteDate,
   updated_at: sqliteDate,
   completed_at: sqliteDateOptional,
@@ -110,7 +110,7 @@ export const TaskSchema = z.object({
   metadata: z
     .string()
     .nullable()
-    .transform(val => val ?? undefined),
+    .transform(val => val),
 });
 
 /**
@@ -157,11 +157,11 @@ export const TagSchema = z.object({
   description: z
     .string()
     .nullable()
-    .transform(val => val ?? undefined),
+    .transform(val => val),
   parent_tag_id: z
     .string()
     .nullable()
-    .transform(val => val ?? undefined),
+    .transform(val => val),
   created_at: sqliteDate,
 });
 
@@ -239,24 +239,7 @@ export function createValidatedQuery<TOutput, TInput = TOutput>(
   validateMany: (results: unknown[]) => TOutput[];
   validateOptional: (result: unknown) => TOutput | null;
 } {
-  return {
-    /**
-     * Validate a single row result
-     */
-    validateOne: (result: unknown): TOutput => validateRow(result, schema, queryName),
-
-    /**
-     * Validate multiple row results
-     */
-    validateMany: (results: unknown[]): TOutput[] => validateRows(results, schema, queryName),
-
-    /**
-     * Validate an optional single row result
-     */
-    validateOptional: (result: unknown): TOutput | null => {
-      if (result === null || result === undefined) {
-        return null;
-      }
+  return { /**, * Validate a single row result, */, validateOne: (result: unknown): TOutput => validateRow(result, schema, queryName), /**, * Validate multiple row results, */, validateMany: (results: unknown[]): TOutput[] => validateRows(results, schema, queryName), /**, * Validate an optional single row result, */, validateOptional: (result: unknown): TOutput | null => {, if (result === null || result === undefined) {, return null; }
       return validateRow(result, schema, queryName);
     },
   };

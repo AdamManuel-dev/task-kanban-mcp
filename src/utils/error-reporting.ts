@@ -197,14 +197,7 @@ export class DiagnosticsCollector {
   static async collect(): Promise<DiagnosticInfo> {
     const systemHealth = errorRecoveryManager.getSystemHealth();
 
-    return {
-      timestamp: new Date(),
-      system: {
-        nodeVersion: process.version,
-        platform: process.platform,
-        uptime: process.uptime(),
-        memoryUsage: process.memoryUsage(),
-      },
+    return { timestamp: new Date(), system: {, nodeVersion: process.version, platform: process.platform, uptime: process.uptime(), memoryUsage: process.memoryUsage() },
       application: {
         version: process.env.npm_package_version ?? 'unknown',
         environment: process.env.NODE_ENV ?? 'development',
@@ -232,15 +225,9 @@ export class DiagnosticsCollector {
   private static async getDatabaseInfo(): Promise<DiagnosticInfo['database']> {
     try {
       // This would normally check actual database connection
-      return {
-        connected: true,
-        poolSize: 10,
-        activeConnections: 2,
-      };
+      return { connected: true, poolSize: 10, activeConnections: 2 };
     } catch {
-      return {
-        connected: false,
-      };
+      return { connected: false };
     }
   }
 
@@ -415,7 +402,7 @@ export class ErrorReporter {
   }
 
   private static generateReportId(): string {
-    return `report_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `report_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
   }
 
   private static calculateHourlyErrorCounts(events: ErrorEvent[]): number[] {
@@ -496,7 +483,10 @@ export class ErrorReporter {
     return 'healthy';
   }
 
-  private static generateRecommendations(events: ErrorEvent[], systemHealth: SystemHealth): string[] {
+  private static generateRecommendations(
+    events: ErrorEvent[],
+    systemHealth: SystemHealth
+  ): string[] {
     const recommendations: string[] = [];
 
     if (events.length > 100) {
@@ -549,12 +539,5 @@ export const getQuickHealthSummary = (): {
     severity: ['critical'],
   });
 
-  return {
-    status: health.isHealthy ? 'healthy' : 'degraded',
-    errorCount: metrics.errorCount,
-    criticalErrors: events.length,
-    recommendations: health.isHealthy
-      ? ['System is operating normally']
-      : ['Check error logs', 'Review system health'],
-  };
+  return { status: health.isHealthy ? 'healthy' : 'degraded', errorCount: metrics.errorCount, criticalErrors: events.length, recommendations: health.isHealthy, ? ['System is operating normally'], : ['Check error logs', 'Review system health'] };
 };

@@ -100,11 +100,11 @@ import type {
 } from './TypeSafeMigrationRunner';
 
 /**
- * Schema version for ${name.replace(/_/g, ' ')}
+ * Schema version for \${name.replace(/_/g, ' ')}
  */
-const schemaV${version}: SchemaVersion = {
-  version: ${version},
-  description: '${name.replace(/_/g, ' ')}',
+const schemaV\${version}: SchemaVersion = {
+  version: \${version},
+  description: '\${name.replace(/_/g, ' ')}',
   tables: {
     // Define your table schemas here
     // example_table: {
@@ -136,13 +136,13 @@ const schemaV${version}: SchemaVersion = {
 };
 
 /**
- * Type-safe migration for ${name.replace(/_/g, ' ')}
+ * Type-safe migration for \${name.replace(/_/g, ' ')}
  */
 const migration: TypeSafeMigration = {
-  id: 'ts_${String(version).padStart(3, '0')}_${name}',
-  version: ${version},
-  description: '${name.replace(/_/g, ' ')}',
-  schema: schemaV${version},
+  id: \`ts_\${version.toString().padStart(3, '0')}_\${name}\`,
+  version: \${version},
+  description: '\${name.replace(/_/g, ' ')}',
+  schema: schemaV\${version},
 
   /**
    * Apply migration
@@ -220,11 +220,11 @@ export function createMigrateSafeCommand(): Command {
         // eslint-disable-next-line no-console
         console.log(chalk.blue('\nMigration Status\n'));
         // eslint-disable-next-line no-console
-        console.log('Current Schema Version: ' + chalk.green(currentVersion));
+        console.log(`Current Schema Version: ${chalk.green(currentVersion)}`);
         // eslint-disable-next-line no-console
-        console.log('Total Migrations Available: ' + chalk.cyan(migrations.length));
+        console.log(`Total Migrations Available: ${chalk.cyan(migrations.length)}`);
         // eslint-disable-next-line no-console
-        console.log('Applied Migrations: ' + chalk.green(appliedMigrations.length));
+        console.log(`Applied Migrations: ${chalk.green(appliedMigrations.length)}`);
 
         const pendingMigrations = migrations.filter(
           (m: TypeSafeMigration) =>
@@ -236,7 +236,7 @@ export function createMigrateSafeCommand(): Command {
           console.log(chalk.yellow('Warning: Pending Migrations: ') + pendingMigrations.length);
           pendingMigrations.forEach((m: TypeSafeMigration) => {
             // eslint-disable-next-line no-console
-            console.log('  - ' + chalk.yellow(m.id) + ': ' + m.description);
+            console.log(`  - ${chalk.yellow(m.id)}: ${m.description}`);
           });
         } else {
           // eslint-disable-next-line no-console
@@ -272,20 +272,18 @@ export function createMigrateSafeCommand(): Command {
         // eslint-disable-next-line no-console
         console.log(
           chalk.blue(
-            '\n=> ' +
-              (options.dryRun ? 'Would apply' : 'Applying') +
-              ' ' +
-              pendingMigrations.length +
-              ' migration(s)\n'
+            `\n=> ${options.dryRun ? 'Would apply' : 'Applying'} ${
+              pendingMigrations.length
+            } migration(s)\n`
           )
         );
 
         if (options.dryRun) {
           pendingMigrations.forEach((migration: TypeSafeMigration) => {
             // eslint-disable-next-line no-console
-            console.log(chalk.cyan('→') + ' ' + migration.id + ': ' + migration.description);
+            console.log(`${chalk.cyan('→')} ${migration.id}: ${migration.description}`);
             // eslint-disable-next-line no-console
-            console.log('   Schema version: ' + migration.version);
+            console.log(`   Schema version: ${migration.version}`);
           });
           return;
         }
@@ -300,21 +298,17 @@ export function createMigrateSafeCommand(): Command {
             successCount++;
             // eslint-disable-next-line no-console
             console.log(
-              chalk.green('OK') +
-                ' ' +
-                result.migrationId +
-                ' ' +
-                chalk.gray('(' + result.executionTime + 'ms)')
+              `${chalk.green('OK')} ${result.migrationId} ${chalk.gray(
+                `(${result.executionTime}ms)`
+              )}`
             );
           } else {
             errorCount++;
             // eslint-disable-next-line no-console
             console.log(
-              chalk.red('ERROR') +
-                ' ' +
-                result.migrationId +
-                ': ' +
-                (result.error?.message || 'Unknown error')
+              `${chalk.red('ERROR')} ${result.migrationId}: ${
+                result.error?.message || 'Unknown error'
+              }`
             );
           }
         }
@@ -323,12 +317,10 @@ export function createMigrateSafeCommand(): Command {
         console.log();
         if (errorCount === 0) {
           // eslint-disable-next-line no-console
-          console.log(chalk.green('Successfully applied ' + successCount + ' migration(s)'));
+          console.log(chalk.green(`Successfully applied ${successCount} migration(s)`));
         } else {
           // eslint-disable-next-line no-console
-          console.log(
-            chalk.red(errorCount + ' migration(s) failed, ' + successCount + ' succeeded')
-          );
+          console.log(chalk.red(`${errorCount} migration(s) failed, ${successCount} succeeded`));
           process.exit(1);
         }
       });
@@ -355,10 +347,9 @@ export function createMigrateSafeCommand(): Command {
           // eslint-disable-next-line no-console
           console.log(
             chalk.yellow(
-              'WARNING: Target version ' +
-                version +
-                ' is not less than current version ' +
+              `WARNING: Target version ${version} is not less than current version ${
                 currentVersion
+              }`
             )
           );
           return;
@@ -378,18 +369,16 @@ export function createMigrateSafeCommand(): Command {
         // eslint-disable-next-line no-console
         console.log(
           chalk.blue(
-            '\n<= ' +
-              (options.dryRun ? 'Would rollback' : 'Rolling back') +
-              ' ' +
-              migrationsToRollback.length +
-              ' migration(s)\n'
+            `\n<= ${options.dryRun ? 'Would rollback' : 'Rolling back'} ${
+              migrationsToRollback.length
+            } migration(s)\n`
           )
         );
 
         if (options.dryRun) {
           migrationsToRollback.forEach((migration: TypeSafeMigration) => {
             // eslint-disable-next-line no-console
-            console.log(chalk.yellow('<-') + ' ' + migration.id + ': ' + migration.description);
+            console.log(`${chalk.yellow('<-')} ${migration.id}: ${migration.description}`);
           });
           return;
         }
@@ -404,21 +393,17 @@ export function createMigrateSafeCommand(): Command {
             successCount++;
             // eslint-disable-next-line no-console
             console.log(
-              chalk.green('SUCCESS') +
-                ' Rolled back ' +
-                result.migrationId +
-                ' ' +
-                chalk.gray('(' + result.executionTime + 'ms)')
+              `${chalk.green('SUCCESS')} Rolled back ${result.migrationId} ${chalk.gray(
+                `(${result.executionTime}ms)`
+              )}`
             );
           } else {
             errorCount++;
             // eslint-disable-next-line no-console
             console.log(
-              chalk.red('ERROR') +
-                ' ' +
-                result.migrationId +
-                ': ' +
-                (result.error?.message || 'Unknown error')
+              `${chalk.red('ERROR')} ${result.migrationId}: ${
+                result.error?.message || 'Unknown error'
+              }`
             );
           }
         }
@@ -429,17 +414,12 @@ export function createMigrateSafeCommand(): Command {
           // eslint-disable-next-line no-console
           console.log(
             chalk.green(
-              'SUCCESS: Successfully rolled back ' +
-                successCount +
-                ' migration(s) to version ' +
-                version
+              `SUCCESS: Successfully rolled back ${successCount} migration(s) to version ${version}`
             )
           );
         } else {
           // eslint-disable-next-line no-console
-          console.log(
-            chalk.red(errorCount + ' rollback(s) failed, ' + successCount + ' succeeded')
-          );
+          console.log(chalk.red(`${errorCount} rollback(s) failed, ${successCount} succeeded`));
           process.exit(1);
         }
       });
@@ -464,7 +444,7 @@ export function createMigrateSafeCommand(): Command {
           console.log(chalk.red('ERROR: Schema validation failed:'));
           validation.errors.forEach((error: string) => {
             // eslint-disable-next-line no-console
-            console.log('  - ' + chalk.red(error));
+            console.log(`  - ${chalk.red(error)}`);
           });
           process.exit(1);
         }
@@ -480,7 +460,7 @@ export function createMigrateSafeCommand(): Command {
       const migrations = await loadMigrationsForVersioning();
       const nextVersion = Math.max(...migrations.map((m: TypeSafeMigration) => m.version), 0) + 1;
 
-      const filename = 'ts_' + String(nextVersion).padStart(3, '0') + '_' + name + '.ts';
+      const filename = `ts_${nextVersion.toString().padStart(3, '0')}_${name}.ts`;
       const template = generateMigrationTemplate(nextVersion, name);
 
       try {
@@ -491,9 +471,9 @@ export function createMigrateSafeCommand(): Command {
         await fs.writeFile(migrationPath, template);
 
         // eslint-disable-next-line no-console
-        console.log(chalk.green('SUCCESS: Created migration: ' + filename));
+        console.log(chalk.green(`SUCCESS: Created migration: ${filename}`));
         // eslint-disable-next-line no-console
-        console.log(chalk.gray('   Path: ' + migrationPath));
+        console.log(chalk.gray(`   Path: ${migrationPath}`));
         // eslint-disable-next-line no-console
         console.log(chalk.blue('\nNext steps:'));
         // eslint-disable-next-line no-console
@@ -503,7 +483,7 @@ export function createMigrateSafeCommand(): Command {
       } catch (error) {
         logger.error('Failed to create migration:', error);
         // eslint-disable-next-line no-console
-        console.error(chalk.red('ERROR: Failed to create migration: ' + String(error)));
+        console.error(chalk.red(`ERROR: Failed to create migration: ${error}`));
         process.exit(1);
       }
     });

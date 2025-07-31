@@ -75,10 +75,7 @@ export class ConfigManager {
       const config = JSON.parse(configData) as ConfigData;
 
       // Merge with defaults to ensure all required fields exist
-      return {
-        ...DEFAULT_CONFIG,
-        ...config,
-      };
+      return { ...DEFAULT_CONFIG, ...config };
     } catch (error) {
       logger.error(chalk.yellow('Warning: Invalid config file, using defaults'));
       return { ...DEFAULT_CONFIG };
@@ -228,10 +225,7 @@ export class ConfigManager {
       errors.push('Format must be one of: table, json, csv');
     }
 
-    return {
-      valid: errors.length === 0,
-      errors,
-    };
+    return { valid: errors.length === 0, errors };
   }
 
   /**

@@ -87,79 +87,98 @@ export class DashboardManager {
   }
 
   /**
+   * Get key binding configuration
+   */
+  private getKeyBindingConfig() {
+    return [
+      // Exit commands
+      {
+        keys: ['q', 'C-c'],
+        action: () => {
+          this.destroy();
+          process.exit(0);
+        },
+      },
+      // Dashboard controls
+      {
+        keys: ['r', 'F5'],
+        action: () => this.safeRefreshData(),
+      },
+      // Layout switching
+      {
+        keys: ['1', 'F1'],
+        action: () => this.switchLayout('overview'),
+      },
+      {
+        keys: ['2', 'F2'],
+        action: () => this.switchLayout('velocity'),
+      },
+      {
+        keys: ['3', 'F3'],
+        action: () => this.switchLayout('personal'),
+      },
+      // Help and settings
+      {
+        keys: ['h', '?', 'F12'],
+        action: () => this.showHelp(),
+      },
+      {
+        keys: ['t', 'F9'],
+        action: () => this.toggleTheme(),
+      },
+      {
+        keys: ['a', 'F10'],
+        action: () => this.toggleAutoRefresh(),
+      },
+      // Navigation
+      {
+        keys: ['tab'],
+        action: () => this.focusNextWidget(),
+      },
+      {
+        keys: ['S-tab'],
+        action: () => this.focusPreviousWidget(),
+      },
+      // Actions
+      {
+        keys: ['f', 'F11'],
+        action: () => this.toggleFullscreen(),
+      },
+      {
+        keys: ['s'],
+        action: () => this.showQuickStats(),
+      },
+      {
+        keys: ['e'],
+        action: () => this.exportDashboard(),
+      },
+      {
+        keys: ['d'],
+        action: () => this.toggleDebugMode(),
+      },
+      {
+        keys: ['escape'],
+        action: () => this.resetView(),
+      },
+    ];
+  }
+
+  /**
+   * Safe refresh data with error handling
+   */
+  private safeRefreshData(): void {
+    void this.refreshData().catch(error =>
+      this.showErrorNotification(`Failed to refresh data: ${error}`)
+    );
+  }
+
+  /**
    * Setup keyboard navigation
    */
   private setupKeyBindings(): void {
-    // Exit commands
-    this.screen.key(['q', 'C-c'], () => {
-      this.destroy();
-      process.exit(0);
-    });
-
-    // Dashboard controls
-    this.screen.key(['r', 'F5'], () => {
-      void this.refreshData().catch(error =>
-        this.showErrorNotification(`Failed to refresh data: ${String(error)}`)
-      );
-    });
-
-    // Layout switching
-    this.screen.key(['1', 'F1'], () => {
-      this.switchLayout('overview');
-    });
-
-    this.screen.key(['2', 'F2'], () => {
-      this.switchLayout('velocity');
-    });
-
-    this.screen.key(['3', 'F3'], () => {
-      this.switchLayout('personal');
-    });
-
-    // Help and settings
-    this.screen.key(['h', '?', 'F12'], () => {
-      this.showHelp();
-    });
-
-    this.screen.key(['t', 'F9'], () => {
-      this.toggleTheme();
-    });
-
-    this.screen.key(['a', 'F10'], () => {
-      this.toggleAutoRefresh();
-    });
-
-    // Navigation within widgets
-    this.screen.key(['tab'], () => {
-      this.focusNextWidget();
-    });
-
-    this.screen.key(['S-tab'], () => {
-      this.focusPreviousWidget();
-    });
-
-    // Zoom/fullscreen toggle
-    this.screen.key(['f', 'F11'], () => {
-      this.toggleFullscreen();
-    });
-
-    // Quick actions
-    this.screen.key(['s'], () => {
-      this.showQuickStats();
-    });
-
-    this.screen.key(['e'], () => {
-      this.exportDashboard();
-    });
-
-    // Debug mode toggle
-    this.screen.key(['d'], () => {
-      this.toggleDebugMode();
-    });
-
-    // Reset view
-    this.screen.key(['escape'], () => {
-      this.resetView();
+    const keyBindings = this.getKeyBindingConfig();
+    keyBindings.forEach(({ keys, action }) => {
+      this.screen.key(keys, action);
     });
   }
 
@@ -423,7 +442,7 @@ export class DashboardManager {
   switchLayout(layout: 'overview' | 'velocity' | 'personal'): void {
     this.currentLayout = layout;
     void this.refreshData().catch(error =>
-      this.showErrorNotification(`Failed to refresh data after layout change: ${String(error)}`)
+      this.showErrorNotification(`Failed to refresh data after layout change: ${error}`)
     );
   }
 
@@ -624,7 +643,7 @@ Press any key to close this help...
     if (this.config.autoRefresh) {
       this.refreshTimer = setInterval(() => {
         void this.refreshData().catch(error =>
-          this.showErrorNotification(`Failed to auto-refresh data: ${String(error)}`)
+          this.showErrorNotification(`Failed to auto-refresh data: ${error}`)
         );
       }, this.config.refreshInterval);
     }
@@ -719,15 +738,7 @@ Press any key to close this help...
    * Generate sample data for demo
    */
   private static generateSampleData(): DashboardData {
-    return {
-      tasks: {
-        total: 45,
-        byStatus: {
-          todo: 18,
-          in_progress: 12,
-          done: 13,
-          blocked: 2,
-        },
+    return { tasks: {, total: 45, byStatus: {, todo: 18, in_progress: 12, done: 13, blocked: 2 },
         byPriority: {
           P1: 8,
           P2: 15,

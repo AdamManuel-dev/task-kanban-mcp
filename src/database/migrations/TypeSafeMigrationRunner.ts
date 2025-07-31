@@ -157,7 +157,10 @@ export class TypeSafeMigrationRunner {
    * Initialize migration and schema tables
    */
   async initialize(): Promise<void> {
-    const run = promisify(this.db.run.bind(this.db)) as (sql: string, params?: any) => Promise<any>;
+    const run = promisify(this.db.run.bind(this.db)) as (
+      sql: string,
+      params?: unknown
+    ) => Promise<unknown>;
 
     // Create migrations table
     await run(`
@@ -188,7 +191,10 @@ export class TypeSafeMigrationRunner {
    * Get current schema version
    */
   async getCurrentSchemaVersion(): Promise<number> {
-    const get = promisify(this.db.get.bind(this.db)) as (sql: string, params?: any) => Promise<any>;
+    const get = promisify(this.db.get.bind(this.db)) as (
+      sql: string,
+      params?: unknown
+    ) => Promise<unknown>;
 
     const result = (await get(`
       SELECT version 
@@ -203,7 +209,10 @@ export class TypeSafeMigrationRunner {
    * Save schema version
    */
   async saveSchemaVersion(schema: SchemaVersion): Promise<void> {
-    const run = promisify(this.db.run.bind(this.db)) as (sql: string, params?: any) => Promise<any>;
+    const run = promisify(this.db.run.bind(this.db)) as (
+      sql: string,
+      params?: unknown
+    ) => Promise<unknown>;
 
     // Mark current version as not current
     await run(`UPDATE ${this.schemaTableName} SET is_current = FALSE`);
@@ -320,7 +329,10 @@ export class TypeSafeMigrationRunner {
       logger.info(`Executing migration: ${migration.id}`);
 
       // Begin transaction
-      const run = promisify(this.db.run.bind(this.db)) as (sql: string, params?: any) => Promise<any>;
+      const run = promisify(this.db.run.bind(this.db)) as (
+        sql: string,
+        params?: unknown
+      ) => Promise<unknown>;
       await run('BEGIN TRANSACTION');
 
       try {
@@ -362,12 +374,7 @@ export class TypeSafeMigrationRunner {
           schemaVersion: migration.version,
         });
 
-        return {
-          success: true,
-          migrationId: migration.id,
-          executionTime,
-          schemaValidation,
-        };
+        return { success: true, migrationId: migration.id, executionTime, schemaValidation };
       } catch (error) {
         // Rollback transaction
         await run('ROLLBACK');
@@ -378,12 +385,7 @@ export class TypeSafeMigrationRunner {
 
       logger.error(`Migration ${migration.id} failed:`, error);
 
-      return {
-        success: false,
-        migrationId: migration.id,
-        executionTime,
-        error: error as Error,
-      };
+      return { success: false, migrationId: migration.id, executionTime, error: error as Error };
     }
   }
 
@@ -441,7 +443,10 @@ export class TypeSafeMigrationRunner {
     try {
       logger.info(`Rolling back migration: ${migration.id}`);
 
-      const run = promisify(this.db.run.bind(this.db)) as (sql: string, params?: any) => Promise<any>;
+      const run = promisify(this.db.run.bind(this.db)) as (
+        sql: string,
+        params?: unknown
+      ) => Promise<unknown>;
       await run('BEGIN TRANSACTION');
 
       try {
@@ -466,11 +471,7 @@ export class TypeSafeMigrationRunner {
           executionTime,
         });
 
-        return {
-          success: true,
-          migrationId: migration.id,
-          executionTime,
-        };
+        return { success: true, migrationId: migration.id, executionTime };
       } catch (error) {
         await run('ROLLBACK');
         throw error;
@@ -480,12 +481,7 @@ export class TypeSafeMigrationRunner {
 
       logger.error(`Rollback of ${migration.id} failed:`, error);
 
-      return {
-        success: false,
-        migrationId: migration.id,
-        executionTime,
-        error: error as Error,
-      };
+      return { success: false, migrationId: migration.id, executionTime, error: error as Error };
     }
   }
 
@@ -541,13 +537,16 @@ export class TypeSafeMigrationRunner {
    * Get applied migrations (reuse from base class)
    */
   async getAppliedMigrations(): Promise<AppliedMigration[]> {
-    const all = promisify(this.db.all.bind(this.db)) as (sql: string, params?: any) => Promise<any[]>;
+    const all = promisify(this.db.all.bind(this.db)) as (
+      sql: string,
+      params?: unknown
+    ) => Promise<unknown[]>;
 
     const result = (await all(
       `SELECT id, applied_at, checksum FROM ${this.tableName} ORDER BY id`
     )) as AppliedMigration[];
 
-    return result ?? [];
+    return result || [];
   }
 
   /**
@@ -581,9 +580,6 @@ export class TypeSafeMigrationRunner {
       errors.push(`Schema validation error: ${error}`);
     }
 
-    return {
-      valid: errors.length === 0,
-      errors,
-    };
+    return { valid: errors.length === 0, errors };
   }
 }

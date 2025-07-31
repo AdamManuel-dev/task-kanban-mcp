@@ -57,7 +57,7 @@ describe('TypeSafeMigrationRunner', () => {
 
   beforeEach(async () => {
     // Clean up tables before each test
-    const run = async (sql: string, params?: any[]) =>
+    const run = async (sql: string, params?: unknown[]) =>
       new Promise<void>((resolve, reject) => {
         db.run(sql, params, err => {
           if (err) reject(err);
@@ -305,7 +305,7 @@ describe('TypeSafeMigrationRunner', () => {
 
     test('should validate invalid schema correctly', async () => {
       // Force an invalid state by manually modifying schema version
-      const run = async (sql: string, params?: any[]) =>
+      const run = async (sql: string, params?: unknown[]) =>
         new Promise<void>((resolve, reject) => {
           db.run(sql, params, err => {
             if (err) reject(err);

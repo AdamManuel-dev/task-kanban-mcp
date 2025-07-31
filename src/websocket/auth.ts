@@ -39,10 +39,7 @@ export class WebSocketAuth {
   async authenticate(payload: AuthPayload): Promise<AuthenticationResult> {
     try {
       if (!payload) {
-        return {
-          success: false,
-          error: 'Authentication payload required',
-        };
+        return { success: false, error: 'Authentication payload required' };
       }
 
       // JWT Token Authentication
@@ -63,70 +60,48 @@ export class WebSocketAuth {
         });
       }
 
-      return {
-        success: false,
-        error: 'No valid authentication method provided',
-      };
+      return { success: false, error: 'No valid authentication method provided' };
     } catch (error) {
       logger.error('WebSocket authentication error', { error });
-      return {
-        success: false,
-        error: 'Authentication failed',
-      };
+      return { success: false, error: 'Authentication failed' };
     }
   }
 
   private static async authenticateWithJWT(token: string): Promise<AuthenticationResult> {
-    return new Promise(resolve => {
-      try {
-        const jwtSecret = process.env.JWT_SECRET ?? 'dev-secret-key-change-in-production';
-        if (!jwtSecret || jwtSecret === 'dev-secret-key-change-in-production') {
-          logger.warn(
-            'JWT authentication using default secret - configure JWT_SECRET in production'
-          );
-        }
-
-        const decoded = jwt.verify(token, jwtSecret) as {
-          userId: string;
-          exp?: number;
-          iat?: number;
-          permissions?: string[];
-          role?: string;
-          email?: string;
-          name?: string;
-        };
-
-        if (!decoded.userId) {
-          resolve({
-            success: false,
-            error: 'Invalid token: missing user ID',
-          });
-          return;
-        }
-
-        // Get user permissions from token or database
-        const permissions =
-          decoded.permissions ?? WebSocketAuth.getDefaultPermissions(decoded.role);
-
-        const user: WebSocketUser = {
-          id: decoded.userId,
-          name: decoded.name ?? decoded.email ?? 'Unknown User',
-          role: decoded.role ?? 'user',
-          ...(decoded.email && { email: decoded.email }),
-        };
-
-        resolve({
-          success: true,
-          user,
-          permissions,
-        });
-      } catch (error) {
-        resolve({
-          success: false,
-          error: 'Invalid JWT token',
-        });
+    try {
+      const jwtSecret = process.env.JWT_SECRET ?? 'dev-secret-key-change-in-production';
+      if (!jwtSecret || jwtSecret === 'dev-secret-key-change-in-production') {
+        logger.warn('JWT authentication using default secret - configure JWT_SECRET in production');
       }
-    });
+
+      const decoded = jwt.verify(token, jwtSecret) as {
+        userId: string;
+        exp?: number;
+        iat?: number;
+        permissions?: string[];
+        role?: string;
+        email?: string;
+        name?: string;
+      };
+
+      if (!decoded.userId) {
+        return { success: false, error: 'Invalid token: missing user ID' };
+      }
+
+      // Get user permissions from token or database
+      const permissions = decoded.permissions ?? WebSocketAuth.getDefaultPermissions(decoded.role);
+
+      const user: WebSocketUser = {
+        id: decoded.userId,
+        name: decoded.name ?? decoded.email ?? 'Unknown User',
+        role: decoded.role ?? 'user',
+        ...(decoded.email && { email: decoded.email }),
+      };
+
+      return { success: true, user, permissions };
+    } catch (error) {
+      return { success: false, error: 'Invalid JWT token' };
+    }
   }
 
   private async authenticateWithApiKey(apiKey: string): Promise<AuthenticationResult> {
@@ -134,10 +109,7 @@ export class WebSocketAuth {
       // Check if API key exists
       const user = this.apiKeys.get(apiKey);
       if (!user) {
-        return {
-          success: false,
-          error: 'Invalid API key',
-        };
+        return { success: false, error: 'Invalid API key' };
       }
 
       // Get permissions for API key user
@@ -152,17 +124,10 @@ export class WebSocketAuth {
 
       const validatedPermissions = await Promise.all(permissionPromises);
 
-      return {
-        success: true,
-        user,
-        permissions: validatedPermissions,
-      };
+      return { success: true, user, permissions: validatedPermissions };
     } catch (error) {
       logger.error('API key authentication error', { error });
-      return {
-        success: false,
-        error: 'API key authentication failed',
-      };
+      return { success: false, error: 'API key authentication failed' };
     }
   }
 
@@ -170,41 +135,28 @@ export class WebSocketAuth {
     email: string;
     password: string;
   }): Promise<AuthenticationResult> {
-    return new Promise(resolve => {
-      try {
-        // Simulate credential validation
-        const { email, password } = credentials;
+    try {
+      // Simulate credential validation
+      const { email, password } = credentials;
 
-        if (!email || !password) {
-          resolve({
-            success: false,
-            error: 'Email and password required',
-          });
-          return;
-        }
-
-        // Mock user for demonstration
-        const user: WebSocketUser = {
-          id: `user_${email}`,
-          name: email.split('@')[0],
-          email,
-          role: 'user',
-        };
-
-        const permissions = WebSocketAuth.getDefaultPermissions(user.role);
-
-        resolve({
-          success: true,
-          user,
-          permissions,
-        });
-      } catch (error) {
-        resolve({
-          success: false,
-          error: 'Credential authentication failed',
-        });
+      if (!email || !password) {
+        return { success: false, error: 'Email and password required' };
       }
-    });
+
+      // Mock user for demonstration
+      const user: WebSocketUser = {
+        id: `user_${email}`,
+        name: email.split('@')[0],
+        email,
+        role: 'user',
+      };
+
+      const permissions = WebSocketAuth.getDefaultPermissions(user.role);
+
+      return { success: true, user, permissions };
+    } catch (error) {
+      return { success: false, error: 'Credential authentication failed' };
+    }
   }
 
   private static getDefaultPermissions(role?: string): string[] {
@@ -296,7 +248,7 @@ export class WebSocketAuth {
       logger.warn('JWT generation using default secret - configure JWT_SECRET in production');
     }
 
-    const payload: any = {
+    const payload: unknown = {
       userId: user.id,
       permissions,
     };

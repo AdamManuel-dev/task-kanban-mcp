@@ -78,7 +78,7 @@ export function registerNextCommand(taskCmd: Command): void {
           formatter.success('🎯 Next Recommended Task:');
           formatter.output(`📋 ${String(nextTask.title)}`);
           formatter.output(`🆔 ID: ${String(nextTask.id)}`);
-          formatter.output(`📊 Priority: ${String(nextTask.priority ?? 'Not set')}`);
+          formatter.output(`📊 Priority: ${String(nextTask.priority)}`);
           formatter.output(`📅 Status: ${String(nextTask.status)}`);
 
           if (nextTask.due_date) {

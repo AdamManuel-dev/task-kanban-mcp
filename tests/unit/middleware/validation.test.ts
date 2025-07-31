@@ -4,14 +4,15 @@
  * @description Tests for request validation, content type checking, and parameter validation
  */
 
-import type { Request, Response, NextFunction } from 'express';
+import type { NextFunction } from 'express';
 import { z } from 'zod';
 import { requestValidationMiddleware, validateRequest } from '@/middleware/validation';
 import { ValidationError } from '@/utils/errors';
+import type { MockRequest, MockResponse } from '../../utils/test-types';
 
 describe('Validation Middleware', () => {
-  let mockRequest: Partial<Request>;
-  let mockResponse: Partial<Response>;
+  let mockRequest: MockRequest;
+  let mockResponse: MockResponse;
   let mockNext: NextFunction;
 
   beforeEach(() => {
@@ -33,7 +34,7 @@ describe('Validation Middleware', () => {
 
   describe('requestValidationMiddleware', () => {
     it('should pass through valid GET request', () => {
-      requestValidationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestValidationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith();
       expect(mockNext).not.toHaveBeenCalledWith(expect.any(Error));
@@ -45,7 +46,7 @@ describe('Validation Middleware', () => {
         return undefined;
       });
 
-      requestValidationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestValidationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith(expect.any(ValidationError));
       expect(mockNext).toHaveBeenCalledWith(
@@ -61,7 +62,7 @@ describe('Validation Middleware', () => {
         return undefined;
       });
 
-      requestValidationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestValidationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith();
       expect(mockNext).not.toHaveBeenCalledWith(expect.any(Error));
@@ -74,7 +75,7 @@ describe('Validation Middleware', () => {
         return undefined;
       });
 
-      requestValidationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestValidationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith(expect.any(ValidationError));
       expect(mockNext).toHaveBeenCalledWith(
@@ -91,7 +92,7 @@ describe('Validation Middleware', () => {
         return undefined;
       });
 
-      requestValidationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestValidationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith();
       expect(mockNext).not.toHaveBeenCalledWith(expect.any(Error));
@@ -104,7 +105,7 @@ describe('Validation Middleware', () => {
         return undefined;
       });
 
-      requestValidationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestValidationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith();
       expect(mockNext).not.toHaveBeenCalledWith(expect.any(Error));
@@ -114,7 +115,7 @@ describe('Validation Middleware', () => {
       mockRequest.method = 'PUT';
       (mockRequest.get as jest.Mock).mockReturnValue(undefined);
 
-      requestValidationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestValidationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith(expect.any(ValidationError));
       expect(mockNext).toHaveBeenCalledWith(
@@ -128,7 +129,7 @@ describe('Validation Middleware', () => {
       mockRequest.method = 'PATCH';
       (mockRequest.get as jest.Mock).mockReturnValue(undefined);
 
-      requestValidationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestValidationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith(expect.any(ValidationError));
       expect(mockNext).toHaveBeenCalledWith(
@@ -142,7 +143,7 @@ describe('Validation Middleware', () => {
       mockRequest.path = '/api/tasks/:taskId';
       mockRequest.params = { taskId: 'invalid-uuid' };
 
-      requestValidationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestValidationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith(expect.any(ValidationError));
       expect(mockNext).toHaveBeenCalledWith(
@@ -156,7 +157,7 @@ describe('Validation Middleware', () => {
       mockRequest.path = '/api/tasks/task-123';
       mockRequest.params = { taskId: '550e8400-e29b-41d4-a716-446655440000' };
 
-      requestValidationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestValidationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith();
       expect(mockNext).not.toHaveBeenCalledWith(expect.any(Error));
@@ -165,7 +166,7 @@ describe('Validation Middleware', () => {
     it('should validate limit query parameter', () => {
       mockRequest.query = { limit: 'invalid' };
 
-      requestValidationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestValidationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith(expect.any(ValidationError));
       expect(mockNext).toHaveBeenCalledWith(
@@ -178,7 +179,7 @@ describe('Validation Middleware', () => {
     it('should reject negative limit', () => {
       mockRequest.query = { limit: '-1' };
 
-      requestValidationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestValidationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith(expect.any(ValidationError));
       expect(mockNext).toHaveBeenCalledWith(
@@ -191,7 +192,7 @@ describe('Validation Middleware', () => {
     it('should reject zero limit', () => {
       mockRequest.query = { limit: '0' };
 
-      requestValidationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestValidationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith(expect.any(ValidationError));
       expect(mockNext).toHaveBeenCalledWith(
@@ -204,7 +205,7 @@ describe('Validation Middleware', () => {
     it('should reject limit greater than 1000', () => {
       mockRequest.query = { limit: '1001' };
 
-      requestValidationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestValidationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith(expect.any(ValidationError));
       expect(mockNext).toHaveBeenCalledWith(
@@ -217,7 +218,7 @@ describe('Validation Middleware', () => {
     it('should accept valid limit parameter', () => {
       mockRequest.query = { limit: '100' };
 
-      requestValidationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestValidationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith();
       expect(mockNext).not.toHaveBeenCalledWith(expect.any(Error));
@@ -226,7 +227,7 @@ describe('Validation Middleware', () => {
     it('should validate offset query parameter', () => {
       mockRequest.query = { offset: 'invalid' };
 
-      requestValidationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestValidationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith(expect.any(ValidationError));
       expect(mockNext).toHaveBeenCalledWith(
@@ -239,7 +240,7 @@ describe('Validation Middleware', () => {
     it('should reject negative offset', () => {
       mockRequest.query = { offset: '-1' };
 
-      requestValidationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestValidationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith(expect.any(ValidationError));
       expect(mockNext).toHaveBeenCalledWith(
@@ -252,7 +253,7 @@ describe('Validation Middleware', () => {
     it('should accept valid offset parameter', () => {
       mockRequest.query = { offset: '0' };
 
-      requestValidationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestValidationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith();
       expect(mockNext).not.toHaveBeenCalledWith(expect.any(Error));
@@ -261,7 +262,7 @@ describe('Validation Middleware', () => {
     it('should validate sortOrder query parameter', () => {
       mockRequest.query = { sortOrder: 'invalid' };
 
-      requestValidationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestValidationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith(expect.any(ValidationError));
       expect(mockNext).toHaveBeenCalledWith(
@@ -274,7 +275,7 @@ describe('Validation Middleware', () => {
     it('should accept valid sortOrder "asc"', () => {
       mockRequest.query = { sortOrder: 'asc' };
 
-      requestValidationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestValidationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith();
       expect(mockNext).not.toHaveBeenCalledWith(expect.any(Error));
@@ -283,7 +284,7 @@ describe('Validation Middleware', () => {
     it('should accept valid sortOrder "desc"', () => {
       mockRequest.query = { sortOrder: 'desc' };
 
-      requestValidationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestValidationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith();
       expect(mockNext).not.toHaveBeenCalledWith(expect.any(Error));
@@ -296,7 +297,7 @@ describe('Validation Middleware', () => {
         sortOrder: 'desc',
       };
 
-      requestValidationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestValidationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith();
       expect(mockNext).not.toHaveBeenCalledWith(expect.any(Error));
@@ -305,7 +306,7 @@ describe('Validation Middleware', () => {
     it('should handle undefined content length', () => {
       (mockRequest.get as jest.Mock).mockReturnValue(undefined);
 
-      requestValidationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestValidationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith();
       expect(mockNext).not.toHaveBeenCalledWith(expect.any(Error));
@@ -411,7 +412,7 @@ describe('Validation Middleware', () => {
     it('should handle missing content length header', () => {
       (mockRequest.get as jest.Mock).mockReturnValue(undefined);
 
-      requestValidationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestValidationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith();
     });
@@ -422,7 +423,7 @@ describe('Validation Middleware', () => {
         return undefined;
       });
 
-      requestValidationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestValidationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith();
     });
@@ -430,7 +431,7 @@ describe('Validation Middleware', () => {
     it('should handle path without UUID parameters', () => {
       mockRequest.path = '/api/health';
 
-      requestValidationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestValidationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith();
     });
@@ -443,7 +444,7 @@ describe('Validation Middleware', () => {
         taskId: '550e8400-e29b-41d4-a716-446655440001',
       };
 
-      requestValidationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestValidationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith(expect.any(ValidationError));
       expect(mockNext).toHaveBeenCalledWith(

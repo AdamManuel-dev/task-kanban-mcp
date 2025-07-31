@@ -68,7 +68,7 @@ export function validateSortField(
   const cleanField = sortBy.includes('.') ? sortBy.split('.').pop()! : sortBy;
 
   const allowedFields = VALID_SORT_FIELDS[entityType];
-  if (!allowedFields.includes(cleanField as any)) {
+  if (!allowedFields.includes(cleanField as unknown)) {
     logger.warn('SQL injection attempt detected - invalid sort field', {
       entityType,
       attempted: sortBy,
@@ -232,11 +232,7 @@ export function validatePagination(
     tableName
   );
 
-  return {
-    limit: validatedLimit,
-    offset: validatedOffset,
-    orderByClause,
-  };
+  return { limit: validatedLimit, offset: validatedOffset, orderByClause };
 }
 
 /**
@@ -263,7 +259,7 @@ export const SQL_INJECTION_PATTERNS = [
   /(\bor\b|\band\b)\s+['"]?\w+['"]?\s*[=<>]/i,
 
   // Advanced patterns
-  /\/\*.*\*\//i, // SQL comments
+  //* .**//i, // SQL comments
   /\bxp_\w+/i, // SQL Server extended procedures
   /\bsp_\w+/i, // SQL Server stored procedures
   /(\bchar|nchar|varchar|nvarchar)\s*\(/i, // String functions

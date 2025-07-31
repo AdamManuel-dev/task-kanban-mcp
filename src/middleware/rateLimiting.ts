@@ -197,14 +197,7 @@ export class EnhancedRateLimiter {
           entry.adaptiveMultiplier = Math.max(0.5, (entry.adaptiveMultiplier || 1.0) * 0.8);
         }
 
-        return {
-          allowed: false,
-          remaining: 0,
-          resetTime: entry.firstRequest + windowMs,
-          limit: effectiveLimit,
-          retryAfter: Math.ceil(userConfig.burstLimit / 10), // 10% of burst limit in seconds
-          reason: 'Burst limit exceeded',
-        };
+        return { allowed: false, remaining: 0, resetTime: entry.firstRequest + windowMs, limit: effectiveLimit, retryAfter: Math.ceil(userConfig.burstLimit / 10), // 10% of burst limit in seconds, reason: 'Burst limit exceeded' };
       }
     } else if (entry.burstCount !== undefined) {
       entry.burstCount = 0;
@@ -262,9 +255,9 @@ export class EnhancedRateLimiter {
   /**
    * Set user-specific rate limit configuration
    */
-  public setUserConfig(userId: string, config: Partial<UserRateLimitConfig>): void {
+  public setUserConfig(userId: string, userConfig: Partial<UserRateLimitConfig>): void {
     const currentConfig = this.getUserConfig(userId);
-    const newConfig = { ...currentConfig, ...config };
+    const newConfig = { ...currentConfig, ...userConfig };
     this.userConfigs.set(userId, newConfig);
 
     logger.info('Updated user rate limit configuration', {
@@ -278,34 +271,20 @@ export class EnhancedRateLimiter {
    */
   public getUserStatus(userId: string): RateLimitStatus {
     const entry = this.userLimits.get(userId);
-    const config = this.getUserConfig(userId);
+    const userConfig = this.getUserConfig(userId);
     const now = Date.now();
 
     if (!entry) {
-      return {
-        requests: 0,
-        remaining: config.requestsPerMinute,
-        resetTime: now + 60000,
-        limit: config.requestsPerMinute,
-        burstCount: 0,
-        adaptiveMultiplier: 1.0,
-      };
+      return { requests: 0, remaining: userConfig.requestsPerMinute, resetTime: now + 60000, limit: userConfig.requestsPerMinute, burstCount: 0, adaptiveMultiplier: 1.0 };
     }
 
     const windowStart = now - 60000;
     const requests = entry.firstRequest < windowStart ? 0 : entry.count;
-    const effectiveLimit = config.adaptiveEnabled
-      ? Math.floor(config.requestsPerMinute * (entry.adaptiveMultiplier || 1.0))
-      : config.requestsPerMinute;
+    const effectiveLimit = userConfig.adaptiveEnabled
+      ? Math.floor(userConfig.requestsPerMinute * (entry.adaptiveMultiplier || 1.0))
+      : userConfig.requestsPerMinute;
 
-    return {
-      requests,
-      remaining: Math.max(0, effectiveLimit - requests),
-      resetTime: entry.firstRequest + 60000,
-      limit: effectiveLimit,
-      burstCount: entry.burstCount ?? 0,
-      adaptiveMultiplier: entry.adaptiveMultiplier || 1.0,
-    };
+    return { requests, remaining: Math.max(0, effectiveLimit - requests), resetTime: entry.firstRequest + 60000, limit: effectiveLimit, burstCount: entry.burstCount ?? 0, adaptiveMultiplier: entry.adaptiveMultiplier || 1.0 };
   }
 
   /**
@@ -325,10 +304,7 @@ export class EnhancedRateLimiter {
       .sort((a, b) => b.requests - a.requests)
       .slice(0, 10);
 
-    return {
-      ...this.analytics,
-      topUsers,
-    };
+    return { ...this.analytics, topUsers };
   }
 
   /**
@@ -347,7 +323,7 @@ export class EnhancedRateLimiter {
    */
   private getClientIP(req: Request): string {
     return (
-      (req.headers['x-forwarded-for'] as string).split(',')[0] ||
+      (req.headers['x-forwarded-for'] as string).split(',')[0]?.trim() ||
       (req.headers['x-real-ip'] as string) ||
       req.socket.remoteAddress ||
       'unknown'
@@ -358,7 +334,7 @@ export class EnhancedRateLimiter {
    * Extract user ID from request (from auth middleware)
    */
   private getUserId(req: Request): string | null {
-    return ((req as any).user?.id || (req as any).userId) ?? null;
+    return (req as unknown).user?.id || (req as unknown).userId;
   }
 
   /**

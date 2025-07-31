@@ -1,6 +1,6 @@
 /**
  * Stress Test Worker
- * 
+ *
  * Individual worker process that generates load against the MCP Kanban Server.
  * Runs various test scenarios with realistic user behavior patterns.
  */
@@ -27,15 +27,15 @@ class StressWorker {
         '200-500ms': 0,
         '500-1000ms': 0,
         '1000-2000ms': 0,
-        '2000ms+': 0
+        '2000ms+': 0,
       },
-      errorsByType: {}
+      errorsByType: {},
     };
 
     this.testData = {
       boardIds: [],
       taskIds: [],
-      userSessions: []
+      userSessions: [],
     };
 
     this.isRunning = false;
@@ -45,18 +45,18 @@ class StressWorker {
 
   async run() {
     console.log(`🔧 Worker ${this.workerId} initializing...`);
-    
+
     this.isRunning = true;
-    
+
     // Setup test data
     await this.setupTestData();
-    
+
     // Start the stress test
     this.startStressTesting();
-    
+
     // Report progress periodically
     this.startProgressReporting();
-    
+
     // Handle graceful shutdown
     process.on('disconnect', () => {
       console.log(`🛑 Worker ${this.workerId} shutting down...`);
@@ -82,15 +82,17 @@ class StressWorker {
         this.testData.taskIds = tasksResponse.data.map(task => task.id);
       }
 
-      console.log(`📚 Worker ${this.workerId} setup complete: ${this.testData.boardIds.length} boards, ${this.testData.taskIds.length} tasks`);
+      console.log(
+        `📚 Worker ${this.workerId} setup complete: ${this.testData.boardIds.length} boards, ${this.testData.taskIds.length} tasks`
+      );
     } catch (error) {
       console.warn(`⚠️  Worker ${this.workerId} setup warning:`, error.message);
     }
   }
 
   startStressTesting() {
-    const concurrentRequests = this.config.concurrentRequests;
-    
+    const { concurrentRequests } = this.config;
+
     // Start concurrent request loops
     for (let i = 0; i < concurrentRequests; i++) {
       setTimeout(() => {
@@ -103,7 +105,7 @@ class StressWorker {
     while (this.isRunning && this.results.totalRequests < this.config.requestsPerWorker) {
       try {
         await this.executeTestScenario();
-        
+
         // Add some variance in request timing to simulate real users
         const delay = Math.random() * 500 + 100; // 100-600ms delay
         await this.sleep(delay);
@@ -118,12 +120,12 @@ class StressWorker {
       { name: 'listTasks', weight: 30 },
       { name: 'createTask', weight: 20 },
       { name: 'updateTask', weight: 25 },
-      { name: 'getTaskDetails', weight: 15 }, 
-      { name: 'searchTasks', weight: 10 }
+      { name: 'getTaskDetails', weight: 15 },
+      { name: 'searchTasks', weight: 10 },
     ];
 
     const scenario = this.selectWeightedScenario(scenarios);
-    
+
     switch (scenario) {
       case 'listTasks':
         await this.listTasksScenario();
@@ -147,14 +149,14 @@ class StressWorker {
     const queryParams = {
       limit: Math.floor(Math.random() * 50) + 10, // 10-60 items
       sortBy: this.randomChoice(['created_at', 'updated_at', 'priority', 'title']),
-      sortOrder: this.randomChoice(['asc', 'desc'])
+      sortOrder: this.randomChoice(['asc', 'desc']),
     };
 
     // Add random filters
     if (Math.random() < 0.3) {
       queryParams.status = this.randomChoice(['todo', 'in_progress', 'done']);
     }
-    
+
     if (Math.random() < 0.2) {
       queryParams.priority_min = Math.floor(Math.random() * 5) + 1;
     }
@@ -164,22 +166,22 @@ class StressWorker {
 
   async createTaskScenario() {
     const boardId = this.randomChoice(this.testData.boardIds) || 'default-board';
-    
+
     const taskData = {
       title: `Stress Test Task ${crypto.randomBytes(4).toString('hex')}`,
       description: `Created by worker ${this.workerId} at ${new Date().toISOString()}`,
       board_id: boardId,
       status: this.randomChoice(['todo', 'in_progress']),
       priority: Math.floor(Math.random() * 10) + 1,
-      tags: this.generateRandomTags()
+      tags: this.generateRandomTags(),
     };
 
     const response = await this.makeRequest('POST', '/api/v1/tasks', null, taskData);
-    
+
     // Store created task ID for future operations
-    if (response.success && response.data && response.data.id) {
+    if (response.success && response.data?.id) {
       this.testData.taskIds.push(response.data.id);
-      
+
       // Limit stored task IDs to prevent memory growth
       if (this.testData.taskIds.length > 1000) {
         this.testData.taskIds = this.testData.taskIds.slice(-500);
@@ -200,15 +202,15 @@ class StressWorker {
     if (Math.random() < 0.6) {
       updateData.status = this.randomChoice(['todo', 'in_progress', 'review', 'done']);
     }
-    
+
     if (Math.random() < 0.4) {
       updateData.priority = Math.floor(Math.random() * 10) + 1;
     }
-    
+
     if (Math.random() < 0.3) {
       updateData.title = `Updated Task ${crypto.randomBytes(3).toString('hex')}`;
     }
-    
+
     if (Math.random() < 0.2) {
       updateData.description = `Updated by worker ${this.workerId} at ${new Date().toISOString()}`;
     }
@@ -228,25 +230,32 @@ class StressWorker {
 
   async searchTasksScenario() {
     const searchTerms = [
-      'test', 'bug', 'feature', 'urgent', 'review', 
-      'implementation', 'fix', 'enhancement', 'task'
+      'test',
+      'bug',
+      'feature',
+      'urgent',
+      'review',
+      'implementation',
+      'fix',
+      'enhancement',
+      'task',
     ];
-    
+
     const queryParams = {
       search: this.randomChoice(searchTerms),
-      limit: Math.floor(Math.random() * 30) + 10
+      limit: Math.floor(Math.random() * 30) + 10,
     };
 
     await this.makeRequest('GET', '/api/v1/tasks', queryParams);
   }
 
-  async makeRequest(method, path, queryParams = null, body = null) {
-    return new Promise((resolve) => {
+  makeRequest(method, path, queryParams = null, body = null) {
+    return new Promise(resolve => {
       const startTime = Date.now();
-      
+
       try {
         const url = new URL(path, this.config.baseUrl);
-        
+
         // Add query parameters
         if (queryParams) {
           Object.entries(queryParams).forEach(([key, value]) => {
@@ -261,8 +270,8 @@ class StressWorker {
           headers: {
             'Content-Type': 'application/json',
             'X-API-Key': this.config.apiKey,
-            'User-Agent': `StressWorker-${this.workerId}`
-          }
+            'User-Agent': `StressWorker-${this.workerId}`,
+          },
         };
 
         const requestData = body ? JSON.stringify(body) : null;
@@ -271,43 +280,43 @@ class StressWorker {
         }
 
         const client = url.protocol === 'https:' ? https : http;
-        
-        const req = client.request(url, options, (res) => {
+
+        const req = client.request(url, options, res => {
           let responseData = '';
-          
-          res.on('data', (chunk) => {
+
+          res.on('data', chunk => {
             responseData += chunk;
           });
-          
+
           res.on('end', () => {
             const duration = Date.now() - startTime;
             this.recordResponse(res.statusCode, duration, responseData);
-            
+
             let parsedData = null;
             try {
               parsedData = JSON.parse(responseData);
             } catch (e) {
               // Non-JSON response, that's okay
             }
-            
+
             resolve({
               success: res.statusCode >= 200 && res.statusCode < 300,
               statusCode: res.statusCode,
               data: parsedData,
-              duration
+              duration,
             });
           });
         });
 
-        req.on('error', (error) => {
+        req.on('error', error => {
           const duration = Date.now() - startTime;
           this.recordError('REQUEST_ERROR', error);
           this.recordResponse(0, duration, null);
-          
+
           resolve({
             success: false,
             error: error.message,
-            duration
+            duration,
           });
         });
 
@@ -316,11 +325,11 @@ class StressWorker {
           const duration = Date.now() - startTime;
           this.recordError('TIMEOUT', new Error('Request timeout'));
           this.recordResponse(0, duration, null);
-          
+
           resolve({
             success: false,
             error: 'Request timeout',
-            duration
+            duration,
           });
         });
 
@@ -330,17 +339,17 @@ class StressWorker {
         if (requestData) {
           req.write(requestData);
         }
-        
+
         req.end();
       } catch (error) {
         const duration = Date.now() - startTime;
         this.recordError('REQUEST_SETUP_ERROR', error);
         this.recordResponse(0, duration, null);
-        
+
         resolve({
           success: false,
           error: error.message,
-          duration
+          duration,
         });
       }
     });
@@ -349,7 +358,7 @@ class StressWorker {
   recordResponse(statusCode, duration, responseData) {
     this.results.totalRequests++;
     this.results.totalResponseTime += duration;
-    
+
     if (statusCode >= 200 && statusCode < 300) {
       this.results.successfulRequests++;
     } else {
@@ -388,8 +397,8 @@ class StressWorker {
           type: 'progress',
           data: {
             requests: this.results.totalRequests,
-            errors: this.results.failedRequests
-          }
+            errors: this.results.failedRequests,
+          },
         });
       }
     }, 5000); // Report every 5 seconds
@@ -399,7 +408,7 @@ class StressWorker {
     if (process.send) {
       process.send({
         type: 'result',
-        data: this.results
+        data: this.results,
       });
     }
   }
@@ -408,14 +417,14 @@ class StressWorker {
   selectWeightedScenario(scenarios) {
     const totalWeight = scenarios.reduce((sum, scenario) => sum + scenario.weight, 0);
     let random = Math.random() * totalWeight;
-    
+
     for (const scenario of scenarios) {
       random -= scenario.weight;
       if (random <= 0) {
         return scenario.name;
       }
     }
-    
+
     return scenarios[0].name; // Fallback
   }
 
@@ -427,14 +436,14 @@ class StressWorker {
     const allTags = ['urgent', 'bug', 'feature', 'backend', 'frontend', 'testing', 'review'];
     const numTags = Math.floor(Math.random() * 3); // 0-2 tags
     const selectedTags = [];
-    
+
     for (let i = 0; i < numTags; i++) {
       const tag = this.randomChoice(allTags);
       if (!selectedTags.includes(tag)) {
         selectedTags.push(tag);
       }
     }
-    
+
     return selectedTags;
   }
 

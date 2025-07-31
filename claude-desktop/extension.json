@@ -44,19 +44,8 @@
         "search_tasks",
         "get_context"
       ],
-      "resources": [
-        "tasks",
-        "boards",
-        "analytics",
-        "templates",
-        "dependencies"
-      ],
-      "prompts": [
-        "project_status",
-        "task_prioritization",
-        "team_analytics",
-        "dependency_analysis"
-      ]
+      "resources": ["tasks", "boards", "analytics", "templates", "dependencies"],
+      "prompts": ["project_status", "task_prioritization", "team_analytics", "dependency_analysis"]
     }
   },
   "configuration": {
@@ -100,9 +89,7 @@
     "required": ["serverUrl", "apiKey"]
   },
   "activation": {
-    "events": [
-      "onStartupFinished"
-    ]
+    "events": ["onStartupFinished"]
   },
   "contributes": {
     "commands": [
@@ -142,12 +129,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^0.1.0"
   },
-  "files": [
-    "dist/",
-    "docs/",
-    "README.md",
-    "CHANGELOG.md"
-  ],
+  "files": ["dist/", "docs/", "README.md", "CHANGELOG.md"],
   "scripts": {
     "start": "node dist/mcp/index.js",
     "install": "npm install && npm run build",
@@ -159,22 +141,7 @@
     "disk": "100MB",
     "network": "Required for server communication"
   },
-  "permissions": [
-    "network",
-    "filesystem.read",
-    "filesystem.write"
-  ],
-  "categories": [
-    "Productivity",
-    "Project Management",
-    "Collaboration",
-    "Analytics"
-  ],
-  "tags": [
-    "task-management",
-    "productivity",
-    "ai-assistant",
-    "analytics",
-    "collaboration"
-  ]
-} 
+  "permissions": ["network", "filesystem.read", "filesystem.write"],
+  "categories": ["Productivity", "Project Management", "Collaboration", "Analytics"],
+  "tags": ["task-management", "productivity", "ai-assistant", "analytics", "collaboration"]
+}

@@ -116,7 +116,7 @@ export class ExportService {
       let itemCount = 0;
 
       // Export boards
-      if (options.includeBoards !== false) {
+      if (options.includeBoards) {
         let boards = await this.getBoards(options);
         if (options.anonymize) {
           boards = this.anonymizeBoards(boards, options.anonymizationOptions);
@@ -126,7 +126,7 @@ export class ExportService {
       }
 
       // Export columns for included boards
-      if (options.includeBoards !== false && data.data.boards) {
+      if (options.includeBoards && data.data.boards) {
         const boardIds = data.data.boards.map(b => b.id);
         const columns = await this.getColumns(boardIds);
         data.data.columns = columns;
@@ -134,7 +134,7 @@ export class ExportService {
       }
 
       // Export tasks
-      if (options.includeTasks !== false) {
+      if (options.includeTasks) {
         let tasks = await this.getTasks(options);
         if (options.anonymize) {
           tasks = this.anonymizeTasks(tasks, options.anonymizationOptions);
@@ -144,7 +144,7 @@ export class ExportService {
       }
 
       // Export tags
-      if (options.includeTags !== false) {
+      if (options.includeTags) {
         let tags = await this.getTags(options);
         if (options.anonymize) {
           tags = this.anonymizeTags(tags, options.anonymizationOptions);
@@ -154,14 +154,14 @@ export class ExportService {
       }
 
       // Export task-tag relationships
-      if (options.includeTasks !== false && options.includeTags !== false) {
+      if (options.includeTasks && options.includeTags) {
         const taskTags = await this.getTaskTags(options);
         data.data.taskTags = taskTags;
         itemCount += taskTags.length;
       }
 
       // Export notes
-      if (options.includeNotes !== false) {
+      if (options.includeNotes) {
         let notes = await this.getNotes(options);
         if (options.anonymize) {
           notes = this.anonymizeNotes(notes, options.anonymizationOptions);
@@ -185,12 +185,7 @@ export class ExportService {
 
       logger.info('JSON export completed', { itemCount, filePath });
 
-      return {
-        format: 'json',
-        itemCount,
-        filePath,
-        data: data.data,
-      };
+      return { format: 'json', itemCount, filePath, data: data.data };
     } catch (error) {
       logger.error('JSON export failed:', error);
       throw new BaseServiceError('EXPORT_FAILED', 'Failed to export data to JSON');
@@ -208,7 +203,7 @@ export class ExportService {
       const csvData: string[] = [];
 
       // Export boards
-      if (options.includeBoards !== false) {
+      if (options.includeBoards) {
         let boards = await this.getBoards(options);
         if (options.anonymize) {
           boards = this.anonymizeBoards(boards, options.anonymizationOptions);
@@ -226,7 +221,7 @@ export class ExportService {
       }
 
       // Export tasks
-      if (options.includeTasks !== false) {
+      if (options.includeTasks) {
         let tasks = await this.getTasks(options);
         if (options.anonymize) {
           tasks = this.anonymizeTasks(tasks, options.anonymizationOptions);
@@ -250,7 +245,7 @@ export class ExportService {
       }
 
       // Export tags
-      if (options.includeTags !== false) {
+      if (options.includeTags) {
         let tags = await this.getTags(options);
         if (options.anonymize) {
           tags = this.anonymizeTags(tags, options.anonymizationOptions);
@@ -268,7 +263,7 @@ export class ExportService {
       }
 
       // Export notes
-      if (options.includeNotes !== false) {
+      if (options.includeNotes) {
         let notes = await this.getNotes(options);
         if (options.anonymize) {
           notes = this.anonymizeNotes(notes, options.anonymizationOptions);
@@ -296,11 +291,7 @@ export class ExportService {
 
       logger.info('CSV export completed', { itemCount, filePath });
 
-      return {
-        format: 'csv',
-        itemCount,
-        filePath,
-      };
+      return { format: 'csv', itemCount, filePath };
     } catch (error) {
       logger.error('CSV export failed:', error);
       throw new BaseServiceError('EXPORT_FAILED', 'Failed to export data to CSV');
@@ -473,7 +464,7 @@ export class ExportService {
         .map(col => {
           const value = (item as Record<string, unknown>)[col];
           if (value === null || value === undefined) return '';
-          return String(value).includes(',') ? `"${String(value)}"` : String(value);
+          return String(value).includes(',') ? `"${value}"` : String(value);
         })
         .join(',')
     );

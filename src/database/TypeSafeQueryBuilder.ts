@@ -213,8 +213,8 @@ export class WhereBuilder<TSchema extends TableSchema, TTable extends keyof TSch
       return { sql: '', parameters: [] };
     }
 
-    const sql = `WHERE ${this.conditions.join(' ')}`;
-    return { sql, parameters: this.parameters };
+    const whereClause = `WHERE ${this.conditions.join(' ')}`;
+    return { sql: whereClause, parameters: this.parameters };
   }
 
   private validateColumn(column: keyof TSchema[TTable]): void {
@@ -308,27 +308,26 @@ export class TypeSafeQueryBuilder<TSchema extends TableSchema = typeof DefaultSc
   /**
    * Execute raw SQL with parameter validation
    */
-  async raw(sql: string, parameters: SQLParameter[] = []): Promise<QueryResult> {
+  async raw(rawSql: string, parameters: SQLParameter[] = []): Promise<QueryResult> {
     const startTime = Date.now();
 
     try {
-      const all = promisify(this.db.all.bind(this.db)) as (sql: string, params?: any) => Promise<any[]>;
-      const rows = (await all(sql, parameters)) as QueryRow[];
+      const all = promisify(this.db.all.bind(this.db)) as (
+        sql: string,
+        params?: unknown
+      ) => Promise<unknown[]>;
+      const rows = (await all(rawSql, parameters)) as QueryRow[];
 
       const executionTime = Date.now() - startTime;
 
       logger.debug('Executed raw SQL query', {
-        sql: sql.substring(0, 100),
+        sql: rawSql.substring(0, 100),
         paramCount: parameters.length,
         rowCount: rows.length,
         executionTime,
       });
 
-      return {
-        rows,
-        rowCount: rows.length,
-        executionTime,
-      };
+      return { rows, rowCount: rows.length, executionTime };
     } catch (error) {
       logger.error('Raw SQL query failed', { sql, parameters, error });
       throw error;
@@ -445,9 +444,12 @@ export class SelectQueryBuilder<TSchema extends TableSchema, TTable extends keyo
     const startTime = Date.now();
 
     try {
-      const { sql, parameters } = this.build();
-      const all = promisify(this.db.all.bind(this.db)) as (sql: string, params?: any) => Promise<any[]>;
-      const rows = (await all(sql, parameters)) as TResult[];
+      const { sql: query, parameters } = this.build();
+      const all = promisify(this.db.all.bind(this.db)) as (
+        sql: string,
+        params?: unknown
+      ) => Promise<unknown[]>;
+      const rows = (await all(query, parameters)) as TResult[];
 
       const executionTime = Date.now() - startTime;
 
@@ -459,11 +461,7 @@ export class SelectQueryBuilder<TSchema extends TableSchema, TTable extends keyo
         executionTime,
       });
 
-      return {
-        rows,
-        rowCount: rows.length,
-        executionTime,
-      };
+      return { rows, rowCount: rows.length, executionTime };
     } catch (error) {
       logger.error('SELECT query failed', {
         table: String(this.tableName),
@@ -486,35 +484,35 @@ export class SelectQueryBuilder<TSchema extends TableSchema, TTable extends keyo
    */
   build(): { sql: string; parameters: SQLParameter[] } {
     const columnList = this.columns.map(col => String(col)).join(', ');
-    let sql = `SELECT ${columnList} FROM ${String(this.tableName)}`;
+    let queryString = `SELECT ${columnList} FROM ${String(this.tableName)}`;
 
     // Add JOINs
     if (this.joinClauses.length > 0) {
-      sql += ` ${this.joinClauses.join(' ')}`;
+      queryString += ` ${this.joinClauses.join(' ')}`;
     }
 
     // Add WHERE
     const { sql: whereSQL, parameters } = this.whereBuilder.build();
     if (whereSQL) {
-      sql += ` ${whereSQL}`;
+      queryString += ` ${whereSQL}`;
     }
 
     // Add ORDER BY
     if (this.orderByClause) {
-      sql += ` ${this.orderByClause}`;
+      queryString += ` ${this.orderByClause}`;
     }
 
     // Add LIMIT
     if (this.limitClause) {
-      sql += ` ${this.limitClause}`;
+      queryString += ` ${this.limitClause}`;
     }
 
     // Add OFFSET
     if (this.offsetClause) {
-      sql += ` ${this.offsetClause}`;
+      queryString += ` ${this.offsetClause}`;
     }
 
-    return { sql, parameters };
+    return { sql: queryString, parameters };
   }
 
   private validateColumn(column: keyof TSchema[TTable]): void {
@@ -544,16 +542,20 @@ export class InsertQueryBuilder<TSchema extends TableSchema, TTable extends keyo
     const startTime = Date.now();
 
     try {
-      const { sql, parameters } = this.build();
+      const { sql: sqlQuery, parameters } = this.build();
 
       const result = await new Promise<{ lastID?: number; changes?: number }>((resolve, reject) => {
-        this.db.run(sql, parameters, function (this: { lastID: number; changes: number }, err: Error | null) {
-          if (err) {
-            reject(err);
-          } else {
-            resolve({ lastID: this.lastID, changes: this.changes });
+        this.db.run(
+          sqlQuery,
+          parameters,
+          function (this: { lastID: number; changes: number }, err: Error | null) {
+            if (err) {
+              reject(err);
+            } else {
+              resolve({ lastID: this.lastID, changes: this.changes });
+            }
           }
-        });
+        );
       });
 
       const executionTime = Date.now() - startTime;
@@ -564,10 +566,7 @@ export class InsertQueryBuilder<TSchema extends TableSchema, TTable extends keyo
         executionTime,
       });
 
-      return {
-        lastInsertId: result.lastID ?? 0,
-        changes: result.changes ?? 0,
-      };
+      return { lastInsertId: result.lastID ?? 0, changes: result.changes ?? 0 };
     } catch (error) {
       logger.error('INSERT query failed', {
         table: String(this.tableName),
@@ -593,9 +592,9 @@ export class InsertQueryBuilder<TSchema extends TableSchema, TTable extends keyo
       }
     }
 
-    const sql = `INSERT INTO ${String(this.tableName)} (${columns.join(', ')}) VALUES (${placeholders})`;
+    const sqlQuery = `INSERT INTO ${String(this.tableName)} (${columns.join(', ')}) VALUES (${placeholders})`;
 
-    return { sql, parameters };
+    return { sql: sqlQuery, parameters };
   }
 }
 
@@ -629,10 +628,10 @@ export class UpdateQueryBuilder<TSchema extends TableSchema, TTable extends keyo
     const startTime = Date.now();
 
     try {
-      const { sql, parameters } = this.build();
+      const { sql: sqlQuery, parameters } = this.build();
 
       const result = await new Promise<{ changes?: number }>((resolve, reject) => {
-        this.db.run(sql, parameters, function (this: { changes: number }, err: Error | null) {
+        this.db.run(sqlQuery, parameters, function (this: { changes: number }, err: Error | null) {
           if (err) {
             reject(err);
           } else {
@@ -650,9 +649,7 @@ export class UpdateQueryBuilder<TSchema extends TableSchema, TTable extends keyo
         executionTime,
       });
 
-      return {
-        changes: result.changes ?? 0,
-      };
+      return { changes: result.changes ?? 0 };
     } catch (error) {
       logger.error('UPDATE query failed', {
         table: String(this.tableName),
@@ -669,7 +666,9 @@ export class UpdateQueryBuilder<TSchema extends TableSchema, TTable extends keyo
   build(): { sql: string; parameters: SQLParameter[] } {
     const columns = Object.keys(this.data);
     const setClause = columns.map(col => `${col} = ?`).join(', ');
-    const setParameters = Object.values(this.data).filter((v): v is SQLParameter => v !== undefined);
+    const setParameters = Object.values(this.data).filter(
+      (v): v is SQLParameter => v !== undefined
+    );
 
     // Validate columns exist in schema
     for (const column of columns) {
@@ -678,17 +677,17 @@ export class UpdateQueryBuilder<TSchema extends TableSchema, TTable extends keyo
       }
     }
 
-    let sql = `UPDATE ${String(this.tableName)} SET ${setClause}`;
+    let sqlQuery = `UPDATE ${String(this.tableName)} SET ${setClause}`;
     const parameters = [...setParameters];
 
     // Add WHERE clause
     const { sql: whereSQL, parameters: whereParameters } = this.whereBuilder.build();
     if (whereSQL) {
-      sql += ` ${whereSQL}`;
+      sqlQuery += ` ${whereSQL}`;
       parameters.push(...whereParameters);
     }
 
-    return { sql, parameters };
+    return { sql: sqlQuery, parameters };
   }
 }
 
@@ -721,10 +720,10 @@ export class DeleteQueryBuilder<TSchema extends TableSchema, TTable extends keyo
     const startTime = Date.now();
 
     try {
-      const { sql, parameters } = this.build();
+      const { sql: sqlQuery, parameters } = this.build();
 
       const result = await new Promise<{ changes?: number }>((resolve, reject) => {
-        this.db.run(sql, parameters, function (this: { changes: number }, err: Error | null) {
+        this.db.run(sqlQuery, parameters, function (this: { changes: number }, err: Error | null) {
           if (err) {
             reject(err);
           } else {
@@ -741,9 +740,7 @@ export class DeleteQueryBuilder<TSchema extends TableSchema, TTable extends keyo
         executionTime,
       });
 
-      return {
-        changes: result.changes ?? 0,
-      };
+      return { changes: result.changes ?? 0 };
     } catch (error) {
       logger.error('DELETE query failed', {
         table: String(this.tableName),
@@ -757,17 +754,17 @@ export class DeleteQueryBuilder<TSchema extends TableSchema, TTable extends keyo
    * Build the SQL query
    */
   build(): { sql: string; parameters: SQLParameter[] } {
-    let sql = `DELETE FROM ${String(this.tableName)}`;
+    let sqlQuery = `DELETE FROM ${String(this.tableName)}`;
 
     // Add WHERE clause
     const { sql: whereSQL, parameters } = this.whereBuilder.build();
     if (whereSQL) {
-      sql += ` ${whereSQL}`;
+      sqlQuery += ` ${whereSQL}`;
     } else {
       throw new Error('DELETE queries must include a WHERE clause for safety');
     }
 
-    return { sql, parameters };
+    return { sql: sqlQuery, parameters };
   }
 }
 

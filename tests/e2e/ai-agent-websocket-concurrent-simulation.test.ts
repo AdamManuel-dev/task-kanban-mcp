@@ -469,12 +469,12 @@ describe('AI Agent WebSocket Concurrent Simulation', () => {
     const totalOperations = numAgents * 5 * 2; // create + complete
     const opsPerSecond = (totalOperations / duration) * 1000;
 
-    console.log('\\n=== WebSocket AI Agent Simulation Results (Mocked) ===');
+    console.log('\n=== WebSocket AI Agent Simulation Results (Mocked) ===');
     console.log(`Number of agents: ${numAgents}`);
     console.log(`Total duration: ${duration}ms`);
     console.log(`Total WebSocket operations (simulated): ${totalOperations}`);
     console.log(`Operations per second: ${opsPerSecond.toFixed(2)}`);
-    console.log('\\nFinal board state (via WebSocket simulation):');
+    console.log('\nFinal board state (via WebSocket simulation):');
     console.log(`  Total tasks: ${finalState[0].total}`);
     console.log(`  Todo: ${finalState[0].todo}`);
     console.log(`  In Progress: ${finalState[0].in_progress}`);
@@ -568,7 +568,7 @@ describe('AI Agent WebSocket Concurrent Simulation', () => {
       [boardId]
     );
 
-    console.log('\\n=== WebSocket Collaboration Pattern Results (Mocked) ===');
+    console.log('\n=== WebSocket Collaboration Pattern Results (Mocked) ===');
     console.log(`ws-creator: Created 10 tasks via WebSocket`);
     console.log(`ws-worker-1 & ws-worker-2: Completed tasks via WebSocket`);
     console.log(`Final WebSocket analysis: ${JSON.stringify(analysis[0])}`);
@@ -591,7 +591,7 @@ describe('AI Agent WebSocket Concurrent Simulation', () => {
     expect(agent.getMetrics().tasksCompleted).toBe(0);
 
     // The agent is ready for WebSocket operations when a server is available
-    console.log('\\n=== WebSocket Agent Structure Verified ===');
+    console.log('\n=== WebSocket Agent Structure Verified ===');
     console.log(`Agent ID: ${agent.getMetrics().agentId}`);
     console.log(`Board ID: ${boardId}`);
     console.log(`WebSocket URL: ${wsUrl}`);

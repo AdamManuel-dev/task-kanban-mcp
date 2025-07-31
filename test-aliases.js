@@ -3,7 +3,7 @@
 /**
  * @fileoverview Test script to verify path alias resolution in production builds
  * @lastmodified 2025-07-28T15:45:00Z
- * 
+ *
  * Features: Alias resolution testing, import validation, production simulation
  * Main APIs: testAliases(), validateImports(), simulateProduction()
  * Constraints: Requires built application, tests actual resolution
@@ -32,7 +32,7 @@ const testCases = [
   '@config/index',
   '@services/TaskService',
   '@types/common',
-  'regular-module'
+  'regular-module',
 ];
 
 for (const testCase of testCases) {
@@ -40,7 +40,7 @@ for (const testCase of testCases) {
     const resolved = resolve(testCase);
     const isAlias = testCase.startsWith('@');
     const wasResolved = resolved !== testCase;
-    
+
     if (isAlias && wasResolved) {
       console.log(`   ✅ ${testCase} -> ${resolved}`);
     } else if (!isAlias && !wasResolved) {
@@ -58,11 +58,7 @@ console.log('\n3. Testing build configurations...');
 const fs = require('fs');
 const path = require('path');
 
-const configFiles = [
-  'tsconfig.tsc-alias.json',
-  'jest.aliases.json',
-  'webpack.aliases.json'
-];
+const configFiles = ['tsconfig.tsc-alias.json', 'jest.aliases.json', 'webpack.aliases.json'];
 
 for (const file of configFiles) {
   if (fs.existsSync(path.join(__dirname, file))) {
@@ -99,11 +95,8 @@ const distPath = path.join(__dirname, 'dist');
 
 if (fs.existsSync(distPath)) {
   // Try to require a built file that uses aliases
-  const testFiles = [
-    'dist/index.js',
-    'dist/cli/index.js'
-  ];
-  
+  const testFiles = ['dist/index.js', 'dist/cli/index.js'];
+
   for (const testFile of testFiles) {
     const fullPath = path.join(__dirname, testFile);
     if (fs.existsSync(fullPath)) {
@@ -111,7 +104,7 @@ if (fs.existsSync(distPath)) {
         // Read file content to check for unresolved aliases
         const content = fs.readFileSync(fullPath, 'utf8');
         const unresolvedAliases = content.match(/@\/[^"';\s)]+/g);
-        
+
         if (unresolvedAliases) {
           console.log(`   ⚠️ ${testFile}: Found ${unresolvedAliases.length} unresolved aliases`);
           console.log(`      Examples: ${unresolvedAliases.slice(0, 3).join(', ')}`);
@@ -132,7 +125,7 @@ console.log('\n6. Validating tsc-alias configuration...');
 try {
   const tscAliasConfig = JSON.parse(fs.readFileSync('tsconfig.tsc-alias.json', 'utf8'));
   const paths = tscAliasConfig.compilerOptions?.paths || {};
-  
+
   if (Object.keys(paths).length > 0) {
     console.log('   ✅ tsc-alias configuration has path mappings');
     for (const [alias, targets] of Object.entries(paths)) {

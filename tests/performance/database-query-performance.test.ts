@@ -61,13 +61,13 @@ describe('Database Query Performance Testing', () => {
 
       // Create columns for each board
       const columns = ['Todo', 'In Progress', 'Done'];
-      columns.forEach(async (columnName, index) => {
+      for (const [index, columnName] of columns.entries()) {
         await connection.execute(
           `INSERT OR REPLACE INTO columns (id, board_id, name, position, created_at, updated_at)
            VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))`,
           [`perf-col-${i}-${index}`, `perf-board-${i}`, columnName, index]
         );
-      });
+      }
     }
 
     // Create test tasks (100 tasks across boards)
@@ -118,7 +118,7 @@ describe('Database Query Performance Testing', () => {
    */
   const measureQuery = async (
     query: string,
-    params: any[] = [],
+    params: unknown[] = [],
     threshold: number = SIMPLE_QUERY_THRESHOLD_MS,
     type: 'simple' | 'complex' | 'join' = 'simple'
   ): Promise<QueryResult> => {

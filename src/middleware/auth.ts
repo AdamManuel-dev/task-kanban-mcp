@@ -65,15 +65,15 @@ export async function authenticationMiddleware(
 ): Promise<void> {
   // Skip authentication for public endpoints
   const publicEndpoints = ['/health', '/docs'];
-  const fullPath = req.originalUrl ?? req.url;
+  const fullPath = req.originalUrl || req.url;
 
   // Check for exact match or path that starts with endpoint followed by / or query
   const isPublicEndpoint =
     publicEndpoints.some(
       endpoint =>
         fullPath === endpoint ||
-        fullPath.startsWith(`${String(endpoint)}/`) ||
-        fullPath.startsWith(`${String(endpoint)}?`)
+        fullPath.startsWith(`${endpoint}/`) ||
+        fullPath.startsWith(`${endpoint}?`)
     ) || fullPath === '/'; // Allow root path exactly
 
   if (isPublicEndpoint) {
@@ -110,7 +110,7 @@ export async function authenticationMiddleware(
     // Create user object from API key
     req.user = {
       id: validationResult.apiKey.userId || hashApiKey(apiKey),
-      name: validationResult.apiKey.name ?? 'API User',
+      name: validationResult.apiKey.name || 'API User',
       permissions: validationResult.apiKey.permissions || ['read'], // Default to minimal permissions
     };
 
@@ -163,7 +163,7 @@ export function requirePermission(
     }
 
     // Ensure permissions array exists and is valid
-    const userPermissions = req.user.permissions ?? [];
+    const userPermissions = req.user.permissions || [];
     const hasPermission = userPermissions.includes(permission) || userPermissions.includes('admin');
 
     if (!hasPermission) {
@@ -173,7 +173,7 @@ export function requirePermission(
         userPermissions,
         requestId: req.requestId,
       });
-      next(new ForbiddenError(`Permission '${String(permission)}' required`));
+      next(new ForbiddenError(`Permission '${permission}' required`));
       return;
     }
 
@@ -219,11 +219,7 @@ export function requirePermissions(
 
     if (!hasPermission) {
       const permissionText = requireAll ? 'all of' : 'one of';
-      next(
-        new ForbiddenError(
-          `Permission ${permissionText} [${String(permissions.join(', '))}] required`
-        )
-      );
+      next(new ForbiddenError(`Permission ${permissionText} [${permissions.join(', ')}] required`));
       return;
     }
 
@@ -324,8 +320,8 @@ export async function authenticateApiKey(
 
   // Use proper ApiKeyService validation instead of deprecated function
   try {
-    const apiKeyService = new ApiKeyService(req.app.get('db'));
-    const validationResult = await apiKeyService.validateApiKey(apiKey);
+    const keyService = new ApiKeyService(req.app.get('db'));
+    const validationResult = await keyService.validateApiKey(apiKey);
     if (!validationResult.isValid) {
       logger.warn('Authentication failed: Invalid API key provided', {
         ip: req.ip,

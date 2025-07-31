@@ -172,7 +172,7 @@ export class AnalyticsService {
       // Top performers
       const performerStats = AnalyticsService.calculatePerformerStats(tasks);
       const topPerformers = Object.entries(performerStats)
-        .map(([assignee, stats]: [string, any]) => ({
+        .map(([assignee, stats]: [string, unknown]) => ({
           assignee,
           completedTasks: stats.completed,
           averageTime: stats.averageTime,
@@ -183,17 +183,7 @@ export class AnalyticsService {
       // Trend analysis
       const trends = await this.calculateCompletionTrends(boardId, 30);
 
-      return {
-        totalTasks,
-        completedTasks,
-        completionRate,
-        averageCompletionTime,
-        completionsByStatus,
-        completionsByPriority,
-        completionsByTimeframe,
-        topPerformers,
-        trends,
-      };
+      return { totalTasks, completedTasks, completionRate, averageCompletionTime, completionsByStatus, completionsByPriority, completionsByTimeframe, topPerformers, trends };
     } catch (error) {
       logger.error('Failed to get completion analytics:', error);
       throw new Error(
@@ -229,13 +219,7 @@ export class AnalyticsService {
         burndownData
       );
 
-      return {
-        currentSprint: currentSprint as any,
-        historicalVelocity: historicalVelocity as any,
-        teamVelocity: teamVelocity as any,
-        burndownData: burndownData as any,
-        predictiveAnalytics: predictiveAnalytics as any,
-      };
+      return { currentSprint, historicalVelocity, teamVelocity: teamVelocity as unknown, burndownData: burndownData as unknown, predictiveAnalytics };
     } catch (error) {
       logger.error('Failed to get velocity metrics:', error);
       throw new Error(
@@ -264,12 +248,7 @@ export class AnalyticsService {
       // Efficiency metrics
       const efficiencyMetrics = await this.calculateEfficiencyMetrics(boardId);
 
-      return {
-        peakHours,
-        peakDays,
-        bottlenecks: bottlenecks as any,
-        efficiencyMetrics: efficiencyMetrics as any,
-      };
+      return { peakHours, peakDays, bottlenecks: bottlenecks as unknown, efficiencyMetrics };
     } catch (error) {
       logger.error('Failed to get productivity insights:', error);
       throw new Error(
@@ -300,12 +279,7 @@ export class AnalyticsService {
 
       const summary = AnalyticsService.generateSummary(completion, velocity, productivity);
 
-      return {
-        completion,
-        velocity,
-        productivity,
-        summary: summary as any,
-      };
+      return { completion, velocity, productivity, summary };
     } catch (error) {
       logger.error('Failed to get dashboard analytics:', error);
       throw new Error(
@@ -393,7 +367,7 @@ export class AnalyticsService {
 
     const dailyData = await dbConnection.query(query, params);
 
-    const dailyCompletions = dailyData.map((row: any) => ({
+    const dailyCompletions = dailyData.map((row: unknown) => ({
       date: row.completion_date,
       count: row.count,
     }));
@@ -402,11 +376,7 @@ export class AnalyticsService {
     const weeklyCompletions: Array<{ week: string; count: number }> = [];
     const monthlyCompletions: Array<{ month: string; count: number }> = [];
 
-    return {
-      dailyCompletions,
-      weeklyCompletions,
-      monthlyCompletions,
-    };
+    return { dailyCompletions, weeklyCompletions, monthlyCompletions };
   }
 
   private async calculateSprintMetrics(_sprintStart: Date, _boardId?: string): Promise<unknown> {
@@ -416,24 +386,12 @@ export class AnalyticsService {
     const remainingPoints = plannedPoints - completedPoints;
     const velocityRate = completedPoints / 14; // points per day
 
-    return {
-      plannedPoints,
-      completedPoints,
-      remainingPoints,
-      velocityRate,
-      projectedCompletion: null, // Calculate based on velocity
-    };
+    return { plannedPoints, completedPoints, remainingPoints, velocityRate, projectedCompletion: null, // Calculate based on velocity };
   }
 
   private async calculateHistoricalVelocity(_boardId?: string): Promise<unknown> {
     // Implementation for historical velocity calculation
-    return {
-      last7Days: 25,
-      last14Days: 45,
-      last30Days: 85,
-      average: 42,
-      trend: 'increasing' as const,
-    };
+    return { last7Days: 25, last14Days: 45, last30Days: 85, average: 42, trend: 'increasing' as const };
   }
 
   private async calculateTeamVelocity(_boardId?: string): Promise<unknown[]> {
@@ -452,11 +410,7 @@ export class AnalyticsService {
     _burndownData: unknown[]
   ): Promise<unknown> {
     // Implementation for predictive analytics
-    return {
-      projectedSprintCompletion: null,
-      riskFactors: [],
-      recommendations: [],
-    };
+    return { projectedSprintCompletion: null, riskFactors: [], recommendations: [] };
   }
 
   private async getCompletedTasksWithDetails(
@@ -484,9 +438,7 @@ export class AnalyticsService {
 
   private async calculateEfficiencyMetrics(_boardId?: string): Promise<unknown> {
     // Implementation for efficiency metrics
-    return {
-      averageTaskAge: 0,
-      taskAgeDistribution: {},
+    return { averageTaskAge: 0, taskAgeDistribution: { },
       overdueTasksCount: 0,
       blockedTasksCount: 0,
     };
@@ -498,12 +450,7 @@ export class AnalyticsService {
     _productivity: ProductivityInsights
   ): unknown {
     // Implementation for summary generation
-    return {
-      keyMetrics: {
-        completionRate: completion.completionRate,
-        velocity: velocity.historicalVelocity.average,
-        averageCompletionTime: completion.averageCompletionTime,
-      },
+    return { keyMetrics: {, completionRate: completion.completionRate, velocity: velocity.historicalVelocity.average, averageCompletionTime: completion.averageCompletionTime },
       alerts: [],
       achievements: [],
     };

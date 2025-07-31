@@ -478,32 +478,32 @@ export function validateAndSanitizeInput(
 
     switch (type) {
       case 'title':
-        validator = (input: string): string | true => validateTaskTitle(input);
+        validator = (value: string): string | true => validateTaskTitle(value);
         break;
       case 'description':
-        validator = (input: string): string | true => validateTaskDescription(input);
+        validator = (value: string): string | true => validateTaskDescription(value);
         break;
       case 'name':
-        validator = (input: string): string | true => validateBoardName(input);
+        validator = (value: string): string | true => validateBoardName(value);
         break;
       case 'tag':
-        validator = (input: string): string | true => validateTagName(input);
+        validator = (value: string): string | true => validateTagName(value);
         break;
       case 'email':
-        validator = (input: string): string | true => validateEmail(input);
+        validator = (value: string): string | true => validateEmail(value);
         break;
       case 'url':
-        validator = (input: string): string | true => validateUrl(input);
+        validator = (value: string): string | true => validateUrl(value);
         break;
       case 'assignee':
-        validator = (input: string): string | true => validateAssignee(input);
+        validator = (value: string): string | true => validateAssignee(value);
         break;
       default:
         return { valid: false, sanitized: input, error: 'Unknown validation type' };
     }
 
-    const result = validator(input);
-    if (result === true) {
+    const validationResult = validator(input);
+    if (validationResult) {
       // Get the sanitized version
       let sanitized: string;
       switch (type) {
@@ -532,18 +532,18 @@ export function validateAndSanitizeInput(
           sanitized = input;
       }
 
-      const result: { valid: boolean; sanitized: string; warnings?: string[] } = {
+      const finalResult: { valid: boolean; sanitized: string; warnings?: string[] } = {
         valid: true,
         sanitized,
       };
 
       if (sanitized !== input) {
-        result.warnings = ['Input was sanitized'];
+        finalResult.warnings = ['Input was sanitized'];
       }
 
-      return result;
+      return finalResult;
     }
-    return { valid: false, sanitized: input, error: result };
+    return { valid: false, sanitized: input, error: validationResult };
   } catch (error) {
     return {
       valid: false,

@@ -3,7 +3,7 @@
 /**
  * @fileoverview Container health monitoring and alerting system
  * @lastmodified 2025-01-28T10:30:00Z
- * 
+ *
  * Features: Service health checks, automated recovery, status reporting
  * Main APIs: checkServices(), recoverService(), generateReport()
  * Constraints: Requires Docker API access, service discovery
@@ -28,15 +28,15 @@ const config = {
   endpoints: {
     'mcp-kanban-api': 'http://mcp-kanban-api:3000/health',
     'mcp-kanban-mcp': 'http://mcp-kanban-mcp:3001/health',
-    'prometheus': 'http://prometheus:9090/-/healthy',
-    'grafana': 'http://grafana:3000/api/health',
-    'loki': 'http://loki:3100/ready',
-    'alertmanager': 'http://alertmanager:9093/-/healthy'
+    prometheus: 'http://prometheus:9090/-/healthy',
+    grafana: 'http://grafana:3000/api/health',
+    loki: 'http://loki:3100/ready',
+    alertmanager: 'http://alertmanager:9093/-/healthy',
   },
   recoveryCommands: {
     'mcp-kanban-api': 'docker-compose restart mcp-kanban-api',
-    'mcp-kanban-mcp': 'docker-compose restart mcp-kanban-mcp'
-  }
+    'mcp-kanban-mcp': 'docker-compose restart mcp-kanban-mcp',
+  },
 };
 
 // Service status tracking
@@ -52,11 +52,11 @@ function log(level, message, data = {}) {
     timestamp,
     level: level.toUpperCase(),
     message,
-    ...data
+    ...data,
   };
-  
+
   console.log(`[${timestamp}] ${level.toUpperCase()}: ${message}`, data);
-  
+
   // Write to log file (fire and forget)
   const logLine = JSON.stringify(logEntry) + '\n';
   fs.appendFile(config.logFile, logLine).catch(() => {
@@ -71,7 +71,7 @@ function makeHealthRequest(url, timeout = 5000) {
   return new Promise((resolve, reject) => {
     const urlObj = new URL(url);
     const client = urlObj.protocol === 'https:' ? https : http;
-    
+
     const options = {
       hostname: urlObj.hostname,
       port: urlObj.port,
@@ -79,24 +79,24 @@ function makeHealthRequest(url, timeout = 5000) {
       method: 'GET',
       timeout: timeout,
       headers: {
-        'User-Agent': 'MCP-Kanban-Health-Monitor/1.0'
-      }
+        'User-Agent': 'MCP-Kanban-Health-Monitor/1.0',
+      },
     };
 
-    const req = client.request(options, (res) => {
+    const req = client.request(options, res => {
       let data = '';
-      
-      res.on('data', (chunk) => {
+
+      res.on('data', chunk => {
         data += chunk;
       });
-      
+
       res.on('end', () => {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve({
             status: 'healthy',
             statusCode: res.statusCode,
             response: data.substring(0, 200), // Limit response size
-            responseTime: Date.now() - startTime
+            responseTime: Date.now() - startTime,
           });
         } else {
           reject(new Error(`HTTP ${res.statusCode}: ${data.substring(0, 100)}`));
@@ -105,16 +105,16 @@ function makeHealthRequest(url, timeout = 5000) {
     });
 
     const startTime = Date.now();
-    
-    req.on('error', (error) => {
+
+    req.on('error', error => {
       reject(new Error(`Request failed: ${error.message}`));
     });
-    
+
     req.on('timeout', () => {
       req.destroy();
       reject(new Error(`Request timeout after ${timeout}ms`));
     });
-    
+
     req.end();
   });
 }
@@ -131,16 +131,9 @@ async function checkServiceHealth(serviceName) {
 
   try {
     const result = await makeHealthRequest(endpoint);
-    return {
-      status: 'healthy',
-      ...result
-    };
+    return { status: 'healthy', ...result };
   } catch (error) {
-    return {
-      status: 'unhealthy',
-      reason: error.message,
-      responseTime: null
-    };
+    return { status: 'unhealthy', reason: error.message, responseTime: null };
   }
 }
 
@@ -156,18 +149,18 @@ async function recoverService(serviceName) {
 
   log('info', `Attempting to recover service: ${serviceName}`, { command });
 
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     exec(command, (error, stdout, stderr) => {
       if (error) {
         log('error', `Recovery failed for ${serviceName}`, {
           error: error.message,
           stdout: stdout.substring(0, 200),
-          stderr: stderr.substring(0, 200)
+          stderr: stderr.substring(0, 200),
         });
         resolve(false);
       } else {
         log('info', `Recovery command completed for ${serviceName}`, {
-          stdout: stdout.substring(0, 200)
+          stdout: stdout.substring(0, 200),
         });
         resolve(true);
       }
@@ -180,15 +173,15 @@ async function recoverService(serviceName) {
  */
 async function checkAllServices() {
   const results = {};
-  const checks = config.services.map(async (serviceName) => {
+  const checks = config.services.map(async serviceName => {
     const startTime = Date.now();
     const result = await checkServiceHealth(serviceName);
     const checkDuration = Date.now() - startTime;
-    
+
     results[serviceName] = {
       ...result,
       checkDuration,
-      lastChecked: new Date().toISOString()
+      lastChecked: new Date().toISOString(),
     };
 
     // Update service status tracking
@@ -198,20 +191,20 @@ async function checkAllServices() {
     if (result.status === 'unhealthy') {
       const failures = failureCount.get(serviceName) || 0;
       failureCount.set(serviceName, failures + 1);
-      
+
       log('warn', `Service health check failed: ${serviceName}`, {
         reason: result.reason,
         failureCount: failures + 1,
-        checkDuration
+        checkDuration,
       });
 
       // Attempt recovery if threshold reached
       if (failures + 1 >= config.alertThreshold) {
         log('error', `Service failure threshold reached: ${serviceName}`, {
           failureCount: failures + 1,
-          threshold: config.alertThreshold
+          threshold: config.alertThreshold,
         });
-        
+
         // Attempt recovery
         const recovered = await recoverService(serviceName);
         if (recovered) {
@@ -225,7 +218,7 @@ async function checkAllServices() {
         if (previousFailures > 0) {
           log('info', `Service recovered: ${serviceName}`, {
             previousFailures,
-            responseTime: result.responseTime
+            responseTime: result.responseTime,
           });
         }
         failureCount.set(serviceName, 0);
@@ -237,7 +230,7 @@ async function checkAllServices() {
       log('info', `Service status changed: ${serviceName}`, {
         from: previousStatus,
         to: result.status,
-        responseTime: result.responseTime
+        responseTime: result.responseTime,
       });
     }
 
@@ -258,7 +251,7 @@ async function saveHealthStatus(results) {
     healthyServices: Object.values(results).filter(r => r.status === 'healthy').length,
     unhealthyServices: Object.values(results).filter(r => r.status === 'unhealthy').length,
     unknownServices: Object.values(results).filter(r => r.status === 'unknown').length,
-    services: results
+    services: results,
   };
 
   try {
@@ -277,25 +270,24 @@ async function monitorServices() {
   log('info', 'Starting health monitoring', {
     services: config.services,
     checkInterval: config.checkInterval,
-    alertThreshold: config.alertThreshold
+    alertThreshold: config.alertThreshold,
   });
 
   while (true) {
     try {
       const results = await checkAllServices();
       const summary = await saveHealthStatus(results);
-      
+
       log('debug', 'Health check completed', {
         healthy: summary.healthyServices,
         unhealthy: summary.unhealthyServices,
-        unknown: summary.unknownServices
+        unknown: summary.unknownServices,
       });
 
       // Log overall status periodically
       if (Date.now() % (config.checkInterval * 10) < config.checkInterval) {
         log('info', 'Health monitoring summary', summary);
       }
-
     } catch (error) {
       log('error', 'Health monitoring error', { error: error.message });
     }
@@ -309,17 +301,17 @@ async function monitorServices() {
  * Handle graceful shutdown
  */
 function setupSignalHandlers() {
-  const shutdown = async (signal) => {
+  const shutdown = async signal => {
     log('info', `Received ${signal}, shutting down gracefully`);
-    
+
     try {
       const finalStatus = {
         timestamp: new Date().toISOString(),
         status: 'shutdown',
         reason: `Received ${signal}`,
-        services: Object.fromEntries(serviceStatus)
+        services: Object.fromEntries(serviceStatus),
       };
-      
+
       await fs.writeFile(config.statusFile, JSON.stringify(finalStatus, null, 2));
     } catch (error) {
       log('error', 'Failed to save final status', { error: error.message });
@@ -354,9 +346,8 @@ async function initialize() {
       services: config.services.length,
       endpoints: Object.keys(config.endpoints).length,
       logFile: config.logFile,
-      statusFile: config.statusFile
+      statusFile: config.statusFile,
     });
-
   } catch (error) {
     log('error', 'Failed to initialize health monitor', { error: error.message });
     process.exit(1);
@@ -367,7 +358,7 @@ async function initialize() {
 if (require.main === module) {
   setupSignalHandlers();
   initialize().then(() => {
-    monitorServices().catch((error) => {
+    monitorServices().catch(error => {
       log('error', 'Monitoring loop failed', { error: error.message });
       process.exit(1);
     });
@@ -378,5 +369,5 @@ module.exports = {
   checkServiceHealth,
   checkAllServices,
   recoverService,
-  saveHealthStatus
+  saveHealthStatus,
 };

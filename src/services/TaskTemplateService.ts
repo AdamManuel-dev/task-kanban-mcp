@@ -281,7 +281,6 @@ export class TaskTemplateService {
 
       // Create the task using TaskService
       const { TaskService } = await import('./TaskService');
-      const { dbConnection } = await import('@/database/connection');
       const taskService = new TaskService(dbConnection);
 
       const taskData: TaskServiceCreateRequest = {
@@ -455,13 +454,13 @@ export class TaskTemplateService {
       title_template: row.title_template,
       description_template: row.description_template ?? '',
       priority: row.priority,
-      estimated_hours: row.estimated_hours ?? undefined,
+      estimated_hours: row.estimated_hours,
       tags: JSON.parse(row.tags || '[]'),
       checklist_items: JSON.parse(row.checklist_items || '[]'),
-      custom_fields: JSON.parse(row.custom_fields || '{}'),
-      created_by: row.created_by ?? undefined,
-      is_system: Boolean(row.is_system),
-      is_active: Boolean(row.is_active),
+      custom_fields: JSON.parse(row.custom_fields || '{ }'),
+      created_by: row.created_by,
+      is_system: !!row.is_system,
+      is_active: !!row.is_active,
       usage_count: row.usage_count,
       created_at: row.created_at,
       updated_at: row.updated_at,

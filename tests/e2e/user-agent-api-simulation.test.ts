@@ -241,7 +241,7 @@ class AIAgentSimulator {
 
 describe('User and AI Agent API Simulation', () => {
   let app: Express;
-  let server: any;
+  let server: import('http').Server;
   let apiKey: string;
   let userSimulator: UserSimulator;
   let agentSimulator: AIAgentSimulator;

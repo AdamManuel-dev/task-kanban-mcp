@@ -401,14 +401,7 @@ export class BackupService extends EventEmitter {
     message: string,
     details?: Record<string, unknown>
   ): BackupNotification {
-    return {
-      id: uuidv4(),
-      type,
-      backupId,
-      message,
-      timestamp: new Date().toISOString(),
-      details,
-    };
+    return { id: uuidv4(), type, backupId, message, timestamp: new Date().toISOString(), details };
   }
 
   /**
@@ -1109,13 +1102,15 @@ export class BackupService extends EventEmitter {
 
     try {
       // Delete backup file
-      if (
-        metadata.filePath &&
-        (await fs
-          .access(metadata.filePath)
-          .then(() => true)
-          .catch(() => false))
-      ) {
+      if (metadata.filePath) {
+        try {
+          await fs.access(metadata.filePath);
+        } catch {
+          metadata.filePath = undefined;
+        }
+      }
+
+      if (metadata.filePath) {
         await fs.unlink(metadata.filePath);
       }
 
@@ -1140,12 +1135,9 @@ export class BackupService extends EventEmitter {
 
     try {
       // Check if file exists
-      if (
-        !(await fs
-          .access(metadata.filePath)
-          .then(() => true)
-          .catch(() => false))
-      ) {
+      try {
+        await fs.access(metadata.filePath);
+      } catch {
         return false;
       }
 
@@ -1454,16 +1446,9 @@ export class BackupService extends EventEmitter {
       const result = await this.db.queryOne<{ integrity_check: string }>('PRAGMA integrity_check');
       const isPassed = result?.integrity_check === 'ok';
 
-      return {
-        name: 'Database Integrity',
-        passed: isPassed ?? false,
-        message: isPassed ? 'Database integrity check passed' : 'Database integrity check failed',
-      };
+      return { name: 'Database Integrity', passed: isPassed ?? false, message: isPassed ? 'Database integrity check passed' : 'Database integrity check failed' };
     } catch (error) {
-      return {
-        name: 'Database Integrity',
-        passed: false,
-        message: `Database integrity check error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      return { name: 'Database Integrity', passed: false, message: `Database integrity check error: ${error instanceof Error ? error.message : 'Unknown error' }`,
       };
     }
   }
@@ -1498,18 +1483,10 @@ export class BackupService extends EventEmitter {
         (orphanedDependencies?.count ?? 0);
       const isPassed = totalOrphaned === 0;
 
-      return {
-        name: 'Foreign Key Integrity',
-        passed: isPassed,
-        message: isPassed
-          ? 'All foreign key relationships are valid'
-          : `Found ${totalOrphaned} orphaned records (${orphanedTasks?.count ?? 0} tasks, ${orphanedTaskTags?.count ?? 0} task_tags, ${orphanedDependencies?.count ?? 0} dependencies)`,
+      return { name: 'Foreign Key Integrity', passed: isPassed, message: isPassed, ? 'All foreign key relationships are valid', : `Found ${totalOrphaned } orphaned records (${orphanedTasks?.count ?? 0} tasks, ${orphanedTaskTags?.count ?? 0} task_tags, ${orphanedDependencies?.count ?? 0} dependencies)`,
       };
     } catch (error) {
-      return {
-        name: 'Foreign Key Integrity',
-        passed: false,
-        message: `Foreign key check error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      return { name: 'Foreign Key Integrity', passed: false, message: `Foreign key check error: ${error instanceof Error ? error.message : 'Unknown error' }`,
       };
     }
   }
@@ -1556,18 +1533,10 @@ export class BackupService extends EventEmitter {
       }
 
       const isPassed = issues.length === 0;
-      return {
-        name: 'Data Consistency',
-        passed: isPassed,
-        message: isPassed
-          ? 'All data consistency checks passed'
-          : `Issues found: ${issues.join(', ')}`,
+      return { name: 'Data Consistency', passed: isPassed, message: isPassed, ? 'All data consistency checks passed', : `Issues found: ${issues.join(', ') }`,
       };
     } catch (error) {
-      return {
-        name: 'Data Consistency',
-        passed: false,
-        message: `Data consistency check error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      return { name: 'Data Consistency', passed: false, message: `Data consistency check error: ${error instanceof Error ? error.message : 'Unknown error' }`,
       };
     }
   }
@@ -1579,7 +1548,7 @@ export class BackupService extends EventEmitter {
     try {
       // Check if required indexes exist
       const indexes = await this.db.query("SELECT name FROM sqlite_master WHERE type='index'");
-      const indexNames = indexes.map((idx: any) => idx.name);
+      const indexNames = indexes.map((idx: unknown) => idx.name);
 
       const requiredIndexes = [
         'idx_tasks_board_id',
@@ -1594,18 +1563,10 @@ export class BackupService extends EventEmitter {
       const missingIndexes = requiredIndexes.filter(idx => !indexNames.includes(idx));
       const isPassed = missingIndexes.length === 0;
 
-      return {
-        name: 'Index Integrity',
-        passed: isPassed,
-        message: isPassed
-          ? 'All required indexes are present'
-          : `Missing indexes: ${missingIndexes.join(', ')}`,
+      return { name: 'Index Integrity', passed: isPassed, message: isPassed, ? 'All required indexes are present', : `Missing indexes: ${missingIndexes.join(', ') }`,
       };
     } catch (error) {
-      return {
-        name: 'Index Integrity',
-        passed: false,
-        message: `Index check error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      return { name: 'Index Integrity', passed: false, message: `Index check error: ${error instanceof Error ? error.message : 'Unknown error' }`,
       };
     }
   }
@@ -1638,18 +1599,10 @@ export class BackupService extends EventEmitter {
       }
 
       const isPassed = orphanedRecords.length === 0;
-      return {
-        name: 'Orphaned Records',
-        passed: isPassed,
-        message: isPassed
-          ? 'No orphaned records found'
-          : `Found orphaned records: ${orphanedRecords.join(', ')}`,
+      return { name: 'Orphaned Records', passed: isPassed, message: isPassed, ? 'No orphaned records found', : `Found orphaned records: ${orphanedRecords.join(', ') }`,
       };
     } catch (error) {
-      return {
-        name: 'Orphaned Records',
-        passed: false,
-        message: `Orphaned records check error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      return { name: 'Orphaned Records', passed: false, message: `Orphaned records check error: ${error instanceof Error ? error.message : 'Unknown error' }`,
       };
     }
   }
@@ -1792,7 +1745,7 @@ export class BackupService extends EventEmitter {
       for (const row of data) {
         const columns = Object.keys(row as Record<string, unknown>);
         const values = columns.map(col => {
-          const value = (row as any)[col];
+          const value = row[col];
           if (value === null || value === undefined) return 'NULL';
           if (typeof value === 'string') return `'${value.replace(/'/g, "''")}'`;
           return String(value);
@@ -1999,14 +1952,7 @@ export class BackupService extends EventEmitter {
 
       if (!row) return null;
 
-      return {
-        id: row.id,
-        totalSteps: row.total_steps,
-        currentStep: row.current_step,
-        progress: row.progress,
-        message: row.message,
-        updatedAt: row.updated_at,
-      };
+      return { id: row.id, totalSteps: row.total_steps, currentStep: row.current_step, progress: row.progress, message: row.message, updatedAt: row.updated_at };
     } catch (error) {
       logger.error('Failed to get restore progress', { progressId, error });
       return null;
@@ -2212,24 +2158,7 @@ export class BackupService extends EventEmitter {
     retention_policy?: string;
     error?: string;
   }): BackupMetadata {
-    return {
-      id: row.id,
-      name: row.name,
-      description: row.description,
-      type: row.type as 'full' | 'incremental',
-      status: row.status as BackupMetadata['status'],
-      size: row.size,
-      compressed: Boolean(row.compressed),
-      encrypted: Boolean(row.encrypted),
-      verified: Boolean(row.verified),
-      checksum: row.checksum,
-      filePath: row.file_path,
-      createdAt: row.created_at,
-      completedAt: row.completed_at,
-      parentBackupId: row.parent_backup_id,
-      retentionPolicy: row.retention_policy,
-      error: row.error,
-    };
+    return { id: row.id, name: row.name, description: row.description, type: row.type as 'full' | 'incremental', status: row.status as BackupMetadata['status'], size: row.size, compressed: !!row.compressed, encrypted: !!row.encrypted, verified: !!row.verified, checksum: row.checksum, filePath: row.file_path, createdAt: row.created_at, completedAt: row.completed_at, parentBackupId: row.parent_backup_id, retentionPolicy: row.retention_policy, error: row.error };
   }
 
   /**

@@ -110,7 +110,7 @@ export class DependencyVisualizationService {
             created_at: new Date(task.created_at),
             updated_at: new Date(task.updated_at),
             completed_at: task.completed_at ? new Date(task.completed_at) : undefined,
-            archived: Boolean(task.archived),
+            archived: !!task.archived,
             metadata: task.metadata ? JSON.parse(task.metadata) : null,
           },
           dependencies: [],
@@ -142,12 +142,7 @@ export class DependencyVisualizationService {
       // Calculate depths using BFS
       this.calculateDepths(nodes, roots);
 
-      return {
-        nodes,
-        edges,
-        roots,
-        leaves,
-      };
+      return { nodes, edges, roots, leaves };
     } catch (error) {
       logger.error('Failed to get dependency graph:', error);
       throw new Error(
@@ -392,7 +387,7 @@ export class DependencyVisualizationService {
     for (const node of graph.nodes.values()) {
       const statusColor = this.getStatusColor(node.task.status);
       const label = options.showTaskDetails
-        ? `"${node.task.title}\\n${node.task.status}\\nPriority: ${node.task.priority}"`
+        ? `"${node.task.title}\n${node.task.status}\nPriority: ${node.task.priority}"`
         : `"${node.task.title}"`;
 
       output += `  "${node.task.id}" [label=${label}, fillcolor="${statusColor}", style=filled];\n`;

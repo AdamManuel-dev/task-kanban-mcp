@@ -286,13 +286,13 @@ describe('Path Traversal Prevention Verification', () => {
 
       files.forEach(filePath => {
         const content = fs.readFileSync(filePath, 'utf-8');
-        const lines = content.split('\\n');
+        const lines = content.split('\n');
 
         lines.forEach((line, index) => {
           fileOperations.forEach(operation => {
             if (line.includes(operation)) {
               // Check if this operation validates the path
-              const context = lines.slice(Math.max(0, index - 3), index + 3).join('\\n');
+              const context = lines.slice(Math.max(0, index - 3), index + 3).join('\n');
 
               // Look for path validation patterns in the context
               const hasValidation =
@@ -332,9 +332,9 @@ describe('Path Traversal Prevention Verification', () => {
         const errorMessage = safeOperations
           .slice(0, 10) // Show first 10
           .map(op => `${op.file}:${op.line} - ${op.operation}`)
-          .join('\\n');
+          .join('\n');
 
-        console.warn(`File operations without apparent path validation:\\n${errorMessage}`);
+        console.warn(`File operations without apparent path validation:\n${errorMessage}`);
       }
 
       // This is a warning test - we expect some operations might need manual review
@@ -356,7 +356,7 @@ describe('Path Traversal Prevention Verification', () => {
 
       files.forEach(filePath => {
         const content = fs.readFileSync(filePath, 'utf-8');
-        const lines = content.split('\\n');
+        const lines = content.split('\n');
 
         lines.forEach((line, index) => {
           dangerousPatterns.forEach(pattern => {
@@ -374,9 +374,9 @@ describe('Path Traversal Prevention Verification', () => {
       if (violations.length > 0) {
         const errorMessage = violations
           .map(v => `${v.file}:${v.line} - Pattern: ${v.pattern}`)
-          .join('\\n');
+          .join('\n');
 
-        console.warn(`Potential unsafe path construction:\\n${errorMessage}`);
+        console.warn(`Potential unsafe path construction:\n${errorMessage}`);
       }
 
       // This is a warning test - allow some violations but flag excessive ones
@@ -458,8 +458,8 @@ describe('Path Traversal Prevention Verification', () => {
         '%2e%2e\\\\..\\\\windows\\\\system32',
       ];
 
-      mixedEncodingPaths.forEach(path => {
-        const result = validateFilePath(path);
+      mixedEncodingPaths.forEach(filePath => {
+        const result = validateFilePath(filePath);
         expect(result.safe).toBe(false);
       });
     });

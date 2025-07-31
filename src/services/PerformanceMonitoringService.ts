@@ -189,7 +189,7 @@ export class PerformanceMonitoringService extends EventEmitter {
           dbQueryCount,
           dbQueryTime,
           userAgent: req.get('User-Agent') ?? '',
-          userId: (req as any).user?.id || '',
+          userId: (req as unknown).user?.id || '',
           error: res.statusCode >= 400 ? String(body) : '',
         };
 
@@ -247,18 +247,7 @@ export class PerformanceMonitoringService extends EventEmitter {
     const memoryUsage = process.memoryUsage();
     const cpuUsage = process.cpuUsage();
 
-    return {
-      uptime: Date.now() - this.startTime,
-      memoryUsage,
-      cpuUsage,
-      activeConnections: this.getActiveConnections(),
-      requestsPerMinute: totalRequests,
-      errorRate: totalRequests > 0 ? (errorCount / totalRequests) * 100 : 0,
-      averageResponseTime: avgResponseTime,
-      databaseHealth: this.getDatabaseHealth(),
-      websocketConnections: this.getWebSocketConnections(),
-      rateLimitHits: this.getRateLimitHits(),
-    };
+    return { uptime: Date.now() - this.startTime, memoryUsage, cpuUsage, activeConnections: this.getActiveConnections(), requestsPerMinute: totalRequests, errorRate: totalRequests > 0 ? (errorCount / totalRequests) * 100 : 0, averageResponseTime: avgResponseTime, databaseHealth: this.getDatabaseHealth(), websocketConnections: this.getWebSocketConnections(), rateLimitHits: this.getRateLimitHits() };
   }
 
   /**
@@ -280,7 +269,7 @@ export class PerformanceMonitoringService extends EventEmitter {
     // Top endpoints analysis
     const endpointStats = this.analyzeEndpoints(last24h);
     const topEndpoints = Object.entries(endpointStats)
-      .map(([endpoint, stats]: [string, any]) => ({
+      .map(([endpoint, stats]: [string, unknown]) => ({
         endpoint,
         requests: stats.count,
         averageTime: stats.totalTime / stats.count,
@@ -306,22 +295,13 @@ export class PerformanceMonitoringService extends EventEmitter {
       .filter(([, state]) => state.triggered)
       .map(([ruleId, state]) => {
         const rule = this.alertRules.find(r => r.id === ruleId);
-        return {
-          type: rule?.severity ?? ('warning' as const),
-          message: rule?.name ?? `Alert ${ruleId}`,
+        return { type: rule?.severity ?? ('warning' as const), message: rule?.name ?? `Alert ${ruleId }`,
           timestamp: state.since,
           resolved: false,
         };
       });
 
-    return {
-      overview: {
-        totalRequests,
-        averageResponseTime: avgResponseTime,
-        errorRate: totalRequests > 0 ? (errorCount / totalRequests) * 100 : 0,
-        uptime: Date.now() - this.startTime,
-        healthScore,
-      },
+    return { overview: {, totalRequests, averageResponseTime: avgResponseTime, errorRate: totalRequests > 0 ? (errorCount / totalRequests) * 100 : 0, uptime: Date.now() - this.startTime, healthScore },
       realtime: {
         requestsPerSecond: this.getRequestsPerSecond(),
         activeUsers: this.getActiveUsers(),
@@ -447,20 +427,16 @@ export class PerformanceMonitoringService extends EventEmitter {
         return false;
     }
 
-    switch (rule.condition.operator) {
-      case '>':
-        return value > rule.condition.threshold;
-      case '<':
-        return value < rule.condition.threshold;
-      case '>=':
-        return value >= rule.condition.threshold;
-      case '<=':
-        return value <= rule.condition.threshold;
-      case '=':
-        return value === rule.condition.threshold;
-      default:
-        return false;
-    }
+    const operators = {
+      '>': (v: number, t: number) => v > t,
+      '<': (v: number, t: number) => v < t,
+      '>=': (v: number, t: number) => v >= t,
+      '<=': (v: number, t: number) => v <= t,
+      '=': (v: number, t: number) => v === t,
+    };
+
+    const compareFn = operators[rule.condition.operator];
+    return compareFn ? compareFn(value, rule.condition.threshold) : false;
   }
 
   private triggerAlert(rule: AlertRule): void {
@@ -596,11 +572,7 @@ export class PerformanceMonitoringService extends EventEmitter {
 
   private calculateTrends(_metrics: PerformanceMetrics[]): unknown {
     // Simplified trend calculation - would implement proper time bucketing
-    return {
-      responseTimeTrend: [],
-      errorRateTrend: [],
-      throughputTrend: [],
-    };
+    return { responseTimeTrend: [], errorRateTrend: [], throughputTrend: [] };
   }
 
   private analyzeEndpoints(metrics: PerformanceMetrics[]): Record<string, EndpointStats> {
@@ -627,12 +599,7 @@ export class PerformanceMonitoringService extends EventEmitter {
   }
 
   private getDatabaseHealth(): unknown {
-    return {
-      connectionPoolSize: 10,
-      activeQueries: 0,
-      averageQueryTime: 50,
-      slowQueries: 2,
-    };
+    return { connectionPoolSize: 10, activeQueries: 0, averageQueryTime: 50, slowQueries: 2 };
   }
 
   private getWebSocketConnections(): number {

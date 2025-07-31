@@ -161,14 +161,16 @@ describe('Concurrent User and Agent Simulation', () => {
       // User actions
       if (i % 2 === 0) {
         operations.push(
-          new Promise(async resolve => {
-            await new Promise(r => setTimeout(r, Math.random() * 100));
-            if (Math.random() > 0.5) {
-              await userCreateTask(10 + i);
-            } else {
-              await userCheckStatus();
-            }
-            resolve();
+          new Promise(resolve => {
+            void (async () => {
+              await new Promise(r => setTimeout(r, Math.random() * 100));
+              if (Math.random() > 0.5) {
+                await userCreateTask(10 + i);
+              } else {
+                await userCheckStatus();
+              }
+              resolve();
+            })();
           })
         );
       }
@@ -176,13 +178,15 @@ describe('Concurrent User and Agent Simulation', () => {
       // Agent actions
       if (i % 3 === 0) {
         operations.push(
-          new Promise(async resolve => {
-            await new Promise(r => setTimeout(r, Math.random() * 150 + 50));
-            const task = await agentGetTask();
-            if (task) {
-              await agentCompleteTask(task.id);
-            }
-            resolve();
+          new Promise(resolve => {
+            void (async () => {
+              await new Promise(r => setTimeout(r, Math.random() * 150 + 50));
+              const task = await agentGetTask();
+              if (task) {
+                await agentCompleteTask(task.id);
+              }
+              resolve();
+            })();
           })
         );
       }
@@ -238,47 +242,49 @@ describe('Concurrent User and Agent Simulation', () => {
     // Create 100 concurrent operations
     for (let i = 0; i < 100; i++) {
       operations.push(
-        new Promise(async resolve => {
-          const startTime = Date.now();
-          try {
-            if (i % 3 === 0) {
-              // Create task
-              const columnId = await dbConnection.db.get(
-                `SELECT id FROM columns WHERE board_id = ? AND name = 'Todo' LIMIT 1`,
-                [boardId]
-              );
-              await dbConnection.db.run(
-                `INSERT INTO tasks (id, title, board_id, column_id, status, priority, position, created_at, updated_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
-                [
-                  uuidv4(),
-                  `Load Test ${i}`,
+        new Promise(resolve => {
+          void (async () => {
+            const startTime = Date.now();
+            try {
+              if (i % 3 === 0) {
+                // Create task
+                const columnId = await dbConnection.db.get(
+                  `SELECT id FROM columns WHERE board_id = ? AND name = 'Todo' LIMIT 1`,
+                  [boardId]
+                );
+                await dbConnection.db.run(
+                  `INSERT INTO tasks (id, title, board_id, column_id, status, priority, position, created_at, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+                  [
+                    uuidv4(),
+                    `Load Test ${i}`,
+                    boardId,
+                    columnId?.id || 'default',
+                    'todo',
+                    1,
+                    i * 1000,
+                  ]
+                );
+              } else if (i % 3 === 1) {
+                // Read tasks
+                await dbConnection.db.all(`SELECT * FROM tasks WHERE board_id = ? LIMIT 10`, [
                   boardId,
-                  columnId?.id || 'default',
-                  'todo',
-                  1,
-                  i * 1000,
-                ]
-              );
-            } else if (i % 3 === 1) {
-              // Read tasks
-              await dbConnection.db.all(`SELECT * FROM tasks WHERE board_id = ? LIMIT 10`, [
-                boardId,
-              ]);
-            } else {
-              // Update random task
-              await dbConnection.db.run(
-                `UPDATE tasks SET status = 'in_progress', updated_at = datetime('now') 
-                 WHERE board_id = ? AND status = 'todo' 
-                 ORDER BY RANDOM() LIMIT 1`,
-                [boardId]
-              );
+                ]);
+              } else {
+                // Update random task
+                await dbConnection.db.run(
+                  `UPDATE tasks SET status = 'in_progress', updated_at = datetime('now') 
+                   WHERE board_id = ? AND status = 'todo' 
+                   ORDER BY RANDOM() LIMIT 1`,
+                  [boardId]
+                );
+              }
+              actionTimestamps.push(Date.now() - startTime);
+            } catch (err: any) {
+              errors.push(`Operation ${i}: ${err.message}`);
             }
-            actionTimestamps.push(Date.now() - startTime);
-          } catch (err: any) {
-            errors.push(`Operation ${i}: ${err.message}`);
-          }
-          resolve();
+            resolve();
+          })();
         })
       );
     }

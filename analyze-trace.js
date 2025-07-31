@@ -3,7 +3,7 @@
 /**
  * @fileoverview TypeScript trace analyzer to identify performance bottlenecks
  * @lastmodified 2025-07-28T10:30:00Z
- * 
+ *
  * Features: Parse tsc trace output, identify slow operations, suggest optimizations
  * Main APIs: analyzeTrace(), generateReport()
  * Constraints: Requires trace.json from tsc --generateTrace
@@ -15,20 +15,20 @@ const path = require('path');
 
 function analyzeTrace() {
   const traceFile = path.join(__dirname, 'trace-new', 'trace.json');
-  
+
   if (!fs.existsSync(traceFile)) {
     console.error('Trace file not found. Run: npx tsc --generateTrace trace --noEmit');
     process.exit(1);
   }
 
   const trace = JSON.parse(fs.readFileSync(traceFile, 'utf8'));
-  
+
   // Analyze different types of operations
   const operations = {
     parsing: [],
     binding: [],
     checking: [],
-    emit: []
+    emit: [],
   };
 
   // Process trace events
@@ -38,7 +38,7 @@ function analyzeTrace() {
         name: event.name,
         duration: event.dur || 0,
         args: event.args || {},
-        category: event.cat
+        category: event.cat,
       };
 
       if (event.name.includes('parse') || event.name.includes('createSourceFile')) {
@@ -69,15 +69,22 @@ function analyzeTrace() {
   }
 
   // Find slowest overall operations
-  const allOperations = [...operations.parsing, ...operations.binding, ...operations.checking, ...operations.emit];
+  const allOperations = [
+    ...operations.parsing,
+    ...operations.binding,
+    ...operations.checking,
+    ...operations.emit,
+  ];
   const slowest = allOperations.sort((a, b) => b.duration - a.duration).slice(0, 15);
 
   console.log('⚡ SLOWEST OPERATIONS OVERALL:');
   slowest.forEach((op, i) => {
     const durationMs = (op.duration / 1000).toFixed(2);
-    const fileName = op.args.path ? path.basename(op.args.path) : 
-                     op.args.fileName ? path.basename(op.args.fileName) : 
-                     op.name;
+    const fileName = op.args.path
+      ? path.basename(op.args.path)
+      : op.args.fileName
+        ? path.basename(op.args.fileName)
+        : op.name;
     console.log(`${i + 1}. ${op.name} (${fileName}) - ${durationMs}ms`);
   });
   console.log();
@@ -99,24 +106,30 @@ function analyzeTrace() {
     .forEach(([ext, data]) => {
       const avgTime = (data.totalTime / data.count / 1000).toFixed(2);
       const totalTime = (data.totalTime / 1000).toFixed(2);
-      console.log(`${ext || 'no-ext'}: ${data.count} files, ${totalTime}ms total, ${avgTime}ms avg`);
+      console.log(
+        `${ext || 'no-ext'}: ${data.count} files, ${totalTime}ms total, ${avgTime}ms avg`
+      );
     });
   console.log();
 
   // Generate recommendations
   console.log('💡 OPTIMIZATION RECOMMENDATIONS:');
-  
+
   const totalParsingTime = operations.parsing.reduce((sum, op) => sum + op.duration, 0);
   const nodeModulesTime = operations.parsing
     .filter(op => op.args.path && op.args.path.includes('node_modules'))
     .reduce((sum, op) => sum + op.duration, 0);
 
   if (nodeModulesTime > totalParsingTime * 0.5) {
-    console.log('1. 🔧 Consider using TypeScript Project References to avoid re-parsing node_modules');
+    console.log(
+      '1. 🔧 Consider using TypeScript Project References to avoid re-parsing node_modules'
+    );
   }
 
   if (operations.parsing.some(op => op.duration > 50000)) {
-    console.log('2. ⚡ Large files detected - consider code splitting for files taking >50ms to parse');
+    console.log(
+      '2. ⚡ Large files detected - consider code splitting for files taking >50ms to parse'
+    );
   }
 
   const reactTime = operations.parsing
@@ -124,7 +137,9 @@ function analyzeTrace() {
     .reduce((sum, op) => sum + op.duration, 0);
 
   if (reactTime > 50000) {
-    console.log('3. ⚛️ React types are slow - consider using skipLibCheck or more specific imports');
+    console.log(
+      '3. ⚛️ React types are slow - consider using skipLibCheck or more specific imports'
+    );
   }
 
   console.log('4. 🏗️ Enable incremental compilation with "incremental": true in tsconfig.json');

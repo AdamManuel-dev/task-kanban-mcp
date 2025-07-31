@@ -4,9 +4,10 @@
  * @description Tests for request logging, response logging, and performance monitoring
  */
 
-import type { Request, Response, NextFunction } from 'express';
+import type { NextFunction } from 'express';
 import { requestLoggingMiddleware } from '@/middleware/logging';
 import { logger } from '@/utils/logger';
+import type { MockRequest, MockResponse } from '../../utils/test-types';
 
 // Mock the logger
 jest.mock('@/utils/logger', () => ({
@@ -19,8 +20,8 @@ jest.mock('@/utils/logger', () => ({
 }));
 
 describe('Logging Middleware', () => {
-  let mockRequest: Partial<Request>;
-  let mockResponse: Partial<Response>;
+  let mockRequest: MockRequest;
+  let mockResponse: MockResponse;
   let mockNext: NextFunction;
   let mockOriginalEnd: jest.Mock;
 
@@ -42,7 +43,7 @@ describe('Logging Middleware', () => {
     mockOriginalEnd = jest.fn();
 
     // Mock the original end function
-    (mockResponse.end as any) = mockOriginalEnd;
+    mockResponse.end = mockOriginalEnd;
 
     jest.clearAllMocks();
     jest.useFakeTimers();
@@ -60,7 +61,7 @@ describe('Logging Middleware', () => {
         return undefined;
       });
 
-      requestLoggingMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestLoggingMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(logger.info).toHaveBeenCalledWith('HTTP request started', {
         requestId: 'test-request-id',
@@ -73,13 +74,13 @@ describe('Logging Middleware', () => {
     });
 
     it('should call next() after logging request', () => {
-      requestLoggingMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestLoggingMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith();
     });
 
     it('should override res.end to log response', () => {
-      requestLoggingMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestLoggingMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(typeof mockResponse.end).toBe('function');
       expect(mockResponse.end).not.toBe(mockOriginalEnd);
@@ -91,7 +92,7 @@ describe('Logging Middleware', () => {
         return undefined;
       });
 
-      requestLoggingMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestLoggingMiddleware(mockRequest, mockResponse, mockNext);
 
       // Advance time by 100ms
       jest.advanceTimersByTime(100);
@@ -110,7 +111,7 @@ describe('Logging Middleware', () => {
     });
 
     it('should call original end function', () => {
-      requestLoggingMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestLoggingMiddleware(mockRequest, mockResponse, mockNext);
 
       // Call the overridden end function
       (mockResponse.end as any)();
@@ -124,7 +125,7 @@ describe('Logging Middleware', () => {
         return undefined;
       });
 
-      requestLoggingMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestLoggingMiddleware(mockRequest, mockResponse, mockNext);
 
       // Advance time by 1500ms (slow request)
       jest.advanceTimersByTime(1500);
@@ -146,7 +147,7 @@ describe('Logging Middleware', () => {
         return undefined;
       });
 
-      requestLoggingMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestLoggingMiddleware(mockRequest, mockResponse, mockNext);
 
       // Advance time by 500ms (fast request)
       jest.advanceTimersByTime(500);
@@ -163,7 +164,7 @@ describe('Logging Middleware', () => {
     it('should handle missing request headers gracefully', () => {
       (mockRequest.get as jest.Mock).mockReturnValue(undefined);
 
-      requestLoggingMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestLoggingMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(logger.info).toHaveBeenCalledWith('HTTP request started', {
         requestId: 'test-request-id',
@@ -178,7 +179,7 @@ describe('Logging Middleware', () => {
     it('should handle missing response headers gracefully', () => {
       (mockResponse.get as jest.Mock).mockReturnValue(undefined);
 
-      requestLoggingMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestLoggingMiddleware(mockRequest, mockResponse, mockNext);
 
       // Advance time and call end
       jest.advanceTimersByTime(100);
@@ -199,7 +200,7 @@ describe('Logging Middleware', () => {
       mockRequest.originalUrl = '/api/tasks';
       mockRequest.url = '/api/tasks';
 
-      requestLoggingMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestLoggingMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(logger.info).toHaveBeenCalledWith('HTTP request started', {
         requestId: 'test-request-id',
@@ -214,7 +215,7 @@ describe('Logging Middleware', () => {
     it('should handle different status codes', () => {
       mockResponse.statusCode = 404;
 
-      requestLoggingMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestLoggingMiddleware(mockRequest, mockResponse, mockNext);
 
       // Advance time and call end
       jest.advanceTimersByTime(100);
@@ -233,7 +234,7 @@ describe('Logging Middleware', () => {
     it('should handle error status codes', () => {
       mockResponse.statusCode = 500;
 
-      requestLoggingMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestLoggingMiddleware(mockRequest, mockResponse, mockNext);
 
       // Advance time and call end
       jest.advanceTimersByTime(100);
@@ -255,7 +256,7 @@ describe('Logging Middleware', () => {
         return undefined;
       });
 
-      requestLoggingMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestLoggingMiddleware(mockRequest, mockResponse, mockNext);
 
       // Advance time by 10 seconds (very slow request)
       jest.advanceTimersByTime(10000);
@@ -277,7 +278,7 @@ describe('Logging Middleware', () => {
         return undefined;
       });
 
-      requestLoggingMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestLoggingMiddleware(mockRequest, mockResponse, mockNext);
 
       // Advance time by exactly 1000ms
       jest.advanceTimersByTime(1000);
@@ -298,7 +299,7 @@ describe('Logging Middleware', () => {
         return undefined;
       });
 
-      requestLoggingMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestLoggingMiddleware(mockRequest, mockResponse, mockNext);
 
       // Advance time by 1001ms (just over threshold)
       jest.advanceTimersByTime(1001);
@@ -316,7 +317,7 @@ describe('Logging Middleware', () => {
     });
 
     it('should preserve original end function arguments', () => {
-      requestLoggingMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestLoggingMiddleware(mockRequest, mockResponse, mockNext);
 
       // Call the overridden end function with arguments
       const callback = () => {};
@@ -326,7 +327,7 @@ describe('Logging Middleware', () => {
     });
 
     it('should handle multiple end calls gracefully', () => {
-      requestLoggingMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestLoggingMiddleware(mockRequest, mockResponse, mockNext);
 
       // Call end multiple times
       (mockResponse.end as any)();
@@ -341,7 +342,7 @@ describe('Logging Middleware', () => {
       mockRequest.originalUrl = undefined;
       mockRequest.url = '/api/tasks';
 
-      requestLoggingMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestLoggingMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(logger.info).toHaveBeenCalledWith('HTTP request started', {
         requestId: 'test-request-id',
@@ -357,7 +358,7 @@ describe('Logging Middleware', () => {
       mockRequest.originalUrl = '/api/tasks';
       mockRequest.url = undefined;
 
-      requestLoggingMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestLoggingMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(logger.info).toHaveBeenCalledWith('HTTP request started', {
         requestId: 'test-request-id',
@@ -372,7 +373,7 @@ describe('Logging Middleware', () => {
     it('should handle missing requestId', () => {
       mockRequest.requestId = undefined;
 
-      requestLoggingMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestLoggingMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(logger.info).toHaveBeenCalledWith('HTTP request started', {
         requestId: undefined,
@@ -387,7 +388,7 @@ describe('Logging Middleware', () => {
     it('should handle missing IP address', () => {
       mockRequest.ip = undefined;
 
-      requestLoggingMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestLoggingMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(logger.info).toHaveBeenCalledWith('HTTP request started', {
         requestId: 'test-request-id',

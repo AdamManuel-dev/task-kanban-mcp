@@ -524,12 +524,12 @@ export const cacheWarming = {
     try {
       // Warm up board list
       if (apiClient.getBoards) {
-        await withCaching('warm:boards', () => apiClient.getBoards())();
+        await withCaching('warm:boards', async () => apiClient.getBoards())();
       }
 
       // Warm up user profile if available
       if (apiClient.getCurrentUser) {
-        await withCaching('warm:user', () => apiClient.getCurrentUser())();
+        await withCaching('warm:user', async () => apiClient.getCurrentUser())();
       }
 
       logger.info('Cache warming completed');

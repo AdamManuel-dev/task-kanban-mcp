@@ -65,10 +65,11 @@ export const getTaskHandler = (services: Services) => [
       const task = await services.taskService.getTaskById(id, includeOptions);
 
       if (!task) {
-        return res.status(404).json({
+        res.status(404).json({
           success: false,
           error: 'Task not found',
         });
+        return;
       }
 
       res.json({

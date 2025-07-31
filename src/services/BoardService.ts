@@ -22,17 +22,17 @@
  *
  * // Get board with statistics
  * const stats = await boardService.getBoardWithStats(board.id);
- * logger.log(`Tasks: ${String(String(stats.taskCount))}, Completion: ${String(String(stats.completedTasks))}/${String(String(stats.taskCount))}`);
+ * logger.log(`Tasks: ${stats.taskCount}, Completion: ${stats.completedTasks}/${stats.taskCount}`);
  * ```
  */
 
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '@/utils/logger';
 import type { DatabaseConnection, QueryParameters } from '@/database/connection';
+import { CreateBoardRequest } from '@/types';
 import type {
   Board,
   Column,
-  CreateBoardRequest,
   UpdateBoardRequest,
   BoardWithColumns,
   BoardWithStats,
@@ -100,7 +100,7 @@ export class BoardService {
    *   description: 'Sprint 1 planning board',
    *   color: '#4CAF50'
    * });
-   * logger.log(`Created board: ${String(String(board.name))} with ID: ${String(String(board.id))}`);
+   * logger.log(`Created board: ${board.name} with ID: ${board.id}`);
    * ```
    */
   @TrackPerformance('BoardService')
@@ -180,7 +180,7 @@ export class BoardService {
    * ```typescript
    * const board = await boardService.getBoardById('board-123');
    * if (board) {
-   *   logger.log(`Found board: ${String(String(board.name))}`);
+   *   logger.log(`Found board: ${board.name}`);
    * } else {
    *   logger.log('Board not found');
    * }
@@ -237,9 +237,9 @@ export class BoardService {
    * ```typescript
    * const boardWithColumns = await boardService.getBoardWithColumns('board-123');
    * if (boardWithColumns) {
-   *   logger.log(`Board has ${String(String(boardWithColumns.columns.length))} columns`);
+   *   logger.log(`Board has ${boardWithColumns.columns.length} columns`);
    *   boardWithColumns.columns.forEach(col => {
-   *     logger.log(`Column: ${String(String(col.name))} (position: ${String(String(col.position))})`);
+   *     logger.log(`Column: ${col.name} (position: ${col.position})`);
    *   });
    * }
    * ```
@@ -265,10 +265,7 @@ export class BoardService {
         Object.assign(col, column);
       });
 
-      return {
-        ...board,
-        columns,
-      };
+      return { ...board, columns };
     } catch (error) {
       logger.error('Failed to get board with columns', { error, id });
       throw BoardService.createError(
@@ -290,7 +287,7 @@ export class BoardService {
    * ```typescript
    * const stats = await boardService.getBoardWithStats('board-123');
    * if (stats) {
-   *   logger.log(`Board: ${String(String(stats.name))}`);
+   *   logger.log(`Board: ${stats.name}`);
    *   logger.log(`Total tasks: ${String(String(stats.taskCount))}`);
    *   logger.log(`Completed: ${String(String(stats.completedTasks))}`);
    *   logger.log(`In progress: ${String(String(stats.inProgressTasks))}`);
@@ -390,14 +387,11 @@ export class BoardService {
 
       if (search) {
         query += ' AND (name LIKE ? OR description LIKE ?)';
-        params.push(`%${String(search)}%`, `%${String(search)}%`);
+        params.push(`%${search}%`, `%${search}%`);
       }
 
       // Use secure pagination to prevent ORDER BY injection
-      const paginationResult = validatePagination(
-        { limit, offset, sortBy, sortOrder }, 
-        'boards'
-      );
+      const paginationResult = validatePagination({ limit, offset, sortBy, sortOrder }, 'boards');
       query += ` ${paginationResult.orderByClause} LIMIT ? OFFSET ?`;
       params.push(limit, offset);
 
@@ -478,7 +472,7 @@ export class BoardService {
       await this.db.execute(
         `
         UPDATE boards 
-        SET ${String(String(updates.join(', ')))}
+        SET ${updates.join(', ')}
         WHERE id = ?
       `,
         params
@@ -530,12 +524,15 @@ export class BoardService {
           'DELETE FROM notes WHERE task_id IN (SELECT id FROM tasks WHERE board_id = ?)',
           [id]
         );
+        // Delete in order that respects foreign key constraints
         await db.run(
           'DELETE FROM task_tags WHERE task_id IN (SELECT id FROM tasks WHERE board_id = ?)',
           [id]
         );
-        await db.run('DELETE FROM tasks WHERE board_id = ?', [id]);
-        await db.run('DELETE FROM columns WHERE board_id = ?', [id]);
+        await Promise.all([
+          db.run('DELETE FROM tasks WHERE board_id = ?', [id]),
+          db.run('DELETE FROM columns WHERE board_id = ?', [id]),
+        ]);
         await db.run('DELETE FROM boards WHERE id = ?', [id]);
       });
 

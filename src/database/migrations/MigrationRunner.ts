@@ -74,7 +74,7 @@ export class MigrationRunner {
       `SELECT id, applied_at, checksum FROM ${this.tableName} ORDER BY id`
     )) as AppliedMigration[];
 
-    return result ?? [];
+    return result || [];
   }
 
   /**
@@ -229,9 +229,7 @@ export class MigrationRunner {
     // Process in reverse order
     for (let i = applied.length - 1; i >= 0; i--) {
       const appliedMigration = applied[i];
-      if (!appliedMigration) {
-        continue;
-      }
+      // appliedMigration is guaranteed to exist in this context
 
       if (target && appliedMigration.id <= target) {
         break;
@@ -285,11 +283,7 @@ export class MigrationRunner {
 
     const pending = files.filter(f => !appliedIds.has(f.id)).map(f => f.id);
 
-    return {
-      applied: applied.map(m => m.id),
-      pending,
-      total: files.length,
-    };
+    return { applied: applied.map(m => m.id), pending, total: files.length };
   }
 
   /**

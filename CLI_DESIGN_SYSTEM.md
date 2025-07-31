@@ -1,22 +1,26 @@
 # 🎨 CLI Design System & Accessibility Guide
 
 ## Overview
+
 This document defines the design system, accessibility standards, and visual consistency guidelines for the MCP Kanban CLI interface.
 
 ## 🎯 Design Principles
 
 ### 1. **Accessibility First**
+
 - **WCAG 2.1 AA Compliance**: All interfaces meet or exceed WCAG standards
 - **Screen Reader Support**: Semantic markup with proper ARIA labels
 - **Keyboard Navigation**: Full keyboard accessibility without mouse dependency
 - **High Contrast**: Support for high-contrast themes and color-blind users
 
 ### 2. **Progressive Enhancement**
+
 - **Terminal Capability Detection**: Graceful degradation for limited terminals
 - **Unicode Fallbacks**: ASCII alternatives for unsupported terminals
 - **Color Detection**: Automatic fallback to monochrome when needed
 
 ### 3. **Responsive Design**
+
 - **Breakpoint System**: Adaptive layouts for different terminal sizes
 - **Mobile-First**: Optimized for narrow terminals (40-80 characters)
 - **Content Prioritization**: Show most important information first
@@ -24,6 +28,7 @@ This document defines the design system, accessibility standards, and visual con
 ## 🎨 Color System
 
 ### Standard Theme Palette
+
 ```typescript
 colors: {
   primary: chalk.cyan,      // Interactive elements, links
@@ -39,6 +44,7 @@ colors: {
 ```
 
 ### High Contrast Theme
+
 ```typescript
 colors: {
   primary: chalk.white.bold,
@@ -55,6 +61,7 @@ colors: {
 ```
 
 ### Color Accessibility Guidelines
+
 - **Contrast Ratios**: Minimum 4.5:1 for normal text, 3:1 for large text
 - **Color Blind Support**: Never rely solely on color to convey information
 - **Theme Switching**: Support for dark, light, and high-contrast themes
@@ -72,6 +79,7 @@ breakpoints: {
 ```
 
 ### Layout Adaptations
+
 - **XS (< 40 chars)**: Single column, truncated text, icons only
 - **SM (40-79 chars)**: Two columns max, compact spacing
 - **MD (80-119 chars)**: Standard layout, full features
@@ -80,6 +88,7 @@ breakpoints: {
 ## ♿ Accessibility Features
 
 ### Screen Reader Support
+
 ```typescript
 // ARIA Labels for all interactive elements
 <Box role="listitem" aria-label="Task: Deploy API, Priority: High, Status: In Progress">
@@ -93,6 +102,7 @@ breakpoints: {
 ```
 
 ### Keyboard Navigation
+
 - **Tab**: Navigate between sections
 - **Arrow Keys**: Navigate within sections
 - **Enter**: Activate/select items
@@ -102,16 +112,18 @@ breakpoints: {
 - **A**: Toggle accessibility announcements
 
 ### Focus Management
+
 ```typescript
 // Visual focus indicators
-const focusStyle = isSelected ? 
-  '▶ ${content} ◀' :  // High contrast focus indicator
-  '  ${content}  ';   // Normal state
+const focusStyle = isSelected
+  ? '▶ ${content} ◀' // High contrast focus indicator
+  : '  ${content}  '; // Normal state
 ```
 
 ## 🎭 Component Patterns
 
 ### Task Items
+
 ```typescript
 interface TaskItemProps {
   task: Task;
@@ -130,6 +142,7 @@ const accessibilityProps = {
 ```
 
 ### Status Indicators
+
 ```typescript
 const statusIcons = {
   todo: { icon: '○', color: chalk.gray, accessible: '[ ]' },
@@ -140,10 +153,11 @@ const statusIcons = {
 ```
 
 ### Priority Indicators
+
 ```typescript
 const priorityDisplay = {
-  visual: '★★★★★',      // Unicode stars
-  accessible: 'P4',     // Text-based priority
+  visual: '★★★★★', // Unicode stars
+  accessible: 'P4', // Text-based priority
   screenReader: 'Priority level 4 out of 5', // Full description
 };
 ```
@@ -151,6 +165,7 @@ const priorityDisplay = {
 ## 📐 Spacing & Layout
 
 ### Grid System
+
 ```typescript
 const spacing = {
   xs: { margin: 0, padding: 1, gap: 1 },
@@ -161,6 +176,7 @@ const spacing = {
 ```
 
 ### Text Truncation
+
 ```typescript
 const textLimits = {
   title: { xs: 15, sm: 25, md: 40, lg: 60, xl: 80 },
@@ -172,6 +188,7 @@ const textLimits = {
 ## 🔧 Implementation Guidelines
 
 ### Theme Integration
+
 ```typescript
 // Always use theme system instead of hardcoded colors
 import { themeManager } from '../themes/default';
@@ -184,6 +201,7 @@ const color = chalk.cyan(text);
 ```
 
 ### Responsive Design
+
 ```typescript
 import { ResponsiveDesignHelper } from '../utils/responsive-design';
 
@@ -193,6 +211,7 @@ const supportsUnicode = ResponsiveDesignHelper.supportsFeature('unicode');
 ```
 
 ### Accessibility Implementation
+
 ```typescript
 import { AccessibilityHelper } from '../utils/accessibility-helper';
 
@@ -206,20 +225,20 @@ const ariaLabel = AccessibilityHelper.generateAriaLabel({
 });
 
 // Validate contrast ratios
-const contrastRatio = AccessibilityHelper.calculateContrastRatio(
-  foreground, background
-);
+const contrastRatio = AccessibilityHelper.calculateContrastRatio(foreground, background);
 ```
 
 ## 📋 Testing Checklist
 
 ### Visual Consistency
+
 - [ ] All components use theme system
 - [ ] Consistent spacing throughout interface
 - [ ] Status indicators use standard icons/colors
 - [ ] Focus states are clearly visible
 
 ### Accessibility
+
 - [ ] All interactive elements have ARIA labels
 - [ ] Keyboard navigation works throughout
 - [ ] Screen reader announcements are appropriate
@@ -227,12 +246,14 @@ const contrastRatio = AccessibilityHelper.calculateContrastRatio(
 - [ ] Color information has text alternatives
 
 ### Responsive Design
+
 - [ ] Layout adapts to terminal width
 - [ ] Text truncation works properly
 - [ ] Essential information visible at all sizes
 - [ ] Navigation remains functional on small screens
 
 ### Cross-Terminal Compatibility
+
 - [ ] Works in standard terminals (xterm, Terminal.app)
 - [ ] Graceful degradation without Unicode support
 - [ ] Color fallbacks work properly
@@ -241,6 +262,7 @@ const contrastRatio = AccessibilityHelper.calculateContrastRatio(
 ## 🚀 Future Enhancements
 
 ### Planned Features
+
 1. **Custom Theme Support**: User-defined color schemes
 2. **Animation System**: Smooth transitions for state changes
 3. **Advanced Typography**: Better text rendering with limited character sets
@@ -248,6 +270,7 @@ const contrastRatio = AccessibilityHelper.calculateContrastRatio(
 5. **Internationalization**: RTL language support and localization
 
 ### Accessibility Roadmap
+
 1. **Voice Navigation**: Voice command integration
 2. **Braille Support**: Braille display compatibility
 3. **Motor Accessibility**: Alternative input methods
@@ -274,4 +297,4 @@ When contributing to the CLI interface:
 
 ---
 
-*This design system ensures a consistent, accessible, and user-friendly CLI experience for all users, regardless of their abilities or terminal capabilities.*
+_This design system ensures a consistent, accessible, and user-friendly CLI experience for all users, regardless of their abilities or terminal capabilities._

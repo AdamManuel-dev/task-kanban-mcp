@@ -55,7 +55,7 @@ export const dashboardCommand = new Command('dashboard')
 
         // Validate theme
         const availableThemes = getThemeNames();
-        if (!availableThemes.includes(options.theme ?? '')) {
+        if (options.theme && !availableThemes.includes(options.theme)) {
           logger.warn('Invalid dashboard theme provided', {
             theme: options.theme,
             availableThemes,
@@ -80,10 +80,7 @@ export const dashboardCommand = new Command('dashboard')
         // Get API client from global components if available
         const components = getComponents();
         const { apiClient } = components;
-        const dashboard = new DashboardManager(
-          config,
-          apiClient ? apiClient.getApiClient() : undefined
-        );
+        const dashboard = new DashboardManager(config, apiClient.getApiClient());
 
         // Set initial layout
         switch (options.layout) {
@@ -122,7 +119,7 @@ dashboardCommand
   .description('Launch overview dashboard with task statistics')
   .action(() => {
     const { apiClient } = getComponents();
-    const dashboard = new DashboardManager({}, apiClient ? apiClient.getApiClient() : undefined);
+    const dashboard = new DashboardManager({}, apiClient.getApiClient());
     dashboard.switchLayout('overview');
     dashboard.start();
   });
@@ -132,7 +129,7 @@ dashboardCommand
   .description('Launch velocity dashboard with team performance metrics')
   .action(() => {
     const { apiClient } = getComponents();
-    const dashboard = new DashboardManager({}, apiClient ? apiClient.getApiClient() : undefined);
+    const dashboard = new DashboardManager({}, apiClient.getApiClient());
     dashboard.switchLayout('velocity');
     dashboard.start();
   });
@@ -142,7 +139,7 @@ dashboardCommand
   .description('Launch personal productivity dashboard')
   .action(() => {
     const { apiClient } = getComponents();
-    const dashboard = new DashboardManager({}, apiClient ? apiClient.getApiClient() : undefined);
+    const dashboard = new DashboardManager({}, apiClient.getApiClient());
     dashboard.switchLayout('personal');
     dashboard.start();
   });

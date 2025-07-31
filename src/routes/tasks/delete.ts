@@ -16,8 +16,11 @@ import { dbConnection } from '@/database/connection';
 /**
  * Deletes a task by ID
  */
-export const deleteTaskHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-
+export const deleteTaskHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
     const taskId = req.params.id;
 

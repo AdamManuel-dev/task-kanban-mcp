@@ -139,7 +139,7 @@ export function createDependenciesCommand(): Command {
 
         logger.info('Starting critical path analysis', { boardId: options.board });
 
-        const result = await depService.findCriticalPath(options.board ?? undefined);
+        const result = await depService.findCriticalPath(options.board);
 
         if (options.json) {
           logger.debug('Critical path result', {
@@ -335,10 +335,6 @@ export function createDependenciesCommand(): Command {
           return;
         }
         const { apiClient } = global.cliComponents;
-        if (!apiClient) {
-          logger.error(chalk.red('❌ API client not available'));
-          return;
-        }
 
         await apiClient.request('POST', '/api/tasks/dependencies', {
           task_id: taskId,

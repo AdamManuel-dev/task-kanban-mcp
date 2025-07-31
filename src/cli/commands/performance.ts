@@ -203,7 +203,13 @@ export function registerPerformanceCommands(program: Command): void {
             try {
               const apiResult = await quickBenchmark(
                 'api-health-check',
-                async () => apiClient.getHealth() || Promise.resolve({}),
+                async () => {
+                  try {
+                    return await apiClient.getHealth();
+                  } catch {
+                    return {};
+                  }
+                },
                 Math.min(iterations, 5) // Limit API calls
               );
               benchmarks.push(apiResult);
@@ -281,7 +287,7 @@ export function registerPerformanceCommands(program: Command): void {
             interval?: string;
             duration?: string;
           } = {}
-        ) => {
+        ): Promise<void> => {
           const { formatter } = getComponents();
           const interval = parseInt(options.interval ?? '5', 10) * 1000;
           const duration = parseInt(options.duration ?? '30', 10) * 1000;
@@ -297,40 +303,43 @@ export function registerPerformanceCommands(program: Command): void {
             operationCount: number;
           }> = [];
 
-          const monitorInterval = setInterval(() => {
-            const currentTime = Date.now();
-            if (currentTime - startTime >= duration) {
-              clearInterval(monitorInterval);
+          return new Promise(resolve => {
+            const monitorInterval = setInterval(() => {
+              const currentTime = Date.now();
+              if (currentTime - startTime >= duration) {
+                clearInterval(monitorInterval);
 
-              // Display monitoring results
-              formatOutput(
-                monitoringData.map(data => ({
-                  time: data.timestamp,
-                  heapUsed: `${(data.memory.heapUsed / 1024 / 1024).toFixed(1)}MB`,
-                  operations: data.operationCount,
-                })),
-                {
-                  fields: ['time', 'heapUsed', 'operations'],
-                  headers: ['Time', 'Heap Used', 'Operations'],
-                  title: '📈 Performance Monitoring Results',
-                }
+                // Display monitoring results
+                formatOutput(
+                  monitoringData.map(data => ({
+                    time: data.timestamp,
+                    heapUsed: `${(data.memory.heapUsed / 1024 / 1024).toFixed(1)}MB`,
+                    operations: data.operationCount,
+                  })),
+                  {
+                    fields: ['time', 'heapUsed', 'operations'],
+                    headers: ['Time', 'Heap Used', 'Operations'],
+                    title: '📈 Performance Monitoring Results',
+                  }
+                );
+
+                formatter.info('✅ Monitoring completed');
+                resolve();
+                return;
+              }
+
+              const stats = performanceMonitor.getStats();
+              monitoringData.push({
+                timestamp: new Date().toISOString(),
+                memory: process.memoryUsage(),
+                operationCount: stats.totalOperations,
+              });
+
+              formatter.info(
+                `📊 Operations: ${stats.totalOperations}, Memory: ${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(1)}MB`
               );
-
-              formatter.info('✅ Monitoring completed');
-              return;
-            }
-
-            const stats = performanceMonitor.getStats();
-            monitoringData.push({
-              timestamp: new Date().toISOString(),
-              memory: process.memoryUsage(),
-              operationCount: stats.totalOperations,
-            });
-
-            formatter.info(
-              `📊 Operations: ${stats.totalOperations}, Memory: ${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(1)}MB`
-            );
-          }, interval);
+            }, interval);
+          });
         }
       )
     );

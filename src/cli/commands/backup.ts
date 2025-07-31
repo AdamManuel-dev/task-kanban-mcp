@@ -80,6 +80,82 @@ interface ListScheduleOptions {
   limit?: string;
 }
 
+/**
+ * Helper function to validate a datetime string
+ */
+function validateDateTime(dateTime: string): { isValid: boolean; error?: string } {
+  const date = new Date(dateTime);
+  if (Number.isNaN(date.getTime())) {
+    return {
+      isValid: false,
+      error: 'Invalid date format. Use ISO format (e.g., 2025-07-26T10:30:00Z)',
+    };
+  }
+  if (date > new Date()) {
+    return { isValid: false, error: 'Target time cannot be in the future' };
+  }
+  return { isValid: true };
+}
+
+/**
+ * Helper function to handle interactive restore prompts
+ */
+async function getInteractiveRestoreParams(options: RestoreBackupOptions): Promise<{
+  targetTime: string;
+  cancelled: boolean;
+}> {
+  const now = new Date();
+  const defaultTime = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+
+  const answers = await inquirer.prompt<RestoreTimePromptResult>([
+    {
+      type: 'input',
+      name: 'targetTime',
+      message: 'Target restoration time (ISO format):',
+      default: defaultTime,
+      validate: (input: string): string | true => {
+        const validation = validateDateTime(input);
+        return validation.isValid ? true : validation.error!;
+      },
+    },
+    {
+      type: 'confirm',
+      name: 'verify',
+      message: 'Verify backups before restoration?',
+      default: !options.noVerify,
+    },
+    {
+      type: 'confirm',
+      name: 'preserveExisting',
+      message: 'Create backup of current state before restoration?',
+      default: options.preserveExisting ?? false,
+    },
+    {
+      type: 'confirm',
+      name: 'confirmed',
+      message: 'This will replace the current database. Are you sure?',
+      default: false,
+    },
+  ]);
+
+  return { targetTime: answers.targetTime, cancelled: !answers.confirmed };
+}
+
+/**
+ * Helper function to handle non-interactive restore confirmation
+ */
+async function getNonInteractiveConfirmation(restoreTime: string): Promise<boolean> {
+  const { confirm } = await inquirer.prompt<ConfirmPromptResult>([
+    {
+      type: 'confirm',
+      name: 'confirm',
+      message: `Restore database to ${restoreTime}? This will replace the current database.`,
+      default: false,
+    },
+  ]);
+  return confirm;
+}
+
 // eslint-disable-next-line max-lines-per-function
 export function registerBackupCommands(program: Command): void {
   const backupCmd = program.command('backup').alias('bak').description('Manage database backups');
@@ -117,9 +193,9 @@ export function registerBackupCommands(program: Command): void {
           })();
 
         backupData.name = backupName;
-        backupData.compress = Boolean(options.compress);
-        backupData.verify = Boolean(options.verify);
-        backupData.encrypt = Boolean(options.encrypt);
+        backupData.compress = !!options.compress;
+        backupData.verify = !!options.verify;
+        backupData.encrypt = !!options.encrypt;
 
         if (options.encryptionKey) {
           backupData.encryptionKey = String(options.encryptionKey);
@@ -400,81 +476,25 @@ export function registerBackupCommands(program: Command): void {
       try {
         let restoreTime = targetTime;
 
-        // Interactive mode if no target time provided
         if (!restoreTime) {
-          const now = new Date();
-          const defaultTime = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(); // 24 hours ago
-
-          const answers = await inquirer.prompt<RestoreTimePromptResult>([
-            {
-              type: 'input',
-              name: 'targetTime',
-              message: 'Target restoration time (ISO format):',
-              default: defaultTime,
-              validate: (input: string): string | true => {
-                const date = new Date(input);
-                if (Number.isNaN(date.getTime())) {
-                  return 'Invalid date format. Use ISO format (e.g., 2025-07-26T10:30:00Z)';
-                }
-                if (date > now) {
-                  return 'Target time cannot be in the future';
-                }
-                return true;
-              },
-            },
-            {
-              type: 'confirm',
-              name: 'verify',
-              message: 'Verify backups before restoration?',
-              default: !options.noVerify,
-            },
-            {
-              type: 'confirm',
-              name: 'preserveExisting',
-              message: 'Create backup of current state before restoration?',
-              default: options.preserveExisting ?? false,
-            },
-            {
-              type: 'confirm',
-              name: 'confirmed',
-              message: 'This will replace the current database. Are you sure?',
-              default: false,
-            },
-          ]);
-
-          if (!answers.confirmed) {
+          // Interactive mode
+          const interactiveResult = await getInteractiveRestoreParams(options);
+          if (interactiveResult.cancelled) {
             formatter.info('Point-in-time restoration cancelled');
             return;
           }
-
-          restoreTime = answers.targetTime;
-          // Note: Can't modify options object directly due to readonly, these values are handled in the API call
+          restoreTime = interactiveResult.targetTime;
         } else {
           // Validate provided time
-          const targetDate = new Date(restoreTime);
-          if (Number.isNaN(targetDate.getTime())) {
-            formatter.error(
-              'Invalid target time format. Use ISO format (e.g., 2025-07-26T10:30:00Z)'
-            );
-            process.exit(1);
-          }
-
-          if (targetDate > new Date()) {
-            formatter.error('Target time cannot be in the future');
+          const validation = validateDateTime(restoreTime);
+          if (!validation.isValid) {
+            formatter.error(validation.error!);
             process.exit(1);
           }
 
           // Confirmation for non-interactive mode
-          const { confirm } = await inquirer.prompt<ConfirmPromptResult>([
-            {
-              type: 'confirm',
-              name: 'confirm',
-              message: `Restore database to ${String(restoreTime)}? This will replace the current database.`,
-              default: false,
-            },
-          ]);
-
-          if (!confirm) {
+          const confirmed = await getNonInteractiveConfirmation(restoreTime);
+          if (!confirmed) {
             formatter.info('Point-in-time restoration cancelled');
             return;
           }
@@ -529,6 +549,127 @@ export function registerBackupCommands(program: Command): void {
       formatter.info('  backup schedule cleanup   - Clean up old backups');
     });
 
+  /**
+   * Validates cron expression format
+   * @private
+   */
+  const validateCronExpression = (input: string): string | true => {
+    // Basic validation - in production you'd want more thorough validation
+    const parts = input.trim().split(' ');
+    return parts.length === 5 ? true : 'Invalid cron expression format (should have 5 parts)';
+  };
+
+  /**
+   * Handles interactive schedule creation prompts
+   * @private
+   */
+  const handleInteractiveScheduleCreation = async (
+    name?: string,
+    options: CreateScheduleOptions = {}
+  ): Promise<Partial<BackupSchedule>> => {
+    const answers = await inquirer.prompt<CreateSchedulePromptResult>([
+      {
+        type: 'input',
+        name: 'name',
+        message: 'Schedule name:',
+        default: name ?? `schedule-${String(String(Date.now()))}`,
+        validate: (input: string): string | true =>
+          input.trim().length > 0 ? true : 'Name is required',
+      },
+      {
+        type: 'input',
+        name: 'cronExpression',
+        message: 'Cron expression (e.g., "0 2 * * *" for daily at 2 AM):',
+        default: options.cron ?? '0 2 * * *',
+        validate: validateCronExpression,
+      },
+      {
+        type: 'list',
+        name: 'backupType',
+        message: 'Backup type:',
+        choices: ['full', 'incremental'],
+        default: options.type ?? 'full',
+      },
+      {
+        type: 'input',
+        name: 'description',
+        message: 'Description (optional):',
+        default: options.description ?? '',
+      },
+      {
+        type: 'number',
+        name: 'retentionDays',
+        message: 'Retention period (days):',
+        default: parseInt(options.retention ?? '30', 10),
+        validate: (input: number): string | true =>
+          input > 0 ? true : 'Retention days must be positive',
+      },
+      {
+        type: 'confirm',
+        name: 'compressionEnabled',
+        message: 'Enable compression?',
+        default: !options['no-compression'],
+      },
+      {
+        type: 'confirm',
+        name: 'verificationEnabled',
+        message: 'Enable verification?',
+        default: !options['no-verification'],
+      },
+      {
+        type: 'confirm',
+        name: 'enabled',
+        message: 'Enable schedule immediately?',
+        default: !options.disabled,
+      },
+    ]);
+
+    return answers;
+  };
+
+  /**
+   * Builds schedule data from command line options
+   * @private
+   */
+  const buildScheduleDataFromOptions = (
+    name?: string,
+    options: CreateScheduleOptions = {}
+  ): Partial<BackupSchedule> => ({
+    ...(name && { name }),
+    ...(options.cron && { cronExpression: options.cron }),
+    backupType: options.type as 'full' | 'incremental',
+    ...(options.description && { description: options.description }),
+    retentionDays: parseInt(options.retention ?? '30', 10),
+    compressionEnabled: !options['no-compression'],
+    verificationEnabled: !options['no-verification'],
+    enabled: !options.disabled,
+  });
+
+  /**
+   * Creates backup schedule via API call
+   * @private
+   */
+  const createBackupScheduleApi = async (
+    scheduleData: Partial<BackupSchedule>,
+    apiClient: CliComponents['apiClient'],
+    formatter: CliComponents['formatter']
+  ): Promise<void> => {
+    formatter.info(`Creating backup schedule: ${String(scheduleData.name)}...`);
+
+    const schedule = await apiClient.request<AnyApiResponse>(
+      'POST',
+      '/api/schedule/create',
+      scheduleData
+    );
+
+    formatter.success('Backup schedule created successfully');
+    if (isSuccessResponse(schedule)) {
+      formatter.output(schedule.data);
+    } else {
+      formatter.error('Invalid response format');
+    }
+  };
+
   backupCmd
     .command('schedule create [name]')
     .description('Create a new backup schedule')
@@ -543,101 +684,16 @@ export function registerBackupCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        let scheduleData: Partial<BackupSchedule> = {};
+        let scheduleData: Partial<BackupSchedule>;
 
-        // Interactive mode if no name provided
+        // Determine if interactive mode is needed
         if (!name || !options.cron) {
-          const answers = await inquirer.prompt<CreateSchedulePromptResult>([
-            {
-              type: 'input',
-              name: 'name',
-              message: 'Schedule name:',
-              default: name ?? `schedule-${String(String(Date.now()))}`,
-              validate: (input: string): string | true =>
-                input.trim().length > 0 ? true : 'Name is required',
-            },
-            {
-              type: 'input',
-              name: 'cronExpression',
-              message: 'Cron expression (e.g., "0 2 * * *" for daily at 2 AM):',
-              default: options.cron ?? '0 2 * * *',
-              validate: (input: string): string | true => {
-                // Basic validation - in production you'd want more thorough validation
-                const parts = input.trim().split(' ');
-                return parts.length === 5
-                  ? true
-                  : 'Invalid cron expression format (should have 5 parts)';
-              },
-            },
-            {
-              type: 'list',
-              name: 'backupType',
-              message: 'Backup type:',
-              choices: ['full', 'incremental'],
-              default: options.type ?? 'full',
-            },
-            {
-              type: 'input',
-              name: 'description',
-              message: 'Description (optional):',
-              default: options.description ?? '',
-            },
-            {
-              type: 'number',
-              name: 'retentionDays',
-              message: 'Retention period (days):',
-              default: parseInt(options.retention ?? '30', 10),
-              validate: (input: number): string | true =>
-                input > 0 ? true : 'Retention days must be positive',
-            },
-            {
-              type: 'confirm',
-              name: 'compressionEnabled',
-              message: 'Enable compression?',
-              default: !options['no-compression'],
-            },
-            {
-              type: 'confirm',
-              name: 'verificationEnabled',
-              message: 'Enable verification?',
-              default: !options['no-verification'],
-            },
-            {
-              type: 'confirm',
-              name: 'enabled',
-              message: 'Enable schedule immediately?',
-              default: !options.disabled,
-            },
-          ]);
-
-          scheduleData = answers;
+          scheduleData = await handleInteractiveScheduleCreation(name, options);
         } else {
-          scheduleData = {
-            ...(name && { name }),
-            ...(options.cron && { cronExpression: options.cron }),
-            backupType: options.type as 'full' | 'incremental',
-            ...(options.description && { description: options.description }),
-            retentionDays: parseInt(options.retention ?? '30', 10),
-            compressionEnabled: !options['no-compression'],
-            verificationEnabled: !options['no-verification'],
-            enabled: !options.disabled,
-          };
+          scheduleData = buildScheduleDataFromOptions(name, options);
         }
 
-        formatter.info(`Creating backup schedule: ${String(scheduleData.name)}...`);
-
-        const schedule = await apiClient.request<AnyApiResponse>(
-          'POST',
-          '/api/schedule/create',
-          scheduleData
-        );
-
-        formatter.success('Backup schedule created successfully');
-        if (isSuccessResponse(schedule)) {
-          formatter.output(schedule.data);
-        } else {
-          formatter.error('Invalid response format');
-        }
+        await createBackupScheduleApi(scheduleData, apiClient, formatter);
       } catch (error) {
         formatter.error('Failed to create backup schedule');
         process.exit(1);

@@ -1,0 +1,204 @@
+./archive/test-utils/test-types.ts:8: * Patterns: Replace `as any` with proper typed mocks
+./src/cli/utils/secure-cli-wrapper.ts:336:    const originalAction = (command as any)._actionHandler;
+./tests/integration/cli/command-helpers.test.ts:84:const mockServices = {} as any;
+./tests/performance/memory-validation.test.ts:131:      } as any);
+./tests/performance/memory-validation.test.ts:170:        } as any)
+./tests/performance/memory-validation.test.ts:216:          } as any)
+./tests/performance/memory-validation.test.ts:231:              task_id: (createdTasks[i] as any).id,
+./tests/performance/memory-validation.test.ts:273:          } as any)
+./tests/performance/memory-validation.test.ts:326:            } as any)
+./tests/performance/response-time-validation.test.ts:147:          } as any);
+./tests/performance/response-time-validation.test.ts:174:      } as any);
+./tests/performance/response-time-validation.test.ts:221:      } as any);
+./tests/performance/response-time-validation.test.ts:255:      } as any);
+./tests/performance/response-time-validation.test.ts:384:            } as any)
+./tests/performance/response-time-validation.test.ts:417:          } as any)
+./tests/performance/response-time-validation.test.ts:451:          } as any)
+./tests/performance/response-time-validation.test.ts:545:          } as any);
+./tests/performance/response-time-validation.test.ts:558:          } as any);
+./tests/performance/websocket-stress.test.ts:390:          } as any,
+./tests/security/command-injection-gitservice.test.ts:108:      const result = await (GitService as any).parseRepository('/fake/path');
+./tests/security/command-injection-gitservice.test.ts:59:      const result = await (GitService as any).parseRepository('/fake/path');
+./tests/security/input-sanitization-comprehensive.test.ts:450:        const result = inputSanitizer.sanitizeText(input as any);
+./tests/security/security-vulnerabilities.test.ts:102:      } as any;
+./tests/security/security-vulnerabilities.test.ts:119:      } as any;
+./tests/security/security-vulnerabilities.test.ts:221:      } as any;
+./tests/security/security-vulnerabilities.test.ts:65:      } as any;
+./tests/security/security-vulnerabilities.test.ts:84:      } as any;
+./tests/security/sql-injection-prevention.test.ts:361:          const result = results[0] as any;
+./tests/security/sql-injection-prevention.test.ts:388:        const result = results[0] as any;
+./tests/security/sql-injection-prevention.test.ts:488:        expect(typeof (count[0] as any).count).toBe('number');
+./tests/unit/cli/command-injection-prevention.test.ts:616:      const result = commandInjectionPrevention.validateCommand('git', undefined as any);
+./tests/unit/cli/commands/performance.test.ts:64:global.cliComponents = mockComponents as any;
+./tests/unit/cli/config-commands.test.ts:149:          await mockBoardMappingService.addMapping(pattern, type as any, boardId);
+./tests/unit/cli/config-commands.test.ts:169:            await mockBoardMappingService.addMapping(pattern, type as any, boardId);
+./tests/unit/cli/config-commands.test.ts:198:          const result = await mockBoardMappingService.testMapping(pattern, type as any);
+./tests/unit/cli/config-commands.test.ts:230:          const result = await mockBoardMappingService.testMapping(pattern, type as any);
+./tests/unit/cli/utils/command-helpers.test.ts:563:      delete (global as any).cliComponents;
+./tests/unit/cli/utils/command-helpers.test.ts:69:global.cliComponents = mockComponents as any;
+./tests/unit/database/seeds/001_sample_boards.test.ts:124:    await run(mockDb as any);
+./tests/unit/database/seeds/001_sample_boards.test.ts:158:    await run(mockDb as any);
+./tests/unit/database/seeds/001_sample_boards.test.ts:187:    await run(mockDb as any);
+./tests/unit/database/seeds/001_sample_boards.test.ts:213:    await run(mockDb as any);
+./tests/unit/database/seeds/001_sample_boards.test.ts:240:    await run(mockDb as any);
+./tests/unit/database/seeds/001_sample_boards.test.ts:243:    await expect(run(mockDb as any)).rejects.toThrow();
+./tests/unit/database/seeds/001_sample_boards.test.ts:252:    await run(mockDb as any);
+./tests/unit/database/seeds/001_sample_boards.test.ts:267:    await run(mockDb as any);
+./tests/unit/database/seeds/002_sample_tasks.test.ts:172:    await run(mockDb as any);
+./tests/unit/database/seeds/002_sample_tasks.test.ts:210:    await run(mockDb as any);
+./tests/unit/database/seeds/002_sample_tasks.test.ts:253:    await run(mockDb as any);
+./tests/unit/database/seeds/002_sample_tasks.test.ts:300:    await run(mockDb as any);
+./tests/unit/database/seeds/002_sample_tasks.test.ts:359:    await run(mockDb as any);
+./tests/unit/database/seeds/002_sample_tasks.test.ts:390:    await run(mockDb as any);
+./tests/unit/database/seeds/002_sample_tasks.test.ts:416:    await run(mockDb as any);
+./tests/unit/database/seeds/002_sample_tasks.test.ts:437:    await run(mockDb as any);
+./tests/unit/database/seeds/002_sample_tasks.test.ts:456:    await run(mockDb as any);
+./tests/unit/database/seeds/002_sample_tasks.test.ts:459:    await expect(run(mockDb as any)).rejects.toThrow();
+./tests/unit/database/seeds/002_sample_tasks.test.ts:468:    await run(mockDb as any);
+./tests/unit/database/seeds/002_sample_tasks.test.ts:488:    await run(mockDb as any);
+./tests/unit/database/seeds/003_sample_tags_and_notes.test.ts:201:    await run(mockDb as any);
+./tests/unit/database/seeds/003_sample_tags_and_notes.test.ts:266:    await run(mockDb as any);
+./tests/unit/database/seeds/003_sample_tags_and_notes.test.ts:313:    await run(mockDb as any);
+./tests/unit/database/seeds/003_sample_tags_and_notes.test.ts:342:    await run(mockDb as any);
+./tests/unit/database/seeds/003_sample_tags_and_notes.test.ts:379:    await run(mockDb as any);
+./tests/unit/database/seeds/003_sample_tags_and_notes.test.ts:422:    await run(mockDb as any);
+./tests/unit/database/seeds/003_sample_tags_and_notes.test.ts:453:    await run(mockDb as any);
+./tests/unit/database/seeds/003_sample_tags_and_notes.test.ts:500:    await run(mockDb as any);
+./tests/unit/database/seeds/003_sample_tags_and_notes.test.ts:503:    await expect(run(mockDb as any)).rejects.toThrow();
+./tests/unit/database/seeds/003_sample_tags_and_notes.test.ts:515:    await run(mockDb as any);
+./tests/unit/database/seeds/003_sample_tags_and_notes.test.ts:537:    await run(mockDb as any);
+./tests/unit/database/seeds/003_sample_tags_and_notes.test.ts:575:    await run(mockDb as any);
+./tests/unit/database/type-safe-query-builder.test.ts:110:        queryBuilder.select('tasks', ['id', 'title', 'nonexistent_column' as any]);
+./tests/unit/database/type-safe-query-builder.test.ts:116:        queryBuilder.select('nonexistent_table' as any);
+./tests/unit/database/type-safe-query-builder.test.ts:304:          } as any)
+./tests/unit/database/type-safe-query-builder.test.ts:349:          } as any)
+./tests/unit/database/type-safe-query-builder.test.ts:479:        queryBuilder.select('tasks').where(w => w.like('priority' as any, '%5%'));
+./tests/unit/mcp/prompts.test.ts:75:} as any;
+./tests/unit/middleware/auth.test.ts:261:    it('should allow access when user has any required permission (requireAll=false)', () => {
+./tests/unit/middleware/logging.test.ts:101:      (mockResponse.end as any)();
+./tests/unit/middleware/logging.test.ts:117:      (mockResponse.end as any)();
+./tests/unit/middleware/logging.test.ts:134:      (mockResponse.end as any)();
+./tests/unit/middleware/logging.test.ts:156:      (mockResponse.end as any)();
+./tests/unit/middleware/logging.test.ts:186:      (mockResponse.end as any)();
+./tests/unit/middleware/logging.test.ts:222:      (mockResponse.end as any)();
+./tests/unit/middleware/logging.test.ts:241:      (mockResponse.end as any)();
+./tests/unit/middleware/logging.test.ts:265:      (mockResponse.end as any)();
+./tests/unit/middleware/logging.test.ts:287:      (mockResponse.end as any)();
+./tests/unit/middleware/logging.test.ts:308:      (mockResponse.end as any)();
+./tests/unit/middleware/logging.test.ts:324:      (mockResponse.end as any)('data', 'utf8', callback);
+./tests/unit/middleware/logging.test.ts:333:      (mockResponse.end as any)();
+./tests/unit/middleware/logging.test.ts:334:      (mockResponse.end as any)();
+./tests/unit/middleware/logging.test.ts:335:      (mockResponse.end as any)();
+./tests/unit/middleware/requestId.test.ts:362:      requestIdMiddleware(request1 as any, response1 as any, mockNext);
+./tests/unit/middleware/requestId.test.ts:363:      requestIdMiddleware(request2 as any, response2 as any, mockNext);
+./tests/unit/middleware/response.test.ts:109:      (mockResponse as any).json = mockJson;
+./tests/unit/middleware/response.test.ts:123:      (mockResponse as any).json = mockJson;
+./tests/unit/middleware/response.test.ts:140:      (mockResponse as any).json = mockJson;
+./tests/unit/middleware/response.test.ts:164:      (mockResponse as any).status = mockStatus;
+./tests/unit/middleware/response.test.ts:165:      (mockResponse as any).json = mockJson;
+./tests/unit/middleware/response.test.ts:187:      (mockResponse as any).status = mockStatus;
+./tests/unit/middleware/response.test.ts:188:      (mockResponse as any).json = mockJson;
+./tests/unit/middleware/response.test.ts:211:      (mockResponse as any).status = mockStatus;
+./tests/unit/middleware/response.test.ts:212:      (mockResponse as any).json = mockJson;
+./tests/unit/middleware/response.test.ts:235:      (mockResponse as any).status = mockStatus;
+./tests/unit/middleware/response.test.ts:236:      (mockResponse as any).json = mockJson;
+./tests/unit/middleware/response.test.ts:264:      (mockResponse as any).json = mockJson;
+./tests/unit/middleware/response.test.ts:289:      (mockResponse as any).json = mockJson;
+./tests/unit/middleware/response.test.ts:307:      (mockResponse as any).json = mockJson;
+./tests/unit/middleware/response.test.ts:325:      (mockResponse as any).json = mockJson;
+./tests/unit/middleware/response.test.ts:343:      (mockResponse as any).json = mockJson;
+./tests/unit/middleware/response.test.ts:380:      (mockResponse as any).json = mockJson;
+./tests/unit/middleware/response.test.ts:406:      (mockResponse as any).json = mockJson;
+./tests/unit/middleware/response.test.ts:517:      (mockResponse as any).json = mockJson;
+./tests/unit/middleware/response.test.ts:543:      (mockResponse as any).json = mockJson;
+./tests/unit/middleware/response.test.ts:562:      (mockResponse as any).json = mockJson;
+./tests/unit/middleware/response.test.ts:71:      (mockResponse as any).json = mockJson;
+./tests/unit/middleware/response.test.ts:90:      (mockResponse as any).json = mockJson;
+./tests/unit/middleware/validation.test.ts:328:      middleware(mockRequest as any, mockResponse as any, mockNext);
+./tests/unit/middleware/validation.test.ts:342:      middleware(mockRequest as any, mockResponse as any, mockNext);
+./tests/unit/middleware/validation.test.ts:356:      middleware(mockRequest as any, mockResponse as any, mockNext);
+./tests/unit/middleware/validation.test.ts:369:      middleware(mockRequest as any, mockResponse as any, mockNext);
+./tests/unit/middleware/validation.test.ts:381:      middleware(mockRequest as any, mockResponse as any, mockNext);
+./tests/unit/middleware/validation.test.ts:390:      middleware(mockRequest as any, mockResponse as any, mockNext);
+./tests/unit/middleware/validation.test.ts:405:      middleware(mockRequest as any, mockResponse as any, mockNext);
+./tests/unit/services/BoardMappingService.test.ts:118:      sinon.stub(boardMappingService as any, 'loadConfiguration').resolves({
+./tests/unit/services/BoardMappingService.test.ts:143:      sinon.stub(boardMappingService as any, 'loadConfiguration').resolves({
+./tests/unit/services/BoardMappingService.test.ts:163:        .stub(boardMappingService as any, 'loadConfiguration')
+./tests/unit/services/BoardMappingService.test.ts:174:      const loadStub = sinon.stub(boardMappingService as any, 'loadConfiguration').resolves({
+./tests/unit/services/BoardMappingService.test.ts:179:      const saveStub = sinon.stub(boardMappingService as any, 'saveConfiguration').resolves();
+./tests/unit/services/BoardMappingService.test.ts:194:      sinon.stub(boardMappingService as any, 'loadConfiguration').resolves({
+./tests/unit/services/BoardMappingService.test.ts:205:      const saveStub = sinon.stub(boardMappingService as any, 'saveConfiguration').resolves();
+./tests/unit/services/BoardMappingService.test.ts:22:      {} as any, // dbConnection mock
+./tests/unit/services/BoardMappingService.test.ts:228:      sinon.stub(boardMappingService as any, 'loadConfiguration').resolves({
+./tests/unit/services/BoardMappingService.test.ts:23:      gitServiceStub as any,
+./tests/unit/services/BoardMappingService.test.ts:24:      boardServiceStub as any
+./tests/unit/services/BoardMappingService.test.ts:244:      const saveStub = sinon.stub(boardMappingService as any, 'saveConfiguration').resolves();
+./tests/unit/services/BoardMappingService.test.ts:254:      sinon.stub(boardMappingService as any, 'loadConfiguration').resolves({
+./tests/unit/services/BoardMappingService.test.ts:259:      const saveStub = sinon.stub(boardMappingService as any, 'saveConfiguration').resolves();
+./tests/unit/services/BoardMappingService.test.ts:283:      sinon.stub(boardMappingService as any, 'loadConfiguration').resolves({
+./tests/unit/services/BoardMappingService.test.ts:294:      sinon.stub(boardMappingService as any, 'loadConfiguration').resolves({
+./tests/unit/services/BoardMappingService.test.ts:374:      matchStub = sinon.stub(boardMappingService as any, 'matchesPattern');
+./tests/unit/services/BoardMappingService.test.ts:380:      const service = boardMappingService as any;
+./tests/unit/services/BoardMappingService.test.ts:388:      const service = boardMappingService as any;
+./tests/unit/services/BoardMappingService.test.ts:397:      const service = boardMappingService as any;
+./tests/unit/services/BoardMappingService.test.ts:43:      sinon.stub(boardMappingService as any, 'loadConfiguration').resolves({
+./tests/unit/services/BoardMappingService.test.ts:68:      sinon.stub(boardMappingService as any, 'loadConfiguration').resolves({
+./tests/unit/services/BoardMappingService.test.ts:93:      sinon.stub(boardMappingService as any, 'loadConfiguration').resolves({
+./tests/unit/services/ContextService.test.ts:58:  (DatabaseConnection as any).instance = null;
+./tests/unit/services/ContextService.test.ts:73:  } as any;
+./tests/unit/services/ContextService.test.ts:81:  } as any;
+./tests/unit/services/ContextService.test.ts:85:  } as any;
+./tests/unit/services/ContextService.test.ts:89:  } as any;
+./tests/unit/services/NoteService.test.ts:31:    (DatabaseConnection as any).instance = null;
+./tests/unit/services/TagService.test.ts:31:    (DatabaseConnection as any).instance = null;
+./tests/unit/services/TaskService.test.ts:30:    (DatabaseConnection as any).instance = null;
+./tests/unit/services/TaskService.test.ts:709:          status: 'invalid_status' as any,
+./tests/unit/utils/error-monitoring.test.ts:87:      (storage as any).maxEvents = maxEvents;
+./tests/unit/utils/logging-init.test.ts:156:    } as any);
+./tests/unit/utils/logging-init.test.ts:179:    } as any);
+./tests/unit/utils/logging-init.test.ts:216:    } as any);
+./tests/unit/utils/logging-init.test.ts:322:    } as any);
+./tests/unit/utils/logging-init.test.ts:431:        return { size: 1024, mtime: new Date('2023-01-01') } as any;
+./tests/unit/utils/logging-init.test.ts:434:        return { size: 512, mtime: new Date('2023-01-02') } as any;
+./tests/unit/utils/resource-monitor.test.ts:280:      delete (global as any).gc;
+./tests/unit/utils/rollback-procedures.test.ts:109:      await expect(snapshotManager.createSnapshot('invalid' as any, metadata)).rejects.toThrow(
+./tests/unit/utils/rollback-procedures.test.ts:218:      mockFs.readdir.mockResolvedValue(['snapshot-1.json', 'snapshot-2.json'] as any);
+./tests/unit/utils/rollback-procedures.test.ts:318:    } as any;
+./tests/unit/utils/rollback-procedures.test.ts:39:    mockFs.stat.mockResolvedValue({ size: 1024 } as any);
+./tests/unit/utils/typeSafety.test.ts:428:        typeof (value as any).title === 'string' &&
+./tests/unit/utils/typeSafety.test.ts:429:        typeof (value as any).id === 'string';
+./tests/unit/utils/validationTypeSafety.test.ts:425:      expect((result as any).unknownField).toBeUndefined();
+./tests/unit/utils/validationTypeSafety.test.ts:426:      expect((result as any).anotherUnknownField).toBeUndefined();
+./tests/unit/websocket/auth.test.ts:102:        mockJwt.verify.mockReturnValue({ email: 'test@example.com' } as any);
+./tests/unit/websocket/auth.test.ts:116:        } as any);
+./tests/unit/websocket/auth.test.ts:131:        } as any);
+./tests/unit/websocket/auth.test.ts:231:        const result = await webSocketAuth.authenticate(null as any);
+./tests/unit/websocket/auth.test.ts:445:      mockJwt.sign.mockReturnValue('generated-jwt-token' as any);
+./tests/unit/websocket/auth.test.ts:509:      const callArgs = mockJwt.sign.mock.calls[0][0] as any;
+./tests/unit/websocket/auth.test.ts:530:      mockJwt.verify.mockReturnValue({ userId: 'user123' } as any);
+./tests/unit/websocket/auth.test.ts:541:      mockJwt.verify.mockReturnValue({ userId: 'user123' } as any);
+./tests/unit/websocket/auth.test.ts:553:      mockJwt.verify.mockReturnValue({ userId: 'user123' } as any);
+./tests/unit/websocket/auth.test.ts:76:        mockJwt.verify.mockReturnValue(mockUser as any);
+./tests/unit/websocket/handlers.test.ts:268:      await handlers.handleMessage(mockWebSocket, message as any);
+./tests/unit/websocket/handlers.test.ts:287:      await handlers.handleMessage(mockWebSocket, message as any);
+./tests/unit/websocket/rateLimit.test.ts:155:      (rateLimiter as any).connectionLimits = mockConnectionLimits;
+./tests/unit/websocket/rateLimit.test.ts:265:      (rateLimiter as any).messageLimits = mockMessageLimits;
+./tests/unit/websocket/rateLimit.test.ts:346:      expect((testRateLimiter as any).cleanupInterval).toBeTruthy();
+./tests/unit/websocket/rateLimit.test.ts:348:      (testRateLimiter as any).cleanupInterval &&
+./tests/unit/websocket/rateLimit.test.ts:349:        clearInterval((testRateLimiter as any).cleanupInterval);
+./tests/unit/websocket/rateLimit.test.ts:368:      (rateLimiter as any).cleanup();
+./tests/unit/websocket/rateLimit.test.ts:371:      const connectionLimits = (rateLimiter as any).connectionLimits;
+./tests/unit/websocket/rateLimit.test.ts:389:      (rateLimiter as any).connectionLimits = mockConnectionLimits;
+./tests/unit/websocket/rateLimit.test.ts:393:        (rateLimiter as any).cleanup();
+./tests/unit/websocket/rateLimit.test.ts:420:      (testRateLimiter as any).cleanupInterval &&
+./tests/unit/websocket/rateLimit.test.ts:421:        clearInterval((testRateLimiter as any).cleanupInterval);
+./tests/unit/websocket/rateLimit.test.ts:447:      (customRateLimiter as any).cleanupInterval &&
+./tests/unit/websocket/rateLimit.test.ts:448:        clearInterval((customRateLimiter as any).cleanupInterval);
+./tests/unit/websocket/rateLimit.test.ts:510:      const result2 = rateLimiter.checkMessageLimit(null as any);
+./tests/unit/websocket/rateLimit.test.ts:56:    (rateLimiter as any).cleanupInterval && clearInterval((rateLimiter as any).cleanupInterval);
+./tests/unit/websocket/subscriptions.test.ts:381:      const matchesFilter = (subscriptionManager as any).matchesFilter;
+./tests/unit/websocket/subscriptions.test.ts:409:      const matchesFilter = (subscriptionManager as any).matchesFilter;
+./tests/unit/websocket/subscriptions.test.ts:437:      const matchesFilter = (subscriptionManager as any).matchesFilter;
+./tests/unit/websocket/subscriptions.test.ts:459:      const matchesFilter = (subscriptionManager as any).matchesFilter;
+./tests/unit/websocket/subscriptions.test.ts:577:      const invalidFilters = { boardId: () => 'invalid' } as any;
+./tests/unit/websocket/subscriptions.test.ts:80:    subscriptionManager = new SubscriptionManager(mockWebSocketManager as any);

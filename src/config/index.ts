@@ -19,7 +19,12 @@
 
 import * as dotenv from 'dotenv';
 import { z } from 'zod';
-import { configureCloudEnvironment, getCloudEnvironmentConfig, type CloudConfig } from './cloud-env';
+import {
+  configureCloudEnvironment,
+  getCloudEnvironmentConfig,
+  type CloudConfig,
+  type CloudEnvironmentInfo,
+} from './cloud-env';
 
 // Import env-manager after dotenv is loaded
 import { envManager, getEnvValidation } from './env-manager';
@@ -28,7 +33,7 @@ import { envManager, getEnvValidation } from './env-manager';
 dotenv.config();
 
 // Configure cloud environment
-const cloudEnv = configureCloudEnvironment();
+const cloudEnv: CloudEnvironmentInfo = configureCloudEnvironment();
 
 // Configuration schema validation
 const configSchema = z.object({
@@ -333,7 +338,7 @@ const rawConfig = {
  * const db = new Database(config.database.path);
  *
  * // Check environment
- * if (config.server['nodeEnv'] = == 'production') {
+ * if (config.server.nodeEnv === 'production') {
  *   // Production-specific logic
  * }
  * ```

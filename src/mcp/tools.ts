@@ -24,7 +24,10 @@
 
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { logger } from '@/utils/logger';
-import type { TaskService, UpdateTaskRequest as ServiceUpdateTaskRequest } from '@/services/TaskService';
+import type {
+  TaskService,
+  UpdateTaskRequest as ServiceUpdateTaskRequest,
+} from '@/services/TaskService';
 import type { BoardService } from '@/services/BoardService';
 import type { NoteService } from '@/services/NoteService';
 import type { TagService } from '@/services/TagService';
@@ -236,17 +239,14 @@ export class MCPToolRegistry {
     } catch (error) {
       logger.error(`MCP tool execution failed: ${name}`, { error, args });
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      return {
-        success: false,
-        message: `Tool execution failed: ${errorMessage}`,
-      };
+      return { success: false, message: `Tool execution failed: ${errorMessage}` };
     }
   }
 
   // Private method implementations
   private async createTask(args: CreateTaskArgs): Promise<ToolResponse> {
     try {
-      const result = await this.services.taskService.createTask(args as any);
+      const result = await this.services.taskService.createTask(args as unknown);
       return { success: true, data: result as unknown };
     } catch (error) {
       return {
@@ -259,7 +259,10 @@ export class MCPToolRegistry {
   private async updateTask(args: UpdateTaskArgs): Promise<ToolResponse> {
     try {
       const { task_id, ...updates } = args;
-      const result = await this.services.taskService.updateTask(task_id, updates as ServiceUpdateTaskRequest);
+      const result = await this.services.taskService.updateTask(
+        task_id,
+        updates as ServiceUpdateTaskRequest
+      );
       return { success: true, data: result as unknown };
     } catch (error) {
       return {
@@ -283,7 +286,7 @@ export class MCPToolRegistry {
 
   private async listTasks(args: ListTasksArgs): Promise<ToolResponse> {
     try {
-      const result = await this.services.taskService.getTasks(args as any);
+      const result = await this.services.taskService.getTasks(args as unknown);
       return { success: true, data: result as unknown };
     } catch (error) {
       return {
@@ -295,7 +298,7 @@ export class MCPToolRegistry {
 
   private async searchTasks(args: SearchTasksArgs): Promise<ToolResponse> {
     try {
-      const result = await this.services.taskService.searchTasks(args.query, args as any);
+      const result = await this.services.taskService.searchTasks(args.query, args as unknown);
       return { success: true, data: result as unknown };
     } catch (error) {
       return {
@@ -319,7 +322,7 @@ export class MCPToolRegistry {
 
   private async createBoard(args: CreateBoardArgs): Promise<ToolResponse> {
     try {
-      const result = await this.services.boardService.createBoard(args as any);
+      const result = await this.services.boardService.createBoard(args as unknown);
       return { success: true, data: result as unknown };
     } catch (error) {
       return {
@@ -355,7 +358,7 @@ export class MCPToolRegistry {
 
   private async addNote(args: AddNoteArgs): Promise<ToolResponse> {
     try {
-      const result = await this.services.noteService.createNote(args as any);
+      const result = await this.services.noteService.createNote(args as unknown);
       return { success: true, data: result as unknown };
     } catch (error) {
       return {
@@ -367,7 +370,7 @@ export class MCPToolRegistry {
 
   private async searchNotes(args: SearchNotesArgs): Promise<ToolResponse> {
     try {
-      const result = await this.services.noteService.searchNotes(args as any);
+      const result = await this.services.noteService.searchNotes(args as unknown);
       return { success: true, data: result as unknown };
     } catch (error) {
       return {
@@ -379,7 +382,7 @@ export class MCPToolRegistry {
 
   private async createTag(args: CreateTagArgs): Promise<ToolResponse> {
     try {
-      const result = await this.services.tagService.createTag(args as any);
+      const result = await this.services.tagService.createTag(args as unknown);
       return { success: true, data: result as unknown };
     } catch (error) {
       return {
@@ -393,9 +396,7 @@ export class MCPToolRegistry {
     try {
       // TagService.addTagToTask handles one tag at a time, so we need to process multiple tags
       const results = await Promise.all(
-        args.tag_ids.map(tagId => 
-          this.services.tagService.addTagToTask(args.task_id, tagId)
-        )
+        args.tag_ids.map(async tagId => this.services.tagService.addTagToTask(args.task_id, tagId))
       );
       return { success: true, data: results };
     } catch (error) {
@@ -409,7 +410,7 @@ export class MCPToolRegistry {
   private async getProjectContext(args: GetProjectContextArgs): Promise<ToolResponse> {
     try {
       const result = await this.services.contextService.getProjectContext(
-        (args as any).board_id
+        (args as unknown).board_id
       );
       return { success: true, data: result as unknown };
     } catch (error) {

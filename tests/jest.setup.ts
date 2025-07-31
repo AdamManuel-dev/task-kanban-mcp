@@ -52,7 +52,7 @@ beforeEach(() => {
 declare global {
   interface Global {
     testUtils: {
-      createTestTask: () => any;
+      createTestTask: () => Record<string, unknown>;
       createTestBoard: () => any;
       cleanupTestData: () => Promise<void>;
     };
@@ -61,7 +61,7 @@ declare global {
 
 // TODO: Add more test utilities as needed
 global.testUtils = {
-  createTestTask: (): any => ({
+  createTestTask: (): Record<string, unknown> => ({
     id: 'test-task-1',
     title: 'Test Task',
     description: 'Test Description',
@@ -70,7 +70,7 @@ global.testUtils = {
     createdAt: new Date().toISOString(),
   }),
 
-  createTestBoard: (): any => ({
+  createTestBoard: (): Record<string, unknown> => ({
     id: 'test-board-1',
     name: 'Test Board',
     columns: ['todo', 'in-progress', 'done'],

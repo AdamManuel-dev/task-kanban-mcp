@@ -46,7 +46,9 @@ export class AIContextualPrioritizer {
 
   private readonly priorityHistoryService = new PriorityHistoryService();
 
-  constructor(private readonly taskService: TaskService) {}
+  constructor(private readonly taskService: TaskService) {
+    // TaskService injected for dependency injection
+  }
 
   /**
    * Enhanced prioritization with contextual awareness and ML-like capabilities
@@ -67,11 +69,13 @@ export class AIContextualPrioritizer {
         task => task.status !== 'done' && task.status !== 'archived'
       );
 
-      // Gather contextual information
-      const gitContext = await this.getGitContext();
+      // Gather contextual information in parallel
+      const [gitContext, userContext, projectContext] = await Promise.all([
+        this.getGitContext(),
+        this.getUserContext(boardId),
+        this.getProjectContext(boardId),
+      ]);
       const timeContext = this.getTimeContext();
-      const userContext = await this.getUserContext(boardId);
-      const projectContext = await this.getProjectContext(boardId);
 
       // Calculate enhanced priority scores
       const prioritizedTasks = await Promise.all(
@@ -170,14 +174,7 @@ export class AIContextualPrioritizer {
     // Normalize confidence (0-1 range)
     confidence = Math.max(0, Math.min(1, confidence));
 
-    return {
-      task,
-      priorityScore: Math.max(0, score),
-      confidence,
-      reasoning,
-      contextFactors: context,
-      mlSimilarity: similarityScore.similarity,
-    };
+    return { task, priorityScore: Math.max(0, score), confidence, reasoning, contextFactors: context, mlSimilarity: similarityScore.similarity };
   }
 
   /**
@@ -193,9 +190,7 @@ export class AIContextualPrioritizer {
     const hoursUntilDue = (dueDate.getTime() - now.getTime()) / (1000 * 60 * 60);
 
     if (hoursUntilDue < 0) {
-      return {
-        score: 60,
-        reasoning: `Overdue by ${Math.abs(Math.round(hoursUntilDue))} hours (+60 points)`,
+      return { score: 60, reasoning: `Overdue by ${Math.abs(Math.round(hoursUntilDue)) } hours (+60 points)`,
       };
     }
     if (hoursUntilDue <= 4) {
@@ -251,11 +246,7 @@ export class AIContextualPrioritizer {
       reasons.push(`Active branch (+${Math.min(10, gitContext.recentCommits * 2)} points)`);
     }
 
-    return {
-      score,
-      reasoning: reasons.length > 0 ? reasons.join(', ') : undefined,
-      confidence,
-    };
+    return { score, reasoning: reasons.length > 0 ? reasons.join(', ') : undefined, confidence };
   }
 
   /**
@@ -274,8 +265,8 @@ export class AIContextualPrioritizer {
     const reasons: string[] = [];
 
     // Task type preference
-    if (userContext.preferredTaskTypes && (task as any).category) {
-      if (userContext.preferredTaskTypes.includes((task as any).category)) {
+    if (userContext.preferredTaskTypes && (task as unknown).category) {
+      if (userContext.preferredTaskTypes.includes((task as unknown).category)) {
         score += 15;
         confidence += 0.3;
         reasons.push(`Preferred task type (+15 points)`);
@@ -295,11 +286,7 @@ export class AIContextualPrioritizer {
       }
     }
 
-    return {
-      score,
-      reasoning: reasons.length > 0 ? reasons.join(', ') : undefined,
-      confidence,
-    };
+    return { score, reasoning: reasons.length > 0 ? reasons.join(', ') : undefined, confidence };
   }
 
   /**
@@ -339,10 +326,7 @@ export class AIContextualPrioritizer {
       }
     }
 
-    return {
-      score,
-      reasoning: reasons.length > 0 ? reasons.join(', ') : undefined,
-    };
+    return { score, reasoning: reasons.length > 0 ? reasons.join(', ') : undefined };
   }
 
   /**
@@ -374,11 +358,7 @@ export class AIContextualPrioritizer {
       reasons.push(`High critical path impact (+15 points)`);
     }
 
-    return {
-      score,
-      reasoning: reasons.length > 0 ? reasons.join(', ') : undefined,
-      confidence,
-    };
+    return { score, reasoning: reasons.length > 0 ? reasons.join(', ') : undefined, confidence };
   }
 
   /**
@@ -407,9 +387,7 @@ export class AIContextualPrioritizer {
 
       if (maxSimilarity > 0.6) {
         const score = Math.round(maxSimilarity * 15);
-        return {
-          score,
-          reasoning: `Similar to recent completion (+${score} points)`,
+        return { score, reasoning: `Similar to recent completion (+${score } points)`,
           similarity: maxSimilarity,
         };
       }
@@ -435,9 +413,7 @@ export class AIContextualPrioritizer {
       const blockingCount = 0; // Would get from dependency service
       if (blockingCount > 0) {
         const score = Math.min(35, blockingCount * 10);
-        return {
-          score,
-          reasoning: `Blocking ${blockingCount} tasks (+${score} points)`,
+        return { score, reasoning: `Blocking ${blockingCount } tasks (+${score} points)`,
         };
       }
 
@@ -473,9 +449,7 @@ export class AIContextualPrioritizer {
         const score = Math.round(avgAdjustment * 10);
         const confidence = Math.min(0.5, history.length * 0.1);
 
-        return {
-          score,
-          reasoning: `Historical adjustment pattern (${score > 0 ? '+' : ''}${score} points)`,
+        return { score, reasoning: `Historical adjustment pattern (${score > 0 ? '+' : '' }${score} points)`,
           confidence,
         };
       }
@@ -495,13 +469,9 @@ export class AIContextualPrioritizer {
       if (!repo) return {};
 
       const branches = await this.gitService.getBranches(repo.path);
-      const currentBranch = branches.find(b => (b as any).current);
+      const currentBranch = branches.find(b => (b as unknown).current);
 
-      return {
-        currentBranch: currentBranch?.name,
-        recentCommits: (currentBranch as any)?.commitCount ?? 0,
-        branchAge: currentBranch ? this.calculateBranchAge(currentBranch) : 0,
-      };
+      return { currentBranch: currentBranch?.name, recentCommits: (currentBranch as unknown)?.commitCount ?? 0, branchAge: currentBranch ? this.calculateBranchAge(currentBranch) : 0 };
     } catch (error) {
       logger.error('Error getting git context:', error);
       return {};
@@ -510,11 +480,7 @@ export class AIContextualPrioritizer {
 
   private getTimeContext(): ContextualPriorityFactors['timeContext'] {
     const now = new Date();
-    return {
-      hourOfDay: now.getHours(),
-      dayOfWeek: now.getDay(),
-      userActiveHours: [9, 10, 11, 14, 15, 16], // Default active hours
-    };
+    return { hourOfDay: now.getHours(), dayOfWeek: now.getDay(), userActiveHours: [9, 10, 11, 14, 15, 16], // Default active hours };
   }
 
   private async getUserContext(boardId: string): Promise<ContextualPriorityFactors['userContext']> {
@@ -532,11 +498,7 @@ export class AIContextualPrioritizer {
 
       const velocity = recentTasks.length / 7; // rough velocity
 
-      return {
-        recentPriorityAdjustments: recentAdjustments.length,
-        taskCompletionVelocity: velocity,
-        preferredTaskTypes: ['feature', 'enhancement'], // Would learn from history
-      };
+      return { recentPriorityAdjustments: recentAdjustments.length, taskCompletionVelocity: velocity, preferredTaskTypes: ['feature', 'enhancement'], // Would learn from history };
     } catch (error) {
       logger.error('Error getting user context:', error);
       return {};
@@ -548,11 +510,7 @@ export class AIContextualPrioritizer {
   ): Promise<ContextualPriorityFactors['projectContext']> {
     try {
       // This would integrate with project management features
-      return {
-        milestoneProximity: 14, // days to next milestone
-        teamWorkload: 0.8, // 80% capacity
-        criticalPathImpact: 0.5, // medium impact
-      };
+      return { milestoneProximity: 14, // days to next milestone, teamWorkload: 0.8, // 80% capacity, criticalPathImpact: 0.5, // medium impact };
     } catch (error) {
       logger.error('Error getting project context:', error);
       return {};

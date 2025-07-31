@@ -38,21 +38,17 @@ export class ApiClient {
     this.apiKey = config.getApiKey();
   }
 
-  /**
-   * Make authenticated API request
-   */
-  async request<T = AnyApiResponse>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-    const { method = HTTP_METHODS.GET, body, params, timeout = 10000 } = options;
-
-    // Build URL with query parameters
+  private buildUrl(endpoint: string, params?: Record<string, string>): URL {
     const url = new URL(`${this.baseUrl}${endpoint}`);
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         url.searchParams.set(key, value);
       });
     }
+    return url;
+  }
 
-    // Prepare headers
+  private buildRequestOptions(method: string, body?: unknown, timeout = 10000): RequestInit {
     const headers: Record<string, string> = {
       [HTTP_HEADERS.CONTENT_TYPE]: CONTENT_TYPES.JSON,
       [HTTP_HEADERS.USER_AGENT]: 'mcp-kanban-cli',
@@ -62,7 +58,6 @@ export class ApiClient {
       headers[HTTP_HEADERS.X_API_KEY] = this.apiKey;
     }
 
-    // Prepare request options
     const requestOptions: RequestInit = {
       method,
       headers,
@@ -74,6 +69,32 @@ export class ApiClient {
       requestOptions.body = JSON.stringify(body);
     }
 
+    return requestOptions;
+  }
+
+  private static async parseResponse<T>(response: Response): Promise<T> {
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      const data = (await response.json()) as unknown;
+      // Handle both wrapped and unwrapped responses
+      if (data && typeof data === 'object' && 'data' in data) {
+        const wrappedData = data as { data: T };
+        return wrappedData.data;
+      }
+      return data as T;
+    }
+    return (await response.text()) as T;
+  }
+
+  /**
+   * Make authenticated API request
+   */
+  async request<T = AnyApiResponse>(endpoint: string, options: RequestOptions = {}): Promise<T> {
+    const { method = HTTP_METHODS.GET, body, params, timeout = 10000 } = options;
+
+    const url = this.buildUrl(endpoint, params);
+    const requestOptions = this.buildRequestOptions(method, body, timeout);
+
     try {
       const response = await fetch(url.toString(), requestOptions);
 
@@ -81,25 +102,14 @@ export class ApiClient {
         await ApiClient.handleErrorResponse(response);
       }
 
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        const data = (await response.json()) as unknown;
-        // Handle both wrapped and unwrapped responses
-        if (data && typeof data === 'object' && 'data' in data) {
-          const wrappedData = data as { data: T };
-          return wrappedData.data;
-        }
-        return data as T;
-      }
-
-      return (await response.text()) as T;
+      return ApiClient.parseResponse<T>(response);
     } catch (error) {
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
           throw new Error('Request timeout');
         }
         if (error.message.includes('fetch')) {
-          throw new Error(`Network error: Unable to connect to ${String(String(this.baseUrl))}`);
+          throw new Error(`Network error: Unable to connect to ${this.baseUrl}`);
         }
       }
       throw error;
@@ -110,20 +120,27 @@ export class ApiClient {
    * Handle error responses
    */
   private static async handleErrorResponse(response: Response): Promise<never> {
+    const errorMessage = await ApiClient.extractErrorMessage(response);
+    const statusBasedError = ApiClient.getStatusBasedError(response.status);
+
+    if (statusBasedError) {
+      throw new Error(statusBasedError);
+    }
+
+    throw new Error(errorMessage);
+  }
+
+  private static async extractErrorMessage(response: Response): Promise<string> {
     const contentType = response.headers.get('content-type');
     let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
 
     try {
-      if (contentType && contentType.includes('application/json')) {
+      if (contentType?.includes('application/json')) {
         const errorData = (await response.json()) as {
           error?: { message: string };
           message?: string;
         };
-        if (
-          errorData.error &&
-          typeof errorData.error === 'object' &&
-          'message' in errorData.error
-        ) {
+        if (errorData.error?.message) {
           errorMessage = errorData.error.message;
         } else if (errorData.message) {
           errorMessage = errorData.message;
@@ -138,27 +155,25 @@ export class ApiClient {
       // Ignore parsing errors, use default message
     }
 
-    if (response.status === 401) {
-      throw new Error('Authentication failed. Check your API key with "kanban config show"');
-    }
+    return errorMessage;
+  }
 
-    if (response.status === 403) {
-      throw new Error('Access denied. Check your API key permissions');
+  private static getStatusBasedError(status: number): string | null {
+    switch (status) {
+      case 401:
+        return 'Authentication failed. Check your API key with "kanban config show"';
+      case 403:
+        return 'Access denied. Check your API key permissions';
+      case 404:
+        return 'Resource not found';
+      case 429:
+        return 'Rate limit exceeded. Please try again later';
+      default:
+        if (status >= 500) {
+          return 'Server error occurred';
+        }
+        return null;
     }
-
-    if (response.status === 404) {
-      throw new Error('Resource not found');
-    }
-
-    if (response.status === 429) {
-      throw new Error('Rate limit exceeded. Please try again later');
-    }
-
-    if (response.status >= 500) {
-      throw new Error(`Server error: ${String(errorMessage)}`);
-    }
-
-    throw new Error(errorMessage);
   }
 
   /**
@@ -435,6 +450,6 @@ export class ApiClient {
    */
   updateConfig(): void {
     this.baseUrl = this.config.getServerUrl();
-    this.apiKey = this.config.getApiKey() ?? undefined;
+    this.apiKey = this.config.getApiKey();
   }
 }

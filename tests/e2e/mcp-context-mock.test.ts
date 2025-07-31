@@ -115,16 +115,7 @@ describe('MCP Context Mock Evaluation Test', () => {
       },
     ];
 
-    return {
-      summary: `Project "Simple Web App" has 3 tasks across 1 board. Currently 1 task is in progress (user authentication - P0), 1 is pending (database schema - P1), and 1 is completed. The project is 33% complete with active development on critical security features.`,
-      boards: [
-        {
-          id: boardId,
-          name: 'Simple Web App',
-          description: 'Basic web application development',
-          task_count: 3,
-          completion_rate: 0.33,
-        },
+    return { summary: `Project "Simple Web App" has 3 tasks across 1 board. Currently 1 task is in progress (user authentication - P0), 1 is pending (database schema - P1), and 1 is completed. The project is 33% complete with active development on critical security features.`, boards: [, {, id: boardId, name: 'Simple Web App', description: 'Basic web application development', task_count: 3, completion_rate: 0.33 },
       ],
       tasks,
       priorities: [
@@ -193,16 +184,7 @@ describe('MCP Context Mock Evaluation Test', () => {
 
     const tasks = [apiTask, dbTask, frontendTask];
 
-    return {
-      summary: `Critical blockers detected! The "Product Launch" project has 3 high-priority tasks, with 2 currently blocked. Database Schema Design is blocked awaiting requirements, which is blocking API Development. Frontend Development is blocked by the API. Immediate action needed to unblock the database design to prevent cascade delays.`,
-      boards: [
-        {
-          id: boardId,
-          name: 'Product Launch',
-          description: 'Q1 2025 Product Launch',
-          task_count: 3,
-          completion_rate: 0,
-        },
+    return { summary: `Critical blockers detected! The "Product Launch" project has 3 high-priority tasks, with 2 currently blocked. Database Schema Design is blocked awaiting requirements, which is blocking API Development. Frontend Development is blocked by the API. Immediate action needed to unblock the database design to prevent cascade delays.`, boards: [, {, id: boardId, name: 'Product Launch', description: 'Q1 2025 Product Launch', task_count: 3, completion_rate: 0 },
       ],
       tasks,
       priorities: [
@@ -298,16 +280,7 @@ describe('MCP Context Mock Evaluation Test', () => {
       },
     ];
 
-    return {
-      summary: `Sprint planning for "Sprint 23" shows 30 hours of estimated work across 4 tasks. Critical bug fix (2h) should be addressed first, followed by user profile feature (16h) as it delivers customer value. Technical debt refactoring (8h) can improve performance. Documentation (4h) can be done if time permits. Recommended sprint capacity: 2 developers for 1 week.`,
-      boards: [
-        {
-          id: boardId,
-          name: 'Sprint 23',
-          description: 'Two-week development sprint',
-          task_count: 4,
-          completion_rate: 0,
-        },
+    return { summary: `Sprint planning for "Sprint 23" shows 30 hours of estimated work across 4 tasks. Critical bug fix (2h) should be addressed first, followed by user profile feature (16h) as it delivers customer value. Technical debt refactoring (8h) can improve performance. Documentation (4h) can be done if time permits. Recommended sprint capacity: 2 developers for 1 week.`, boards: [, {, id: boardId, name: 'Sprint 23', description: 'Two-week development sprint', task_count: 4, completion_rate: 0 },
       ],
       tasks,
       priorities: [
@@ -394,16 +367,7 @@ describe('MCP Context Mock Evaluation Test', () => {
       },
     ];
 
-    return {
-      summary: `URGENT: "Production Release" has 2 critical overdue tasks! Security audit is 7 days overdue and actively being worked on. Payment integration is 1 day overdue and blocks launch. Both P0 tasks require immediate attention. Total 3 tasks with 0% completion rate. Crisis mode recommended with all hands on deck.`,
-      boards: [
-        {
-          id: boardId,
-          name: 'Production Release',
-          description: 'Critical production features',
-          task_count: 3,
-          completion_rate: 0,
-        },
+    return { summary: `URGENT: "Production Release" has 2 critical overdue tasks! Security audit is 7 days overdue and actively being worked on. Payment integration is 1 day overdue and blocks launch. Both P0 tasks require immediate attention. Total 3 tasks with 0% completion rate. Crisis mode recommended with all hands on deck.`, boards: [, {, id: boardId, name: 'Production Release', description: 'Critical production features', task_count: 3, completion_rate: 0 },
       ],
       tasks,
       priorities: [
@@ -494,16 +458,7 @@ describe('MCP Context Mock Evaluation Test', () => {
       },
     ];
 
-    return {
-      summary: `"Maintenance Sprint" is progressing well with 25% completion. Caching implementation is 50% complete and on track. Unit tests are scheduled for next week with adequate time buffer. Team workload is balanced with mix of development, testing, and DevOps tasks. No blockers or overdue items. Healthy project pace.`,
-      boards: [
-        {
-          id: boardId,
-          name: 'Maintenance Sprint',
-          description: 'Technical improvements and maintenance',
-          task_count: 4,
-          completion_rate: 0.25,
-        },
+    return { summary: `"Maintenance Sprint" is progressing well with 25% completion. Caching implementation is 50% complete and on track. Unit tests are scheduled for next week with adequate time buffer. Team workload is balanced with mix of development, testing, and DevOps tasks. No blockers or overdue items. Healthy project pace.`, boards: [, {, id: boardId, name: 'Maintenance Sprint', description: 'Technical improvements and maintenance', task_count: 4, completion_rate: 0.25 },
       ],
       tasks,
       priorities: [

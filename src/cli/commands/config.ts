@@ -85,7 +85,7 @@ export function registerConfigCommands(program: Command): void {
         const validation = config.validate();
         if (!validation.valid) {
           formatter.warn('Configuration validation failed:');
-          validation.errors.forEach(error => formatter.error(error));
+          validation.errors.forEach(validationError => formatter.error(validationError));
         }
       } catch (error) {
         formatter.error(
@@ -187,7 +187,7 @@ export function registerConfigCommands(program: Command): void {
         const validation = config.validate();
         if (!validation.valid) {
           formatter.warn('Configuration validation failed:');
-          validation.errors.forEach(error => formatter.error(error));
+          validation.errors.forEach(validationError => formatter.error(validationError));
         }
       } catch (error) {
         formatter.error(

@@ -32,16 +32,102 @@ function formatFileSize(bytes: number): string {
 }
 
 /**
+ * Get CLI components with error handling
+ */
+const getComponents = (): CliComponents => {
+  if (!global.cliComponents) {
+    throw new Error('CLI components not initialized. Please initialize the CLI first.');
+  }
+  return global.cliComponents;
+};
+
+/**
+ * Execute backup creation with provided options
+ */
+async function executeBackupCreation(
+  name?: string,
+  options: CreateBackupOptions = {}
+): Promise<void> {
+  const { apiClient, formatter } = getComponents();
+
+  // Generate backup name if not provided
+  const backupName = name ?? `backup_${new Date().toISOString().replace(/[:.]/g, '-')}`;
+
+  // Validate encryption key if encryption is requested
+  if (options.encrypt) {
+    const encryptionKey = options.encryptionKey ?? process.env.BACKUP_ENCRYPTION_KEY;
+    if (!encryptionKey) {
+      formatter.error('Encryption key required when using --encrypt option');
+      formatter.info(
+        'Use --encryption-key <key> or set BACKUP_ENCRYPTION_KEY environment variable'
+      );
+      process.exit(1);
+    }
+    const updatedOptions = { ...options, encryptionKey };
+    Object.assign(options, updatedOptions);
+  }
+
+  // Create backup with progress indicator
+  const createBackupWithProgress = withSpinner(
+    `Creating backup: ${backupName}`,
+    'Backup created successfully',
+    async () => {
+      const backupOptions: {
+        name: string;
+        compress?: boolean;
+        verify?: boolean;
+        encrypt?: boolean;
+        encryptionKey?: string;
+        description?: string;
+      } = { name: backupName };
+
+      if (options.compress !== undefined) backupOptions.compress = options.compress;
+      if (options.verify !== undefined) backupOptions.verify = options.verify;
+      if (options.encrypt !== undefined) backupOptions.encrypt = options.encrypt;
+      if (options.encryptionKey !== undefined) backupOptions.encryptionKey = options.encryptionKey;
+      if (options.description !== undefined) backupOptions.description = options.description;
+
+      const response = await apiClient.createBackup(backupOptions);
+
+      if (!hasDataProperty<BackupInfo>(response)) {
+        throw new Error('Invalid backup response format');
+      }
+
+      return response.data;
+    }
+  );
+
+  const backup = await createBackupWithProgress();
+
+  // Log backup details
+  logger.info('Backup created', {
+    id: backup.id,
+    name: backup.name,
+    size: backup.size,
+    compressed: backup.compressed,
+    verified: backup.verified,
+  });
+
+  // Display backup information
+  showSuccess(`Backup created: ${backup.id}`, {
+    id: backup.id,
+    name: backup.name,
+    size: formatFileSize(backup.size),
+    compressed: backup.compressed ? 'Yes' : 'No',
+    verified: backup.verified ? 'Yes' : 'No',
+    description: backup.description ?? 'No description',
+    createdAt: backup.createdAt,
+  });
+
+  if (options.encrypt) {
+    formatter.info('⚠️  Keep your encryption key safe - it cannot be recovered if lost!');
+  }
+}
+
+/**
  * Register the backup create command
  */
 export function registerCreateCommand(backupCmd: Command): void {
-  const getComponents = (): CliComponents => {
-    if (!global.cliComponents) {
-      throw new Error('CLI components not initialized. Please initialize the CLI first.');
-    }
-    return global.cliComponents;
-  };
-
   backupCmd
     .command('create [name]')
     .description('Create a new backup')
@@ -53,86 +139,5 @@ export function registerCreateCommand(backupCmd: Command): void {
       'encryption key (hex format, or use BACKUP_ENCRYPTION_KEY env var)'
     )
     .option('--description <desc>', 'backup description')
-    .action(
-      withErrorHandling(
-        'create backup',
-        async (name?: string, options: CreateBackupOptions = {}) => {
-          const { apiClient, formatter } = getComponents();
-
-          // Generate backup name if not provided
-          const backupName = name ?? `backup_${new Date().toISOString().replace(/[:.]/g, '-')}`;
-
-          // Validate encryption key if encryption is requested
-          if (options.encrypt) {
-            const encryptionKey = options.encryptionKey ?? process.env.BACKUP_ENCRYPTION_KEY;
-            if (!encryptionKey) {
-              formatter.error('Encryption key required when using --encrypt option');
-              formatter.info(
-                'Use --encryption-key <key> or set BACKUP_ENCRYPTION_KEY environment variable'
-              );
-              process.exit(1);
-            }
-            options.encryptionKey = encryptionKey;
-          }
-
-          // Create backup with progress indicator
-          const createBackupWithProgress = withSpinner(
-            `Creating backup: ${backupName}`,
-            'Backup created successfully',
-            async () => {
-              const backupOptions: {
-                name: string;
-                compress?: boolean;
-                verify?: boolean;
-                encrypt?: boolean;
-                encryptionKey?: string;
-                description?: string;
-              } = { name: backupName };
-
-              if (options.compress !== undefined) backupOptions.compress = options.compress;
-              if (options.verify !== undefined) backupOptions.verify = options.verify;
-              if (options.encrypt !== undefined) backupOptions.encrypt = options.encrypt;
-              if (options.encryptionKey !== undefined)
-                backupOptions.encryptionKey = options.encryptionKey;
-              if (options.description !== undefined)
-                backupOptions.description = options.description;
-
-              const response = await apiClient.createBackup(backupOptions);
-
-              if (!hasDataProperty<BackupInfo>(response)) {
-                throw new Error('Invalid backup response format');
-              }
-
-              return response.data;
-            }
-          );
-
-          const backup = await createBackupWithProgress();
-
-          // Log backup details
-          logger.info('Backup created', {
-            id: backup.id,
-            name: backup.name,
-            size: backup.size,
-            compressed: backup.compressed,
-            verified: backup.verified,
-          });
-
-          // Display backup information
-          showSuccess(`Backup created: ${backup.id}`, {
-            id: backup.id,
-            name: backup.name,
-            size: formatFileSize(backup.size),
-            compressed: backup.compressed ? 'Yes' : 'No',
-            verified: backup.verified ? 'Yes' : 'No',
-            description: backup.description ?? 'No description',
-            createdAt: backup.createdAt,
-          });
-
-          if (options.encrypt) {
-            formatter.info('⚠️  Keep your encryption key safe - it cannot be recovered if lost!');
-          }
-        }
-      )
-    );
+    .action(withErrorHandling('create backup', executeBackupCreation));
 }

@@ -239,13 +239,7 @@ export class StatisticsCollector {
     const utilization =
       stats.pageCount > 0 ? (stats.size / (stats.pageCount * stats.pageSize)) * 100 : 0;
 
-    return {
-      size: stats.size,
-      sizeFormatted: StatisticsCollector.formatBytes(stats.size),
-      pageCount: stats.pageCount,
-      pageSize: stats.pageSize,
-      utilization: Math.round(utilization * 100) / 100,
-    };
+    return { size: stats.size, sizeFormatted: StatisticsCollector.formatBytes(stats.size), pageCount: stats.pageCount, pageSize: stats.pageSize, utilization: Math.round(utilization * 100) / 100 };
   }
 
   /**
@@ -412,20 +406,8 @@ export class StatisticsCollector {
    * @returns {Promise<QueryStats>} Query performance metrics
    */
   public getQueryStatistics(): QueryStats {
-    if (!this.config.enableQueryMonitoring || this.queryHistory.length === 0) {
-      return {
-        totalQueries: 0,
-        averageExecutionTime: 0,
-        slowestQuery: null,
-        fastestQuery: null,
-        errorRate: 0,
-        queryTypes: {
-          select: 0,
-          insert: 0,
-          update: 0,
-          delete: 0,
-          other: 0,
-        },
+    if (!this.config.enableQueryMonitoring || !this.queryHistory.length) {
+      return { totalQueries: 0, averageExecutionTime: 0, slowestQuery: null, fastestQuery: null, errorRate: 0, queryTypes: {, select: 0, insert: 0, update: 0, delete: 0, other: 0 },
       };
     }
 
@@ -438,15 +420,15 @@ export class StatisticsCollector {
     // Find slowest and fastest queries
     const slowest =
       successfulQueries.length > 0
-        ? successfulQueries.reduce((slowest, current) =>
-            current.duration > slowest.duration ? current : slowest
+        ? successfulQueries.reduce((prev, current) =>
+            current.duration > prev.duration ? current : prev
           )
         : undefined;
 
     const fastest =
       successfulQueries.length > 0
-        ? successfulQueries.reduce((fastest, current) =>
-            current.duration < fastest.duration ? current : fastest
+        ? successfulQueries.reduce((prev, current) =>
+            current.duration < prev.duration ? current : prev
           )
         : undefined;
 
@@ -478,15 +460,7 @@ export class StatisticsCollector {
       }
     });
 
-    return {
-      totalQueries,
-      averageExecutionTime: Math.round(averageExecutionTime * 100) / 100,
-      slowestQuery: slowest
-        ? {
-            sql: slowest.sql.substring(0, 100) + (slowest.sql.length > 100 ? '...' : ''),
-            duration: slowest.duration,
-            timestamp: slowest.timestamp,
-          }
+    return { totalQueries, averageExecutionTime: Math.round(averageExecutionTime * 100) / 100, slowestQuery: slowest, ? {, sql: slowest.sql.substring(0, 100) + (slowest.sql.length > 100 ? '...' : ''), duration: slowest.duration, timestamp: slowest.timestamp }
         : null,
       fastestQuery: fastest
         ? {
@@ -568,25 +542,9 @@ export class StatisticsCollector {
       else if (score >= 25) status = 'poor';
       else status = 'critical';
 
-      return {
-        score: Math.max(0, score),
-        status,
-        issues,
-        recommendations,
-        lastCheck: new Date(),
-        responseTime,
-        connectionStatus: 'connected',
-      };
+      return { score: Math.max(0, score), status, issues, recommendations, lastCheck: new Date(), responseTime, connectionStatus: 'connected' };
     } catch (error) {
-      return {
-        score: 0,
-        status: 'critical',
-        issues: ['Database connection failed'],
-        recommendations: ['Check database connection and restart if necessary'],
-        lastCheck: new Date(),
-        responseTime: Date.now() - startTime,
-        connectionStatus: 'error',
-      };
+      return { score: 0, status: 'critical', issues: ['Database connection failed'], recommendations: ['Check database connection and restart if necessary'], lastCheck: new Date(), responseTime: Date.now() - startTime, connectionStatus: 'error' };
     }
   }
 

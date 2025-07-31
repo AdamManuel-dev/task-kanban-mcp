@@ -136,12 +136,7 @@ function getNodeVersion() {
   const match = version.match(/v(\d+)\.(\d+)\.(\d+)/);
   if (!match) return null;
 
-  return {
-    major: parseInt(match[1]),
-    minor: parseInt(match[2]),
-    patch: parseInt(match[3]),
-    full: version,
-  };
+  return { major: parseInt(match[1]), minor: parseInt(match[2]), patch: parseInt(match[3]), full: version };
 }
 
 function getNpmVersion() {

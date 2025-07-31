@@ -30,10 +30,7 @@
         "editor.codeActionsOnSave": {
           "source.fixAll.eslint": "explicit"
         },
-        "eslint.validate": [
-          "javascript",
-          "typescript"
-        ],
+        "eslint.validate": ["javascript", "typescript"],
         "jest.autoRun": {
           "watch": false,
           "onSave": "test-file"
@@ -45,9 +42,7 @@
           "taskKanban": {
             "type": "stdio",
             "command": "node",
-            "args": [
-              "/workspaces/mcp-kanban/dist/mcp/server.js"
-            ],
+            "args": ["/workspaces/mcp-kanban/dist/mcp/server.js"],
             "env": {
               "MCP_KANBAN_DB_FOLDER_PATH": "/workspaces/mcp-kanban/data/db"
             }
@@ -82,4 +77,4 @@
   },
   "initializeCommand": "git config --global init.defaultBranch main",
   "waitFor": "postCreateCommand"
-} 
+}

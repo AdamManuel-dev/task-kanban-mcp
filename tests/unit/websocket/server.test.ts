@@ -1,3 +1,4 @@
+/* eslint-disable max-lines-per-function */
 /**
  * @fileoverview Tests for WebSocket server implementation
  * @lastmodified 2025-07-28T12:00:00Z
@@ -9,8 +10,7 @@
  */
 
 import { Server as HttpServer } from 'http';
-import WebSocket from 'ws';
-import { WebSocketServer } from '../../../src/websocket/server';
+import WebSocket, { WebSocketServer } from 'ws';
 import { logger } from '../../../src/utils/logger';
 
 // Mock dependencies
@@ -80,6 +80,8 @@ describe('WebSocketServer', () => {
   });
 
   afterEach(async () => {
+    // wsServer might not be initialized if test setup fails
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (wsServer) {
       await wsServer.stop();
     }

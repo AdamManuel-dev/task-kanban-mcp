@@ -13,18 +13,21 @@ Transform your project management with AI-powered task organization, analytics, 
 ## 🎯 What You Get
 
 ### 🤖 AI-Powered Features
+
 - **Smart Task Prioritization** - AI analyzes deadlines, dependencies, and context
 - **Intelligent Suggestions** - Get recommendations for task organization
 - **Contextual Analytics** - Insights based on your work patterns
 - **Git Integration** - Automatic board selection based on your current branch
 
 ### 📊 Advanced Analytics
+
 - **Team Velocity Tracking** - Monitor productivity trends
 - **Critical Path Analysis** - Identify project bottlenecks
 - **Burndown Charts** - Visual progress tracking
 - **Performance Insights** - Data-driven optimization
 
 ### 🔄 Real-time Collaboration
+
 - **Live Updates** - See changes instantly across team members
 - **WebSocket Integration** - Real-time notifications and sync
 - **Multi-user Support** - Seamless team collaboration
@@ -33,7 +36,9 @@ Transform your project management with AI-powered task organization, analytics, 
 ## 🛠️ Development Setup
 
 ### Automatic Setup (Recommended)
+
 Replit will automatically:
+
 - Install all dependencies
 - Build the application
 - Set up the SQLite database
@@ -41,6 +46,7 @@ Replit will automatically:
 - Seed with sample data
 
 ### Manual Setup (If Needed)
+
 ```bash
 # Install dependencies and build
 npm run setup:replit
@@ -55,6 +61,7 @@ npm run db:seed
 ## 🎮 Available Commands
 
 ### Quick Actions (Use Replit Shell)
+
 ```bash
 # Start development server
 npm run dev:replit
@@ -79,11 +86,13 @@ npm run typecheck     # TypeScript validation
 ## 🌐 Accessing Your Application
 
 ### Web Interface
+
 - **Main Application**: Your Replit URL (shown in the output)
 - **API Endpoints**: `https://your-repl.replit.dev/api/`
 - **Health Check**: `https://your-repl.replit.dev/api/health`
 
 ### API Examples
+
 ```bash
 # Test the API (replace with your Replit URL)
 curl https://your-repl.replit.dev/api/health
@@ -100,6 +109,7 @@ curl https://your-repl.replit.dev/api/tasks
 ## 🔧 Configuration
 
 ### Environment Variables
+
 Replit automatically configures these for you:
 
 ```bash
@@ -112,7 +122,9 @@ ENABLE_WEBSOCKETS=true
 ```
 
 ### Custom Configuration
+
 Edit the environment variables in Replit's "Secrets" tab for:
+
 - `API_SECRET_KEY` - Your custom API secret
 - `JWT_SECRET` - JWT signing secret
 - Custom database URLs or other settings
@@ -120,6 +132,7 @@ Edit the environment variables in Replit's "Secrets" tab for:
 ## 🤝 Claude Desktop Integration
 
 ### Setup MCP Connection
+
 1. **Get Your Replit URL** from the output panel
 2. **Configure Claude Desktop** with this config:
 
@@ -148,6 +161,7 @@ Edit the environment variables in Replit's "Secrets" tab for:
 ## 📱 Sample Usage
 
 ### Basic Task Management
+
 ```bash
 # Create a new board
 curl -X POST https://your-repl.replit.dev/api/boards \
@@ -166,6 +180,7 @@ curl -X POST https://your-repl.replit.dev/api/tasks \
 ```
 
 ### Analytics & Insights
+
 ```bash
 # Get analytics dashboard
 curl https://your-repl.replit.dev/api/analytics/dashboard
@@ -180,7 +195,9 @@ curl https://your-repl.replit.dev/api/dependencies/graph
 ## 🎨 Customization
 
 ### Adding Your Data
+
 1. **Replace Sample Data**: Clear existing data and add your projects
+
    ```bash
    npm run db:reset
    # Then add your boards/tasks through the API
@@ -194,6 +211,7 @@ curl https://your-repl.replit.dev/api/dependencies/graph
    ```
 
 ### Extending Functionality
+
 - **Custom Templates**: Add task templates in the UI
 - **Webhooks**: Configure integrations with external tools
 - **Custom Analytics**: Use the analytics API for custom dashboards
@@ -203,6 +221,7 @@ curl https://your-repl.replit.dev/api/dependencies/graph
 ### Common Issues
 
 **Database Errors**
+
 ```bash
 # Reset database
 npm run db:reset
@@ -210,6 +229,7 @@ npm run db:seed
 ```
 
 **Build Failures**
+
 ```bash
 # Clean rebuild
 rm -rf node_modules dist
@@ -218,11 +238,13 @@ npm run build
 ```
 
 **Port Conflicts**
+
 - Replit automatically manages ports
 - Main app runs on port 3000
 - WebSocket server runs on port 3456
 
 ### Getting Help
+
 - **Logs**: Check the Replit console for error messages
 - **Health Check**: Visit `/api/health` to verify server status
 - **Database**: Use the Replit database viewer for SQLite
@@ -231,7 +253,9 @@ npm run build
 ## 🚀 Going to Production
 
 ### From Replit to Production
+
 1. **Export Your Data**:
+
    ```bash
    curl https://your-repl.replit.dev/api/export > backup.json
    ```
@@ -249,6 +273,7 @@ npm run build
    - Configure proper CORS origins
 
 ### Performance Optimization
+
 ```bash
 # Optimize for production
 NODE_ENV=production npm run build
@@ -258,23 +283,27 @@ npm run start:production
 ## 📊 Features Showcase
 
 ### 🎯 Smart Prioritization
+
 - AI analyzes task complexity, deadlines, and dependencies
 - Learns from your priority adjustments
 - Considers Git branch context and team patterns
 
 ### 📈 Advanced Analytics
+
 - Sprint velocity tracking and prediction
 - Team performance insights
 - Critical path analysis with bottleneck identification
 - Custom KPI dashboards
 
 ### 🔄 Real-time Collaboration
+
 - Live task updates across team members
 - WebSocket-powered notifications
 - Activity streams and audit logs
 - Conflict resolution for concurrent edits
 
 ### 🤖 AI Integration
+
 - Natural language task creation
 - Intelligent task suggestions
 - Automated dependency detection

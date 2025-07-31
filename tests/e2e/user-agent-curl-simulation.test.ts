@@ -30,7 +30,7 @@ jest.mock('../../src/utils/service-metrics', () => ({
 
 describe('User and AI Agent Curl Simulation', () => {
   let app: Express;
-  let server: any;
+  let server: import('http').Server;
   let baseUrl: string;
   let apiKey: string;
 
@@ -200,7 +200,7 @@ describe('User and AI Agent Curl Simulation', () => {
             }'
         `)
           .then(() => {
-            console.log(`Created concurrent task ${i}`);
+            void console.log(`Created concurrent task ${i}`);
           })
           .catch(err => {
             errors.push(`Create task ${i}: ${err.message}`);
@@ -218,8 +218,8 @@ describe('User and AI Agent Curl Simulation', () => {
               -H "X-API-Key: ${apiKey}"
           `)
           )
-          .then(({ stdout }) => {
-            const tasks = JSON.parse(stdout).data.items;
+          .then(({ stdout: queryOutput }) => {
+            const tasks = JSON.parse(queryOutput).data.items;
             console.log(`Agent query ${i}: Found ${tasks.length} tasks`);
           })
           .catch(err => {

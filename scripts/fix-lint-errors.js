@@ -32,10 +32,9 @@ const FIXES = [
   // Unused import removal
   {
     pattern: /import\s+\{\s*([^}]+)\s*\}\s+from\s+['"]([^'"]+)['"];?\s*\n/g,
-    replacement: (match, imports, module) => {
+    replacement: (match, imports, module) =>
       // This is a placeholder - actual logic would need AST parsing
-      return match;
-    },
+      match,
     description: 'Remove unused imports',
   },
 ];

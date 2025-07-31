@@ -8,7 +8,8 @@
  * Patterns: Health check protocols, validation strategies, test automation, reporting
  */
 
-import fs, { Stats } from 'fs/promises';
+import type { Stats } from 'fs/promises';
+import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
 import { logger } from '../utils/logger';
@@ -482,7 +483,7 @@ export class BackupHealthCheckService {
 
       try {
         const parsed = JSON.parse(data);
-        const isEncrypted = parsed.encrypted === true && parsed.version === '1.0';
+        const isEncrypted = parsed.encrypted && parsed.version === '1.0';
 
         if (isEncrypted) {
           // Validate encryption structure
@@ -739,7 +740,7 @@ export class BackupHealthCheckService {
       try {
         const data = await fs.readFile(file.path, 'utf-8');
         const parsed = JSON.parse(data);
-        if (parsed.encrypted === true) {
+        if (parsed.encrypted) {
           encryptedCount++;
         }
       } catch {

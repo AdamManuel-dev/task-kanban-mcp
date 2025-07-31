@@ -88,13 +88,7 @@ export class AccessibilityHelper {
     light: AccessibleColorPair[];
     highContrast: AccessibleColorPair[];
   } {
-    return {
-      dark: [
-        {
-          foreground: '#FFFFFF', // White text
-          background: '#000000', // Black background
-          contrastRatio: this.calculateContrastRatio(
-            { r: 255, g: 255, b: 255 },
+    return { dark: [, {, foreground: '#FFFFFF', // White text, background: '#000000', // Black background, contrastRatio: this.calculateContrastRatio(, { r: 255, g: 255, b: 255 },
             { r: 0, g: 0, b: 0 }
           ),
         },
@@ -291,11 +285,7 @@ export class AccessibilityHelper {
       recommendations.push('Ensure element responds to keyboard events');
     }
 
-    return {
-      isAccessible: issues.length === 0,
-      issues,
-      recommendations,
-    };
+    return { isAccessible: issues.length === 0, issues, recommendations };
   }
 
   /**

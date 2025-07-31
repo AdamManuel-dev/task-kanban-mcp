@@ -313,7 +313,7 @@ export class TaskService {
    * ```typescript
    * const task = await taskService.getTaskById('task-123');
    * if (task) {
-   *   logger.log(`Task: ${String(String(task.title))}`);
+   *   logger.log(`Task: ${task.title}`);
    * }
    * ```
    */
@@ -365,7 +365,7 @@ export class TaskService {
    * ```typescript
    * const taskWithSubs = await taskService.getTaskWithSubtasks('task-123');
    * if (taskWithSubs) {
-   *   logger.log(`Task has ${String(String(taskWithSubs.subtasks.length))} subtasks`);
+   *   logger.log(`Task has ${taskWithSubs.subtasks.length} subtasks`);
    * }
    * ```
    */
@@ -385,10 +385,7 @@ export class TaskService {
 
       subtasks.forEach(subtask => TaskService.convertTaskDates(subtask));
 
-      return {
-        ...task,
-        subtasks,
-      };
+      return { ...task, subtasks };
     } catch (error) {
       logger.error('Failed to get task with subtasks', { error, id });
       throw TaskService.createError(
@@ -411,8 +408,8 @@ export class TaskService {
    * ```typescript
    * const taskWithDeps = await taskService.getTaskWithDependencies('task-123');
    * if (taskWithDeps) {
-   *   logger.log(`Depends on ${String(String(taskWithDeps.dependencies.length))} tasks`);
-   *   logger.log(`${String(String(taskWithDeps.dependents.length))} tasks depend on this`);
+   *   logger.log(`Depends on ${taskWithDeps.dependencies.length} tasks`);
+   *   logger.log(`${taskWithDeps.dependents.length} tasks depend on this`);
    * }
    * ```
    */
@@ -439,11 +436,7 @@ export class TaskService {
       dependencies.forEach(dep => (dep.created_at = new Date(dep.created_at)));
       dependents.forEach(dep => (dep.created_at = new Date(dep.created_at)));
 
-      return {
-        ...task,
-        dependencies,
-        dependents,
-      };
+      return { ...task, dependencies, dependents };
     } catch (error) {
       logger.error('Failed to get task with dependencies', { error, id });
       throw TaskService.createError(
@@ -481,6 +474,69 @@ export class TaskService {
    * ```
    */
   @TrackPerformance('TaskService')
+  /**
+   * Build query conditions for task filtering
+   */
+  private buildTaskQueryConditions(
+    filters: TaskFilters,
+    archived: boolean
+  ): { conditions: string[]; params: QueryParameters; joins: string } {
+    const conditions: string[] = ['t.archived = ?'];
+    const params: QueryParameters = [archived];
+    let joins = '';
+
+    const simpleFilters = {
+      board_id: 't.board_id = ?',
+      column_id: 't.column_id = ?',
+      status: 't.status = ?',
+      assignee: 't.assignee = ?',
+    };
+
+    // Handle simple equality filters
+    Object.entries(simpleFilters).forEach(([key, condition]) => {
+      const value = filters[key as keyof typeof simpleFilters];
+      if (value) {
+        conditions.push(condition);
+        params.push(value);
+      }
+    });
+
+    // Handle complex filters
+    if (filters.search) {
+      conditions.push('(t.title LIKE ? OR t.description LIKE ?)');
+      const searchTerm = `%${filters.search}%`;
+      params.push(searchTerm, searchTerm);
+    }
+
+    if (filters.parent_task_id !== undefined) {
+      const isNull = filters.parent_task_id == null;
+      conditions.push(isNull ? 't.parent_task_id IS NULL' : 't.parent_task_id = ?');
+      if (!isNull) params.push(filters.parent_task_id);
+    }
+
+    if (filters.has_dependencies !== undefined) {
+      joins = ' LEFT JOIN task_dependencies td ON t.id = td.task_id';
+      conditions.push(filters.has_dependencies ? 'td.task_id IS NOT NULL' : 'td.task_id IS NULL');
+    }
+
+    if (filters.overdue) {
+      conditions.push('t.due_date < ? AND t.status != ?');
+      params.push(new Date(), 'done');
+    }
+
+    // Handle priority range filters
+    ['priority_min', 'priority_max'].forEach(key => {
+      const value = filters[key as keyof TaskFilters];
+      if (value !== undefined) {
+        const operator = key.includes('min') ? '>=' : '<=';
+        conditions.push(`t.priority ${operator} ?`);
+        params.push(value);
+      }
+    });
+
+    return { conditions, params, joins };
+  }
+
   async getTasks(options: PaginationOptions & TaskFilters = {}): Promise<Task[]> {
     const {
       limit = 50,
@@ -488,90 +544,18 @@ export class TaskService {
       sortBy = 'updated_at',
       sortOrder = 'desc',
       archived = false,
-      search,
-      board_id,
-      column_id,
-      status,
-      assignee,
-      parent_task_id,
-      has_dependencies,
-      overdue,
-      priority_min,
-      priority_max,
+      ...filters
     } = options;
 
-    let query = 'SELECT DISTINCT t.* FROM tasks t';
-    const params: QueryParameters = [];
-    
     try {
-      const conditions: string[] = ['t.archived = ?'];
-      params.push(archived);
+      const { conditions, params, joins } = this.buildTaskQueryConditions(filters, archived);
 
-      if (search) {
-        conditions.push('(t.title LIKE ? OR t.description LIKE ?)');
-        params.push(`%${String(search)}%`, `%${String(search)}%`);
-      }
-
-      if (board_id) {
-        conditions.push('t.board_id = ?');
-        params.push(board_id);
-      }
-
-      if (column_id) {
-        conditions.push('t.column_id = ?');
-        params.push(column_id);
-      }
-
-      if (status) {
-        conditions.push('t.status = ?');
-        params.push(status);
-      }
-
-      if (assignee) {
-        conditions.push('t.assignee = ?');
-        params.push(assignee);
-      }
-
-      if (parent_task_id !== undefined) {
-        if (parent_task_id === null) {
-          conditions.push('t.parent_task_id IS NULL');
-        } else {
-          conditions.push('t.parent_task_id = ?');
-          params.push(parent_task_id);
-        }
-      }
-
-      if (has_dependencies !== undefined) {
-        if (has_dependencies) {
-          query += ' LEFT JOIN task_dependencies td ON t.id = td.task_id';
-          conditions.push('td.task_id IS NOT NULL');
-        } else {
-          query += ' LEFT JOIN task_dependencies td ON t.id = td.task_id';
-          conditions.push('td.task_id IS NULL');
-        }
-      }
-
-      if (overdue) {
-        conditions.push('t.due_date < ? AND t.status != ?');
-        params.push(new Date(), 'done');
-      }
-
-      if (priority_min !== undefined) {
-        conditions.push('t.priority >= ?');
-        params.push(priority_min);
-      }
-
-      if (priority_max !== undefined) {
-        conditions.push('t.priority <= ?');
-        params.push(priority_max);
-      }
-
-      query += ` WHERE ${conditions.join(' AND ')}`;
+      let query = `SELECT DISTINCT t.* FROM tasks t${joins} WHERE ${conditions.join(' AND ')}`;
 
       // Use secure pagination to prevent ORDER BY injection
       const paginationResult = validatePagination(
-        { limit, offset, sortBy, sortOrder }, 
-        'tasks', 
+        { limit, offset, sortBy, sortOrder },
+        'tasks',
         't'
       );
       query += ` ${paginationResult.orderByClause} LIMIT ? OFFSET ?`;
@@ -612,6 +596,146 @@ export class TaskService {
    * });
    * ```
    */
+  /**
+   * Build field updates for task update operation
+   */
+  private buildFieldUpdates(
+    data: UpdateTaskRequest,
+    existingTask: Task
+  ): { updates: string[]; params: QueryParameters } {
+    const updates: string[] = [];
+    const params: QueryParameters = [];
+
+    const fieldMap = {
+      title: data.title,
+      description: data.description,
+      priority: data.priority,
+      assignee: data.assignee,
+      due_date: data.due_date,
+      estimated_hours: data.estimated_hours,
+      actual_hours: data.actual_hours,
+      progress: data.progress,
+      parent_task_id: data.parent_task_id,
+      metadata: data.metadata,
+    };
+
+    Object.entries(fieldMap).forEach(([field, value]) => {
+      if (value !== undefined) {
+        updates.push(`${field} = ?`);
+        params.push(value);
+      }
+    });
+
+    // Handle status with completion date logic
+    if (data.status !== undefined) {
+      updates.push('status = ?');
+      params.push(data.status);
+
+      const isCompletionStatusChange =
+        (data.status === 'done' && existingTask.status !== 'done') ||
+        (data.status !== 'done' && existingTask.status === 'done');
+
+      if (isCompletionStatusChange) {
+        updates.push('completed_at = ?');
+        params.push(data.status === 'done' ? new Date() : null);
+      }
+    }
+
+    return { updates, params };
+  }
+
+  /**
+   * Handle position updates within database transaction
+   */
+  private async handlePositionUpdates(
+    data: UpdateTaskRequest,
+    existingTask: Task,
+    updates: string[],
+    params: QueryParameters
+  ): Promise<void> {
+    const isColumnChange =
+      data.column_id !== undefined && data.column_id !== existingTask.column_id;
+    const isPositionChange = data.position !== undefined && data.position !== existingTask.position;
+
+    if (isColumnChange) {
+      const newPosition = data.position ?? (await this.getNextPosition(data.column_id!));
+
+      await this.adjustPositionsForRemoval(existingTask.column_id, existingTask.position);
+      await this.adjustPositionsForInsertion(data.column_id!, newPosition);
+
+      updates.push('column_id = ?', 'position = ?');
+      params.push(data.column_id, newPosition);
+    } else if (isPositionChange) {
+      await this.adjustPositionsForMove(
+        existingTask.column_id,
+        existingTask.position,
+        data.position!
+      );
+      updates.push('position = ?');
+      params.push(data.position);
+    }
+  }
+
+  /**
+   * Handle post-update operations (cache, history, notifications)
+   */
+  private async handlePostUpdateOperations(
+    id: string,
+    data: UpdateTaskRequest,
+    existingTask: Task
+  ): Promise<void> {
+    // Invalidate cache
+    this.cache.delete(`task:${id}`);
+    if (existingTask.parent_task_id) {
+      this.cache.delete(`task:${existingTask.parent_task_id}`);
+    }
+
+    // Record history and priority changes
+    await this.recordTaskHistory(existingTask, data);
+    await this.handlePriorityHistoryUpdate(id, data, existingTask);
+
+    // Update parent progress if needed
+    const shouldUpdateParent =
+      (data.status !== undefined || data.progress !== undefined) && existingTask.parent_task_id;
+
+    if (shouldUpdateParent) {
+      this.updateParentProgressOnSubtaskChange(id).catch(error =>
+        logger.error('Failed to update parent progress on subtask change', { error, taskId: id })
+      );
+    }
+  }
+
+  /**
+   * Handle priority history recording with error handling
+   */
+  private async handlePriorityHistoryUpdate(
+    id: string,
+    data: UpdateTaskRequest,
+    existingTask: Task
+  ): Promise<void> {
+    const isPriorityChanged =
+      data.priority !== undefined && data.priority !== existingTask.priority;
+
+    if (!isPriorityChanged) return;
+
+    try {
+      await PriorityHistoryService.getInstance().recordPriorityChange(
+        id,
+        existingTask.priority,
+        data.priority!,
+        data.change_reason,
+        data.changed_by
+      );
+    } catch (error) {
+      logger.error('Failed to record priority change:', {
+        taskId: id,
+        oldPriority: existingTask.priority,
+        newPriority: data.priority,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
   @TrackPerformance('TaskService')
   async updateTask(id: string, data: UpdateTaskRequest): Promise<Task> {
     try {
@@ -622,101 +746,31 @@ export class TaskService {
       }
       console.log('DEBUG existing task:', existingTask.title);
 
-      const updates: string[] = [];
-      const params: QueryParameters = [];
+      const { updates, params } = this.buildFieldUpdates(data, existingTask);
 
-      if (data.title !== undefined) {
-        console.log('DEBUG adding title update:', data.title);
-        updates.push('title = ?');
-        params.push(data.title);
-      }
-      if (data.description !== undefined) {
-        updates.push('description = ?');
-        params.push(data.description);
-      }
-      if (data.priority !== undefined) {
-        updates.push('priority = ?');
-        params.push(data.priority);
-      }
-      if (data.status !== undefined) {
-        updates.push('status = ?');
-        params.push(data.status);
+      const hasNoChanges =
+        updates.length === 0 && data.column_id === undefined && data.position === undefined;
 
-        if (data.status === 'done' && existingTask.status !== 'done') {
-          updates.push('completed_at = ?');
-          params.push(new Date());
-        } else if (data.status !== 'done' && existingTask.status === 'done') {
-          updates.push('completed_at = ?');
-          params.push(null);
-        }
-      }
-      if (data.assignee !== undefined) {
-        updates.push('assignee = ?');
-        params.push(data.assignee);
-      }
-      if (data.due_date !== undefined) {
-        updates.push('due_date = ?');
-        params.push(data.due_date);
-      }
-      if (data.estimated_hours !== undefined) {
-        updates.push('estimated_hours = ?');
-        params.push(data.estimated_hours);
-      }
-      if (data.actual_hours !== undefined) {
-        updates.push('actual_hours = ?');
-        params.push(data.actual_hours);
-      }
-      if (data.progress !== undefined) {
-        updates.push('progress = ?');
-        params.push(data.progress);
-      }
-      if (data.parent_task_id !== undefined) {
-        updates.push('parent_task_id = ?');
-        params.push(data.parent_task_id);
-      }
-      if (data.metadata !== undefined) {
-        updates.push('metadata = ?');
-        params.push(data.metadata);
-      }
-
-      if (updates.length === 0 && data.column_id === undefined && data.position === undefined) {
+      if (hasNoChanges) {
         return existingTask;
       }
 
       await this.db.transaction(async db => {
-        if (data.column_id !== undefined && data.column_id !== existingTask.column_id) {
-          const newPosition =
-            data.position !== undefined
-              ? data.position
-              : await this.getNextPosition(data.column_id);
+        await this.handlePositionUpdates(data, existingTask, updates, params);
 
-          await this.adjustPositionsForRemoval(existingTask.column_id, existingTask.position);
-          await this.adjustPositionsForInsertion(data.column_id, newPosition);
-
-          updates.push('column_id = ?', 'position = ?');
-          params.push(data.column_id, newPosition);
-        } else if (data.position !== undefined && data.position !== existingTask.position) {
-          await this.adjustPositionsForMove(
-            existingTask.column_id,
-            existingTask.position,
-            data.position
-          );
-          updates.push('position = ?');
-          params.push(data.position);
-        }
-
-        if (updates.length > 0) {
+        if (updates.length) {
           updates.push('updated_at = ?');
-          params.push(new Date());
-          params.push(id);
+          params.push(new Date(), id);
 
           const query = `UPDATE tasks SET ${updates.join(', ')} WHERE id = ?`;
           console.log('DEBUG updateTask query:', query);
           console.log('DEBUG updateTask params:', params);
-          
+
           const result = await db.run(query, params);
-          if (!result || result.changes === 0) {
-            throw new Error(`DEBUG: Update failed - no rows changed. Query: ${query}, Params: ${JSON.stringify(params)}`);
+          if (result.changes === 0) {
+            throw new Error(
+              `DEBUG: Update failed - no rows changed. Query: ${query}, Params: ${JSON.stringify(params)}`
+            );
           }
         }
       });
@@ -726,47 +780,7 @@ export class TaskService {
         throw TaskService.createError('TASK_UPDATE_FAILED', 'Task disappeared after update');
       }
 
-      // Invalidate cache for this task
-      this.cache.delete(`task:${id}`);
-
-      // If parent task exists, invalidate its cache too
-      if (existingTask.parent_task_id) {
-        this.cache.delete(`task:${existingTask.parent_task_id}`);
-      }
-
-      // Record history for changed fields
-      await this.recordTaskHistory(existingTask, data);
-
-      // Record priority change if priority was updated
-      if (data.priority !== undefined && data.priority !== existingTask.priority) {
-        try {
-          await PriorityHistoryService.getInstance().recordPriorityChange(
-            id,
-            existingTask.priority,
-            data.priority,
-            data.change_reason, // Use the correct field name from UpdateTaskRequest
-            data.changed_by
-          );
-        } catch (error) {
-          logger.error('Failed to record priority change:', {
-            taskId: id,
-            oldPriority: existingTask.priority,
-            newPriority: data.priority,
-            error: error instanceof Error ? error.message : 'Unknown error',
-          });
-          // Don't fail the task update if priority history recording fails
-        }
-      }
-
-      // Auto-update parent task progress if this is a subtask and status changed
-      if (
-        (data.status !== undefined || data.progress !== undefined) &&
-        existingTask.parent_task_id
-      ) {
-        this.updateParentProgressOnSubtaskChange(id).catch(error =>
-          logger.error('Failed to update parent progress on subtask change', { error, taskId: id })
-        );
-      }
+      await this.handlePostUpdateOperations(id, data, existingTask);
 
       logger.info('Task updated successfully', { taskId: id });
       return updatedTask;
@@ -1184,13 +1198,14 @@ export class TaskService {
         [dependsOnTaskId, taskId]
       );
 
-      return (result[0]?.path_exists ?? 0) > 0;
+      const pathExists = result[0]?.path_exists ?? 0;
+      return pathExists > 0;
     } catch (error) {
       // Log error and fall back to safe behavior (prevent dependency)
       logger.error('Error checking circular dependency', {
         taskId,
         dependsOnTaskId,
-        error: error instanceof Error ? error.message : String(error),
+        error: error instanceof Error ? error.message : error,
       });
       return true; // Err on the side of caution
     }
@@ -1296,7 +1311,7 @@ export class TaskService {
             [taskId, dependsOnTaskId, dependencyType]
           );
 
-          if (existing.length > 0) {
+          if (existing.length) {
             // Return existing dependency instead of creating duplicate
             const existingDep = await this.db.query<TaskDependency>(
               `SELECT * FROM task_dependencies WHERE id = ?`,
@@ -1344,7 +1359,7 @@ export class TaskService {
         taskId,
         dependsOnTaskId,
         dependencyType,
-        error: error instanceof Error ? error.message : String(error),
+        error: error instanceof Error ? error.message : error,
       });
       throw TaskService.createError(
         'DEPENDENCY_ADD_FAILED',
@@ -1531,7 +1546,7 @@ export class TaskService {
     const error = new Error(message) as ServiceError;
     error.code = code;
     error.statusCode = TaskService.getStatusCodeForError(code);
-    error.details = originalError ? { originalError: String(originalError) } : undefined;
+    error.details = originalError ? { originalError } : undefined;
     return error;
   }
 
@@ -1942,7 +1957,7 @@ export class TaskService {
     score += impactedTasks.indirect.length * 1;
 
     // Priority multiplier
-    const priorityMultiplier = (task.priority ?? 1) / 5;
+    const priorityMultiplier = (task.priority || 1) / 5;
     score *= 1 + priorityMultiplier;
 
     // Due date urgency (if task is overdue or due soon)

@@ -158,7 +158,7 @@ export class PriorityQueue {
     // Try to process immediately if capacity available
     setImmediate(() => this.processNext());
 
-    return true;
+    return true; // Successfully enqueued
   }
 
   /**
@@ -498,11 +498,13 @@ function determineRequestPriority(req: Request): RequestPriority {
 /**
  * Priority middleware for Express
  */
-export function priorityMiddleware(customPriorityFn?: (req: Request) => RequestPriority) {
+export function priorityMiddleware(
+  customPriorityFn?: (req: Request) => RequestPriority
+): (req: Request, res: Response, next: NextFunction) => void {
   return (req: Request, res: Response, next: NextFunction): void => {
     const requestId =
       (req.headers['x-request-id'] as string) ||
-      `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      `req_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 
     const priority = customPriorityFn ? customPriorityFn(req) : determineRequestPriority(req);
 

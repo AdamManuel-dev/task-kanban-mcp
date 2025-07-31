@@ -336,7 +336,7 @@ describe('NoteService', () => {
       const notes = await noteService.getPinnedNotes();
 
       expect(notes).toHaveLength(2);
-      notes.forEach(note => expect(Boolean(note.pinned)).toBe(true));
+      notes.forEach(note => expect(!!note.pinned).toBe(true));
     });
 
     it('should filter pinned notes by task_id', async () => {
@@ -344,7 +344,7 @@ describe('NoteService', () => {
 
       expect(notes).toHaveLength(1);
       expect(notes[0].task_id).toBe(taskId);
-      expect(Boolean(notes[0].pinned)).toBe(true);
+      expect(!!notes[0].pinned).toBe(true);
     });
   });
 
@@ -384,7 +384,7 @@ describe('NoteService', () => {
         pinned: true,
       });
 
-      expect(Boolean(updatedNote.pinned)).toBe(true);
+      expect(!!updatedNote.pinned).toBe(true);
     });
 
     it('should update multiple fields', async () => {
@@ -396,7 +396,7 @@ describe('NoteService', () => {
 
       expect(updatedNote.content).toBe('New content');
       expect(updatedNote.category).toBe('blocker');
-      expect(Boolean(updatedNote.pinned)).toBe(true);
+      expect(!!updatedNote.pinned).toBe(true);
     });
 
     it('should return unchanged note when no updates provided', async () => {
@@ -515,7 +515,7 @@ describe('NoteService', () => {
       });
 
       expect(results).toHaveLength(1);
-      expect(Boolean(results[0].pinned)).toBe(true);
+      expect(!!results[0].pinned).toBe(true);
     });
 
     it('should apply pagination to search results', async () => {
@@ -676,7 +676,7 @@ describe('NoteService', () => {
     it('should pin a note', async () => {
       const pinnedNote = await noteService.pinNote(createdNote.id);
 
-      expect(Boolean(pinnedNote.pinned)).toBe(true);
+      expect(!!pinnedNote.pinned).toBe(true);
     });
 
     it('should unpin a note', async () => {
@@ -686,7 +686,7 @@ describe('NoteService', () => {
       // Then unpin it
       const unpinnedNote = await noteService.unpinNote(createdNote.id);
 
-      expect(Boolean(unpinnedNote.pinned)).toBe(false);
+      expect(!!unpinnedNote.pinned).toBe(false);
     });
   });
 

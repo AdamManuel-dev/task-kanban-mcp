@@ -154,23 +154,23 @@ export class SecureCliWrapper {
     const sanitized: string[] = [];
     const warnings: string[] = [];
 
-    args.forEach((arg, index) => {
+    args.forEach((arg, idx) => {
       let processedArg = arg;
 
       // Check length
       if (processedArg.length > this.config.maxArgumentLength) {
         this.logSecurityEvent({
           type: 'validation_failed',
-          details: `Argument ${String(index)} exceeds maximum length`,
+          details: `Argument ${String(idx)} exceeds maximum length`,
           input: `${String(String(processedArg.substring(0, 100)))}...`,
           risk: 'medium',
         });
         if (this.config.strictMode) {
           throw new Error(
-            `Argument ${String(index)} exceeds maximum length (${String(String(this.config.maxArgumentLength))})`
+            `Argument ${String(idx)} exceeds maximum length (${String(String(this.config.maxArgumentLength))})`
           );
         }
-        warnings.push(`Argument ${String(index)} truncated`);
+        warnings.push(`Argument ${String(idx)} truncated`);
         processedArg = processedArg.substring(0, this.config.maxArgumentLength);
       }
 
@@ -187,10 +187,10 @@ export class SecureCliWrapper {
         });
         if (this.config.strictMode) {
           throw new Error(
-            `Blocked pattern detected in argument ${String(index)}: ${String(String(blockedPattern.source))}`
+            `Blocked pattern detected in argument ${String(idx)}: ${String(String(blockedPattern.source))}`
           );
         }
-        warnings.push(`Blocked pattern removed from argument ${String(index)}`);
+        warnings.push(`Blocked pattern removed from argument ${String(idx)}`);
         processedArg = processedArg.replace(blockedPattern, '');
       }
 
@@ -200,11 +200,11 @@ export class SecureCliWrapper {
         if (sanitizationResult.modified) {
           this.logSecurityEvent({
             type: 'input_sanitized',
-            details: `Argument ${String(index)} sanitized: ${String(String(sanitizationResult.warnings.join(', ')))}`,
+            details: `Argument ${String(idx)} sanitized: ${String(String(sanitizationResult.warnings.join(', ')))}`,
             input: processedArg,
             risk: 'low',
           });
-          warnings.push(`Argument ${String(index)} sanitized`);
+          warnings.push(`Argument ${String(idx)} sanitized`);
         }
         sanitized.push(sanitizationResult.sanitized);
       } else {
@@ -333,7 +333,9 @@ export class SecureCliWrapper {
    */
   secureCommand(command: Command): Command {
     // Store original action handler using type assertion for private property
-    const originalAction = (command as any)._actionHandler;
+    const originalAction = (
+      command as Command & { _actionHandler?: (...args: unknown[]) => void | Promise<void> }
+    )._actionHandler;
 
     if (originalAction) {
       command.action(async (...args: unknown[]) => {
@@ -549,11 +551,7 @@ export class SecureCliWrapper {
       }
     }
 
-    return {
-      safe: true,
-      sanitized: sanitizedResult.sanitized,
-      warnings: sanitizedResult.warnings,
-    };
+    return { safe: true, sanitized: sanitizedResult.sanitized, warnings: sanitizedResult.warnings };
   }
 
   /**

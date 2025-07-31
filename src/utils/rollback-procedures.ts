@@ -315,11 +315,7 @@ export class StateSnapshotManager {
     const stats = await fs.stat(dataPath);
     const checksum = this.calculateChecksum(mockData);
 
-    return {
-      dataPath,
-      size: stats.size,
-      checksum,
-    };
+    return { dataPath, size: stats.size, checksum };
   }
 
   private async createConfigurationSnapshot(id: string): Promise<{
@@ -344,11 +340,7 @@ export class StateSnapshotManager {
     const stats = await fs.stat(dataPath);
     const checksum = this.calculateChecksum(configData);
 
-    return {
-      dataPath,
-      size: stats.size,
-      checksum,
-    };
+    return { dataPath, size: stats.size, checksum };
   }
 
   private async createApplicationSnapshot(id: string): Promise<{
@@ -375,11 +367,7 @@ export class StateSnapshotManager {
     const stats = await fs.stat(dataPath);
     const checksum = this.calculateChecksum(stateData);
 
-    return {
-      dataPath,
-      size: stats.size,
-      checksum,
-    };
+    return { dataPath, size: stats.size, checksum };
   }
 
   private async createFullSnapshot(id: string): Promise<{
@@ -407,11 +395,7 @@ export class StateSnapshotManager {
     const stats = await fs.stat(dataPath);
     const checksum = this.calculateChecksum(fullData);
 
-    return {
-      dataPath,
-      size: stats.size,
-      checksum,
-    };
+    return { dataPath, size: stats.size, checksum };
   }
 
   private async restoreDatabaseSnapshot(snapshot: StateSnapshot): Promise<void> {
@@ -486,7 +470,7 @@ export class StateSnapshotManager {
   }
 
   private generateSnapshotId(): string {
-    return `snapshot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `snapshot_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
   }
 
   private calculateChecksum(data: string): string {
@@ -539,17 +523,7 @@ export class RollbackManager {
       0
     );
 
-    return {
-      id,
-      name,
-      description,
-      operations: rollbackOperations,
-      dependencies: options.dependencies ?? [],
-      estimatedDuration,
-      riskLevel: options.riskLevel ?? 'medium',
-      approvalRequired: options.approvalRequired ?? false,
-      createdAt: new Date(),
-    };
+    return { id, name, description, operations: rollbackOperations, dependencies: options.dependencies ?? [], estimatedDuration, riskLevel: options.riskLevel ?? 'medium', approvalRequired: options.approvalRequired ?? false, createdAt: new Date() };
   }
 
   /**
@@ -683,12 +657,7 @@ export class RollbackManager {
       });
     }
 
-    return {
-      success,
-      executedOperations,
-      failedOperation,
-      error,
-    };
+    return { success, executedOperations, failedOperation, error };
   }
 
   /**
@@ -698,9 +667,7 @@ export class RollbackManager {
     snapshotId: string,
     description?: string
   ): Omit<RollbackOperation, 'id'> {
-    return {
-      type: 'database',
-      description: description ?? `Rollback database to snapshot ${snapshotId}`,
+    return { type: 'database', description: description ?? `Rollback database to snapshot ${snapshotId }`,
       timestamp: new Date(),
       execute: async () => {
         await this.snapshotManager.restoreFromSnapshot(snapshotId);
@@ -719,15 +686,7 @@ export class RollbackManager {
     previousConfig: Record<string, unknown>,
     description?: string
   ): Omit<RollbackOperation, 'id'> {
-    return {
-      type: 'configuration',
-      description: description ?? 'Rollback configuration changes',
-      timestamp: new Date(),
-      execute: async () => {
-        // Restore previous configuration
-        Object.entries(previousConfig).forEach(([key, value]) => {
-          process.env[key] = value;
-        });
+    return { type: 'configuration', description: description ?? 'Rollback configuration changes', timestamp: new Date(), execute: async () => {, // Restore previous configuration, Object.entries(previousConfig).forEach(([key, value]) => {, process.env[key] = value; });
       },
       verify: async () =>
         // Verify configuration is correctly applied
@@ -748,11 +707,11 @@ export class RollbackManager {
   }
 
   private generatePlanId(): string {
-    return `plan_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `plan_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
   }
 
   private generateOperationId(): string {
-    return `op_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `op_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
   }
 }
 
@@ -946,7 +905,7 @@ export const recoveryProcedures = new RecoveryProcedures();
  * Create an emergency snapshot
  */
 export const createEmergencySnapshot = async (reason: string): Promise<StateSnapshot> =>
-  stateSnapshotManager.createSnapshot('full', {
+  await stateSnapshotManager.createSnapshot('full', {
     version: '1.0.0',
     environment: process.env.NODE_ENV ?? 'development',
     operation: 'emergency_snapshot',

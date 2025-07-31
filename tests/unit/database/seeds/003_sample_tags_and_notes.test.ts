@@ -16,9 +16,9 @@ import { run, name, description } from '../../../../src/database/seeds/003_sampl
 
 // Mock database interface to match the sqlite wrapper
 interface MockDatabase {
-  run: (sql: string, params?: any[]) => Promise<any>;
-  all: (sql: string, params?: any[]) => Promise<any[]>;
-  get: (sql: string, params?: any[]) => Promise<any>;
+  run: (sql: string, params?: unknown[]) => Promise<unknown>;
+  all: (sql: string, params?: unknown[]) => Promise<unknown[]>;
+  get: (sql: string, params?: unknown[]) => Promise<unknown>;
 }
 
 interface Tag {
@@ -68,14 +68,14 @@ describe('003_sample_tags_and_notes seed', () => {
     db = new Database(tempDbPath);
 
     // Create mock database interface that matches the sqlite wrapper
-    const run = promisify(db.run.bind(db));
+    const dbRun = promisify(db.run.bind(db));
     const all = promisify(db.all.bind(db));
     const get = promisify(db.get.bind(db));
 
     mockDb = {
-      run: async (sql: string, params?: any[]) => await run(sql, params || []),
-      all: async (sql: string, params?: any[]) => await all(sql, params || []),
-      get: async (sql: string, params?: any[]) => await get(sql, params || []),
+      run: async (sql: string, params?: unknown[]) => await dbRun(sql, params || []),
+      all: async (sql: string, params?: unknown[]) => await all(sql, params || []),
+      get: async (sql: string, params?: unknown[]) => await get(sql, params || []),
     };
 
     // Create required tables
@@ -524,11 +524,11 @@ describe('003_sample_tags_and_notes seed', () => {
     // Verify specific unique names exist
     const uniqueNames = ['bug', 'feature', 'enhancement', 'critical-bug', 'ui-feature'];
 
-    for (const name of uniqueNames) {
-      const tag = (await mockDb.get('SELECT * FROM tags WHERE name = ?', [name])) as Tag;
+    for (const tagName of uniqueNames) {
+      const tag = (await mockDb.get('SELECT * FROM tags WHERE name = ?', [tagName])) as Tag;
 
       expect(tag).toBeDefined();
-      expect(tag.name).toBe(name);
+      expect(tag.name).toBe(tagName);
     }
   });
 

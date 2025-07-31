@@ -207,14 +207,7 @@ export class MCPResourceRegistry {
           limit: 1000,
         });
 
-        return {
-          text: JSON.stringify(
-            {
-              board_id: parsedUri.id,
-              board_name: board.name,
-              tasks,
-              count: tasks.length,
-            },
+        return { text: JSON.stringify(, {, board_id: parsedUri.id, board_name: board.name, tasks, count: tasks.length },
             null,
             2
           ),
@@ -227,13 +220,7 @@ export class MCPResourceRegistry {
         limit: 100,
       });
 
-      return {
-        text: JSON.stringify(
-          {
-            ...board,
-            tasks: tasks.slice(0, 10), // Include only first 10 tasks for overview
-            task_count: tasks.length,
-          },
+      return { text: JSON.stringify(, {, ...board, tasks: tasks.slice(0, 10), // Include only first 10 tasks for overview, task_count: tasks.length },
           null,
           2
         ),
@@ -243,12 +230,7 @@ export class MCPResourceRegistry {
     // All boards
     const boards = await this.services.boardService.getBoards({ limit: 100 });
 
-    return {
-      text: JSON.stringify(
-        {
-          boards,
-          count: boards.length,
-        },
+    return { text: JSON.stringify(, {, boards, count: boards.length },
         null,
         2
       ),
@@ -268,13 +250,7 @@ export class MCPResourceRegistry {
       const notes = await this.services.noteService.getTaskNotes(parsedUri.id, { limit: 50 });
       const tags = await this.services.tagService.getTaskTags(parsedUri.id);
 
-      return {
-        text: JSON.stringify(
-          {
-            ...task,
-            notes,
-            tags,
-          },
+      return { text: JSON.stringify(, {, ...task, notes, tags },
           null,
           2
         ),
@@ -286,13 +262,7 @@ export class MCPResourceRegistry {
       switch (parsedUri.action) {
         case 'blocked':
           const blockedTasks = await this.services.taskService.getBlockedTasks();
-          return {
-            text: JSON.stringify(
-              {
-                type: 'blocked_tasks',
-                tasks: blockedTasks,
-                count: blockedTasks.length,
-              },
+          return { text: JSON.stringify(, {, type: 'blocked_tasks', tasks: blockedTasks, count: blockedTasks.length },
               null,
               2
             ),
@@ -301,13 +271,7 @@ export class MCPResourceRegistry {
 
         case 'overdue':
           const overdueTasks = await this.services.taskService.getOverdueTasks();
-          return {
-            text: JSON.stringify(
-              {
-                type: 'overdue_tasks',
-                tasks: overdueTasks,
-                count: overdueTasks.length,
-              },
+          return { text: JSON.stringify(, {, type: 'overdue_tasks', tasks: overdueTasks, count: overdueTasks.length },
               null,
               2
             ),
@@ -324,14 +288,7 @@ export class MCPResourceRegistry {
             priority_max: priority,
             limit: 200,
           });
-          return {
-            text: JSON.stringify(
-              {
-                type: 'priority_tasks',
-                priority_level: priority,
-                tasks: priorityTasks,
-                count: priorityTasks.length,
-              },
+          return { text: JSON.stringify(, {, type: 'priority_tasks', priority_level: priority, tasks: priorityTasks, count: priorityTasks.length },
               null,
               2
             ),
@@ -345,12 +302,7 @@ export class MCPResourceRegistry {
       // All tasks
       const tasks = await this.services.taskService.getTasks({ limit: 500 });
 
-      return {
-        text: JSON.stringify(
-          {
-            tasks,
-            count: tasks.length,
-          },
+      return { text: JSON.stringify(, {, tasks, count: tasks.length },
           null,
           2
         ),
@@ -368,14 +320,7 @@ export class MCPResourceRegistry {
 
       const notes = await this.services.noteService.searchNotes({ query, limit: 100 });
 
-      return {
-        text: JSON.stringify(
-          {
-            type: 'search_results',
-            query,
-            notes,
-            count: notes.length,
-          },
+      return { text: JSON.stringify(, {, type: 'search_results', query, notes, count: notes.length },
           null,
           2
         ),
@@ -385,12 +330,7 @@ export class MCPResourceRegistry {
     // All notes
     const notes = await this.services.noteService.getNotes({ limit: 500 });
 
-    return {
-      text: JSON.stringify(
-        {
-          notes,
-          count: notes.length,
-        },
+    return { text: JSON.stringify(, {, notes, count: notes.length },
         null,
         2
       ),
@@ -402,12 +342,7 @@ export class MCPResourceRegistry {
     if (parsedUri.action === 'hierarchy') {
       const tagTree = await this.services.tagService.getTagHierarchy();
 
-      return {
-        text: JSON.stringify(
-          {
-            type: 'tag_hierarchy',
-            tree: tagTree,
-          },
+      return { text: JSON.stringify(, {, type: 'tag_hierarchy', tree: tagTree },
           null,
           2
         ),
@@ -419,12 +354,7 @@ export class MCPResourceRegistry {
       limit: 200,
     });
 
-    return {
-      text: JSON.stringify(
-        {
-          tags,
-          count: tags.length,
-        },
+    return { text: JSON.stringify(, {, tags, count: tags.length },
         null,
         2
       ),
@@ -436,10 +366,7 @@ export class MCPResourceRegistry {
     if (parsedUri.action === 'boards' && parsedUri.id) {
       const analytics = await this.services.boardService.getBoardWithStats(parsedUri.id);
 
-      return {
-        text: JSON.stringify(analytics, null, 2),
-        mimeType: 'application/json',
-      };
+      return { text: JSON.stringify(analytics, null, 2), mimeType: 'application/json' };
     }
     throw new Error('Board ID required for analytics');
   }
@@ -454,10 +381,7 @@ export class MCPResourceRegistry {
         detail_level: 'detailed',
       });
 
-      return {
-        text: JSON.stringify(context, null, 2),
-        mimeType: 'application/json',
-      };
+      return { text: JSON.stringify(context, null, 2), mimeType: 'application/json' };
     }
     if (parsedUri.action === 'task' && parsedUri.id) {
       const context = await this.services.contextService.getTaskContext(parsedUri.id, {
@@ -468,10 +392,7 @@ export class MCPResourceRegistry {
         detail_level: 'detailed',
       });
 
-      return {
-        text: JSON.stringify(context, null, 2),
-        mimeType: 'application/json',
-      };
+      return { text: JSON.stringify(context, null, 2), mimeType: 'application/json' };
     }
     throw new Error('Invalid context resource URI');
   }
@@ -487,10 +408,7 @@ export class MCPResourceRegistry {
           detail_level: 'summary',
         });
 
-        return {
-          text: JSON.stringify(summary, null, 2),
-          mimeType: 'application/json',
-        };
+        return { text: JSON.stringify(summary, null, 2), mimeType: 'application/json' };
 
       case 'workload':
         // Get all tasks grouped by assignee
@@ -538,13 +456,7 @@ export class MCPResourceRegistry {
           }
         });
 
-        return {
-          text: JSON.stringify(
-            {
-              type: 'workload_report',
-              workload: Object.values(workloadMap),
-              generated_at: new Date().toISOString(),
-            },
+        return { text: JSON.stringify(, {, type: 'workload_report', workload: Object.values(workloadMap), generated_at: new Date().toISOString() },
             null,
             2
           ),
@@ -577,20 +489,7 @@ export class MCPResourceRegistry {
         })
       );
 
-      return {
-        text: JSON.stringify(
-          {
-            export_type: 'board_complete',
-            board,
-            tasks,
-            notes: allNotes,
-            tags: allTags,
-            exported_at: new Date().toISOString(),
-            counts: {
-              tasks: tasks.length,
-              notes: allNotes.length,
-              tags: allTags.length,
-            },
+      return { text: JSON.stringify(, {, export_type: 'board_complete', board, tasks, notes: allNotes, tags: allTags, exported_at: new Date().toISOString(), counts: {, tasks: tasks.length, notes: allNotes.length, tags: allTags.length },
           },
           null,
           2

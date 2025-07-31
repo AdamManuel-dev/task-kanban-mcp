@@ -204,9 +204,7 @@ function analyzePackage(
 
   return {
     name: packageName,
-    version: '', // Would need to parse from npm list output
-    hasTypes,
-    typesPackage: hasTypes ? `@types/${packageName}` : undefined,
+    version: '', // Would need to parse from npm list output, hasTypes, typesPackage: hasTypes ? `@types/${packageName }` : undefined,
     hasBuiltInTypes,
     needsTypes,
     priority,

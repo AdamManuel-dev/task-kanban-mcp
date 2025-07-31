@@ -119,13 +119,18 @@ export class BackupDeduplicationService {
         chunks: this.chunkIndex.size,
         backups: this.backupIndex.size,
       });
-    } catch (error: any) {
-      if (error.code === 'ENOENT') {
+    } catch (err: unknown) {
+      if (
+        err &&
+        typeof err === 'object' &&
+        'code' in err &&
+        (err as NodeJS.ErrnoException).code === 'ENOENT'
+      ) {
         logger.info('No existing deduplication index found, starting fresh');
         this.indexLoaded = true;
       } else {
-        logger.error('Failed to load deduplication index', { error });
-        throw new Error(`Failed to load deduplication index: ${(error as Error).message}`);
+        logger.error('Failed to load deduplication index', { error: err });
+        throw new Error(`Failed to load deduplication index: ${(err as Error).message}`);
       }
     }
   }
@@ -532,10 +537,7 @@ export class BackupDeduplicationService {
         spaceFreed,
       });
 
-      return {
-        cleanedChunks: orphanedChunks.length,
-        spaceFree: spaceFreed,
-      };
+      return { cleanedChunks: orphanedChunks.length, spaceFree: spaceFreed };
     } catch (error) {
       logger.error('Orphaned chunk cleanup failed', { error });
       throw new Error(`Orphaned chunk cleanup failed: ${(error as Error).message}`);

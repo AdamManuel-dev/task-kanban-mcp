@@ -69,7 +69,15 @@
     /* Skip Lib Check */
     "skipLibCheck": true
   },
-  "exclude": ["node_modules", "dist", "build", "coverage", "**/*.test.ts", "**/*.spec.ts", "src/cli/commands/migrate-safe.ts"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build",
+    "coverage",
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "src/cli/commands/migrate-safe.ts"
+  ],
   "watchOptions": {
     "watchFile": "useFsEvents",
     "watchDirectory": "useFsEvents",

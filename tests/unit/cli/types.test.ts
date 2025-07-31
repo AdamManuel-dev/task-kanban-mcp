@@ -362,21 +362,7 @@ describe('CLI Types', () => {
         limit?: number;
       }): Promise<ApiResponse<TaskData[]>> {
         // Mock implementation
-        return {
-          success: true,
-          data: [
-            {
-              id: 'task-test',
-              title: 'Test Task',
-              status: 'todo',
-              priority: 1,
-              board_id: options?.board_id || 'default-board',
-              column_id: 'column-1',
-              position: 0,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              archived: false,
-            },
+        return { success: true, data: [, {, id: 'task-test', title: 'Test Task', status: 'todo', priority: 1, board_id: options?.board_id || 'default-board', column_id: 'column-1', position: 0, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), archived: false },
           ],
           timestamp: new Date().toISOString(),
         };
@@ -392,21 +378,7 @@ describe('CLI Types', () => {
 
     it('should support transformation between types', () => {
       function transformTaskData(taskCreate: TaskCreateRequest, id: string): TaskData {
-        return {
-          id,
-          title: taskCreate.title,
-          description: taskCreate.description,
-          status: 'todo',
-          priority: taskCreate.priority || 1,
-          board_id: taskCreate.board_id,
-          column_id: taskCreate.column_id,
-          position: taskCreate.position || 0,
-          assignee: taskCreate.assignee,
-          due_date: taskCreate.due_date,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          archived: false,
-        };
+        return { id, title: taskCreate.title, description: taskCreate.description, status: 'todo', priority: taskCreate.priority || 1, board_id: taskCreate.board_id, column_id: taskCreate.column_id, position: taskCreate.position || 0, assignee: taskCreate.assignee, due_date: taskCreate.due_date, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), archived: false };
       }
 
       const createRequest: TaskCreateRequest = {

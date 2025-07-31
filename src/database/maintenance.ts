@@ -346,13 +346,7 @@ export class MaintenanceManager {
       // Check if WAL mode is enabled
       const walMode = await this.db.queryOne<{ journal_mode: string }>('PRAGMA journal_mode');
       if (walMode?.journal_mode !== 'wal') {
-        return {
-          operation,
-          success: true,
-          duration: Date.now() - startTime,
-          details: {
-            message: 'WAL mode not enabled, checkpoint not needed',
-          },
+        return { operation, success: true, duration: Date.now() - startTime, details: {, message: 'WAL mode not enabled, checkpoint not needed' },
         };
       }
 
@@ -571,15 +565,7 @@ export class MaintenanceManager {
       );
     }
 
-    return {
-      recommendations,
-      stats: {
-        sizeMB: parseFloat(sizeMB.toFixed(2)),
-        pageCount: stats.pageCount,
-        pageSize: stats.pageSize,
-        walMode: stats.walMode,
-        tables: stats.tables,
-      },
+    return { recommendations, stats: {, sizeMB: parseFloat(sizeMB.toFixed(2)), pageCount: stats.pageCount, pageSize: stats.pageSize, walMode: stats.walMode, tables: stats.tables },
     };
   }
 

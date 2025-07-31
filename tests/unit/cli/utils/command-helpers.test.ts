@@ -511,7 +511,7 @@ describe('CLI Command Helpers', () => {
     });
 
     test('should handle circular references in data', () => {
-      const circularData: any = { name: 'test' };
+      const circularData: Record<string, unknown> = { name: 'test' };
       circularData.self = circularData;
 
       expect(() => formatOutput(circularData)).not.toThrow();

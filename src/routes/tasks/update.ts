@@ -15,8 +15,11 @@ import { logger } from '@/utils/logger';
 /**
  * Updates an existing task
  */
-export const updateTaskHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-
+export const updateTaskHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
     const taskId = req.params.id;
     const updates = req.body;

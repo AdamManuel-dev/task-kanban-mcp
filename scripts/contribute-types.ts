@@ -108,21 +108,21 @@ declare module 'cli-table3' {
 declare module 'listr2' {
   export interface TaskOptions {
     title?: string;
-    task?: (ctx: any, task: Task) => void | Promise<void>;
-    skip?: boolean | ((ctx: any) => boolean | string);
-    enabled?: boolean | ((ctx: any) => boolean);
+    task?: (ctx: unknown, task: Task) => void | Promise<void>;
+    skip?: boolean | ((ctx: unknown) => boolean | string);
+    enabled?: boolean | ((ctx: unknown) => boolean);
     exitOnError?: boolean;
     retry?: number | { tries: number; delay?: number };
     renderer?: 'default' | 'verbose' | 'silent' | 'test' | 'simple';
-    rendererOptions?: any;
+    rendererOptions?: Record<string, unknown>;
   }
   
   export interface ListrOptions {
     concurrent?: boolean | number;
     exitOnError?: boolean;
     renderer?: 'default' | 'verbose' | 'silent' | 'test' | 'simple';
-    rendererOptions?: any;
-    ctx?: any;
+    rendererOptions?: Record<string, unknown>;
+    ctx?: Record<string, unknown>;
   }
   
   export class Task {
@@ -134,13 +134,13 @@ declare module 'listr2' {
     isCompleted(): boolean;
     isPending(): boolean;
     isFailed(): boolean;
-    run(ctx?: any): Promise<void>;
+    run(ctx?: Record<string, unknown>): Promise<void>;
   }
   
   export class Listr {
     constructor(tasks: TaskOptions[], options?: ListrOptions);
     add(tasks: TaskOptions | TaskOptions[]): this;
-    run(ctx?: any): Promise<any>;
+    run(ctx?: Record<string, unknown>): Promise<unknown>;
   }
   
   export default Listr;

@@ -48,7 +48,7 @@ export class BoardMappingService {
     const config = await this.loadConfig(repo.path);
 
     if (!config?.git?.enabled) {
-      return config?.defaultBoard ?? null;
+      return config?.defaultBoard || null;
     }
 
     // Try to match using configured mapping rules
@@ -75,7 +75,7 @@ export class BoardMappingService {
       }
     }
 
-    return config.defaultBoard ?? null;
+    return config.defaultBoard || null;
   }
 
   /**
@@ -183,8 +183,8 @@ export class BoardMappingService {
     // Convert glob pattern to regex
     const regexPattern = pattern
       .replace(/[.*+?^${}()|[\]\\]/g, '\\$&') // Escape regex chars
-      .replace(/\\\*/g, '.*') // Convert * to .*
-      .replace(/\\\?/g, '.'); // Convert ? to .
+      .replace(/\*/g, '.*') // Convert * to .*
+      .replace(/\?/g, '.'); // Convert ? to .
 
     const regex = new RegExp(`^${regexPattern}$`, 'i');
     return regex.test(text);

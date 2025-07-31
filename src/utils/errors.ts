@@ -114,7 +114,7 @@ export class BaseServiceError extends Error implements ServiceError {
     this.code = code;
     this.statusCode = statusCode;
     this.details = details;
-    this.context = context ?? undefined;
+    this.context = context;
     this.timestamp = new Date();
 
     Error.captureStackTrace(this, this.constructor);
@@ -292,9 +292,7 @@ export class DatabaseError extends BaseServiceError {
    */
   constructor(message: string, originalError?: Error | ErrorDetails, context?: ErrorContext) {
     const details =
-      originalError instanceof Error
-        ? { originalError: originalError.message }
-        : (originalError ?? { originalError: undefined });
+      originalError instanceof Error ? { originalError: originalError.message } : originalError;
     super('DATABASE_ERROR', message, 500, details, context);
   }
 }
@@ -822,8 +820,8 @@ export function createServiceErrorHandler(
         service: serviceName,
         method: propertyKey,
         metadata: {
-          args: args.map((arg, index) => ({
-            index,
+          args: args.map((arg, argIndex) => ({
+            index: argIndex,
             type: typeof arg,
             value: typeof arg === 'object' ? '[object]' : String(arg),
           })),
@@ -1329,19 +1327,12 @@ export function serializeError(error: unknown): Record<string, unknown> {
   }
 
   if (isError(error)) {
-    return {
-      name: error.name,
-      message: error.message,
-      stack: error.stack,
-    };
+    return { name: error.name, message: error.message, stack: error.stack };
   }
 
   if (isRecord(error)) {
     return error;
   }
 
-  return {
-    message: getErrorMessage(error),
-    type: typeof error,
-  };
+  return { message: getErrorMessage(error), type: typeof error };
 }

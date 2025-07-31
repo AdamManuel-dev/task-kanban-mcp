@@ -216,8 +216,8 @@ export interface ContextOptions {
  * });
  *
  * logger.log(context.summary);
- * logger.log(`Priority tasks: ${String(String(context.priorities.length))}`);
- * logger.log(`Active blockers: ${String(String(context.blockers.length))}`);
+ * logger.log(`Priority tasks: ${context.priorities.length}`);
+ * logger.log(`Active blockers: ${context.blockers.length}`);
  * ```
  */
 export class ContextService {
@@ -259,10 +259,10 @@ export class ContextService {
    *   max_items: 25
    * });
    *
-   * logger.log(`Project Summary: ${String(String(context.summary))}`);
-   * logger.log(`Active Boards: ${String(String(context.boards.length))}`);
-   * logger.log(`High Priority Tasks: ${String(String(context.priorities.filter(p => p['urgency_level'] = == 'high').length))}`);
-   * logger.log(`Critical Blockers: ${String(String(context.blockers.filter(b => b['impact_level'] = == 'high').length))}`);
+   * logger.log(`Project Summary: ${context.summary}`);
+   * logger.log(`Active Boards: ${context.boards.length}`);
+   * logger.log(`High Priority Tasks: ${context.priorities.filter(p => p['urgency_level'] === 'high').length}`);
+   * logger.log(`Critical Blockers: ${context.blockers.filter(b => b['impact_level'] === 'high').length}`);
    * ```
    */
   async getProjectContext(options: ContextOptions = {}): Promise<ProjectContext> {
@@ -344,13 +344,13 @@ export class ContextService {
    *   days_back: 7
    * });
    *
-   * logger.log(`Task: ${String(String(taskContext.task.title))}`);
-   * logger.log(`Board: ${String(String(taskContext.board.name))}`);
-   * logger.log(`Related Tasks: ${String(String(taskContext.related_tasks.length))}`);
-   * logger.log(`Dependencies: ${String(String(taskContext.dependencies.depends_on.length))}`);
-   * logger.log(`Blocks: ${String(String(taskContext.dependencies.blocks.length))}`);
-   * logger.log(`Notes: ${String(String(taskContext.notes.length))}`);
-   * logger.log(`Recommendations: ${String(String(taskContext.recommendations.join(', ')))}`);
+   * logger.log(`Task: ${taskContext.task.title}`);
+   * logger.log(`Board: ${taskContext.board.name}`);
+   * logger.log(`Related Tasks: ${taskContext.related_tasks.length}`);
+   * logger.log(`Dependencies: ${taskContext.dependencies.depends_on.length}`);
+   * logger.log(`Blocks: ${taskContext.dependencies.blocks.length}`);
+   * logger.log(`Notes: ${taskContext.notes.length}`);
+   * logger.log(`Recommendations: ${taskContext.recommendations.join(', ')}`);
    * ```
    */
   async getTaskContext(taskId: string, options: ContextOptions = {}): Promise<TaskContext> {
@@ -438,13 +438,13 @@ export class ContextService {
    *   max_items: 5
    * });
    *
-   * logger.log(`Active Tasks: ${String(String(workContext.active_tasks.length))}`);
-   * logger.log(`Next Actions: ${String(String(workContext.next_actions.length))}`);
-   * logger.log(`Blockers: ${String(String(workContext.blockers.length))}`);
-   * logger.log(`Estimated Hours: ${String(String(workContext.estimated_work_hours))}`);
+   * logger.log(`Active Tasks: ${workContext.active_tasks.length}`);
+   * logger.log(`Next Actions: ${workContext.next_actions.length}`);
+   * logger.log(`Blockers: ${workContext.blockers.length}`);
+   * logger.log(`Estimated Hours: ${workContext.estimated_work_hours}`);
    *
    * workContext.focus_recommendations.forEach(rec => {
-   *   logger.log(`Recommendation: ${String(rec)}`);
+   *   logger.log(`Recommendation: ${rec}`);
    * });
    * ```
    */
@@ -668,12 +668,7 @@ export class ContextService {
   private async getDependencyContext(taskId: string): Promise<DependencyInfo> {
     const taskWithDeps = await this.taskService.getTaskWithDependencies(taskId);
     if (!taskWithDeps) {
-      return {
-        depends_on: [],
-        blocks: [],
-        circular_risks: [],
-        critical_path: false,
-      };
+      return { depends_on: [], blocks: [], circular_risks: [], critical_path: false };
     }
 
     const [dependsOnResults, blocksResults] = await Promise.all([
@@ -723,24 +718,24 @@ export class ContextService {
     ).length;
     const criticalBlockerCount = blockers.filter(b => b.impact_level === 'high').length;
 
-    let summary = `Project Status: ${String(activeBoardCount)} active boards, ${String(String(metrics.completion_rate.toFixed(1)))}% completion rate. `;
+    let summary = `Project Status: ${activeBoardCount} active boards, ${metrics.completion_rate.toFixed(1)}% completion rate. `;
 
     if (highPriorityCount > 0) {
-      summary += `${String(highPriorityCount)} high-priority tasks need attention. `;
+      summary += `${highPriorityCount} high-priority tasks need attention. `;
     }
 
     if (criticalBlockerCount > 0) {
-      summary += `${String(criticalBlockerCount)} critical blockers identified. `;
+      summary += `${criticalBlockerCount} critical blockers identified. `;
     }
 
     if (metrics.overdue_count > 0) {
-      summary += `${String(String(metrics.overdue_count))} tasks are overdue. `;
+      summary += `${metrics.overdue_count} tasks are overdue. `;
     }
 
-    summary += `Current velocity trend: ${String(String(metrics.velocity_trend))}.`;
+    summary += `Current velocity trend: ${metrics.velocity_trend}.`;
 
     if (detailLevel === 'comprehensive' && metrics.estimated_completion_date) {
-      summary += ` Estimated completion: ${String(String(metrics.estimated_completion_date.toLocaleDateString()))}.`;
+      summary += ` Estimated completion: ${metrics.estimated_completion_date.toLocaleDateString()}.`;
     }
 
     return summary;
@@ -753,28 +748,28 @@ export class ContextService {
     notes: Note[],
     _detailLevel: string
   ): string {
-    let summary = `Task "${String(String(task.title))}" (${String(String(task.status))}, Priority: ${String(String(task.priority))}). `;
+    let summary = `Task "${task.title}" (${task.status}, Priority: ${task.priority}). `;
 
     if (dependencies.depends_on.length > 0) {
-      summary += `Depends on ${String(String(dependencies.depends_on.length))} task(s). `;
+      summary += `Depends on ${dependencies.depends_on.length} task(s). `;
     }
 
     if (dependencies.blocks.length > 0) {
-      summary += `Blocks ${String(String(dependencies.blocks.length))} task(s). `;
+      summary += `Blocks ${dependencies.blocks.length} task(s). `;
     }
 
     if (notes.length > 0) {
       const recentNotes = notes.filter(
         n => Date.now() - n.created_at.getTime() < 7 * 24 * 60 * 60 * 1000 // 7 days
       ).length;
-      summary += `${String(String(notes.length))} notes (${String(recentNotes)} recent). `;
+      summary += `${notes.length} notes (${recentNotes} recent). `;
     }
 
     if (task.due_date && task.due_date < new Date()) {
       const daysOverdue = Math.floor(
         (Date.now() - task.due_date.getTime()) / (1000 * 60 * 60 * 24)
       );
-      summary += `Overdue by ${String(daysOverdue)} days. `;
+      summary += `Overdue by ${daysOverdue} days. `;
     }
 
     return summary.trim();
@@ -840,9 +835,7 @@ export class ContextService {
       a => a.urgency_level === 'high' || a.urgency_level === 'critical'
     );
     if (highPriorityNext.length > 0) {
-      recommendations.push(
-        `${String(String(highPriorityNext.length))} high-priority tasks ready to start`
-      );
+      recommendations.push(`${highPriorityNext.length} high-priority tasks ready to start`);
     }
 
     return recommendations;
@@ -1030,7 +1023,7 @@ export class ContextService {
     const reasons: string[] = [];
 
     if (urgencyFactors.overdue) reasons.push('Task is overdue');
-    if (urgencyFactors.blocks_others) reasons.push(`Blocks ${String(blockingCount)} other task(s)`);
+    if (urgencyFactors.blocks_others) reasons.push(`Blocks ${blockingCount} other task(s)`);
     if (urgencyFactors.high_priority) reasons.push('High priority level set');
     if (urgencyFactors.has_due_date) reasons.push('Has due date');
 

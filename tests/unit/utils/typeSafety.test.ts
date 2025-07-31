@@ -22,7 +22,7 @@ enum TaskPriority {
 }
 
 // Mock validation function
-const validateInput = (schema: any, data: any) => {
+const validateInput = (schema: unknown, data: Record<string, unknown>) => {
   if (!data) throw new Error('Data is required');
   if (schema === 'create' && !data.title) throw new Error('Title is required');
   if (schema === 'create' && !data.board_id) throw new Error('Board ID is required');

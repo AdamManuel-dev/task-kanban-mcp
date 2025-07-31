@@ -567,7 +567,7 @@ export class RequestDeduplicator {
    * Generate unique request ID
    */
   private generateRequestId(): string {
-    return `dedup_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `dedup_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
   }
 
   /**

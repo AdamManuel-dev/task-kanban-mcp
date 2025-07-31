@@ -4,16 +4,17 @@
  * @description Tests for response formatting, API response helpers, and pagination
  */
 
-import type { Request, Response, NextFunction } from 'express';
+import type { NextFunction } from 'express';
 import {
   responseFormattingMiddleware,
   formatSuccessResponse,
   formatErrorResponse,
 } from '@/middleware/response';
+import type { MockRequest, MockResponse } from '../../utils/test-types';
 
 describe('Response Middleware', () => {
-  let mockRequest: Partial<Request>;
-  let mockResponse: Partial<Response>;
+  let mockRequest: MockRequest;
+  let mockResponse: MockResponse;
   let mockNext: NextFunction;
 
   beforeEach(() => {
@@ -31,28 +32,28 @@ describe('Response Middleware', () => {
 
   describe('responseFormattingMiddleware', () => {
     it('should add apiSuccess method to response', () => {
-      responseFormattingMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      responseFormattingMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockResponse.apiSuccess).toBeDefined();
       expect(typeof mockResponse.apiSuccess).toBe('function');
     });
 
     it('should add apiError method to response', () => {
-      responseFormattingMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      responseFormattingMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockResponse.apiError).toBeDefined();
       expect(typeof mockResponse.apiError).toBe('function');
     });
 
     it('should add apiPagination method to response', () => {
-      responseFormattingMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      responseFormattingMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockResponse.apiPagination).toBeDefined();
       expect(typeof mockResponse.apiPagination).toBe('function');
     });
 
     it('should call next() after setup', () => {
-      responseFormattingMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      responseFormattingMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith();
     });
@@ -60,7 +61,7 @@ describe('Response Middleware', () => {
 
   describe('apiSuccess method', () => {
     beforeEach(() => {
-      responseFormattingMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      responseFormattingMiddleware(mockRequest, mockResponse, mockNext);
     });
 
     it('should format successful response with data', () => {
@@ -153,7 +154,7 @@ describe('Response Middleware', () => {
 
   describe('apiError method', () => {
     beforeEach(() => {
-      responseFormattingMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      responseFormattingMiddleware(mockRequest, mockResponse, mockNext);
     });
 
     it('should format error response with default status code', () => {
@@ -253,7 +254,7 @@ describe('Response Middleware', () => {
 
   describe('apiPagination method', () => {
     beforeEach(() => {
-      responseFormattingMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      responseFormattingMiddleware(mockRequest, mockResponse, mockNext);
     });
 
     it('should format paginated response', () => {
@@ -354,10 +355,10 @@ describe('Response Middleware', () => {
     });
 
     it('should handle empty results', () => {
-      const testData: any[] = [];
+      const testData: unknown[] = [];
       const mockJson = jest.fn();
 
-      (mockResponse as any).json = mockJson;
+      (mockResponse as Record<string, unknown>).json = mockJson;
 
       mockResponse.apiPagination!(testData, 1, 10, 0);
 
@@ -509,7 +510,7 @@ describe('Response Middleware', () => {
   describe('Edge Cases', () => {
     it('should handle missing requestId', () => {
       mockRequest.requestId = undefined;
-      responseFormattingMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      responseFormattingMiddleware(mockRequest, mockResponse, mockNext);
 
       const testData = { id: 1 };
       const mockJson = jest.fn();
@@ -528,7 +529,7 @@ describe('Response Middleware', () => {
     });
 
     it('should handle complex data structures', () => {
-      responseFormattingMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      responseFormattingMiddleware(mockRequest, mockResponse, mockNext);
 
       const complexData = {
         id: 1,
@@ -554,7 +555,7 @@ describe('Response Middleware', () => {
     });
 
     it('should handle large arrays in pagination', () => {
-      responseFormattingMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      responseFormattingMiddleware(mockRequest, mockResponse, mockNext);
 
       const largeArray = Array.from({ length: 1000 }, (_, i) => ({ id: i }));
       const mockJson = jest.fn();

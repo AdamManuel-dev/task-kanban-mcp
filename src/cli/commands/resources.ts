@@ -97,7 +97,7 @@ export function registerResourceCommands(program: Command): void {
               },
               trend: {
                 memory: summary.memoryTrend,
-                historySize: summary.current ? resourceMonitor.getHistory().length : 0,
+                historySize: resourceMonitor.getHistory().length,
               },
             },
             {

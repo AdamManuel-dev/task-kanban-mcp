@@ -8,7 +8,8 @@
  * Patterns: RESTful routes under /tasks/:id/tags
  */
 
-import { Router, Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
 import { TagService } from '@/services/TagService';
 import { logger } from '@/utils/logger';
 import { createServiceErrorHandler } from '@/utils/error-handler';

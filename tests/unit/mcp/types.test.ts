@@ -311,13 +311,7 @@ describe('MCP Types', () => {
     it('should work correctly in service contexts', () => {
       // Simulate a tool service function
       function createMcpTool(definition: ToolDefinition): McpTool {
-        return {
-          definition,
-          execute: async (call: ToolCall): Promise<McpToolResult> => ({
-            content: [
-              {
-                type: 'text',
-                text: `Executed ${String(String(call.name))} with ${String(String(Object.keys(call.arguments).length))} arguments`,
+        return { definition, execute: async (call: ToolCall): Promise<McpToolResult> => ({, content: [, {, type: 'text', text: `Executed ${String(String(call.name)) } with ${String(String(Object.keys(call.arguments).length))} arguments`,
               },
             ],
             isError: false,
@@ -345,29 +339,16 @@ describe('MCP Types', () => {
     it('should properly handle response transformations', () => {
       function transformToMcpResponse<T>(data: T | null, error?: string): McpResponse<T> {
         if (error) {
-          return {
-            success: false,
-            error: {
-              code: 'OPERATION_FAILED',
-              message: error,
-            },
+          return { success: false, error: {, code: 'OPERATION_FAILED', message: error },
           };
         }
 
         if (data === null) {
-          return {
-            success: false,
-            error: {
-              code: 'NOT_FOUND',
-              message: 'Resource not found',
-            },
+          return { success: false, error: {, code: 'NOT_FOUND', message: 'Resource not found' },
           };
         }
 
-        return {
-          success: true,
-          data,
-        };
+        return { success: true, data };
       }
 
       const successResult = transformToMcpResponse({ id: '1', name: 'Test' });

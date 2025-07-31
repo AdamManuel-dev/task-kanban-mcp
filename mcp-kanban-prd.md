@@ -11,12 +11,14 @@ AI coding assistants lack direct integration with task management systems, requi
 ## Goals & Objectives
 
 ### Primary Goals
+
 - Enable AI agents to automatically manage tasks based on repository context
 - Provide real-time task updates across all connected clients
 - Minimize context switching between development and task management
 - Support simple deployment for personal use
 
 ### Success Criteria
+
 - Zero manual board selection when working in git repositories
 - < 100ms latency for task operations
 - 99.9% uptime for local deployment
@@ -26,12 +28,14 @@ AI coding assistants lack direct integration with task management systems, requi
 ## User Personas
 
 ### Primary: Solo Developer
+
 - **Background**: Individual developer using AI assistants for coding
 - **Needs**: Seamless task management integrated with development workflow, CLI access for quick operations
 - **Pain Points**: Constant context switching, manual task updates, forgetting to update task status
 - **Technical Skills**: Comfortable with Docker, basic server administration, command-line interfaces
 
 ### Secondary: AI Coding Assistant
+
 - **Background**: Claude Code, Cursor, or similar AI development tools
 - **Needs**: Simple API to create/update tasks, understand project context
 - **Pain Points**: No direct access to project management tools
@@ -82,6 +86,7 @@ AI coding assistants lack direct integration with task management systems, requi
 ## Functional Requirements
 
 ### 1. Context-Aware Board Selection (Must Have)
+
 - **FR1.1**: Automatically detect current git repository
 - **FR1.2**: Map repository to appropriate kanban board using configurable rules
 - **FR1.3**: Support multiple mapping strategies:
@@ -92,6 +97,7 @@ AI coding assistants lack direct integration with task management systems, requi
 - **FR1.4**: Fallback to default board if no mapping exists
 
 ### 2. Task Management Operations (Must Have)
+
 - **FR2.1**: Create tasks with title, description, and metadata
 - **FR2.2**: Update task status (todo, in-progress, done, archived)
 - **FR2.3**: Modify task properties (assignee, labels, priority, due date)
@@ -105,30 +111,35 @@ AI coding assistants lack direct integration with task management systems, requi
 - **FR2.11**: Automatically update parent task progress based on subtask completion
 
 ### 3. Board Management (Must Have)
+
 - **FR3.1**: Create new boards with custom columns
 - **FR3.2**: List all available boards
 - **FR3.3**: Configure board-to-repository mappings
 - **FR3.4**: Set default board for unmapped repositories
 
 ### 4. Real-time Synchronization (Must Have)
+
 - **FR4.1**: WebSocket connection for live updates
 - **FR4.2**: Broadcast changes to all connected clients
 - **FR4.3**: Automatic reconnection on connection loss
 - **FR4.4**: Conflict resolution for simultaneous updates
 
 ### 5. Git Integration (Should Have)
+
 - **FR5.1**: Parse branch names to extract task IDs
 - **FR5.2**: Automatically move tasks based on branch lifecycle
 - **FR5.3**: Extract task references from commit messages
 - **FR5.4**: Update task status based on PR/merge events
 
 ### 6. AI-Specific Features (Should Have)
+
 - **FR6.1**: Natural language task creation
 - **FR6.2**: Bulk operations from single command
 - **FR6.3**: Smart task categorization based on content
 - **FR6.4**: Suggested task descriptions from code context
 
 ### 8. Context Awareness System (Must Have)
+
 - **FR8.1**: Provide comprehensive work context to LLMs for better decision making
 - **FR8.2**: Track task completion patterns and velocity metrics
 - **FR8.3**: Identify and surface current blockers across all tasks
@@ -139,6 +150,7 @@ AI coding assistants lack direct integration with task management systems, requi
 - **FR8.8**: Track and report on task dependencies and bottlenecks
 
 ### 9. Task Dependencies & Subtasks (Must Have)
+
 - **FR9.1**: Create subtasks under any parent task
 - **FR9.2**: Define "blocks" and "blocked by" relationships between tasks
 - **FR9.3**: Automatically calculate parent task progress from subtask completion
@@ -149,6 +161,7 @@ AI coding assistants lack direct integration with task management systems, requi
 - **FR9.8**: Clone task structures with subtasks for recurring workflows
 
 ### 11. Backup & Data Management (Must Have)
+
 - **FR11.1**: Automatic daily backups of SQLite database
 - **FR11.2**: Manual backup command with custom naming
 - **FR11.3**: Point-in-time restoration from any backup
@@ -161,6 +174,7 @@ AI coding assistants lack direct integration with task management systems, requi
 ## Technical Requirements
 
 ### Architecture Overview
+
 ```
 ┌─────────────────────┐     ┌──────────────────┐     ┌──────────────────┐
 │   AI Agent (MCP)    │────▶│   MCP Server     │◀────│   CLI Client     │
@@ -187,6 +201,7 @@ AI coding assistants lack direct integration with task management systems, requi
 The CLI provides full access to all REST endpoints and real-time features through an intuitive command-line interface.
 
 #### Installation & Setup
+
 ```bash
 # Install globally
 npm install -g @kanban-mcp/cli
@@ -200,6 +215,7 @@ kanban status
 ```
 
 #### Task Commands
+
 ```bash
 # Create a new task
 kanban task create "Implement user authentication" \
@@ -227,6 +243,7 @@ kanban task move task-123 --to "in-progress"
 ```
 
 #### Subtask & Dependency Commands
+
 ```bash
 # Create subtask
 kanban subtask create task-123 "Setup JWT middleware"
@@ -244,6 +261,7 @@ kanban task deps task-123 --blocked-by --blocks
 ```
 
 #### Note Commands
+
 ```bash
 # Add note to task
 kanban note add task-123 "Fixed CORS issue with Safari" --category blocker
@@ -263,6 +281,7 @@ kanban note delete note-456 --confirm
 ```
 
 #### Tag Commands
+
 ```bash
 # Create tag
 kanban tag create "frontend/react/hooks" --color "#00ff00"
@@ -283,6 +302,7 @@ kanban task list --tags urgent,backend --match all
 ```
 
 #### Board Commands
+
 ```bash
 # List boards
 kanban board list
@@ -303,6 +323,7 @@ kanban board use project-alpha
 ```
 
 #### Priority & AI Commands
+
 ```bash
 # Get next task recommendation
 kanban next
@@ -322,6 +343,7 @@ kanban task priority task-123 high --reason "Blocking critical feature"
 ```
 
 #### Context Commands
+
 ```bash
 # Get current work context
 kanban context
@@ -336,6 +358,7 @@ kanban summary --board project-alpha --with-metrics
 ```
 
 #### Search Commands
+
 ```bash
 # Search tasks
 kanban search tasks "authentication" --in title,description
@@ -347,6 +370,7 @@ kanban search tasks --overdue --priority high,critical
 ```
 
 #### Configuration & Mapping Commands
+
 ```bash
 # Configure repository mappings
 kanban config map add "github.com/user/project-*" --board work-projects
@@ -365,6 +389,7 @@ kanban config show --section git
 ```
 
 #### Real-time Commands
+
 ```bash
 # Watch for updates (WebSocket connection)
 kanban watch --board current
@@ -377,6 +402,7 @@ kanban logs --board project-alpha --follow
 ```
 
 #### Backup & Restore Commands
+
 ```bash
 # Manual backup
 kanban backup create --name "before-refactor"
@@ -403,6 +429,7 @@ kanban config backup location --path "~/backups/kanban"
 ```
 
 #### Database Maintenance Commands
+
 ```bash
 # Database optimization
 kanban db optimize
@@ -423,6 +450,7 @@ kanban db migrate --rollback
 ```
 
 #### Global Options
+
 ```bash
 # Output formats
 --json              # JSON output
@@ -439,6 +467,7 @@ kanban db migrate --rollback
 ```
 
 #### Environment Variables
+
 ```bash
 # Can be used instead of config file
 export KANBAN_API_URL=http://localhost:3000
@@ -448,11 +477,12 @@ export KANBAN_OUTPUT_FORMAT=json
 ```
 
 ### CLI Configuration File
+
 ```yaml
 # ~/.kanban/config.yml
 api:
   url: http://localhost:3000
-  key: ${KANBAN_API_KEY}  # Can reference env vars
+  key: ${KANBAN_API_KEY} # Can reference env vars
   timeout: 30000
 
 defaults:
@@ -466,7 +496,7 @@ database:
   backup:
     enabled: true
     path: ~/.kanban/backups
-    schedule: "0 2 * * *"  # 2 AM daily
+    schedule: '0 2 * * *' # 2 AM daily
     retention_days: 30
     compress: true
     encrypt: false
@@ -474,8 +504,8 @@ database:
 git:
   auto_detect: true
   branch_patterns:
-    - "feature/{taskId}-*"
-    - "{taskId}-*"
+    - 'feature/{taskId}-*'
+    - '{taskId}-*'
 
 aliases:
   # Custom command aliases
@@ -487,168 +517,190 @@ aliases:
 ### API Specifications
 
 #### MCP Tools
+
 ```typescript
 // Tool definitions for MCP protocol
 tools: [
   {
-    name: "create_task",
-    description: "Create a new task in the current board",
+    name: 'create_task',
+    description: 'Create a new task in the current board',
     parameters: {
-      title: { type: "string", required: true },
-      description: { type: "string" },
-      column: { type: "string", default: "todo" },
-      tags: { type: "array", items: { type: "string" } },
-      priority: { type: "string", enum: ["low", "medium", "high"] },
-      initialNote: { type: "object", properties: {
-        content: { type: "string" },
-        category: { type: "string", enum: ["implementation", "research", "blocker", "idea", "general"] }
-      }}
-    }
+      title: { type: 'string', required: true },
+      description: { type: 'string' },
+      column: { type: 'string', default: 'todo' },
+      tags: { type: 'array', items: { type: 'string' } },
+      priority: { type: 'string', enum: ['low', 'medium', 'high'] },
+      initialNote: {
+        type: 'object',
+        properties: {
+          content: { type: 'string' },
+          category: {
+            type: 'string',
+            enum: ['implementation', 'research', 'blocker', 'idea', 'general'],
+          },
+        },
+      },
+    },
   },
   {
-    name: "update_task",
-    description: "Update an existing task",
+    name: 'update_task',
+    description: 'Update an existing task',
     parameters: {
-      taskId: { type: "string", required: true },
-      updates: { type: "object" }
-    }
+      taskId: { type: 'string', required: true },
+      updates: { type: 'object' },
+    },
   },
   {
-    name: "add_note",
-    description: "Add a note to an existing task",
+    name: 'add_note',
+    description: 'Add a note to an existing task',
     parameters: {
-      taskId: { type: "string", required: true },
-      content: { type: "string", required: true },
-      category: { type: "string", enum: ["implementation", "research", "blocker", "idea", "general"] },
-      pinned: { type: "boolean", default: false }
-    }
+      taskId: { type: 'string', required: true },
+      content: { type: 'string', required: true },
+      category: {
+        type: 'string',
+        enum: ['implementation', 'research', 'blocker', 'idea', 'general'],
+      },
+      pinned: { type: 'boolean', default: false },
+    },
   },
   {
-    name: "add_tags",
-    description: "Add tags to a task",
+    name: 'add_tags',
+    description: 'Add tags to a task',
     parameters: {
-      taskId: { type: "string", required: true },
-      tags: { type: "array", items: { type: "string" }, required: true }
-    }
+      taskId: { type: 'string', required: true },
+      tags: { type: 'array', items: { type: 'string' }, required: true },
+    },
   },
   {
-    name: "search_tasks",
-    description: "Search for tasks across boards",
+    name: 'search_tasks',
+    description: 'Search for tasks across boards',
     parameters: {
-      query: { type: "string" },
-      boardId: { type: "string" },
-      status: { type: "string" },
-      tags: { type: "array", items: { type: "string" } },
-      hasNotes: { type: "boolean" },
-      noteCategory: { type: "string" }
-    }
+      query: { type: 'string' },
+      boardId: { type: 'string' },
+      status: { type: 'string' },
+      tags: { type: 'array', items: { type: 'string' } },
+      hasNotes: { type: 'boolean' },
+      noteCategory: { type: 'string' },
+    },
   },
   {
-    name: "search_notes",
-    description: "Search through all notes across tasks",
+    name: 'search_notes',
+    description: 'Search through all notes across tasks',
     parameters: {
-      query: { type: "string", required: true },
-      category: { type: "string" },
-      boardId: { type: "string" },
-      onlyPinned: { type: "boolean" }
-    }
+      query: { type: 'string', required: true },
+      category: { type: 'string' },
+      boardId: { type: 'string' },
+      onlyPinned: { type: 'boolean' },
+    },
   },
   {
-    name: "get_context",
-    description: "Get comprehensive context about current work including active tasks, recent notes, and related information",
+    name: 'get_context',
+    description:
+      'Get comprehensive context about current work including active tasks, recent notes, and related information',
     parameters: {
-      includeActiveTasks: { type: "boolean", default: true },
-      includeRecentNotes: { type: "boolean", default: true },
-      includeBlockers: { type: "boolean", default: true },
-      includeRelatedTasks: { type: "boolean", default: true },
-      lookbackDays: { type: "number", default: 7 },
-      maxItems: { type: "number", default: 20 }
-    }
+      includeActiveTasks: { type: 'boolean', default: true },
+      includeRecentNotes: { type: 'boolean', default: true },
+      includeBlockers: { type: 'boolean', default: true },
+      includeRelatedTasks: { type: 'boolean', default: true },
+      lookbackDays: { type: 'number', default: 7 },
+      maxItems: { type: 'number', default: 20 },
+    },
   },
   {
-    name: "get_task_context",
-    description: "Get detailed context about a specific task including its history, notes, and related tasks",
+    name: 'get_task_context',
+    description:
+      'Get detailed context about a specific task including its history, notes, and related tasks',
     parameters: {
-      taskId: { type: "string", required: true },
-      includeHistory: { type: "boolean", default: true },
-      includeRelated: { type: "boolean", default: true },
-      includeNotes: { type: "boolean", default: true }
-    }
+      taskId: { type: 'string', required: true },
+      includeHistory: { type: 'boolean', default: true },
+      includeRelated: { type: 'boolean', default: true },
+      includeNotes: { type: 'boolean', default: true },
+    },
   },
   {
-    name: "get_project_summary",
-    description: "Get a high-level summary of the current project/board status",
+    name: 'get_project_summary',
+    description: 'Get a high-level summary of the current project/board status',
     parameters: {
-      boardId: { type: "string" },
-      includeMetrics: { type: "boolean", default: true },
-      includeVelocity: { type: "boolean", default: true },
-      includeTrends: { type: "boolean", default: true }
-    }
+      boardId: { type: 'string' },
+      includeMetrics: { type: 'boolean', default: true },
+      includeVelocity: { type: 'boolean', default: true },
+      includeTrends: { type: 'boolean', default: true },
+    },
   },
   {
-    name: "create_subtask",
-    description: "Create a subtask under an existing task",
+    name: 'create_subtask',
+    description: 'Create a subtask under an existing task',
     parameters: {
-      parentTaskId: { type: "string", required: true },
-      title: { type: "string", required: true },
-      description: { type: "string" },
-      tags: { type: "array", items: { type: "string" } }
-    }
+      parentTaskId: { type: 'string', required: true },
+      title: { type: 'string', required: true },
+      description: { type: 'string' },
+      tags: { type: 'array', items: { type: 'string' } },
+    },
   },
   {
-    name: "set_task_dependency",
-    description: "Set a dependency relationship between tasks",
+    name: 'set_task_dependency',
+    description: 'Set a dependency relationship between tasks',
     parameters: {
-      taskId: { type: "string", required: true },
-      dependsOn: { type: "array", items: { type: "string" }, required: true },
-      dependencyType: { type: "string", enum: ["blocks", "related", "parent-child"], default: "blocks" }
-    }
+      taskId: { type: 'string', required: true },
+      dependsOn: { type: 'array', items: { type: 'string' }, required: true },
+      dependencyType: {
+        type: 'string',
+        enum: ['blocks', 'related', 'parent-child'],
+        default: 'blocks',
+      },
+    },
   },
   {
-    name: "get_task_dependencies",
-    description: "Get all dependencies for a task including subtasks",
+    name: 'get_task_dependencies',
+    description: 'Get all dependencies for a task including subtasks',
     parameters: {
-      taskId: { type: "string", required: true },
-      includeSubtasks: { type: "boolean", default: true },
-      includeBlocked: { type: "boolean", default: true }
-    }
+      taskId: { type: 'string', required: true },
+      includeSubtasks: { type: 'boolean', default: true },
+      includeBlocked: { type: 'boolean', default: true },
+    },
   },
   {
-    name: "prioritize_tasks",
-    description: "Get AI-powered task prioritization suggestions",
+    name: 'prioritize_tasks',
+    description: 'Get AI-powered task prioritization suggestions',
     parameters: {
-      boardId: { type: "string" },
-      considerDependencies: { type: "boolean", default: true },
-      maxSuggestions: { type: "number", default: 5 },
-      timeHorizon: { type: "string", enum: ["today", "this_week", "this_sprint"], default: "today" }
-    }
+      boardId: { type: 'string' },
+      considerDependencies: { type: 'boolean', default: true },
+      maxSuggestions: { type: 'number', default: 5 },
+      timeHorizon: {
+        type: 'string',
+        enum: ['today', 'this_week', 'this_sprint'],
+        default: 'today',
+      },
+    },
   },
   {
-    name: "get_next_task",
-    description: "Get the next most prioritized task to work on based on comprehensive metrics including dependencies",
+    name: 'get_next_task',
+    description:
+      'Get the next most prioritized task to work on based on comprehensive metrics including dependencies',
     parameters: {
-      boardId: { type: "string" },
-      considerContext: { type: "boolean", default: true },
-      excludeBlocked: { type: "boolean", default: true },
-      skillTags: { type: "array", items: { type: "string" } },
-      timeAvailable: { type: "number" },  // minutes available to work
-      includeReasoning: { type: "boolean", default: true }
-    }
+      boardId: { type: 'string' },
+      considerContext: { type: 'boolean', default: true },
+      excludeBlocked: { type: 'boolean', default: true },
+      skillTags: { type: 'array', items: { type: 'string' } },
+      timeAvailable: { type: 'number' }, // minutes available to work
+      includeReasoning: { type: 'boolean', default: true },
+    },
   },
   {
-    name: "update_priority",
-    description: "Update task priority with optional AI assistance",
+    name: 'update_priority',
+    description: 'Update task priority with optional AI assistance',
     parameters: {
-      taskId: { type: "string", required: true },
-      priority: { type: "string", enum: ["critical", "high", "medium", "low"], required: true },
-      useAISuggestion: { type: "boolean", default: false },
-      reason: { type: "string" }
-    }
-  }
-]
+      taskId: { type: 'string', required: true },
+      priority: { type: 'string', enum: ['critical', 'high', 'medium', 'low'], required: true },
+      useAISuggestion: { type: 'boolean', default: false },
+      reason: { type: 'string' },
+    },
+  },
+];
 ```
 
 #### REST API Endpoints
+
 ```
 POST   /api/tasks              # Create task
 GET    /api/tasks              # List tasks
@@ -698,6 +750,7 @@ DELETE /api/config/mappings/:id # Delete mapping
 ```
 
 #### WebSocket Events
+
 ```typescript
 // Client to Server
 {
@@ -713,7 +766,7 @@ DELETE /api/config/mappings/:id # Delete mapping
 }
 
 {
-  type: "task:updated", 
+  type: "task:updated",
   boardId: "board-123",
   taskId: "task-456",
   changes: { ... }
@@ -763,6 +816,7 @@ DELETE /api/config/mappings/:id # Delete mapping
 ### Database Schema
 
 #### SQLite Schema Definition
+
 ```sql
 -- Enable foreign keys
 PRAGMA foreign_keys = ON;
@@ -822,7 +876,7 @@ CREATE VIRTUAL TABLE tasks_fts USING fts5(
 
 -- Triggers to keep FTS in sync
 CREATE TRIGGER tasks_ai AFTER INSERT ON tasks BEGIN
-  INSERT INTO tasks_fts(task_id, title, description) 
+  INSERT INTO tasks_fts(task_id, title, description)
   VALUES (new.id, new.title, new.description);
 END;
 
@@ -831,7 +885,7 @@ CREATE TRIGGER tasks_ad AFTER DELETE ON tasks BEGIN
 END;
 
 CREATE TRIGGER tasks_au AFTER UPDATE ON tasks BEGIN
-  UPDATE tasks_fts SET title = new.title, description = new.description 
+  UPDATE tasks_fts SET title = new.title, description = new.description
   WHERE task_id = new.id;
 END;
 
@@ -974,7 +1028,7 @@ LEFT JOIN task_progress tp ON t.id = tp.task_id
 WHERE t.archived = 0;
 
 CREATE VIEW task_dependency_graph AS
-SELECT 
+SELECT
   t.id,
   t.title,
   COUNT(DISTINCT td1.depends_on_task_id) as blocks_count,
@@ -986,6 +1040,7 @@ GROUP BY t.id;
 ```
 
 ### Performance Optimizations
+
 ```sql
 -- Enable Write-Ahead Logging for better concurrency
 PRAGMA journal_mode = WAL;
@@ -1000,6 +1055,7 @@ PRAGMA vacuum;   -- Run during maintenance windows
 ```
 
 ### Performance Requirements
+
 - **Response Time**: < 100ms for task operations
 - **WebSocket Latency**: < 50ms for real-time updates
 - **Concurrent Connections**: Support 10+ simultaneous WebSocket connections
@@ -1007,6 +1063,7 @@ PRAGMA vacuum;   -- Run during maintenance windows
 - **Memory Usage**: < 256MB under normal operation
 
 ### Security Requirements
+
 - **Authentication**: API key based authentication for simplicity
 - **API Key Storage**: Keys stored as hashed values in environment variables
 - **Rate Limiting**: 1000 requests per minute per API key
@@ -1016,12 +1073,14 @@ PRAGMA vacuum;   -- Run during maintenance windows
 ## Design Requirements
 
 ### MCP Server Interface
+
 - Clean, single-purpose tools that map to natural language commands
 - Descriptive tool names and parameters for AI comprehension
 - Comprehensive error messages that guide AI agents
 - Consistent response formats across all tools
 
 ### API Design Principles
+
 - RESTful conventions for CRUD operations
 - Consistent error response format
 - Pagination for list endpoints
@@ -1029,6 +1088,7 @@ PRAGMA vacuum;   -- Run during maintenance windows
 - Idempotent operations where possible
 
 ### Real-time Updates
+
 - Minimal WebSocket message payload
 - Room-based subscriptions per board
 - Graceful degradation to polling if WebSocket fails
@@ -1037,81 +1097,97 @@ PRAGMA vacuum;   -- Run during maintenance windows
 ## Acceptance Criteria
 
 ### AC1: Context Detection
+
 - Given: A git repository with remote URL "github.com/user/project-alpha"
 - When: AI agent invokes task creation tool
 - Then: Task is automatically created in the mapped board for "project-alpha"
 
 ### AC2: Real-time Sync
+
 - Given: Two AI agents connected to the same board
 - When: Agent A creates a task
 - Then: Agent B receives the update within 100ms
 
 ### AC3: Task Management
+
 - Given: An existing task in "todo" column
 - When: AI agent updates status to "in-progress"
 - Then: Task moves to correct column and update is broadcast
 
 ### AC4: Git Integration
+
 - Given: A branch named "feature/TASK-123-user-auth"
 - When: AI agent creates a commit
 - Then: Task TASK-123 is automatically updated with commit reference
 
 ### AC5: Error Handling
+
 - Given: An invalid board ID
 - When: AI agent attempts to create a task
 - Then: Clear error message is returned with available boards
 
 ### AC6: Note Management
+
 - Given: A task with existing notes
 - When: AI agent adds a note with category "blocker"
 - Then: Note is created, indexed for search, and broadcast to all clients
 
 ### AC7: Tag Hierarchy
+
 - Given: A tag "frontend/react/hooks"
 - When: AI agent tags a task with it
 - Then: Task is findable by searching for "frontend", "react", or "hooks"
 
 ### AC8: Cross-Task Search
+
 - Given: Multiple tasks with notes containing "authentication"
 - When: AI agent searches notes for "authentication"
 - Then: All matching notes are returned with their associated tasks
 
 ### AC9: Context Retrieval
+
 - Given: An AI agent working on a new feature
 - When: Agent requests current context
 - Then: System returns active tasks, recent blockers, velocity metrics, and related past solutions
 
 ### AC10: Smart Assistance
+
 - Given: A task similar to one completed before
 - When: AI agent gets task context
 - Then: Previous implementation notes and solutions are included in the response
 
 ### AC11: Dependency Management
+
 - Given: A task with subtasks and dependencies
 - When: AI agent attempts to close the parent task
 - Then: System prevents closure and lists incomplete subtasks/dependencies
 
 ### AC12: AI Prioritization
+
 - Given: Multiple tasks with various factors (age, dependencies, deadlines)
 - When: AI agent requests priority suggestions
 - Then: System returns ranked tasks with reasoning for each priority score
 
 ### AC13: Next Task Selection
+
 - Given: A developer with 2 hours available and backend skills
 - When: AI agent requests the next best task
 - Then: System returns the task that maximizes value considering dependencies, time constraint, and skill match
 
 ### AC14: Dependency Impact
+
 - Given: A task that blocks 5 other high-priority tasks
 - When: AI agent calls get_next_task
 - Then: This bottleneck task is recommended with clear reasoning about its blocking impact
 
 ### AC15: Backup Integrity
+
 - Given: A daily backup schedule configured
 - When: 24 hours pass
 - Then: Backup is created automatically with verification checksum
 
 ### AC16: Data Recovery
+
 - Given: A corrupted database or accidental deletion
 - When: User runs restore command
 - Then: System restores from most recent valid backup with data integrity verified
@@ -1119,6 +1195,7 @@ PRAGMA vacuum;   -- Run during maintenance windows
 ## Success Metrics
 
 ### Technical Metrics
+
 - **API Response Time**: P95 < 100ms
 - **WebSocket Latency**: P95 < 50ms
 - **Context Generation**: P95 < 200ms for full context retrieval
@@ -1131,6 +1208,7 @@ PRAGMA vacuum;   -- Run during maintenance windows
 - **Error Rate**: < 0.1% for valid requests
 
 ### Usage Metrics
+
 - **Task Creation Time**: < 5 seconds via natural language
 - **Context Detection Accuracy**: > 95% correct board selection
 - **Sync Reliability**: 100% eventual consistency
@@ -1142,12 +1220,14 @@ PRAGMA vacuum;   -- Run during maintenance windows
 ## Timeline & Milestones
 
 ### Phase 1: Core Infrastructure (Week 1-2)
+
 - MongoDB schema implementation
 - Basic REST API with CRUD operations
 - API key authentication
 - MCP server skeleton with basic tools
 
 ### Phase 2: Real-time Features (Week 3-4)
+
 - WebSocket server implementation
 - Real-time event broadcasting
 - Subscription management
@@ -1155,6 +1235,7 @@ PRAGMA vacuum;   -- Run during maintenance windows
 - CLI client with full endpoint coverage
 
 ### Phase 3: Git Integration (Week 5-6)
+
 - Repository detection logic
 - Configurable mapping system
 - Branch name parsing
@@ -1162,6 +1243,7 @@ PRAGMA vacuum;   -- Run during maintenance windows
 - CLI git configuration commands
 
 ### Phase 4: AI Optimization (Week 7-8)
+
 - Natural language processing for task creation
 - Smart categorization
 - Bulk operations
@@ -1173,15 +1255,18 @@ PRAGMA vacuum;   -- Run during maintenance windows
 ## Risks & Dependencies
 
 ### Technical Risks
+
 - **Risk**: Data corruption in SQLite database
 - **Mitigation**: Automatic daily backups, WAL mode for crash recovery, integrity checks
 
 ### Dependencies
+
 - SQLite (bundled with most systems)
 - Node.js runtime environment
 - MCP protocol compatibility with AI agents
 
 ### Limitations
+
 - Single-user design (no multi-tenant support)
 - Local database limits scalability
 - Limited to MCP-compatible AI agents
@@ -1189,6 +1274,7 @@ PRAGMA vacuum;   -- Run during maintenance windows
 ## Out of Scope
 
 ### This Phase
+
 - Multi-user authentication and authorization
 - Web-based UI for task management
 - Mobile application support
@@ -1200,6 +1286,7 @@ PRAGMA vacuum;   -- Run during maintenance windows
 - Analytics and reporting
 
 ### Future Considerations
+
 - OAuth 2.0 for team deployments
 - GraphQL API for more flexible queries
 - Plugin system for custom integrations
@@ -1209,6 +1296,7 @@ PRAGMA vacuum;   -- Run during maintenance windows
 ## Appendices
 
 ### A. Example Configuration File
+
 ```json
 {
   "defaultBoard": "personal-tasks",
@@ -1235,17 +1323,17 @@ PRAGMA vacuum;   -- Run during maintenance windows
   "prioritization": {
     "factors": {
       "ageWeight": 0.15,
-      "dependencyWeight": 0.30,
+      "dependencyWeight": 0.3,
       "dueDateWeight": 0.25,
-      "priorityWeight": 0.20,
-      "contextWeight": 0.10
+      "priorityWeight": 0.2,
+      "contextWeight": 0.1
     },
     "dependencyScoring": {
       "directBlockWeight": 0.6,
       "transitiveBlockWeight": 0.3,
       "criticalPathWeight": 0.1
     },
-    "staleThreshold": 7,  // Days before task is considered stale
+    "staleThreshold": 7, // Days before task is considered stale
     "autoReprioritize": true,
     "dailySuggestions": 5
   },
@@ -1264,6 +1352,7 @@ PRAGMA vacuum;   -- Run during maintenance windows
 ```
 
 ### B. Sample MCP Tool Invocations
+
 ```typescript
 // Creating a task
 {
@@ -1473,6 +1562,7 @@ PRAGMA vacuum;   -- Run during maintenance windows
 ```
 
 ### D. CLI Quick Reference
+
 ```bash
 # Essential commands for daily use
 kanban next                    # What should I work on?

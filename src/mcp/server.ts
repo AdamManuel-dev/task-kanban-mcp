@@ -158,21 +158,12 @@ export class MCPKanbanServer {
 
       try {
         const result = await this.toolRegistry.callTool(name, args ?? {});
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
+        return { content: [, {, type: 'text', text: JSON.stringify(result, null, 2) },
           ],
         };
       } catch (error) {
         logger.error('MCP tool call failed', { toolName: name, args, error });
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Error: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`,
+        return { content: [, {, type: 'text', text: `Error: ${String(String(error instanceof Error ? error.message : 'Unknown error')) }`,
             },
           ],
           isError: true,
@@ -191,13 +182,7 @@ export class MCPKanbanServer {
 
       try {
         const resource = await this.resourceRegistry.readResource(uri);
-        return {
-          contents: [
-            {
-              uri,
-              mimeType: resource.mimeType ?? 'application/json',
-              text: resource.text,
-            },
+        return { contents: [, {, uri, mimeType: resource.mimeType ?? 'application/json', text: resource.text },
           ],
         };
       } catch (error) {
@@ -217,10 +202,7 @@ export class MCPKanbanServer {
 
       try {
         const prompt = await this.promptRegistry.getPrompt(name, args ?? {});
-        return {
-          description: prompt.description,
-          messages: prompt.messages,
-        };
+        return { description: prompt.description, messages: prompt.messages };
       } catch (error) {
         logger.error('MCP prompt get failed', { promptName: name, args, error });
         throw error;
@@ -359,24 +341,10 @@ export class MCPKanbanServer {
       const resources = await this.resourceRegistry.listResources();
       const prompts = await this.promptRegistry.listPrompts();
 
-      return {
-        status: dbHealth.connected ? 'healthy' : 'unhealthy',
-        database: dbHealth.connected,
-        tools: tools.length,
-        resources: resources.length,
-        prompts: prompts.length,
-        uptime: process.uptime(),
-      };
+      return { status: dbHealth.connected ? 'healthy' : 'unhealthy', database: dbHealth.connected, tools: tools.length, resources: resources.length, prompts: prompts.length, uptime: process.uptime() };
     } catch (error) {
       logger.error('MCP health check failed', { error });
-      return {
-        status: 'unhealthy',
-        database: false,
-        tools: 0,
-        resources: 0,
-        prompts: 0,
-        uptime: process.uptime(),
-      };
+      return { status: 'unhealthy', database: false, tools: 0, resources: 0, prompts: 0, uptime: process.uptime() };
     }
   }
 
@@ -398,12 +366,7 @@ export class MCPKanbanServer {
     capabilities: string[];
     description: string;
   } {
-    return {
-      name: config.mcp.serverName,
-      version: config.mcp.serverVersion,
-      capabilities: ['tools', 'resources', 'prompts'],
-      description: 'MCP server for Kanban task management with AI integration',
-    };
+    return { name: config.mcp.serverName, version: config.mcp.serverVersion, capabilities: ['tools', 'resources', 'prompts'], description: 'MCP server for Kanban task management with AI integration' };
   }
 
   /**

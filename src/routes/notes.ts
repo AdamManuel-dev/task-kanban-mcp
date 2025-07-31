@@ -1,5 +1,11 @@
 import { Router } from 'express';
-import { NoteService, type NoteSearchOptions, type NoteFilters, type CreateNoteRequest, type UpdateNoteRequest } from '@/services/NoteService';
+import {
+  NoteService,
+  type NoteSearchOptions,
+  type NoteFilters,
+  type CreateNoteRequest,
+  type UpdateNoteRequest,
+} from '@/services/NoteService';
 import type { PaginationOptions, Note } from '@/types';
 import { dbConnection } from '@/database/connection';
 import { requirePermission } from '@/middleware/auth';
@@ -34,7 +40,13 @@ export function noteRoutes(): Router {
       // Add optional properties only if they have values
       if (task_id) options.task_id = task_id as string;
       if (board_id) options.board_id = board_id as string;
-      if (category) options.category = category as 'general' | 'implementation' | 'research' | 'blocker' | 'idea';
+      if (category)
+        options.category = category as
+          | 'general'
+          | 'implementation'
+          | 'research'
+          | 'blocker'
+          | 'idea';
       if (pinned === 'true') options.pinned_only = true;
       else if (pinned === 'false') options.pinned_only = false;
 
@@ -131,7 +143,13 @@ export function noteRoutes(): Router {
 
       if (task_id) options.task_id = task_id as string;
       if (board_id) options.board_id = board_id as string;
-      if (category) options.category = category as 'general' | 'implementation' | 'research' | 'blocker' | 'idea';
+      if (category)
+        options.category = category as
+          | 'general'
+          | 'implementation'
+          | 'research'
+          | 'blocker'
+          | 'idea';
       if (pinned === 'true') options.pinned = true;
       else if (pinned === 'false') options.pinned = false;
 

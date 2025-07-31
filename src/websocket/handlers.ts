@@ -238,7 +238,7 @@ export class MessageHandler {
           this.webSocketManager.sendError(
             clientId,
             'UNKNOWN_MESSAGE_TYPE',
-            `Unknown message type: ${String(String(message.type))}`,
+            `Unknown message type: ${message.type}`,
             message.id
           );
       }
@@ -295,7 +295,7 @@ export class MessageHandler {
     }
 
     const channel = payload.channel as SubscriptionChannel;
-    const filters = payload.filters ?? {};
+    const filters = payload.filters || {};
 
     const result = this.webSocketManager
       .getSubscriptionManager()
@@ -321,7 +321,7 @@ export class MessageHandler {
       this.webSocketManager.sendError(
         clientId,
         'SUBSCRIBE_FAILED',
-        result.error ?? 'Subscription failed',
+        result.error || 'Subscription failed',
         message.id
       );
     }
@@ -564,7 +564,7 @@ export class MessageHandler {
       // Check permissions
       if (
         !client.permissions.has('write:all') &&
-        !client.permissions.has(`write:board:${String(String(taskData.board_id))}`)
+        !client.permissions.has(`write:board:${taskData.board_id}`)
       ) {
         this.webSocketManager.sendError(
           clientId,
@@ -586,7 +586,7 @@ export class MessageHandler {
       // Broadcast creation to subscribers
       this.webSocketManager
         .getSubscriptionManager()
-        .publishTaskCreated(newTask, client.user?.id ?? 'unknown');
+        .publishTaskCreated(newTask, client.user?.id || 'unknown');
     } catch (error) {
       logger.error('Error creating task', { taskData, error });
       this.webSocketManager.sendError(
@@ -640,7 +640,7 @@ export class MessageHandler {
       // Check permissions
       if (
         !client.permissions.has('delete:all') &&
-        !client.permissions.has(`delete:task:${String(taskId)}`)
+        !client.permissions.has(`delete:task:${taskId}`)
       ) {
         this.webSocketManager.sendError(
           clientId,
@@ -662,7 +662,7 @@ export class MessageHandler {
       // Broadcast deletion to subscribers
       this.webSocketManager
         .getSubscriptionManager()
-        .publishTaskDeleted(taskId, task.board_id, client.user?.id ?? 'unknown');
+        .publishTaskDeleted(taskId, task.board_id, client.user?.id || 'unknown');
     } catch (error) {
       logger.error('Error deleting task', { taskId, error });
       this.webSocketManager.sendError(
@@ -706,10 +706,7 @@ export class MessageHandler {
 
     try {
       // Check permissions
-      if (
-        !client.permissions.has('read:all') &&
-        !client.permissions.has(`read:board:${String(boardId)}`)
-      ) {
+      if (!client.permissions.has('read:all') && !client.permissions.has(`read:board:${boardId}`)) {
         this.webSocketManager.sendError(
           clientId,
           'INSUFFICIENT_PERMISSIONS',
@@ -780,7 +777,7 @@ export class MessageHandler {
       // Check permissions
       if (
         !client.permissions.has('write:all') &&
-        !client.permissions.has(`write:board:${String(payload)}`)
+        !client.permissions.has(`write:board:${payload.boardId}`)
       ) {
         this.webSocketManager.sendError(
           clientId,
@@ -806,7 +803,7 @@ export class MessageHandler {
         data: {
           board: updatedBoard,
           changes: payload as Record<string, unknown>,
-          updatedBy: client.user?.id ?? 'unknown',
+          updatedBy: client.user?.id || 'unknown',
         },
         timestamp: new Date().toISOString(),
       });
@@ -859,7 +856,7 @@ export class MessageHandler {
       // Check permissions
       if (
         !client.permissions.has('write:all') &&
-        !client.permissions.has(`write:task:${String(String(noteData.task_id))}`)
+        !client.permissions.has(`write:task:${noteData.task_id}`)
       ) {
         this.webSocketManager.sendError(
           clientId,
@@ -883,7 +880,7 @@ export class MessageHandler {
       if (task) {
         this.webSocketManager
           .getSubscriptionManager()
-          .publishNoteAdded(newNote, noteData.task_id, task.board_id, client.user?.id ?? 'unknown');
+          .publishNoteAdded(newNote, noteData.task_id, task.board_id, client.user?.id || 'unknown');
       }
     } catch (error) {
       logger.error('Error adding note', { noteData, error });
@@ -1061,9 +1058,7 @@ export class MessageHandler {
     const { client, message } = context;
     const payload = message.payload as { taskId: string; boardId: string } | undefined;
 
-    if (!client.user) {
-      return;
-    }
+    if (!client.user) return;
 
     // Broadcast typing indicator
     this.webSocketManager
@@ -1108,9 +1103,7 @@ export class MessageHandler {
     const { client, message } = context;
     const payload = message.payload as { taskId: string; boardId: string } | undefined;
 
-    if (!client.user) {
-      return;
-    }
+    if (!client.user) return;
 
     // Broadcast typing stop indicator
     this.webSocketManager
@@ -1257,24 +1250,24 @@ export class MessageHandler {
 
     try {
       // Get parent task info
-      const parentTask = await this.taskService.getTaskById(payload.parentTaskId ?? 'unknown');
+      const parentTask = await this.taskService.getTaskById(payload.parentTaskId);
       if (!parentTask) {
         throw new Error('Parent task not found');
       }
 
       const subtask = await this.taskService.createTask({
-        title: payload.title ?? 'unknown',
-        description: payload.description ?? 'unknown',
+        title: payload.title,
+        description: payload.description,
         board_id: parentTask.board_id,
         column_id: parentTask.column_id,
         priority: (payload.priority || parentTask.priority) as number,
-        assignee: payload.assignee ?? 'unknown',
-        due_date: payload.due_date ?? new Date(),
-        parent_task_id: payload.parentTaskId ?? 'unknown',
+        assignee: payload.assignee,
+        due_date: payload.due_date,
+        parent_task_id: payload.parentTaskId,
       });
 
       // Calculate parent progress
-      const parentProgress = await this.calculateParentProgress(payload.parentTaskId ?? 'unknown');
+      const parentProgress = await this.calculateParentProgress(payload.parentTaskId);
 
       // Broadcast subtask created event
       this.webSocketManager.broadcast({
@@ -1322,13 +1315,13 @@ export class MessageHandler {
     }
 
     try {
-      const existingSubtask = await this.taskService.getTaskById(payload.subtaskId ?? 'unknown');
+      const existingSubtask = await this.taskService.getTaskById(payload.subtaskId);
       if (!existingSubtask?.parent_task_id) {
         throw new Error('Subtask not found');
       }
 
       const updatedSubtask = await this.taskService.updateTask(
-        payload.subtaskId ?? 'unknown',
+        payload.subtaskId,
         payload.updates as UpdateTaskRequest
       );
 
@@ -1432,8 +1425,8 @@ export class MessageHandler {
 
       switch (payload?.operation) {
         case 'update':
-          for (const taskId of payload.taskIds ?? []) {
-            const task = await this.taskService.updateTask(taskId, payload.changes ?? {});
+          for (const taskId of payload.taskIds || []) {
+            const task = await this.taskService.updateTask(taskId, payload.changes || {});
             results.push(task);
             if (!boardId) boardId = task.board_id;
           }

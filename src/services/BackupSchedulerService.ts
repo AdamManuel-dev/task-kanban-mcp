@@ -305,7 +305,7 @@ export class BackupSchedulerService {
 
       logger.error('Scheduled backup failed', {
         scheduleId,
-        error: error instanceof Error ? error.message : String(error),
+        error: error instanceof Error ? error.message : error,
       });
     }
   }
@@ -462,11 +462,11 @@ export class BackupSchedulerService {
       id: row.id,
       name: row.name,
       cronExpression: row.cron_expression,
-      isActive: Boolean(row.is_active),
+      isActive: !!row.is_active,
       backupType: row.backup_type,
       retentionDays: row.retention_days,
-      compress: Boolean(row.compress),
-      verify: Boolean(row.verify),
+      compress: !!row.compress,
+      verify: !!row.verify,
       lastRun: row.last_run,
       nextRun: row.next_run,
       successCount: row.success_count,

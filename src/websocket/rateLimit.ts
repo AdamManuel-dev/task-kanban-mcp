@@ -148,12 +148,7 @@ export class RateLimiter {
     const remaining = Math.max(0, this.config.maxConnections - requests);
     const resetTime = entry.firstRequest + this.config.windowMs;
 
-    return {
-      requests,
-      limit: this.config.maxConnections,
-      remaining,
-      resetTime,
-    };
+    return { requests, limit: this.config.maxConnections, remaining, resetTime };
   }
 
   // Get current rate limit status for a client
@@ -180,12 +175,7 @@ export class RateLimiter {
     const remaining = Math.max(0, this.config.maxMessagesPerMinute - messages);
     const resetTime = entry.firstRequest + this.config.windowMs;
 
-    return {
-      messages,
-      limit: this.config.maxMessagesPerMinute,
-      remaining,
-      resetTime,
-    };
+    return { messages, limit: this.config.maxMessagesPerMinute, remaining, resetTime };
   }
 
   // Remove rate limit entry for a client (when they disconnect)

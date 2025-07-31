@@ -520,12 +520,7 @@ export class CachedApiClient {
       status = 'degraded';
     }
 
-    return {
-      status,
-      metrics,
-      errors: [...this.cacheErrors],
-      lastChecked: new Date(),
-    };
+    return { status, metrics, errors: [...this.cacheErrors], lastChecked: new Date() };
   }
 
   /**
@@ -544,10 +539,7 @@ export class CachedApiClient {
     apiCache: ReturnType<typeof apiCache.getStats>;
     queryCache: ReturnType<typeof queryCache.getStats>;
   } {
-    return {
-      apiCache: apiCache.getStats(),
-      queryCache: queryCache.getStats(),
-    };
+    return { apiCache: apiCache.getStats(), queryCache: queryCache.getStats() };
   }
 
   static clearAllCaches(): void {

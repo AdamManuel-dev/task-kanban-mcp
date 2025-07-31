@@ -5,7 +5,7 @@
  */
 
 import request from 'supertest';
-import type { Application } from 'express';
+import type { Application, Request, Response, NextFunction } from 'express';
 import { createServer } from '@/server';
 import { logger } from '@/utils/logger';
 
@@ -93,17 +93,21 @@ jest.mock('@/websocket', () => ({
 
 // Mock middleware
 jest.mock('@/middleware', () => ({
-  createApiMiddleware: jest.fn().mockReturnValue((req: any, res: any, next: any) => {
-    req.requestId = 'test-request-id';
-    next();
-  }),
+  createApiMiddleware: jest
+    .fn()
+    .mockReturnValue((req: Request, res: Response, next: NextFunction) => {
+      req.requestId = 'test-request-id';
+      next();
+    }),
 }));
 
 // Mock error handler
 jest.mock('@/utils/errors', () => ({
-  globalErrorHandler: jest.fn().mockReturnValue((err: any, req: any, res: any, _next: any) => {
-    res.status(500).json({ error: 'Internal server error' });
-  }),
+  globalErrorHandler: jest
+    .fn()
+    .mockReturnValue((err: Error, req: Request, res: Response, _next: NextFunction) => {
+      res.status(500).json({ error: 'Internal server error' });
+    }),
 }));
 
 describe('Application Server', () => {

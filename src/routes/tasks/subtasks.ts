@@ -8,7 +8,8 @@
  * Patterns: RESTful routes under /tasks/:id/subtasks
  */
 
-import { Router, Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
 import { TaskService } from '@/services/TaskService';
 import { dbConnection } from '@/database/connection';
 import { logger } from '@/utils/logger';
@@ -19,7 +20,6 @@ export const taskSubtaskRoutes = Router({ mergeParams: true });
  * GET /tasks/:id/subtasks - Get all subtasks for a task
  */
 taskSubtaskRoutes.get('/', async (req: Request, res: Response, next: NextFunction) => {
-
   try {
     const taskId = req.params.id;
     const taskService = new TaskService(dbConnection);
@@ -35,7 +35,6 @@ taskSubtaskRoutes.get('/', async (req: Request, res: Response, next: NextFunctio
  * POST /tasks/:id/subtasks - Create a subtask under parent task
  */
 taskSubtaskRoutes.post('/', async (req: Request, res: Response, next: NextFunction) => {
-
   try {
     const parentTaskId = req.params.id;
     const subtaskData = { ...req.body, parent_task_id: parentTaskId };
@@ -52,7 +51,7 @@ taskSubtaskRoutes.post('/', async (req: Request, res: Response, next: NextFuncti
 /**
  * PUT /tasks/:id/subtasks/:subtaskId - Update a subtask
  */
-taskSubtaskRoutes.put('/:subtaskId', async (req, res) => {
+taskSubtaskRoutes.put('/:subtaskId', async (req, res, next) => {
   const errorHandler = createServiceErrorHandler('updateSubtask', logger);
 
   try {
@@ -72,7 +71,6 @@ taskSubtaskRoutes.put('/:subtaskId', async (req, res) => {
  * DELETE /tasks/:id/subtasks/:subtaskId - Delete a subtask
  */
 taskSubtaskRoutes.delete('/:subtaskId', async (req: Request, res: Response, next: NextFunction) => {
-
   try {
     const { subtaskId } = req.params;
     const taskService = new TaskService(dbConnection);

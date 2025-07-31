@@ -52,7 +52,7 @@ export class TaskRunner {
       rendererOptions: {
         showSubtasks: true,
         showTimer: true,
-      } as any,
+      },
     });
 
     try {
@@ -82,21 +82,21 @@ export class TaskRunner {
           enabled: item.enabled ?? true,
         }));
 
-        return (task as any).newListr(subtasks as any, {
+        return task.newListr(subtasks, {
           concurrent: group.concurrent ?? false,
           exitOnError: options?.exitOnError ?? true,
         });
       },
-    })) as any;
+    }));
 
-    const listr = new Listr(mainTasks as any, {
+    const listr = new Listr(mainTasks, {
       concurrent: false,
       exitOnError: options?.exitOnError ?? true,
       renderer: this.renderer,
       rendererOptions: {
         showSubtasks: true,
         showTimer: true,
-      } as any,
+      },
     });
 
     try {
@@ -158,7 +158,7 @@ export class TaskRunner {
         rendererOptions: {
           showSubtasks: true,
           showTimer: true,
-        } as any,
+        } as unknown,
       }
     );
 

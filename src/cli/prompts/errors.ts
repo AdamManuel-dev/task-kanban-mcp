@@ -166,12 +166,7 @@ export function createErrorResponse(
 } {
   if (error instanceof PromptError) {
     logger.error(`${operation} failed`, error.getLogData());
-    return {
-      success: false,
-      error: error.message,
-      code: error.code,
-      category: error.category,
-    };
+    return { success: false, error: error.message, code: error.code, category: error.category };
   }
 
   // Handle standard errors
@@ -245,7 +240,7 @@ export function validateInput<T>(
 ): T {
   const result = validator(value);
 
-  if (result === true) {
+  if (result) {
     return value;
   }
 

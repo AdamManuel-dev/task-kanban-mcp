@@ -53,7 +53,7 @@ export const isSuccessResponseWithData = <T>(
   response !== undefined &&
   typeof response === 'object' &&
   'success' in response &&
-  (response as { success: unknown }).success === true &&
+  (response as { success: unknown }).success &&
   'data' in response &&
   (response as { data: unknown }).data !== null &&
   (response as { data: unknown }).data !== undefined;

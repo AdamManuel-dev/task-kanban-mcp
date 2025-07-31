@@ -125,11 +125,6 @@ export function registerViewCommand(boardCmd: Command): void {
           }
         );
 
-        if (!boardData) {
-          formatter.error(`Board ${boardId} not found`);
-          process.exit(1);
-        }
-
         // Transform API data to component format
         const apiResponse = boardData as ApiBoardResponse;
         const board: Board = {
@@ -159,7 +154,7 @@ export function registerViewCommand(boardCmd: Command): void {
           const [currentBoard, setCurrentBoard] = React.useState<BoardData>({
             id: board.id,
             name: board.name,
-            description: board.description ?? undefined,
+            description: board.description,
             archived: board.archived,
             createdAt: board.created_at.toISOString(),
             updatedAt: board.updated_at.toISOString(),
@@ -192,7 +187,7 @@ export function registerViewCommand(boardCmd: Command): void {
                     const boardWithContent: BoardData = {
                       id: refreshedBoard.id,
                       name: refreshedBoard.name,
-                      description: refreshedBoard.description ?? undefined,
+                      description: refreshedBoard.description,
                       archived: refreshedBoard.archived,
                       createdAt: refreshedBoard.created_at.toISOString(),
                       updatedAt: refreshedBoard.updated_at.toISOString(),

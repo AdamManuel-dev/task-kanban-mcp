@@ -100,11 +100,11 @@ export const listTasksHandler = (services: Services) => [
 
       const limit = Number(filters.limit) || 50;
       const offset = Number(filters.offset) || 0;
-      
+
       const tasks = await services.taskService.getTasks({
         limit,
         offset,
-        sortBy: filters.sortBy as string ?? 'updated_at',
+        sortBy: (filters.sortBy as string) ?? 'updated_at',
         sortOrder: (filters.sortOrder as 'asc' | 'desc') ?? 'desc',
         board_id: filters.board_id as string,
         column_id: filters.column_id as string,
@@ -118,7 +118,7 @@ export const listTasksHandler = (services: Services) => [
 
       // Get total count for pagination (without limit/offset)
       const totalTasks = await services.taskService.getTasks({
-        sortBy: filters.sortBy as string ?? 'updated_at',
+        sortBy: (filters.sortBy as string) ?? 'updated_at',
         sortOrder: (filters.sortOrder as 'asc' | 'desc') ?? 'desc',
         board_id: filters.board_id as string,
         column_id: filters.column_id as string,
@@ -129,7 +129,7 @@ export const listTasksHandler = (services: Services) => [
         priority_min: Number(filters.priority_min),
         priority_max: Number(filters.priority_max),
       });
-      
+
       const total = totalTasks.length;
       const hasMore = offset + limit < total;
 

@@ -33,11 +33,11 @@ describe('CLI Interactive Features E2E Tests', () => {
       });
 
       // Simulate user input
-      child.stdin.write('Test Task Title\\n'); // Task title
-      child.stdin.write('This is a test task description\\n'); // Description
-      child.stdin.write('P1\\n'); // Priority
-      child.stdin.write('\\n'); // Skip tags (empty)
-      child.stdin.write('\\n'); // Skip due date (empty)
+      child.stdin.write('Test Task Title\n'); // Task title
+      child.stdin.write('This is a test task description\n'); // Description
+      child.stdin.write('P1\n'); // Priority
+      child.stdin.write('\n'); // Skip tags (empty)
+      child.stdin.write('\n'); // Skip due date (empty)
       child.stdin.end();
 
       let output = '';
@@ -66,12 +66,12 @@ describe('CLI Interactive Features E2E Tests', () => {
       });
 
       // Simulate invalid then valid input
-      child.stdin.write('\\n'); // Empty title (should be rejected)
-      child.stdin.write('Valid Task Title\\n'); // Valid title
-      child.stdin.write('Valid description\\n'); // Description
-      child.stdin.write('P2\\n'); // Priority
-      child.stdin.write('\\n'); // Skip tags
-      child.stdin.write('\\n'); // Skip due date
+      child.stdin.write('\n'); // Empty title (should be rejected)
+      child.stdin.write('Valid Task Title\n'); // Valid title
+      child.stdin.write('Valid description\n'); // Description
+      child.stdin.write('P2\n'); // Priority
+      child.stdin.write('\n'); // Skip tags
+      child.stdin.write('\n'); // Skip due date
       child.stdin.end();
 
       let output = '';
@@ -100,11 +100,11 @@ describe('CLI Interactive Features E2E Tests', () => {
       });
 
       // Simulate malicious input
-      child.stdin.write('<script>alert("xss")</script>Safe Title\\n'); // Malicious title
-      child.stdin.write('Safe description\\n'); // Description
-      child.stdin.write('P3\\n'); // Priority
-      child.stdin.write('\\n'); // Skip tags
-      child.stdin.write('\\n'); // Skip due date
+      child.stdin.write('<script>alert("xss")</script>Safe Title\n'); // Malicious title
+      child.stdin.write('Safe description\n'); // Description
+      child.stdin.write('P3\n'); // Priority
+      child.stdin.write('\n'); // Skip tags
+      child.stdin.write('\n'); // Skip due date
       child.stdin.end();
 
       let output = '';
@@ -136,12 +136,12 @@ describe('CLI Interactive Features E2E Tests', () => {
       });
 
       // Simulate user input for board setup
-      child.stdin.write('Test Board\\n'); // Board name
-      child.stdin.write('A test board for E2E testing\\n'); // Description
-      child.stdin.write('scrum\\n'); // Template selection
-      child.stdin.write('n\\n'); // Not public
-      child.stdin.write('y\\n'); // Confirm creation
-      child.stdin.write('y\\n'); // Set as default
+      child.stdin.write('Test Board\n'); // Board name
+      child.stdin.write('A test board for E2E testing\n'); // Description
+      child.stdin.write('scrum\n'); // Template selection
+      child.stdin.write('n\n'); // Not public
+      child.stdin.write('y\n'); // Confirm creation
+      child.stdin.write('y\n'); // Set as default
       child.stdin.end();
 
       let output = '';
@@ -170,13 +170,13 @@ describe('CLI Interactive Features E2E Tests', () => {
         cwd: process.cwd(),
       });
 
-      child.stdin.write('Template Test Board\\n'); // Board name
-      child.stdin.write('Testing template validation\\n'); // Description
-      child.stdin.write('invalid-template\\n'); // Invalid template
-      child.stdin.write('basic\\n'); // Valid template
-      child.stdin.write('n\\n'); // Not public
-      child.stdin.write('y\\n'); // Confirm creation
-      child.stdin.write('n\\n'); // Don't set as default
+      child.stdin.write('Template Test Board\n'); // Board name
+      child.stdin.write('Testing template validation\n'); // Description
+      child.stdin.write('invalid-template\n'); // Invalid template
+      child.stdin.write('basic\n'); // Valid template
+      child.stdin.write('n\n'); // Not public
+      child.stdin.write('y\n'); // Confirm creation
+      child.stdin.write('n\n'); // Don't set as default
       child.stdin.end();
 
       let output = '';
@@ -207,11 +207,11 @@ describe('CLI Interactive Features E2E Tests', () => {
       });
 
       // Simulate configuration input
-      child.stdin.write('http://localhost:3000\\n'); // API URL
-      child.stdin.write('test-api-key\\n'); // API key
-      child.stdin.write('json\\n'); // Default format
-      child.stdin.write('y\\n'); // Enable colors
-      child.stdin.write('n\\n'); // Don't enable verbose
+      child.stdin.write('http://localhost:3000\n'); // API URL
+      child.stdin.write('test-api-key\n'); // API key
+      child.stdin.write('json\n'); // Default format
+      child.stdin.write('y\n'); // Enable colors
+      child.stdin.write('n\n'); // Don't enable verbose
       child.stdin.end();
 
       let output = '';
@@ -240,12 +240,12 @@ describe('CLI Interactive Features E2E Tests', () => {
       });
 
       // Test invalid URL then valid URL
-      child.stdin.write('not-a-url\\n'); // Invalid URL
-      child.stdin.write('http://valid.example.com\\n'); // Valid URL
-      child.stdin.write('valid-key\\n'); // API key
-      child.stdin.write('table\\n'); // Default format
-      child.stdin.write('y\\n'); // Enable colors
-      child.stdin.write('n\\n'); // Don't enable verbose
+      child.stdin.write('not-a-url\n'); // Invalid URL
+      child.stdin.write('http://valid.example.com\n'); // Valid URL
+      child.stdin.write('valid-key\n'); // API key
+      child.stdin.write('table\n'); // Default format
+      child.stdin.write('y\n'); // Enable colors
+      child.stdin.write('n\n'); // Don't enable verbose
       child.stdin.end();
 
       let output = '';
@@ -296,10 +296,10 @@ describe('CLI Interactive Features E2E Tests', () => {
       });
 
       // Simulate keyboard navigation
-      child.stdin.write('j\\n'); // Move down
-      child.stdin.write('k\\n'); // Move up
-      child.stdin.write('?\\n'); // Show help
-      child.stdin.write('q\\n'); // Quit
+      child.stdin.write('j\n'); // Move down
+      child.stdin.write('k\n'); // Move up
+      child.stdin.write('?\n'); // Show help
+      child.stdin.write('q\n'); // Quit
       child.stdin.end();
 
       let output = '';
@@ -328,11 +328,11 @@ describe('CLI Interactive Features E2E Tests', () => {
         cwd: process.cwd(),
       });
 
-      child.stdin.write('Network Test Task\\n'); // Task title
-      child.stdin.write('Testing network error handling\\n'); // Description
-      child.stdin.write('P1\\n'); // Priority
-      child.stdin.write('\\n'); // Skip tags
-      child.stdin.write('\\n'); // Skip due date
+      child.stdin.write('Network Test Task\n'); // Task title
+      child.stdin.write('Testing network error handling\n'); // Description
+      child.stdin.write('P1\n'); // Priority
+      child.stdin.write('\n'); // Skip tags
+      child.stdin.write('\n'); // Skip due date
       child.stdin.end();
 
       let output = '';
@@ -359,7 +359,7 @@ describe('CLI Interactive Features E2E Tests', () => {
       });
 
       // Start input then send SIGINT
-      child.stdin.write('Interrupted Task\\n');
+      child.stdin.write('Interrupted Task\n');
       setTimeout(() => {
         child.kill('SIGINT');
       }, 1000);

@@ -9,7 +9,7 @@ The MCP Kanban Server provides AI agents (like Claude Code, Cursor, etc.) with d
 ## Key Features
 
 - **🤖 AI-First Design**: Built specifically for AI agent integration via MCP protocol
-- **🔄 Context-Aware**: Automatically maps git repositories to appropriate kanban boards  
+- **🔄 Context-Aware**: Automatically maps git repositories to appropriate kanban boards
 - **⚡ Real-Time Updates**: WebSocket-based live synchronization across all connected clients
 - **📊 Smart Prioritization**: AI-powered task prioritization based on dependencies and context
 - **🏗️ Hierarchical Tasks**: Support for subtasks and complex dependency relationships
@@ -90,18 +90,21 @@ kanban search tasks "authentication"
 ## Core Concepts
 
 ### Boards & Tasks
+
 - **Boards**: Project-specific kanban boards with customizable columns
 - **Tasks**: Core work items with rich metadata, notes, and relationships
 - **Subtasks**: Hierarchical task breakdown with automatic progress tracking
 - **Dependencies**: Block/unblock relationships with critical path analysis
 
 ### AI Integration
+
 - **Context Awareness**: Understands current work state and provides relevant suggestions
 - **Smart Prioritization**: Considers dependencies, deadlines, and work patterns
 - **Natural Language**: Create and update tasks using conversational commands
 - **Pattern Recognition**: Learns from past work to suggest similar solutions
 
 ### Git Integration
+
 - **Auto-Detection**: Automatically maps git repositories to appropriate boards
 - **Branch Parsing**: Extracts task IDs from branch names for automatic updates
 - **Commit Integration**: Links commits to tasks and updates progress
@@ -149,7 +152,7 @@ npm run test:coverage
 The server provides a comprehensive REST API for all operations:
 
 - `POST /api/tasks` - Create tasks
-- `GET /api/tasks` - List and filter tasks  
+- `GET /api/tasks` - List and filter tasks
 - `PATCH /api/tasks/:id` - Update tasks
 - `GET /api/context` - Get current work context
 - `GET /api/priorities/next` - Get next recommended task
@@ -194,7 +197,7 @@ API_KEY_SECRET=your-secret-key
 RATE_LIMIT_WINDOW_MS=60000
 RATE_LIMIT_MAX_REQUESTS=1000
 
-# Git Integration  
+# Git Integration
 GIT_AUTO_DETECT=true
 GIT_BRANCH_PATTERNS=feature/{taskId}-*,{taskId}-*
 
@@ -248,7 +251,7 @@ docker-compose logs -f
 ## Performance
 
 - **Response Time**: < 100ms for task operations
-- **WebSocket Latency**: < 50ms for real-time updates  
+- **WebSocket Latency**: < 50ms for real-time updates
 - **Concurrent Connections**: Supports 10+ simultaneous clients
 - **Database**: Optimized SQLite with WAL mode and indexes
 - **Memory Usage**: < 256MB under normal operation
@@ -284,7 +287,7 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 ## Roadmap
 
 - [ ] **v0.1.0**: Core MVP with basic task management
-- [ ] **v0.2.0**: Full MCP integration and AI features  
+- [ ] **v0.2.0**: Full MCP integration and AI features
 - [ ] **v0.3.0**: Advanced dependency management and prioritization
 - [ ] **v0.4.0**: Plugin system and extensibility
 - [ ] **v1.0.0**: Production-ready release with full feature set

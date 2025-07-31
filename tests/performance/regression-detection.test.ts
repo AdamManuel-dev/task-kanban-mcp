@@ -121,10 +121,7 @@ describe('Performance Regression Detection', () => {
       logger.warn('Could not load performance baselines:', error);
     }
 
-    return {
-      baselines: [],
-      lastUpdated: new Date().toISOString(),
-    };
+    return { baselines: [], lastUpdated: new Date().toISOString() };
   }
 
   function savePerformanceBaselines(report: PerformanceReport): void {

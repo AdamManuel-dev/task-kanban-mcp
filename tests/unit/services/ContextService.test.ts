@@ -70,7 +70,7 @@ beforeEach(async () => {
     getBoards: jest.fn().mockResolvedValue([]),
     getBoardById: jest.fn().mockResolvedValue(null),
     getBoardWithStats: jest.fn().mockResolvedValue(null),
-  } as any;
+  } as jest.Mocked<Partial<typeof import('@/services/BoardService').BoardService>>;
 
   mockTaskService = {
     getTaskById: jest.fn().mockResolvedValue(null),

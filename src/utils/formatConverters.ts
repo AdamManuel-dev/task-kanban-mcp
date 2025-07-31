@@ -7,11 +7,11 @@
  */
 
 import type { ExportData, ExportFileFormat } from '@/services/ExportService';
+import { logger } from '@/utils/logger';
 import type { Board } from '@/types/board';
 import type { Task } from '@/types/task';
 import type { Tag } from '@/types/tag';
 import type { Note } from '@/types/note';
-import { logger } from '@/utils/logger';
 
 export interface FormatConverterOptions {
   preserveMetadata?: boolean;
@@ -30,6 +30,147 @@ export interface ConversionResult {
   itemCount: number;
   errors: string[];
   warnings: string[];
+}
+
+/**
+ * Helper function to create a CSV line parser with specific delimiter and quote character
+ */
+function createCsvLineParser(delimiter: string, quoteChar: string): (line: string) => string[] {
+  return (line: string): string[] => {
+    const values: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    let i = 0;
+
+    while (i < line.length) {
+      const char = line[i];
+      const nextChar = line[i + 1];
+
+      if (char === quoteChar && !inQuotes) {
+        inQuotes = true;
+      } else if (char === quoteChar && inQuotes && nextChar === quoteChar) {
+        current += quoteChar;
+        i++; // Skip next quote
+      } else if (char === quoteChar && inQuotes) {
+        inQuotes = false;
+      } else if (char === delimiter && !inQuotes) {
+        values.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+      i++;
+    }
+
+    values.push(current.trim());
+    return values;
+  };
+}
+
+/**
+ * Helper function to convert CSV row values to object with type conversion
+ */
+function convertCsvRowToObject(headers: string[], values: string[]): Record<string, unknown> {
+  const item: Record<string, unknown> = {};
+  headers.forEach((header, index) => {
+    const value = values[index];
+    // Convert string values to appropriate types
+    if (value === 'true') {
+      item[header] = true;
+    } else if (value === 'false') {
+      item[header] = false;
+    } else if (value === '') {
+      item[header] = null;
+    } else {
+      item[header] = value;
+    }
+  });
+  return item;
+}
+
+/**
+ * Helper function to add item to appropriate data section
+ */
+function addItemToSection(
+  data: ExportData,
+  section: string,
+  item: Record<string, unknown>
+): { success: boolean; warning?: string } {
+  switch (section) {
+    case 'boards':
+      if (!data.boards) data.boards = [];
+      data.boards.push(item as Board);
+      break;
+    case 'tasks':
+      if (!data.tasks) data.tasks = [];
+      data.tasks.push(item as Task);
+      break;
+    case 'tags':
+      if (!data.tags) data.tags = [];
+      data.tags.push(item as Tag);
+      break;
+    case 'notes':
+      if (!data.notes) data.notes = [];
+      data.notes.push(item as Note);
+      break;
+    case 'task_tags':
+      if (!data.taskTags) data.taskTags = [];
+      data.taskTags.push(item as { task_id: string; tag_id: string });
+      break;
+    case 'metadata':
+      if (!data.metadata) data.metadata = {} as Record<string, unknown>;
+      (data.metadata as Record<string, unknown>)[item.key as string] = item.value;
+      break;
+    default:
+      return { success: false, warning: `Unknown section: ${section}` };
+  }
+  return { success: true };
+}
+
+/**
+ * Helper function to process CSV lines and build data structure
+ */
+function processCsvLines(
+  lines: string[],
+  parseCsvLine: (line: string) => string[]
+): { data: ExportData; totalItems: number; warnings: string[] } {
+  const data: ExportData = {};
+  let currentSection = '';
+  let headers: string[] = [];
+  let totalItems = 0;
+  const warnings: string[] = [];
+
+  for (const line of lines) {
+    if (line.startsWith('===') && line.endsWith('===')) {
+      // Section header
+      currentSection = line.replace(/===/g, '').trim().toLowerCase();
+      headers = [];
+      continue;
+    }
+
+    if (headers.length === 0) {
+      // First line after section header is headers
+      headers = parseCsvLine(line);
+      continue;
+    }
+
+    // Data line
+    const values = parseCsvLine(line);
+    if (values.length !== headers.length) {
+      warnings.push(`Skipping malformed line in ${currentSection}: ${line}`);
+      continue;
+    }
+
+    const item = convertCsvRowToObject(headers, values);
+    const sectionResult = addItemToSection(data, currentSection, item);
+    if (!sectionResult.success) {
+      warnings.push(sectionResult.warning!);
+    }
+
+    totalItems++;
+  }
+
+  return { data, totalItems, warnings };
 }
 
 /**
@@ -112,10 +253,10 @@ export function jsonToCsv(
           task.board_id,
           task.column_id,
           task.position,
-          task.priority ?? '',
+          task.priority || '',
           task.status,
           task.assignee ? escapeCsvValue(task.assignee) : '',
-          task.due_date ?? '',
+          task.due_date || '',
           task.created_at,
           task.updated_at,
         ];
@@ -137,7 +278,7 @@ export function jsonToCsv(
           escapeCsvValue(tag.name),
           tag.color,
           tag.description ? escapeCsvValue(tag.description) : '',
-          tag.parent_tag_id ?? '',
+          tag.parent_tag_id || '',
           tag.created_at,
         ];
         csvLines.push(row.join(delimiter));
@@ -205,9 +346,7 @@ export function jsonToCsv(
 
     logger.info('JSON to CSV conversion completed', { itemCount: totalItems });
   } catch (error) {
-    result.errors.push(
-      `Conversion failed: ${error instanceof Error ? error.message : String(error)}`
-    );
+    result.errors.push(`Conversion failed: ${error instanceof Error ? error.message : error}`);
     logger.error('JSON to CSV conversion failed:', error);
   }
 
@@ -228,113 +367,12 @@ export function csvToJson(csvData: string, options: FormatConverterOptions = {})
 
   try {
     const lines = csvData.split('\n').filter(line => line.trim() !== '');
-    const data: ExportData = {};
-    let currentSection = '';
-    let headers: string[] = [];
-    let totalItems = 0;
-
     const delimiter = options.delimiter ?? ',';
     const quoteChar = options.quoteChar ?? '"';
+    const parseCsvLine = createCsvLineParser(delimiter, quoteChar);
 
-    // Helper function to parse CSV line
-    const parseCsvLine = (line: string): string[] => {
-      const values: string[] = [];
-      let current = '';
-      let inQuotes = false;
-      let i = 0;
-
-      while (i < line.length) {
-        const char = line[i];
-        const nextChar = line[i + 1];
-
-        if (char === quoteChar && !inQuotes) {
-          inQuotes = true;
-        } else if (char === quoteChar && inQuotes && nextChar === quoteChar) {
-          current += quoteChar;
-          i++; // Skip next quote
-        } else if (char === quoteChar && inQuotes) {
-          inQuotes = false;
-        } else if (char === delimiter && !inQuotes) {
-          values.push(current.trim());
-          current = '';
-        } else {
-          current += char;
-        }
-        i++;
-      }
-
-      values.push(current.trim());
-      return values;
-    };
-
-    for (const line of lines) {
-      if (line.startsWith('===') && line.endsWith('===')) {
-        // Section header
-        currentSection = line.replace(/===/g, '').trim().toLowerCase();
-        headers = [];
-        continue;
-      }
-
-      if (headers.length === 0) {
-        // First line after section header is headers
-        headers = parseCsvLine(line);
-        continue;
-      }
-
-      // Data line
-      const values = parseCsvLine(line);
-      if (values.length !== headers.length) {
-        result.warnings.push(`Skipping malformed line in ${currentSection}: ${line}`);
-        continue;
-      }
-
-      const item: Record<string, unknown> = {};
-      headers.forEach((header, index) => {
-        const value = values[index];
-        // Convert string values to appropriate types
-        if (value === 'true') {
-          item[header] = true;
-        } else if (value === 'false') {
-          item[header] = false;
-        } else if (value === '') {
-          item[header] = null;
-        } else {
-          item[header] = value;
-        }
-      });
-
-      // Add to appropriate section
-      switch (currentSection) {
-        case 'boards':
-          if (!data.boards) data.boards = [];
-          data.boards.push(item as Board);
-          break;
-        case 'tasks':
-          if (!data.tasks) data.tasks = [];
-          data.tasks.push(item as Task);
-          break;
-        case 'tags':
-          if (!data.tags) data.tags = [];
-          data.tags.push(item as Tag);
-          break;
-        case 'notes':
-          if (!data.notes) data.notes = [];
-          data.notes.push(item as Note);
-          break;
-        case 'task_tags':
-          if (!data.taskTags) data.taskTags = [];
-          data.taskTags.push(item as { task_id: string; tag_id: string; });
-          break;
-        case 'metadata':
-          if (!data.metadata) data.metadata = {} as Record<string, any>;
-          (data.metadata as Record<string, any>)[item.key as string] = item.value;
-          break;
-        default:
-          result.warnings.push(`Unknown section: ${currentSection}`);
-      }
-
-      totalItems++;
-    }
+    const { data, totalItems, warnings } = processCsvLines(lines, parseCsvLine);
+    result.warnings.push(...warnings);
 
     // Add metadata if not present
     if (!data.metadata) {
@@ -351,9 +389,7 @@ export function csvToJson(csvData: string, options: FormatConverterOptions = {})
 
     logger.info('CSV to JSON conversion completed', { itemCount: totalItems });
   } catch (error) {
-    result.errors.push(
-      `Conversion failed: ${error instanceof Error ? error.message : String(error)}`
-    );
+    result.errors.push(`Conversion failed: ${error instanceof Error ? error.message : error}`);
     logger.error('CSV to JSON conversion failed:', error);
   }
 
@@ -421,7 +457,7 @@ export function jsonToXml(
         xmlLines.push(`      <board_id>${escapeXml(task.board_id)}</board_id>`);
         xmlLines.push(`      <column_id>${escapeXml(task.column_id)}</column_id>`);
         xmlLines.push(`      <position>${task.position}</position>`);
-        xmlLines.push(`      <priority>${task.priority ?? ''}</priority>`);
+        xmlLines.push(`      <priority>${task.priority || ''}</priority>`);
         xmlLines.push(`      <status>${escapeXml(task.status)}</status>`);
         if (task.assignee) {
           xmlLines.push(`      <assignee>${escapeXml(task.assignee)}</assignee>`);
@@ -493,9 +529,7 @@ export function jsonToXml(
 
     logger.info('JSON to XML conversion completed', { itemCount: totalItems });
   } catch (error) {
-    result.errors.push(
-      `Conversion failed: ${error instanceof Error ? error.message : String(error)}`
-    );
+    result.errors.push(`Conversion failed: ${error instanceof Error ? error.message : error}`);
     logger.error('JSON to XML conversion failed:', error);
   }
 

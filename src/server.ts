@@ -122,7 +122,7 @@ export async function createServer(): Promise<express.Application> {
           filter: true,
           showRequestHeaders: true,
           tryItOutEnabled: true,
-          requestInterceptor: (req: any) => {
+          requestInterceptor: (req: unknown) => {
             // Add authentication header if available
             if (req.headers && !req.headers.Authorization) {
               const apiKey = req.headers['x-api-key'] || req.headers.authorization;
@@ -245,7 +245,7 @@ export async function startServer(): Promise<{
     const app = await createServer();
 
     // Start WebSocket server conditionally
-    let webSocketManager: any = null;
+    let webSocketManager: unknown = null;
     if (enableWebSockets) {
       logger.info('Starting WebSocket server...');
       const { webSocketManager: wsManager } = await import('@/websocket');
@@ -280,7 +280,7 @@ export async function startServer(): Promise<{
     server.keepAliveTimeout = config.performance.keepAliveTimeout;
 
     // Handle server errors
-    server.on('error', (error: any) => {
+    server.on('error', (error: unknown) => {
       logger.error('Server error:', {
         error: error.message,
         code: error.code,

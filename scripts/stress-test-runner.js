@@ -1,6 +1,6 @@
 /**
  * Custom Stress Test Runner
- * 
+ *
  * Runs distributed stress tests using Node.js cluster module to simulate
  * high concurrent load on the MCP Kanban Server.
  */
@@ -25,7 +25,7 @@ class StressTestRunner {
       concurrentRequests: options.concurrentRequests || 50,
       testType: options.testType || 'mixed',
       outputDir: options.outputDir || './stress-test-results',
-      ...options
+      ...options,
     };
 
     this.workers = new Map();
@@ -40,7 +40,7 @@ class StressTestRunner {
       maxResponseTime: 0,
       responseTimeDistribution: {},
       errorsByType: {},
-      workers: {}
+      workers: {},
     };
 
     this.setupOutputDirectory();
@@ -59,19 +59,19 @@ class StressTestRunner {
       requestsPerWorker: this.options.requestsPerWorker,
       concurrentRequests: this.options.concurrentRequests,
       testType: this.options.testType,
-      baseUrl: this.options.baseUrl
+      baseUrl: this.options.baseUrl,
     });
 
     if (cluster.isMaster) {
-      await this.runMaster();
+      this.runMaster();
     } else {
       await this.runWorker();
     }
   }
 
-  async runMaster() {
+  runMaster() {
     this.results.startTime = Date.now();
-    
+
     // Setup result collection from workers
     cluster.on('message', (worker, message) => {
       if (message.type === 'result') {
@@ -92,20 +92,22 @@ class StressTestRunner {
 
     // Start workers with staggered timing for ramp-up
     const rampUpInterval = this.options.rampUpTime / this.options.workers;
-    
+
     for (let i = 0; i < this.options.workers; i++) {
       setTimeout(() => {
         const worker = cluster.fork({
           WORKER_ID: i,
-          STRESS_TEST_CONFIG: JSON.stringify(this.options)
+          STRESS_TEST_CONFIG: JSON.stringify(this.options),
         });
         this.workers.set(worker.id, {
           pid: worker.process.pid,
           startTime: Date.now(),
           requests: 0,
-          errors: 0
+          errors: 0,
         });
-        console.log(`🔧 Started worker ${i + 1}/${this.options.workers} (PID: ${worker.process.pid})`);
+        console.log(
+          `🔧 Started worker ${i + 1}/${this.options.workers} (PID: ${worker.process.pid})`
+        );
       }, i * rampUpInterval);
     }
 
@@ -118,11 +120,11 @@ class StressTestRunner {
     setTimeout(() => {
       console.log('⏰ Test duration reached, stopping workers...');
       clearInterval(progressInterval);
-      
+
       for (const id in cluster.workers) {
         cluster.workers[id].disconnect();
       }
-      
+
       setTimeout(() => {
         this.finalizeResults();
       }, 5000); // Wait 5 seconds for workers to finish
@@ -132,12 +134,12 @@ class StressTestRunner {
   async runWorker() {
     const workerId = process.env.WORKER_ID;
     const config = JSON.parse(process.env.STRESS_TEST_CONFIG);
-    
+
     console.log(`👷 Worker ${workerId} starting stress test`);
-    
+
     const StressWorker = require('./stress-worker');
     const worker = new StressWorker(config);
-    
+
     await worker.run();
   }
 
@@ -147,7 +149,7 @@ class StressTestRunner {
     this.results.successfulRequests += workerResults.successfulRequests;
     this.results.failedRequests += workerResults.failedRequests;
     this.results.totalResponseTime += workerResults.totalResponseTime;
-    
+
     this.results.minResponseTime = Math.min(
       this.results.minResponseTime,
       workerResults.minResponseTime
@@ -159,14 +161,13 @@ class StressTestRunner {
 
     // Merge response time distribution
     Object.entries(workerResults.responseTimeDistribution).forEach(([bucket, count]) => {
-      this.results.responseTimeDistribution[bucket] = 
+      this.results.responseTimeDistribution[bucket] =
         (this.results.responseTimeDistribution[bucket] || 0) + count;
     });
 
     // Merge error types
     Object.entries(workerResults.errorsByType).forEach(([errorType, count]) => {
-      this.results.errorsByType[errorType] = 
-        (this.results.errorsByType[errorType] || 0) + count;
+      this.results.errorsByType[errorType] = (this.results.errorsByType[errorType] || 0) + count;
     });
 
     this.results.workers[workerId] = workerResults;
@@ -183,8 +184,8 @@ class StressTestRunner {
   logOverallProgress() {
     let totalRequests = 0;
     let totalErrors = 0;
-    
-    this.workers.forEach((worker) => {
+
+    this.workers.forEach(worker => {
       totalRequests += worker.requests;
       totalErrors += worker.errors;
     });
@@ -192,22 +193,26 @@ class StressTestRunner {
     const elapsedTime = Date.now() - this.results.startTime;
     const requestsPerSecond = Math.round((totalRequests / elapsedTime) * 1000);
     const errorRate = totalRequests > 0 ? ((totalErrors / totalRequests) * 100).toFixed(2) : '0.00';
-    
-    console.log(`📈 Progress: ${totalRequests} requests, ${requestsPerSecond} req/s, ${errorRate}% errors`);
+
+    console.log(
+      `📈 Progress: ${totalRequests} requests, ${requestsPerSecond} req/s, ${errorRate}% errors`
+    );
   }
 
   finalizeResults() {
     this.results.endTime = Date.now();
     const duration = this.results.endTime - this.results.startTime;
-    
+
     // Calculate final metrics
-    const avgResponseTime = this.results.totalRequests > 0 
-      ? this.results.totalResponseTime / this.results.totalRequests 
-      : 0;
+    const avgResponseTime =
+      this.results.totalRequests > 0
+        ? this.results.totalResponseTime / this.results.totalRequests
+        : 0;
     const requestsPerSecond = (this.results.totalRequests / duration) * 1000;
-    const errorRate = this.results.totalRequests > 0
-      ? (this.results.failedRequests / this.results.totalRequests) * 100
-      : 0;
+    const errorRate =
+      this.results.totalRequests > 0
+        ? (this.results.failedRequests / this.results.totalRequests) * 100
+        : 0;
 
     const summary = {
       testConfiguration: this.options,
@@ -223,8 +228,8 @@ class StressTestRunner {
         errorRate: `${errorRate.toFixed(2)}%`,
         responseTimeDistribution: this.results.responseTimeDistribution,
         errorsByType: this.results.errorsByType,
-        workerStats: this.results.workers
-      }
+        workerStats: this.results.workers,
+      },
     };
 
     // Save results to file
@@ -234,16 +239,18 @@ class StressTestRunner {
 
     // Display summary
     console.log('\n🎯 STRESS TEST COMPLETED');
-    console.log('=' .repeat(50));
+    console.log('='.repeat(50));
     console.log(`📊 Total Requests: ${summary.results.totalRequests}`);
     console.log(`✅ Successful: ${summary.results.successfulRequests}`);
     console.log(`❌ Failed: ${summary.results.failedRequests}`);
     console.log(`⚡ Requests/sec: ${summary.results.requestsPerSecond}`);
     console.log(`⏱️  Avg Response Time: ${summary.results.averageResponseTime}`);
-    console.log(`📈 Min/Max Response: ${summary.results.minResponseTime}/${summary.results.maxResponseTime}`);
+    console.log(
+      `📈 Min/Max Response: ${summary.results.minResponseTime}/${summary.results.maxResponseTime}`
+    );
     console.log(`🚨 Error Rate: ${summary.results.errorRate}`);
     console.log(`📁 Results saved to: ${resultsFile}`);
-    
+
     if (Object.keys(this.results.errorsByType).length > 0) {
       console.log('\n🚨 Error Breakdown:');
       Object.entries(this.results.errorsByType).forEach(([error, count]) => {
@@ -254,7 +261,7 @@ class StressTestRunner {
     // Determine if test passed based on thresholds
     const passed = this.evaluateTestResults(summary.results);
     console.log(`\n${passed ? '✅ TEST PASSED' : '❌ TEST FAILED'}`);
-    
+
     process.exit(passed ? 0 : 1);
   }
 
@@ -262,27 +269,31 @@ class StressTestRunner {
     const thresholds = {
       maxErrorRate: 5, // 5%
       maxAvgResponseTime: 1000, // 1000ms
-      minRequestsPerSecond: 100
+      minRequestsPerSecond: 100,
     };
 
     const errorRate = parseFloat(results.errorRate);
     const avgResponseTime = parseFloat(results.averageResponseTime);
-    const requestsPerSecond = results.requestsPerSecond;
+    const { requestsPerSecond } = results;
 
     let passed = true;
-    
+
     if (errorRate > thresholds.maxErrorRate) {
       console.log(`❌ Error rate ${errorRate}% exceeds threshold of ${thresholds.maxErrorRate}%`);
       passed = false;
     }
-    
+
     if (avgResponseTime > thresholds.maxAvgResponseTime) {
-      console.log(`❌ Average response time ${avgResponseTime}ms exceeds threshold of ${thresholds.maxAvgResponseTime}ms`);
+      console.log(
+        `❌ Average response time ${avgResponseTime}ms exceeds threshold of ${thresholds.maxAvgResponseTime}ms`
+      );
       passed = false;
     }
-    
+
     if (requestsPerSecond < thresholds.minRequestsPerSecond) {
-      console.log(`❌ Requests per second ${requestsPerSecond} below threshold of ${thresholds.minRequestsPerSecond}`);
+      console.log(
+        `❌ Requests per second ${requestsPerSecond} below threshold of ${thresholds.minRequestsPerSecond}`
+      );
       passed = false;
     }
 
@@ -294,12 +305,12 @@ class StressTestRunner {
 if (require.main === module) {
   const args = process.argv.slice(2);
   const options = {};
-  
+
   // Parse command line arguments
   for (let i = 0; i < args.length; i += 2) {
     const key = args[i].replace(/^--/, '');
     const value = args[i + 1];
-    
+
     if (key && value) {
       // Convert numeric values
       if (/^\d+$/.test(value)) {

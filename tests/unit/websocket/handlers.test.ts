@@ -24,8 +24,8 @@ const mockBoardService = jest.mocked(BoardService);
 
 describe('MessageHandler', () => {
   let handlers: MessageHandler;
-  let mockWebSocket: any;
-  let mockBroadcast: jest.MockedFunction<any>;
+  let mockWebSocket: Record<string, unknown>;
+  let mockBroadcast: jest.MockedFunction<(...args: unknown[]) => unknown>;
 
   beforeEach(() => {
     mockWebSocket = {

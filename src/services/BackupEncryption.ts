@@ -62,12 +62,12 @@ export class BackupEncryptionService {
 
   constructor(options: EncryptionOptions = {}) {
     this.options = {
-      algorithm: options.algorithm ?? BackupEncryptionService.DEFAULT_ALGORITHM,
+      algorithm: options.algorithm || BackupEncryptionService.DEFAULT_ALGORITHM,
       keyDerivationRounds:
-        options.keyDerivationRounds ?? BackupEncryptionService.DEFAULT_PBKDF2_ROUNDS,
-      saltLength: options.saltLength ?? BackupEncryptionService.DEFAULT_SALT_LENGTH,
-      ivLength: options.ivLength ?? BackupEncryptionService.DEFAULT_IV_LENGTH,
-      tagLength: options.tagLength ?? BackupEncryptionService.DEFAULT_TAG_LENGTH,
+        options.keyDerivationRounds || BackupEncryptionService.DEFAULT_PBKDF2_ROUNDS,
+      saltLength: options.saltLength || BackupEncryptionService.DEFAULT_SALT_LENGTH,
+      ivLength: options.ivLength || BackupEncryptionService.DEFAULT_IV_LENGTH,
+      tagLength: options.tagLength || BackupEncryptionService.DEFAULT_TAG_LENGTH,
     };
 
     logger.info('BackupEncryptionService initialized', {
@@ -83,7 +83,7 @@ export class BackupEncryptionService {
     password: string,
     salt?: Buffer
   ): Promise<{ key: Buffer; salt: Buffer; keyId: string }> {
-    const actualSalt = salt ?? crypto.randomBytes(this.options.saltLength);
+    const actualSalt = salt || crypto.randomBytes(this.options.saltLength);
 
     return new Promise((resolve, reject) => {
       crypto.pbkdf2(
@@ -174,9 +174,11 @@ export class BackupEncryptionService {
       });
 
       return encryptedBackup;
-    } catch (error) {
-      logger.error('Backup encryption failed', { error });
-      throw new Error(`Backup encryption failed: ${(error as Error).message}`);
+    } catch (err) {
+      logger.error('Backup encryption failed', { error: err });
+      throw new Error(
+        `Backup encryption failed: ${err instanceof Error ? err.message : String(err)}`
+      );
     }
   }
 
@@ -228,9 +230,9 @@ export class BackupEncryptionService {
       });
 
       return decryptedData;
-    } catch (error) {
-      logger.error('Backup decryption failed', { error });
-      throw new Error(`Backup decryption failed: ${(error as Error).message}`);
+    } catch (err) {
+      logger.error('Backup decryption failed', { error: err });
+      throw new Error(`Backup decryption failed: ${(err as Error).message}`);
     }
   }
 
@@ -318,8 +320,12 @@ export class BackupEncryptionService {
    */
   async validateBackupIntegrity(encryptedBackup: EncryptedBackup): Promise<boolean> {
     try {
-      // Validate required fields
-      if (!encryptedBackup.encryptedData || !encryptedBackup.salt || !encryptedBackup.iv) {
+      // Validate required fields exist and have content
+      if (
+        !encryptedBackup.encryptedData.length ||
+        !encryptedBackup.salt.length ||
+        !encryptedBackup.iv.length
+      ) {
         return false;
       }
 
@@ -448,11 +454,11 @@ export const backupEncryption = new BackupEncryptionService();
 
 // Export utilities
 export async function isEncryptedBackupFile(filePath: string): Promise<boolean> {
-  return fs
-    .readFile(filePath, 'utf-8')
-    .then(content => {
-      const parsed = JSON.parse(content);
-      return parsed.encrypted === true && parsed.version === '1.0';
-    })
-    .catch(() => false);
+  try {
+    const content = await fs.readFile(filePath, 'utf-8');
+    const parsed = JSON.parse(content);
+    return parsed.encrypted && parsed.version === '1.0';
+  } catch {
+    return false;
+  }
 }

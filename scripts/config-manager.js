@@ -73,7 +73,7 @@ function logError(message) {
 
 // Platform detection
 function detectPlatform() {
-  const platform = process.platform;
+  const { platform } = process;
   switch (platform) {
     case 'linux':
       return 'linux';
@@ -201,10 +201,9 @@ async function initConfig() {
   if (success) {
     logSuccess('Configuration initialized successfully');
     return config;
-  } else {
-    logError('Failed to initialize configuration');
-    return null;
   }
+  logError('Failed to initialize configuration');
+  return null;
 }
 
 // Update configuration
@@ -219,10 +218,9 @@ async function updateConfig(updates) {
   if (success) {
     logSuccess('Configuration updated successfully');
     return updatedConfig;
-  } else {
-    logError('Failed to update configuration');
-    return null;
   }
+  logError('Failed to update configuration');
+  return null;
 }
 
 // Validate database path
@@ -291,10 +289,9 @@ async function restoreConfig(backupPath) {
     if (success) {
       logSuccess(`Configuration restored from: ${backupPath}`);
       return config;
-    } else {
-      logError('Failed to restore configuration');
-      return null;
     }
+    logError('Failed to restore configuration');
+    return null;
   } catch (error) {
     logError(`Failed to restore configuration: ${error.message}`);
     return null;

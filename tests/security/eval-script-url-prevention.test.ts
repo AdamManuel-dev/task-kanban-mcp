@@ -230,7 +230,7 @@ describe('Eval and Script URL Prevention Verification', () => {
       const content = fs.readFileSync(inputSanitizerPath, 'utf-8');
 
       // Should contain pattern to detect eval
-      expect(content).toMatch(/eval\\s\*\\\(/i);
+      expect(content).toMatch(/eval\s*\(/i);
       expect(content).toMatch(/Eval function/i);
     });
 

@@ -218,7 +218,7 @@ export function registerDatabaseCommands(program: Command): void {
         if (!options.force) {
           formatter.warn('WARNING: Database repair may cause data loss!');
 
-          const { confirm } = await inquirer.prompt([
+          const { confirm } = await inquirer.prompt<{ confirm: boolean }>([
             {
               type: 'confirm',
               name: 'confirm',

@@ -561,7 +561,7 @@ class AIAgentSimulator {
 
 describe('User and AI Agent Simulation', () => {
   let app: Express;
-  let server: any;
+  let server: import('http').Server;
   let serverPort: number;
   let apiKey: string;
   let userSimulator: UserSimulator;
@@ -909,7 +909,7 @@ describe('User and AI Agent Simulation', () => {
       {
         name: 'Get task details',
         curl: `curl -s -X GET {{BASE_URL}}/api/v1/tasks/${task.id} -H "X-API-Key: {{API_KEY}}"`,
-        validate: (data: any) => {
+        validate: (data: unknown) => {
           expect(data).toHaveProperty('id');
           expect(data).toHaveProperty('title');
           expect(data).toHaveProperty('status');
@@ -922,7 +922,7 @@ describe('User and AI Agent Simulation', () => {
       {
         name: 'List tasks with pagination',
         curl: `curl -s -X GET "{{BASE_URL}}/api/v1/tasks?board_id=${board.id}&limit=10&offset=0" -H "X-API-Key: {{API_KEY}}"`,
-        validate: (data: any) => {
+        validate: (data: unknown) => {
           expect(data).toHaveProperty('items');
           expect(data).toHaveProperty('total');
           expect(data).toHaveProperty('limit');
@@ -933,7 +933,7 @@ describe('User and AI Agent Simulation', () => {
       {
         name: 'Get board details',
         curl: `curl -s -X GET {{BASE_URL}}/api/v1/boards/${board.id} -H "X-API-Key: {{API_KEY}}"`,
-        validate: (data: any) => {
+        validate: (data: unknown) => {
           expect(data).toHaveProperty('id');
           expect(data).toHaveProperty('name');
           expect(data).toHaveProperty('columns');

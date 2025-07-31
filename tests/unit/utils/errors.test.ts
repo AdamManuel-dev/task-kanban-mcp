@@ -344,9 +344,9 @@ describe('Error Utilities', () => {
   describe('globalErrorHandler (instance)', () => {
     it('should handle ZodError correctly', () => {
       class ZodError extends Error {
-        errors: any[];
+        errors: Array<{ path: string[]; message: string }>;
 
-        constructor(message: string, errors: any[]) {
+        constructor(message: string, errors: Array<{ path: string[]; message: string }>) {
           super(message);
           this.name = 'ZodError';
           this.errors = errors;
@@ -637,7 +637,7 @@ describe('Error Utilities', () => {
 
     it('should be readonly', () => {
       expect(() => {
-        (ErrorCodes as any).NEW_CODE = 'NEW_CODE';
+        (ErrorCodes as Record<string, unknown>).NEW_CODE = 'NEW_CODE';
       }).not.toThrow();
 
       // But the original values should be immutable

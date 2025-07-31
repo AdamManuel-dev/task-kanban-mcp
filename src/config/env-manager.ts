@@ -315,8 +315,8 @@ export class EnvironmentManager {
 
     try {
       const rawValue = this.getRawValue(key, rule);
-      const parsedValue = rule.schema.parse(rawValue);
-      this.cache.set(key, parsedValue);
+      const parsedValue = rule.schema.parse(rawValue) as T;
+      this.cache.set(key, parsedValue as unknown);
       return parsedValue;
     } catch (error) {
       logger.warn(`Failed to parse environment variable ${key}:`, error);

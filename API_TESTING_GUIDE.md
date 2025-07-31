@@ -76,16 +76,14 @@ npm run test:e2e:watch
 ```typescript
 // API Key Authentication
 it('should require API key for protected endpoints', async () => {
-  await request(app)
-    .get('/api/tasks')
-    .expect(401);
+  await request(app).get('/api/tasks').expect(401);
 });
 
 // Input Sanitization
 it('should sanitize XSS attempts', async () => {
   const maliciousPayload = {
     title: '<script>alert("xss")</script>Clean Title',
-    description: '<img src=x onerror=alert(1)>'
+    description: '<img src=x onerror=alert(1)>',
   };
 
   const response = await request(app)
@@ -102,6 +100,7 @@ it('should sanitize XSS attempts', async () => {
 ### Test Coverage Areas
 
 #### 1. Security Validation
+
 - XSS prevention in all inputs
 - SQL injection protection
 - Command injection blocking
@@ -110,6 +109,7 @@ it('should sanitize XSS attempts', async () => {
 - Rate limiting enforcement
 
 #### 2. CRUD Operations
+
 - Task creation with validation
 - Board management with templates
 - Search functionality with filters
@@ -117,6 +117,7 @@ it('should sanitize XSS attempts', async () => {
 - Bulk operations and performance
 
 #### 3. Error Handling
+
 - Proper HTTP status codes
 - Sanitized error messages
 - Graceful degradation
@@ -124,6 +125,7 @@ it('should sanitize XSS attempts', async () => {
 - Concurrent request management
 
 #### 4. Performance Testing
+
 - Response time validation
 - Concurrent request handling
 - Large payload processing
@@ -132,16 +134,16 @@ it('should sanitize XSS attempts', async () => {
 
 ### HTTP API Endpoints Tested
 
-| Endpoint | Method | Test Focus |
-|----------|--------|------------|
-| `/api/health` | GET | Status, rate limiting |
-| `/api/tasks` | GET/POST | CRUD, filtering, security |
-| `/api/tasks/:id` | GET/PUT/DELETE | Individual operations |
-| `/api/tasks/search` | GET | Search functionality, injection prevention |
-| `/api/boards` | GET/POST | Board management, templates |
-| `/api/boards/:id` | GET/PUT/DELETE | Board operations |
-| `/api/context` | GET | Analytics and summaries |
-| `/ws` | WebSocket | Real-time communication |
+| Endpoint            | Method         | Test Focus                                 |
+| ------------------- | -------------- | ------------------------------------------ |
+| `/api/health`       | GET            | Status, rate limiting                      |
+| `/api/tasks`        | GET/POST       | CRUD, filtering, security                  |
+| `/api/tasks/:id`    | GET/PUT/DELETE | Individual operations                      |
+| `/api/tasks/search` | GET            | Search functionality, injection prevention |
+| `/api/boards`       | GET/POST       | Board management, templates                |
+| `/api/boards/:id`   | GET/PUT/DELETE | Board operations                           |
+| `/api/context`      | GET            | Analytics and summaries                    |
+| `/ws`               | WebSocket      | Real-time communication                    |
 
 ## 🔗 MCP API Test Coverage
 
@@ -157,12 +159,12 @@ it('should respond to initialize request', async () => {
     params: {
       protocolVersion: '2024-11-05',
       capabilities: { tools: {}, resources: {}, prompts: {} },
-      clientInfo: { name: 'test-client', version: '1.0.0' }
-    }
+      clientInfo: { name: 'test-client', version: '1.0.0' },
+    },
   };
 
   const response = await sendMCPMessage(mcpProcess, initMessage);
-  
+
   expect(response.jsonrpc).toBe('2.0');
   expect(response.result.capabilities).toBeDefined();
   expect(response.result.serverInfo.name).toContain('kanban');
@@ -172,6 +174,7 @@ it('should respond to initialize request', async () => {
 ### Test Coverage Areas
 
 #### 1. Protocol Compliance
+
 - JSON-RPC 2.0 message format
 - Initialize handshake validation
 - Method discovery and execution
@@ -179,6 +182,7 @@ it('should respond to initialize request', async () => {
 - Protocol version validation
 
 #### 2. Tool System
+
 - Tool listing and discovery
 - Argument validation and sanitization
 - Execution results formatting
@@ -186,6 +190,7 @@ it('should respond to initialize request', async () => {
 - Security input filtering
 
 #### 3. Resource Management
+
 - Resource URI validation
 - Access permission checking
 - Content type handling
@@ -193,6 +198,7 @@ it('should respond to initialize request', async () => {
 - Cache management
 
 #### 4. Prompt System
+
 - Dynamic prompt generation
 - Context injection
 - Argument processing
@@ -201,39 +207,39 @@ it('should respond to initialize request', async () => {
 
 ### MCP Protocol Methods Tested
 
-| Method | Purpose | Test Focus |
-|--------|---------|------------|
-| `initialize` | Connection setup | Protocol compliance |
-| `tools/list` | Tool discovery | Registry validation |
-| `tools/call` | Tool execution | Security, functionality |
-| `resources/list` | Resource discovery | Access control |
-| `resources/read` | Resource access | Permissions, content |
-| `prompts/list` | Prompt discovery | Template availability |
-| `prompts/get` | Prompt generation | Context injection |
+| Method           | Purpose            | Test Focus              |
+| ---------------- | ------------------ | ----------------------- |
+| `initialize`     | Connection setup   | Protocol compliance     |
+| `tools/list`     | Tool discovery     | Registry validation     |
+| `tools/call`     | Tool execution     | Security, functionality |
+| `resources/list` | Resource discovery | Access control          |
+| `resources/read` | Resource access    | Permissions, content    |
+| `prompts/list`   | Prompt discovery   | Template availability   |
+| `prompts/get`    | Prompt generation  | Context injection       |
 
 ## 🔒 Security Test Matrix
 
 ### Input Sanitization Tests
 
-| Attack Vector | HTTP API | MCP API | Test Status |
-|---------------|----------|---------|-------------|
-| XSS Injection | ✅ | ✅ | Comprehensive |
-| SQL Injection | ✅ | ✅ | Comprehensive |
-| Command Injection | ✅ | ✅ | Comprehensive |
-| Path Traversal | ✅ | ❌ | HTTP Only |
-| Prototype Pollution | ✅ | ✅ | Comprehensive |
-| Unicode Attacks | ✅ | ✅ | Comprehensive |
-| JSON Bombing | ✅ | ✅ | Comprehensive |
+| Attack Vector       | HTTP API | MCP API | Test Status   |
+| ------------------- | -------- | ------- | ------------- |
+| XSS Injection       | ✅       | ✅      | Comprehensive |
+| SQL Injection       | ✅       | ✅      | Comprehensive |
+| Command Injection   | ✅       | ✅      | Comprehensive |
+| Path Traversal      | ✅       | ❌      | HTTP Only     |
+| Prototype Pollution | ✅       | ✅      | Comprehensive |
+| Unicode Attacks     | ✅       | ✅      | Comprehensive |
+| JSON Bombing        | ✅       | ✅      | Comprehensive |
 
 ### Authentication & Authorization
 
-| Security Feature | HTTP API | MCP API | Implementation |
-|------------------|----------|---------|----------------|
-| API Key Validation | ✅ | ❌ | HTTP Only |
-| Rate Limiting | ✅ | ✅ | Both |
-| Input Validation | ✅ | ✅ | Both |
-| Error Sanitization | ✅ | ✅ | Both |
-| Protocol Validation | ❌ | ✅ | MCP Only |
+| Security Feature    | HTTP API | MCP API | Implementation |
+| ------------------- | -------- | ------- | -------------- |
+| API Key Validation  | ✅       | ❌      | HTTP Only      |
+| Rate Limiting       | ✅       | ✅      | Both           |
+| Input Validation    | ✅       | ✅      | Both           |
+| Error Sanitization  | ✅       | ✅      | Both           |
+| Protocol Validation | ❌       | ✅      | MCP Only       |
 
 ## 🛠️ Test Utilities and Helpers
 
@@ -241,23 +247,23 @@ it('should respond to initialize request', async () => {
 
 ```typescript
 // Available in tests/e2e/setup.ts
-testUtils.createTestData.board()    // Create test board
-testUtils.createTestData.task()     // Create test task
-testUtils.validateSanitization()   // Check input cleaning
-testUtils.execCli()                // CLI integration
+testUtils.createTestData.board(); // Create test board
+testUtils.createTestData.task(); // Create test task
+testUtils.validateSanitization(); // Check input cleaning
+testUtils.execCli(); // CLI integration
 ```
 
 ### MCP API Helpers
 
 ```typescript
 // MCP-specific utilities
-async function startMCPServer(): Promise<ChildProcess>
-async function sendMCPMessage(process, message): Promise<MCPMessage>
+async function startMCPServer(): Promise<ChildProcess>;
+async function sendMCPMessage(process, message): Promise<MCPMessage>;
 
 // Message builders
-const initMessage = buildInitMessage(capabilities)
-const toolCallMessage = buildToolCall(name, args)
-const resourceReadMessage = buildResourceRead(uri)
+const initMessage = buildInitMessage(capabilities);
+const toolCallMessage = buildToolCall(name, args);
+const resourceReadMessage = buildResourceRead(uri);
 ```
 
 ### Test Data Management
@@ -272,23 +278,23 @@ const resourceReadMessage = buildResourceRead(uri)
 
 ### HTTP API Performance Targets
 
-| Operation | Target Time | Concurrent Users | Success Rate |
-|-----------|-------------|------------------|--------------|
-| Health Check | < 100ms | 100 | 99.9% |
-| Task Creation | < 500ms | 50 | 99% |
-| Task Listing | < 1s | 100 | 99% |
-| Search Query | < 2s | 20 | 95% |
-| Board Operations | < 1s | 30 | 99% |
+| Operation        | Target Time | Concurrent Users | Success Rate |
+| ---------------- | ----------- | ---------------- | ------------ |
+| Health Check     | < 100ms     | 100              | 99.9%        |
+| Task Creation    | < 500ms     | 50               | 99%          |
+| Task Listing     | < 1s        | 100              | 99%          |
+| Search Query     | < 2s        | 20               | 95%          |
+| Board Operations | < 1s        | 30               | 99%          |
 
 ### MCP API Performance Targets
 
-| Operation | Target Time | Message Size | Success Rate |
-|-----------|-------------|--------------|--------------|
-| Initialize | < 1s | 1KB | 100% |
-| Tool List | < 500ms | 10KB | 100% |
-| Tool Call | < 2s | 100KB | 99% |
-| Resource Read | < 1s | 1MB | 99% |
-| Prompt Generation | < 3s | 50KB | 99% |
+| Operation         | Target Time | Message Size | Success Rate |
+| ----------------- | ----------- | ------------ | ------------ |
+| Initialize        | < 1s        | 1KB          | 100%         |
+| Tool List         | < 500ms     | 10KB         | 100%         |
+| Tool Call         | < 2s        | 100KB        | 99%          |
+| Resource Read     | < 1s        | 1MB          | 99%          |
+| Prompt Generation | < 3s        | 50KB         | 99%          |
 
 ## 🐛 Debugging and Troubleshooting
 
@@ -311,28 +317,31 @@ npm run test:e2e -- --coverage
 ### Common Issues
 
 1. **Server Startup Failures**
+
    ```bash
    # Check if ports are available
    lsof -i :3000
-   
+
    # Verify database connection
    npm run test:e2e -- --testPathPattern=setup
    ```
 
 2. **MCP Protocol Issues**
+
    ```bash
    # Check MCP server build
    npm run build:security
-   
+
    # Verify MCP server startup
    node dist/mcp/server.js
    ```
 
 3. **Authentication Failures**
+
    ```bash
    # Check API key configuration
    echo $KANBAN_API_KEYS
-   
+
    # Verify test environment setup
    npm run test:e2e -- --testPathPattern=auth
    ```
@@ -362,7 +371,7 @@ on: [push, pull_request]
 jobs:
   api-tests:
     runs-on: ubuntu-latest
-    
+
     services:
       postgres:
         image: postgres:14
@@ -376,29 +385,29 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v2
         with:
           node-version: '18'
-          
+
       - name: Install dependencies
         run: npm ci
-        
+
       - name: Build application
         run: |
           npm run build:security
           npm run build
-          
+
       - name: Run HTTP API tests
         run: npm run test:http-api
         env:
           DATABASE_URL: postgresql://postgres:test@localhost:5432/kanban_test
           KANBAN_API_KEYS: test-key-ci
-          
+
       - name: Run MCP API tests
         run: npm run test:mcp-api
-        
+
       - name: Upload test results
         uses: actions/upload-artifact@v2
         with:

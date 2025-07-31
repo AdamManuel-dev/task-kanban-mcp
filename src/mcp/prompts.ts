@@ -306,7 +306,7 @@ export class MCPPromptRegistry {
         case 'retrospective_insights':
           return await this.generateRetrospectiveInsightsPrompt(args);
         default:
-          throw new Error(`Unknown prompt: ${String(name)}`);
+          throw new Error(`Unknown prompt: ${name}`);
       }
     } catch (error) {
       logger.error('Prompt generation error', { promptName: name, args, error });
@@ -337,20 +337,13 @@ export class MCPPromptRegistry {
       focusInstruction = `Focus specifically on: ${String(focusArea)}. `;
     }
 
-    return {
-      description: 'Analyze project status and provide actionable insights',
-      messages: [
-        {
-          role: 'user',
-          content: {
-            type: 'text',
-            text: `Please analyze the current status of this project and provide insights. ${String(focusInstruction)}
+    return { description: 'Analyze project status and provide actionable insights', messages: [, {, role: 'user', content: {, type: 'text', text: `Please analyze the current status of this project and provide insights. ${String(focusInstruction) }
 
 Project Context:
 ${String(context)}
 
 Analytics Data:
-${String(String(JSON.stringify(analytics, null, 2)))}
+${JSON.stringify(analytics, null, 2)}
 
 Provide a comprehensive analysis including:
 1. Current progress and completion rate
@@ -385,17 +378,7 @@ Format your response in a clear, actionable manner suitable for stakeholders.`,
       timelineInfo = `\n\nTarget Timeline: ${String(timeline)}`;
     }
 
-    return {
-      description: 'Break down complex task into manageable subtasks',
-      messages: [
-        {
-          role: 'user',
-          content: {
-            type: 'text',
-            text: `Please help me break down this complex task into smaller, manageable subtasks:
-
-Task Description:
-${String(taskDescription)}${String(additionalContext)}${String(timelineInfo)}
+    return { description: 'Break down complex task into manageable subtasks', messages: [, {, role: 'user', content: {, type: 'text', text: `Please help me break down this complex task into smaller, manageable subtasks:, Task Description:, ${String(taskDescription) }${String(additionalContext)}${String(timelineInfo)}
 
 Please provide:
 1. A list of 3-8 subtasks that logically break down the main task
@@ -455,17 +438,7 @@ Format the subtasks in a way that can be easily added to a kanban board.`,
       }
     }
 
-    return {
-      description: 'Analyze blocked tasks and suggest resolution strategies',
-      messages: [
-        {
-          role: 'user',
-          content: {
-            type: 'text',
-            text: `Please analyze these blocked tasks and provide resolution strategies:
-
-Blocked Tasks:
-${String(String(JSON.stringify(blockedTasks, null, 2)))}${String(contextInfo)}
+    return { description: 'Analyze blocked tasks and suggest resolution strategies', messages: [, {, role: 'user', content: {, type: 'text', text: `Please analyze these blocked tasks and provide resolution strategies:, Blocked Tasks:, ${JSON.stringify(blockedTasks, null, 2) }${contextInfo}
 
 For each blocked task, please provide:
 1. Root cause analysis of the blocker
@@ -512,20 +485,10 @@ Also provide:
     const durationInfo = sprintDuration ? `\nSprint Duration: ${String(sprintDuration)}` : '';
     const capacityInfo = teamCapacity ? `\nTeam Capacity: ${String(teamCapacity)}` : '';
 
-    return {
-      description: 'Plan sprint based on current board state and team capacity',
-      messages: [
-        {
-          role: 'user',
-          content: {
-            type: 'text',
-            text: `Please help plan the next sprint based on the current project state:
-
-Project Context:
-${String(context)}
+    return { description: 'Plan sprint based on current board state and team capacity', messages: [, {, role: 'user', content: {, type: 'text', text: `Please help plan the next sprint based on the current project state:, Project Context:, ${String(context) }
 
 Analytics:
-${String(String(JSON.stringify(analytics, null, 2)))}${String(durationInfo)}${String(capacityInfo)}
+${JSON.stringify(analytics, null, 2)}${durationInfo}${capacityInfo}
 
 Please provide:
 1. Recommended tasks for the sprint based on:
@@ -566,17 +529,7 @@ Format the recommendations in a way that can guide sprint planning meetings.`,
 
     const criteriaInfo = criteria ? `\nPrioritization Criteria: ${String(criteria)}` : '';
 
-    return {
-      description: 'Get task prioritization recommendations',
-      messages: [
-        {
-          role: 'user',
-          content: {
-            type: 'text',
-            text: `Please analyze the current tasks and provide prioritization recommendations:
-
-Project Context:
-${String(context)}${String(criteriaInfo)}
+    return { description: 'Get task prioritization recommendations', messages: [, {, role: 'user', content: {, type: 'text', text: `Please analyze the current tasks and provide prioritization recommendations:, Project Context:, ${String(context) }${String(criteriaInfo)}
 
 Please provide:
 1. Task prioritization recommendations with reasoning
@@ -623,20 +576,10 @@ Consider factors like:
     const timeframeInfo = timeframe ? `\nTimeframe: ${String(timeframe)}` : '';
     const audienceInfo = audience ? `\nTarget Audience: ${String(audience)}` : '';
 
-    return {
-      description: 'Generate comprehensive progress report',
-      messages: [
-        {
-          role: 'user',
-          content: {
-            type: 'text',
-            text: `Please generate a comprehensive progress report for this project:
-
-Project Context:
-${String(context)}
+    return { description: 'Generate comprehensive progress report', messages: [, {, role: 'user', content: {, type: 'text', text: `Please generate a comprehensive progress report for this project:, Project Context:, ${String(context) }
 
 Analytics:
-${String(String(JSON.stringify(analytics, null, 2)))}${String(timeframeInfo)}${String(audienceInfo)}
+${JSON.stringify(analytics, null, 2)}${timeframeInfo}${audienceInfo}
 
 Please create a report including:
 1. Executive Summary
@@ -692,22 +635,12 @@ Tailor the language and detail level for the specified audience.`,
         sortOrder: 'desc',
       });
 
-      historicalContext = `\nRecent Similar Tasks:\n${String(String(JSON.stringify(recentTasks.slice(0, 10), null, 2)))}`;
+      historicalContext = `\nRecent Similar Tasks:\n${JSON.stringify(recentTasks.slice(0, 10), null, 2)}`;
     }
 
     const complexityInfo = complexity ? `\nPerceived Complexity: ${String(complexity)}` : '';
 
-    return {
-      description: 'Help estimate task effort and timeline',
-      messages: [
-        {
-          role: 'user',
-          content: {
-            type: 'text',
-            text: `Please help estimate the effort and timeline for this task:
-
-Task Description:
-${String(taskDescription)}${String(complexityInfo)}${String(historicalContext)}
+    return { description: 'Help estimate task effort and timeline', messages: [, {, role: 'user', content: {, type: 'text', text: `Please help estimate the effort and timeline for this task:, Task Description:, ${String(taskDescription) }${String(complexityInfo)}${String(historicalContext)}
 
 Please provide:
 1. Effort Estimation
@@ -763,20 +696,10 @@ Base your estimates on the historical data provided and industry best practices.
 
     const goalInfo = optimizationGoal ? `\nOptimization Goal: ${String(optimizationGoal)}` : '';
 
-    return {
-      description: 'Analyze workflow and suggest optimizations',
-      messages: [
-        {
-          role: 'user',
-          content: {
-            type: 'text',
-            text: `Please analyze the current workflow and suggest optimizations:
-
-Project Context:
-${String(context)}
+    return { description: 'Analyze workflow and suggest optimizations', messages: [, {, role: 'user', content: {, type: 'text', text: `Please analyze the current workflow and suggest optimizations:, Project Context:, ${String(context) }
 
 Analytics:
-${String(String(JSON.stringify(analytics, null, 2)))}${String(goalInfo)}
+${JSON.stringify(analytics, null, 2)}${goalInfo}
 
 Please provide:
 1. Current Workflow Analysis
@@ -844,17 +767,8 @@ Focus on the specified optimization goal while considering overall workflow effi
 
     const memberInfo = teamMember ? `\nTeam Member: ${String(teamMember)}` : '';
 
-    return {
-      description: 'Prepare content for daily standup meeting',
-      messages: [
-        {
-          role: 'user',
-          content: {
-            type: 'text',
-            text: `Please help prepare standup content based on recent activity:
-
-Recent Task Updates (since ${String(sinceDateObj.toISOString())}):
-${String(String(JSON.stringify(relevantTasks, null, 2)))}${String(memberInfo)}
+    return { description: 'Prepare content for daily standup meeting', messages: [, {, role: 'user', content: {, type: 'text', text: `Please help prepare standup content based on recent activity:, Recent Task Updates (since ${String(sinceDateObj.toISOString()) }):
+${JSON.stringify(relevantTasks, null, 2)}${memberInfo}
 
 Please provide standup talking points for:
 
@@ -911,20 +825,10 @@ Format the content to be concise and suitable for a brief standup meeting (2-3 m
     const timeframeInfo = timeframe ? `\nTimeframe: ${String(timeframe)}` : '';
     const focusInfo = focusAreas ? `\nFocus Areas: ${String(focusAreas)}` : '';
 
-    return {
-      description: 'Generate insights for retrospective meeting',
-      messages: [
-        {
-          role: 'user',
-          content: {
-            type: 'text',
-            text: `Please generate insights and talking points for a retrospective meeting:
-
-Project Context:
-${String(context)}
+    return { description: 'Generate insights for retrospective meeting', messages: [, {, role: 'user', content: {, type: 'text', text: `Please generate insights and talking points for a retrospective meeting:, Project Context:, ${String(context) }
 
 Analytics:
-${String(String(JSON.stringify(analytics, null, 2)))}${String(timeframeInfo)}${String(focusInfo)}
+${JSON.stringify(analytics, null, 2)}${timeframeInfo}${focusInfo}
 
 Please provide retrospective insights organized by:
 
@@ -987,14 +891,7 @@ Format the insights to encourage constructive discussion and actionable outcomes
     const horizon = planningHorizon ?? 'sprint';
     const focus = focusArea ? ` with focus on ${String(focusArea)}` : '';
 
-    return {
-      description: 'Generate a comprehensive task planning strategy',
-      messages: [
-        {
-          role: 'user',
-          content: {
-            type: 'text',
-            text: `You are a project planning assistant. Help create an effective task plan for the ${String(horizon)}${String(focus)}.
+    return { description: 'Generate a comprehensive task planning strategy', messages: [, {, role: 'user', content: {, type: 'text', text: `You are a project planning assistant. Help create an effective task plan for the ${String(horizon) }${String(focus)}.
 
 Current Context:
 ${String(context)}
@@ -1016,8 +913,7 @@ Focus on actionable recommendations that will improve team productivity and proj
   private static generateTaskBreakdownBasicPrompt(args: Record<string, unknown>): PromptContent {
     // Handle both task_description and taskId (if taskId is provided, create a generic description)
     const taskDescription =
-      args.task_description ||
-      (args.taskId ? `Task ID: ${String(String(args.taskId))}` : args.description);
+      args.task_description || (args.taskId ? `Task ID: ${args.taskId}` : args.description);
     const complexityLevel = args.complexity_level ?? args.complexity;
 
     if (!taskDescription) {
@@ -1026,16 +922,7 @@ Focus on actionable recommendations that will improve team productivity and proj
 
     const complexity = complexityLevel ?? 'medium';
 
-    return {
-      description: 'Break down complex tasks into manageable subtasks',
-      messages: [
-        {
-          role: 'user',
-          content: {
-            type: 'text',
-            text: `You are a task breakdown specialist. Help break down this complex task into manageable subtasks.
-
-Task to Break Down: "${String(taskDescription)}"
+    return { description: 'Break down complex tasks into manageable subtasks', messages: [, {, role: 'user', content: {, type: 'text', text: `You are a task breakdown specialist. Help break down this complex task into manageable subtasks., Task to Break Down: "${String(taskDescription) }"
 Target Complexity Level: ${String(complexity)}
 
 Please provide:
@@ -1076,14 +963,7 @@ Make sure each subtask is:
       max_items: 100,
     });
 
-    return {
-      description: 'Generate sprint planning recommendations',
-      messages: [
-        {
-          role: 'user',
-          content: {
-            type: 'text',
-            text: `You are a sprint planning facilitator. Help plan an effective ${String(duration)}-day sprint.
+    return { description: 'Generate sprint planning recommendations', messages: [, {, role: 'user', content: {, type: 'text', text: `You are a sprint planning facilitator. Help plan an effective ${String(duration) }-day sprint.
 
 Current Project State:
 ${String(context)}

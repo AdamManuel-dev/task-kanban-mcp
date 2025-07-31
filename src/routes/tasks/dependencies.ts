@@ -8,7 +8,8 @@
  * Patterns: RESTful routes under /tasks/:id/dependencies
  */
 
-import { Router, Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
 import { TaskService } from '@/services/TaskService';
 import { logger } from '@/utils/logger';
 import { dbConnection } from '@/database/connection';
@@ -19,7 +20,6 @@ export const taskDependencyRoutes = Router({ mergeParams: true });
  * GET /tasks/:id/dependencies - Get all dependencies for a task
  */
 taskDependencyRoutes.get('/', async (req: Request, res: Response, next: NextFunction) => {
-
   try {
     const taskId = req.params.id;
     const taskService = new TaskService(dbConnection);
@@ -35,7 +35,6 @@ taskDependencyRoutes.get('/', async (req: Request, res: Response, next: NextFunc
  * POST /tasks/:id/dependencies - Add dependency to task
  */
 taskDependencyRoutes.post('/', async (req: Request, res: Response, next: NextFunction) => {
-
   try {
     const taskId = req.params.id;
     const { dependsOnTaskId, type = 'blocks' } = req.body;
@@ -52,14 +51,16 @@ taskDependencyRoutes.post('/', async (req: Request, res: Response, next: NextFun
 /**
  * DELETE /tasks/:id/dependencies/:dependsOnTaskId - Remove dependency
  */
-taskDependencyRoutes.delete('/:dependsOnTaskId', async (req: Request, res: Response, next: NextFunction) => {
-
-  try {
-    const { id: taskId, dependsOnTaskId } = req.params;
-    const taskService = new TaskService(dbConnection);
-    await taskService.removeDependency(taskId, dependsOnTaskId);
-    res.json({ success: true, message: 'Dependency removed' });
-  } catch (error) {
-    next(error);
+taskDependencyRoutes.delete(
+  '/:dependsOnTaskId',
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id: taskId, dependsOnTaskId } = req.params;
+      const taskService = new TaskService(dbConnection);
+      await taskService.removeDependency(taskId, dependsOnTaskId);
+      res.json({ success: true, message: 'Dependency removed' });
+    } catch (error) {
+      next(error);
+    }
   }
-});
+);

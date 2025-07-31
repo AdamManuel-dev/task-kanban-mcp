@@ -361,10 +361,7 @@ export class TagService {
       }
 
       // Use secure pagination to prevent ORDER BY injection
-      const paginationResult = validatePagination(
-        { limit, offset, sortBy, sortOrder }, 
-        'tags'
-      );
+      const paginationResult = validatePagination({ limit, offset, sortBy, sortOrder }, 'tags');
       query += ` ${paginationResult.orderByClause} LIMIT ? OFFSET ?`;
       params.push(limit, offset);
 
@@ -1336,12 +1333,7 @@ export class TagService {
       })
     );
 
-    return {
-      ...tag,
-      children,
-      depth,
-      task_count: taskCount,
-    };
+    return { ...tag, children, depth, task_count: taskCount };
   }
 
   /**

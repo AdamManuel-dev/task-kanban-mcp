@@ -99,7 +99,14 @@ export const cliTestUtils = {
   /**
    * Render a React component for CLI testing (placeholder)
    */
-  renderComponent: (_component: ReactElement): any =>
+  renderComponent: (
+    _component: ReactElement
+  ): {
+    lastFrame: () => string;
+    frames: string[];
+    rerender: jest.Mock;
+    unmount: jest.Mock;
+  } =>
     // TODO: Implement when ink-testing-library is properly configured
     ({
       lastFrame: (): string => '',
@@ -125,16 +132,12 @@ export const cliTestUtils = {
     const originalWrite = process.stdout.write;
     const writes: string[] = [];
 
-    process.stdout.write = jest.fn((chunk: any) => {
+    process.stdout.write = jest.fn((chunk: string | Uint8Array) => {
       writes.push(chunk.toString());
       return true;
-    }) as any;
+    }) as typeof process.stdout.write;
 
-    return {
-      getWrites: (): string[] => writes,
-      restore: (): void => {
-        process.stdout.write = originalWrite;
-      },
+    return { getWrites: (): string[] => writes, restore: (): void => {, process.stdout.write = originalWrite; },
     };
   },
 
@@ -145,23 +148,25 @@ export const cliTestUtils = {
     const originalWrite = process.stderr.write;
     const writes: string[] = [];
 
-    process.stderr.write = jest.fn((chunk: any) => {
+    process.stderr.write = jest.fn((chunk: string | Uint8Array) => {
       writes.push(chunk.toString());
       return true;
-    }) as any;
+    }) as typeof process.stderr.write;
 
-    return {
-      getWrites: (): string[] => writes,
-      restore: (): void => {
-        process.stderr.write = originalWrite;
-      },
+    return { getWrites: (): string[] => writes, restore: (): void => {, process.stderr.write = originalWrite; },
     };
   },
 
   /**
    * Create mock API client for testing
    */
-  createMockApiClient: (): any => ({
+  createMockApiClient: (): {
+    get: jest.Mock;
+    post: jest.Mock;
+    put: jest.Mock;
+    delete: jest.Mock;
+    patch: jest.Mock;
+  } => ({
     get: jest.fn(),
     post: jest.fn(),
     put: jest.fn(),
@@ -172,7 +177,13 @@ export const cliTestUtils = {
   /**
    * Create mock config manager for testing
    */
-  createMockConfig: (): any => ({
+  createMockConfig: (): {
+    get: jest.Mock;
+    set: jest.Mock;
+    exists: jest.Mock;
+    load: jest.Mock;
+    save: jest.Mock;
+  } => ({
     get: jest.fn(),
     set: jest.fn(),
     exists: jest.fn((): boolean => true),
@@ -183,7 +194,15 @@ export const cliTestUtils = {
   /**
    * Create mock formatter for testing
    */
-  createMockFormatter: (): any => ({
+  createMockFormatter: (): {
+    setFormat: jest.Mock;
+    setVerbose: jest.Mock;
+    setQuiet: jest.Mock;
+    setColor: jest.Mock;
+    formatTable: jest.Mock;
+    formatList: jest.Mock;
+    formatJson: jest.Mock;
+  } => ({
     setFormat: jest.fn(),
     setVerbose: jest.fn(),
     setQuiet: jest.fn(),
@@ -201,7 +220,21 @@ export const cliTestUtils = {
   /**
    * Create test task data
    */
-  createTestTask: (overrides = {}): any => ({
+  createTestTask: (
+    overrides = {}
+  ): {
+    id: string;
+    title: string;
+    description: string;
+    status: string;
+    priority: string;
+    boardId: string;
+    assigneeId: string | null;
+    dueDate: string | null;
+    tags: string[];
+    createdAt: string;
+    updatedAt: string;
+  } & Record<string, unknown> => ({
     id: 'test-task-1',
     title: 'Test Task',
     description: 'Test task description',
@@ -219,7 +252,16 @@ export const cliTestUtils = {
   /**
    * Create test board data
    */
-  createTestBoard: (overrides = {}): any => ({
+  createTestBoard: (
+    overrides = {}
+  ): {
+    id: string;
+    name: string;
+    description: string;
+    columns: Array<{ id: string; name: string; position: number }>;
+    createdAt: string;
+    updatedAt: string;
+  } & Record<string, unknown> => ({
     id: 'test-board-1',
     name: 'Test Board',
     description: 'Test board description',
@@ -236,7 +278,19 @@ export const cliTestUtils = {
   /**
    * Create dashboard test data
    */
-  createTestDashboardData: (): any => ({
+  createTestDashboardData: (): {
+    tasks: {
+      total: number;
+      byStatus: Record<string, number>;
+      byPriority: Record<string, number>;
+      completed: number;
+      overdue: number;
+    };
+    velocity: Array<{ period: string; completed: number }>;
+    teamMembers: Array<{ name: string; taskCount: number; load: number }>;
+    burndown: Array<{ day: string; remaining: number; ideal: number }>;
+    activity: Array<{ timestamp: string; event: string; user: string }>;
+  } => ({
     tasks: {
       total: 20,
       byStatus: { todo: 8, in_progress: 6, done: 6 },

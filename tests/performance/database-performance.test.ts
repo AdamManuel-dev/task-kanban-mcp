@@ -103,7 +103,7 @@ describe('Database Performance Tests', () => {
       const startTime = Date.now();
 
       await dbConnection.transaction(async db => {
-        Array.from({ length: taskCount }, (_, i) => i).forEach(async i => {
+        for (const i of Array.from({ length: taskCount }, (_, idx) => idx)) {
           await db.run(
             `INSERT INTO tasks (id, title, description, board_id, column_id, status, priority, position, created_at) 
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -119,7 +119,7 @@ describe('Database Performance Tests', () => {
               new Date().toISOString(),
             ]
           );
-        });
+        }
       });
 
       const endTime = Date.now();
@@ -200,12 +200,12 @@ describe('Database Performance Tests', () => {
       const iterations = 100;
       const startTime = Date.now();
 
-      Array.from({ length: iterations }, (_, i) => i).forEach(async () => {
+      for (const _ of Array.from({ length: iterations }, (_, i) => i)) {
         await dbConnection.query(
           'SELECT id, title, status, priority FROM tasks WHERE board_id = ? LIMIT 10',
           [testBoard.id]
         );
-      });
+      }
 
       const endTime = Date.now();
       const duration = endTime - startTime;
@@ -219,7 +219,7 @@ describe('Database Performance Tests', () => {
       const iterations = 50;
       const startTime = Date.now();
 
-      Array.from({ length: iterations }, (_, i) => i).forEach(async () => {
+      for (const _ of Array.from({ length: iterations }, (_, i) => i)) {
         await dbConnection.query(
           `
           SELECT t.id, t.title, t.status, t.priority, 
@@ -237,7 +237,7 @@ describe('Database Performance Tests', () => {
         `,
           [testBoard.id]
         );
-      });
+      }
 
       const endTime = Date.now();
       const duration = endTime - startTime;
@@ -701,7 +701,7 @@ describe('Database Performance Tests', () => {
         const startTime = Date.now();
 
         for (let i = 0; i < iterations; i++) {
-          let params: any[];
+          let params: Array<string | number>;
 
           if (query.includes('id = ?')) {
             // Get a random task ID

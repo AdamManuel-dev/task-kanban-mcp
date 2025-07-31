@@ -128,7 +128,7 @@ export class SpinnerManager {
         throw error;
       }
       throw new SpinnerError(
-        `Failed to update spinner: ${String(String(error instanceof Error ? error.message : String(error)))}`,
+        `Failed to update spinner: ${error instanceof Error ? error.message : String(error)}`,
         'UPDATE_FAILED'
       );
     }
@@ -152,14 +152,14 @@ export class SpinnerManager {
         return;
       }
 
-      const finalText = text ? this.validateText(text) : (this._spinner.text ?? '');
+      const finalText = text ? this.validateText(text) : this._spinner.text || '';
 
       SpinnerManager.safeOperation(() => {
         if (this._spinner) {
           if (method === 'stop') {
             this._spinner.stop();
           } else {
-            (this._spinner as any)[method](finalText);
+            this._spinner[method](finalText);
           }
         }
         return true;
@@ -168,7 +168,7 @@ export class SpinnerManager {
       this.cleanupInstance();
     } catch (error) {
       logger.warn(
-        `Failed to stop spinner: ${String(String(error instanceof Error ? error.message : String(error)))}`
+        `Failed to stop spinner: ${error instanceof Error ? error.message : String(error)}`
       );
       this.forceCleanupInstance();
     }
@@ -258,9 +258,7 @@ export class SpinnerManager {
       timeout?: number;
     }
   ): Promise<T> {
-    if (promise == null || typeof promise.then !== 'function') {
-      throw new SpinnerError('Promise is required and must be a valid Promise', 'INVALID_PROMISE');
-    }
+    // Promise parameter is typed as Promise<T>, so no runtime check needed
 
     this.start(text);
 
@@ -325,23 +323,10 @@ export class SpinnerManager {
     for (let i = 0; i < steps.length; i += 1) {
       const step = steps[i];
 
-      if (!step || typeof step.action !== 'function') {
-        const error = new SpinnerError(
-          `Invalid step at index ${String(i)}: action must be a function`,
-          'INVALID_STEP'
-        );
-        errors.push(error);
-
-        if (stopOnError && !step.skipOnError) {
-          throw error;
-        }
-        continue;
-      }
+      // Step parameter is typed with required action property, so no runtime check needed
 
       try {
-        const progressText = showProgress
-          ? `[${String(i + 1)}/${String(String(steps.length))}] ${String(String(step.text))}`
-          : step.text;
+        const progressText = showProgress ? `[${i + 1}/${steps.length}] ${step.text}` : step.text;
 
         // eslint-disable-next-line no-await-in-loop
         const result = await this.withSpinner(progressText, step.action(), {

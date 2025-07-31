@@ -124,10 +124,7 @@ class MCPSimulatedClient {
       throw new Error(response.body.error || 'Failed to search tasks');
     }
 
-    return {
-      tasks: response.body.data.items,
-      total: response.body.data.total,
-    };
+    return { tasks: response.body.data.items, total: response.body.data.total };
   }
 
   private async getContext(args: any): Promise<any> {
@@ -143,14 +140,7 @@ class MCPSimulatedClient {
     const inProgressCount = tasks.filter((t: any) => t.status === 'in_progress').length;
     const doneCount = tasks.filter((t: any) => t.status === 'done').length;
 
-    return {
-      board_id: args.board_id,
-      summary: {
-        total_tasks: tasks.length,
-        todo: todoCount,
-        in_progress: inProgressCount,
-        done: doneCount,
-      },
+    return { board_id: args.board_id, summary: {, total_tasks: tasks.length, todo: todoCount, in_progress: inProgressCount, done: doneCount },
       recent_tasks: tasks.slice(0, 5),
     };
   }
@@ -216,17 +206,7 @@ class MCPSimulatedClient {
     const failedOps = this.operations.filter(op => !op.success).length;
     const avgDuration = this.operations.reduce((sum, op) => sum + (op.duration || 0), 0) / totalOps;
 
-    return {
-      clientId: this.clientId,
-      totalOperations: totalOps,
-      successfulOperations: successfulOps,
-      failedOperations: failedOps,
-      averageDuration: avgDuration,
-      operationsByType: this.operations.reduce(
-        (acc, op) => {
-          acc[op.type] = (acc[op.type] || 0) + 1;
-          return acc;
-        },
+    return { clientId: this.clientId, totalOperations: totalOps, successfulOperations: successfulOps, failedOperations: failedOps, averageDuration: avgDuration, operationsByType: this.operations.reduce(, (acc, op) => {, acc[op.type] = (acc[op.type] || 0) + 1;, return acc; },
         {} as Record<string, number>
       ),
     };
@@ -235,7 +215,7 @@ class MCPSimulatedClient {
 
 describe('MCP HTTP Simulation', () => {
   let app: Express;
-  let server: any;
+  let server: import('http').Server;
   let apiKey: string;
   let testBoardId: string;
 

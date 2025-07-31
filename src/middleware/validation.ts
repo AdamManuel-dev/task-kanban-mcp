@@ -29,7 +29,7 @@ export function requestValidationMiddleware(
   for (const param of uuidParams) {
     const value = req.params[param];
     if (value && !CommonValidations.uuid.safeParse(value).success) {
-      return next(new ValidationError(`Invalid UUID format for parameter: ${String(param)}`));
+      return next(new ValidationError(`Invalid UUID format for parameter: ${param}`));
     }
   }
 
@@ -56,9 +56,9 @@ export function requestValidationMiddleware(
 }
 
 function extractUuidParams(path: string): string[] {
-  const uuidPattern = /\/:([^\/]+)/g;
+  const uuidPattern = /:([^/]+)/g;
   const params: string[] = [];
-  let match;
+  let match: RegExpExecArray | null;
 
   // Extract parameter names that likely contain UUIDs
   while ((match = uuidPattern.exec(path)) !== null) {
@@ -100,7 +100,14 @@ export function validateRequest<T>(
       req.body = result.data as unknown;
       next();
     } catch (error) {
-      next(new ValidationError('Invalid request data'));
+      // Log the original error for debugging
+      console.error('Validation middleware error:', error);
+
+      // Provide meaningful error message based on error type
+      const errorMessage =
+        error instanceof Error ? `Invalid request data: ${error.message}` : 'Invalid request data';
+
+      next(new ValidationError(errorMessage));
     }
   };
 }

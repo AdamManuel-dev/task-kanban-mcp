@@ -4,12 +4,13 @@
  * @description Tests for request ID generation, header handling, and UUID validation
  */
 
-import type { Request, Response, NextFunction } from 'express';
+import type { NextFunction } from 'express';
 import { requestIdMiddleware } from '@/middleware/requestId';
+import type { MockRequest, MockResponse } from '../../utils/test-types';
 
 describe('Request ID Middleware', () => {
-  let mockRequest: Partial<Request>;
-  let mockResponse: Partial<Response>;
+  let mockRequest: MockRequest;
+  let mockResponse: MockResponse;
   let mockNext: NextFunction;
 
   beforeEach(() => {
@@ -31,7 +32,7 @@ describe('Request ID Middleware', () => {
         return undefined;
       });
 
-      requestIdMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestIdMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockRequest.requestId).toBe(existingRequestId);
       expect(mockResponse.set).toHaveBeenCalledWith('X-Request-ID', existingRequestId);
@@ -41,7 +42,7 @@ describe('Request ID Middleware', () => {
     it('should generate new UUID if X-Request-ID header is not present', () => {
       (mockRequest.get as jest.Mock).mockReturnValue(undefined);
 
-      requestIdMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestIdMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockRequest.requestId).toBeDefined();
       expect(typeof mockRequest.requestId).toBe('string');
@@ -58,7 +59,7 @@ describe('Request ID Middleware', () => {
         return undefined;
       });
 
-      requestIdMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestIdMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockRequest.requestId).toBeDefined();
       expect(typeof mockRequest.requestId).toBe('string');
@@ -75,7 +76,7 @@ describe('Request ID Middleware', () => {
         return undefined;
       });
 
-      requestIdMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestIdMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockRequest.requestId).toBeDefined();
       expect(typeof mockRequest.requestId).toBe('string');
@@ -90,7 +91,7 @@ describe('Request ID Middleware', () => {
       (mockRequest.get as jest.Mock).mockReturnValue(undefined);
 
       // First request
-      requestIdMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestIdMiddleware(mockRequest, mockResponse, mockNext);
       const firstRequestId = mockRequest.requestId;
 
       // Reset for second request
@@ -98,7 +99,7 @@ describe('Request ID Middleware', () => {
       mockRequest.requestId = undefined;
 
       // Second request
-      requestIdMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestIdMiddleware(mockRequest, mockResponse, mockNext);
       const secondRequestId = mockRequest.requestId;
 
       expect(firstRequestId).not.toBe(secondRequestId);
@@ -113,7 +114,7 @@ describe('Request ID Middleware', () => {
     it('should call next() after processing', () => {
       (mockRequest.get as jest.Mock).mockReturnValue(undefined);
 
-      requestIdMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestIdMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith();
     });
@@ -125,7 +126,7 @@ describe('Request ID Middleware', () => {
         return undefined;
       });
 
-      requestIdMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestIdMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockResponse.set).toHaveBeenCalledWith('X-Request-ID', testRequestId);
     });
@@ -137,7 +138,7 @@ describe('Request ID Middleware', () => {
         return undefined;
       });
 
-      requestIdMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestIdMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockRequest.requestId).toBe(testRequestId);
       expect(mockResponse.set).toHaveBeenCalledWith('X-Request-ID', testRequestId);
@@ -146,7 +147,7 @@ describe('Request ID Middleware', () => {
     it('should handle undefined get method gracefully', () => {
       mockRequest.get = undefined;
 
-      requestIdMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestIdMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockRequest.requestId).toBeDefined();
       expect(typeof mockRequest.requestId).toBe('string');
@@ -160,7 +161,7 @@ describe('Request ID Middleware', () => {
     it('should handle get method that returns null', () => {
       (mockRequest.get as jest.Mock).mockReturnValue(null);
 
-      requestIdMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestIdMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockRequest.requestId).toBeDefined();
       expect(typeof mockRequest.requestId).toBe('string');
@@ -176,7 +177,7 @@ describe('Request ID Middleware', () => {
         throw new Error('Header lookup failed');
       });
 
-      requestIdMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestIdMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockRequest.requestId).toBeDefined();
       expect(typeof mockRequest.requestId).toBe('string');
@@ -193,7 +194,7 @@ describe('Request ID Middleware', () => {
         throw new Error('Header set failed');
       });
 
-      requestIdMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestIdMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockRequest.requestId).toBeDefined();
       expect(typeof mockRequest.requestId).toBe('string');
@@ -204,7 +205,7 @@ describe('Request ID Middleware', () => {
       (mockRequest.get as jest.Mock).mockReturnValue(undefined);
       mockResponse.set = undefined;
 
-      requestIdMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestIdMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockRequest.requestId).toBeDefined();
       expect(typeof mockRequest.requestId).toBe('string');
@@ -218,7 +219,7 @@ describe('Request ID Middleware', () => {
         return undefined;
       });
 
-      requestIdMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestIdMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockRequest.requestId).toBe(complexRequestId);
       expect(mockResponse.set).toHaveBeenCalledWith('X-Request-ID', complexRequestId);
@@ -232,7 +233,7 @@ describe('Request ID Middleware', () => {
         return undefined;
       });
 
-      requestIdMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestIdMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockRequest.requestId).toBe(longRequestId);
       expect(mockResponse.set).toHaveBeenCalledWith('X-Request-ID', longRequestId);
@@ -246,7 +247,7 @@ describe('Request ID Middleware', () => {
         return undefined;
       });
 
-      requestIdMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestIdMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockRequest.requestId).toBe(specialRequestId);
       expect(mockResponse.set).toHaveBeenCalledWith('X-Request-ID', specialRequestId);
@@ -260,7 +261,7 @@ describe('Request ID Middleware', () => {
         return undefined;
       });
 
-      requestIdMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestIdMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockRequest.requestId).toBe(unicodeRequestId);
       expect(mockResponse.set).toHaveBeenCalledWith('X-Request-ID', unicodeRequestId);
@@ -274,7 +275,7 @@ describe('Request ID Middleware', () => {
         return undefined;
       });
 
-      requestIdMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestIdMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockRequest.requestId).toBe(numericRequestId);
       expect(mockResponse.set).toHaveBeenCalledWith('X-Request-ID', numericRequestId);
@@ -288,7 +289,7 @@ describe('Request ID Middleware', () => {
         return undefined;
       });
 
-      requestIdMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestIdMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockRequest.requestId).toBe(booleanRequestId);
       expect(mockResponse.set).toHaveBeenCalledWith('X-Request-ID', booleanRequestId);
@@ -300,7 +301,7 @@ describe('Request ID Middleware', () => {
     it('should generate valid UUID v4 format', () => {
       (mockRequest.get as jest.Mock).mockReturnValue(undefined);
 
-      requestIdMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestIdMiddleware(mockRequest, mockResponse, mockNext);
 
       const uuid = mockRequest.requestId;
       expect(uuid).toMatch(
@@ -316,7 +317,7 @@ describe('Request ID Middleware', () => {
         mockRequest.requestId = undefined;
         jest.clearAllMocks();
 
-        requestIdMiddleware(mockRequest as any, mockResponse as any, mockNext);
+        requestIdMiddleware(mockRequest, mockResponse, mockNext);
         uuids.add(mockRequest.requestId);
       }
 
@@ -326,7 +327,7 @@ describe('Request ID Middleware', () => {
     it('should generate UUIDs with correct version (4)', () => {
       (mockRequest.get as jest.Mock).mockReturnValue(undefined);
 
-      requestIdMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestIdMiddleware(mockRequest, mockResponse, mockNext);
 
       const uuid = mockRequest.requestId;
       const parts = uuid.split('-');
@@ -336,7 +337,7 @@ describe('Request ID Middleware', () => {
     it('should generate UUIDs with correct variant', () => {
       (mockRequest.get as jest.Mock).mockReturnValue(undefined);
 
-      requestIdMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestIdMiddleware(mockRequest, mockResponse, mockNext);
 
       const uuid = mockRequest.requestId;
       const parts = uuid.split('-');
@@ -358,8 +359,8 @@ describe('Request ID Middleware', () => {
       const response1 = { ...mockResponse };
       const response2 = { ...mockResponse };
 
-      requestIdMiddleware(request1 as any, response1 as any, mockNext);
-      requestIdMiddleware(request2 as any, response2 as any, mockNext);
+      requestIdMiddleware(request1, response1, mockNext);
+      requestIdMiddleware(request2, response2, mockNext);
 
       expect(request1.requestId).toBe(sharedRequestId);
       expect(request2.requestId).toBe(sharedRequestId);
@@ -368,7 +369,7 @@ describe('Request ID Middleware', () => {
     it('should handle requests with no headers', () => {
       mockRequest.get = jest.fn().mockReturnValue(undefined);
 
-      requestIdMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestIdMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockRequest.requestId).toBeDefined();
       expect(typeof mockRequest.requestId).toBe('string');
@@ -382,7 +383,7 @@ describe('Request ID Middleware', () => {
         return undefined;
       });
 
-      requestIdMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      requestIdMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockRequest.requestId).toBeDefined();
       expect(typeof mockRequest.requestId).toBe('string');

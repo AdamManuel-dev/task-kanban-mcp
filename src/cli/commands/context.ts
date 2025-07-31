@@ -326,11 +326,6 @@ export function registerContextCommands(program: Command): void {
         formatter.info(`Generating context for task ${String(id)}...`);
         const taskContext = (await apiClient.getTaskContext(id)) as TaskContextData;
 
-        if (!taskContext) {
-          formatter.error(`No context available for task ${String(id)}`);
-          process.exit(1);
-        }
-
         formatter.info(`🎯 Task Context: ${String(taskContext.title ?? id)}\n`);
 
         if (taskContext.description) {

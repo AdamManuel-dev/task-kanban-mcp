@@ -96,7 +96,7 @@ export function registerRestoreCommand(backupCmd: Command): void {
               } = {};
 
               if (!options.noVerify) restoreOptions.verify = true;
-              const decryptionKey = options.decryptionKey || process.env.BACKUP_DECRYPTION_KEY;
+              const decryptionKey = options.decryptionKey ?? process.env.BACKUP_DECRYPTION_KEY;
               if (decryptionKey !== undefined) restoreOptions.decryptionKey = decryptionKey;
 
               const result = await apiClient.restoreBackup(id, restoreOptions);

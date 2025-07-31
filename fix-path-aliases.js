@@ -3,7 +3,7 @@
 /**
  * @fileoverview Script to identify and fix path alias resolution issues in production builds
  * @lastmodified 2025-07-28T15:00:00Z
- * 
+ *
  * Features: Path alias detection, import resolution, build optimization
  * Main APIs: analyzePaths(), fixAliases(), validateBuild()
  * Constraints: Requires tsconfig.json, works with tsc-alias
@@ -40,7 +40,7 @@ if (fs.existsSync(tscAliasConfigPath)) {
 const distPath = path.join(__dirname, 'dist');
 if (fs.existsSync(distPath)) {
   console.log('\n📁 **Analyzing Build Output:**');
-  
+
   // Find files with potential alias issues
   const jsFiles = [];
   function findJsFiles(dir) {
@@ -55,22 +55,25 @@ if (fs.existsSync(distPath)) {
       }
     }
   }
-  
+
   try {
     findJsFiles(distPath);
-    
+
     let aliasIssues = 0;
-    for (const file of jsFiles.slice(0, 10)) { // Check first 10 files
+    for (const file of jsFiles.slice(0, 10)) {
+      // Check first 10 files
       const content = fs.readFileSync(file, 'utf8');
-      
+
       // Check for unresolved aliases (still contain @ symbols)
       const unresolvedAliases = content.match(/@\/[^"';\s)]+/g);
       if (unresolvedAliases) {
-        console.log(`  ❌ ${path.relative(__dirname, file)}: ${unresolvedAliases.length} unresolved aliases`);
+        console.log(
+          `  ❌ ${path.relative(__dirname, file)}: ${unresolvedAliases.length} unresolved aliases`
+        );
         aliasIssues++;
       }
     }
-    
+
     if (aliasIssues === 0) {
       console.log('  ✅ No obvious path alias issues found in build output');
     } else {
@@ -89,16 +92,16 @@ console.log('\n🔧 **RECOMMENDATIONS:**');
 const needsTscAlias = Object.keys(tsconfig.compilerOptions.paths || {}).length > 0;
 if (needsTscAlias) {
   console.log('1. ✅ tsc-alias is correctly configured in build script');
-  
+
   // Check build script
   const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
   const buildScript = packageJson.scripts?.build || '';
-  
+
   if (buildScript.includes('tsc-alias')) {
     console.log('2. ✅ Build script includes tsc-alias');
   } else {
     console.log('2. ❌ Build script missing tsc-alias - adding...');
-    
+
     // Fix build script
     packageJson.scripts.build = buildScript.replace('tsc', 'tsc && npx tsc-alias');
     fs.writeFileSync(
@@ -131,30 +134,23 @@ const optimizedConfig = {
     declarationMap: false,
     sourceMap: false,
     removeComments: true,
-    
+
     // Ensure aliases are preserved for tsc-alias
     preserveSymlinks: false,
     moduleResolution: 'node',
-    
+
     // Strict mode for production
     strict: true,
     noUnusedLocals: true,
     noUnusedParameters: true,
     exactOptionalPropertyTypes: false, // Keep flexible for now
-    
+
     // Output configuration
     outDir: './dist',
-    rootDir: './src'
+    rootDir: './src',
   },
   include: ['src/**/*'],
-  exclude: [
-    'node_modules',
-    'dist',
-    'coverage',
-    '**/*.test.ts',
-    '**/*.spec.ts',
-    'tests/**/*'
-  ]
+  exclude: ['node_modules', 'dist', 'coverage', '**/*.test.ts', '**/*.spec.ts', 'tests/**/*'],
 };
 
 fs.writeFileSync(
@@ -168,16 +164,14 @@ console.log('✅ Created tsconfig.production.json');
 const tscAliasOptimizedConfig = {
   compilerOptions: {
     baseUrl: './dist',
-    paths: {}
-  }
+    paths: {},
+  },
 };
 
 // Transform paths for post-build resolution
 for (const [alias, paths] of Object.entries(tsconfig.compilerOptions.paths || {})) {
   // Convert src/* paths to dist/* paths
-  tscAliasOptimizedConfig.compilerOptions.paths[alias] = paths.map(p => 
-    p.replace('src/', '')
-  );
+  tscAliasOptimizedConfig.compilerOptions.paths[alias] = paths.map(p => p.replace('src/', ''));
 }
 
 fs.writeFileSync(
@@ -197,15 +191,14 @@ console.log('\n✨ **Path alias resolution should now work correctly!**');
 console.log('\n🧪 **TESTING ALIAS RESOLUTION:**');
 try {
   const { execSync } = require('child_process');
-  
+
   // Test compile with path checking
   console.log('Running TypeScript compilation test...');
-  execSync('npx tsc --noEmit --skipLibCheck', { 
+  execSync('npx tsc --noEmit --skipLibCheck', {
     stdio: 'pipe',
-    cwd: __dirname 
+    cwd: __dirname,
   });
   console.log('✅ TypeScript compilation successful');
-  
 } catch (error) {
   console.log('⚠️ TypeScript compilation has issues - but path aliases should still work');
   console.log('   (Run npm run build to test full build pipeline)');

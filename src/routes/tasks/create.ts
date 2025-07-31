@@ -34,7 +34,10 @@ interface AuthenticatedRequest extends Request {
 interface Services {
   taskService: {
     createTask: (data: CreateTaskRequest) => Promise<Task>;
-    getTaskById: (id: string, options?: { notes?: boolean; tags?: boolean }) => Promise<Task | null>;
+    getTaskById: (
+      id: string,
+      options?: { notes?: boolean; tags?: boolean }
+    ) => Promise<Task | null>;
   };
   tagService: {
     addTagToTask: (taskId: string, tagId: string) => Promise<TaskTag>;

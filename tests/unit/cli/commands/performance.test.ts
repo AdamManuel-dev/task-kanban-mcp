@@ -80,7 +80,7 @@ async function executeCommand(program: Command, args: string[]): Promise<void> {
 
   try {
     await program.parseAsync(['node', 'test', ...args]);
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Handle expected exit codes from commander
     if (error.code !== 'commander.executeSubCommand') {
       throw error;

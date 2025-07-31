@@ -7,7 +7,7 @@
  */
 
 import { Router } from 'express';
-import { BackupService } from '@/services/BackupService';
+import { BackupService, type BackupMetadata } from '@/services/BackupService';
 import { dbConnection } from '@/database/connection';
 import { authenticateApiKey } from '@/middleware/auth';
 import { validateRequest } from '@/middleware/validation';
@@ -115,7 +115,7 @@ router.post('/create', validateRequest(CreateBackupSchema), (req, res) => {
         backup = await backupService.createFullBackup(options);
       }
 
-      logger.info(`Backup created via API: ${String((backup as any).id)}`);
+      logger.info(`Backup created via API: ${String((backup as { id: string }).id)}`);
       res.status(201).json(formatSuccessResponse(backup));
     } catch (error) {
       logger.error('Backup creation failed:', error);
@@ -603,7 +603,7 @@ router.get(
           res.setHeader('Content-Type', 'application/json');
           res.setHeader(
             'Content-Disposition',
-            `attachment; filename="${String((backup as any).name)}.json"`
+            `attachment; filename="${String((backup as BackupMetadata).name)}.json"`
           );
           res.json(backup);
           break;
@@ -611,20 +611,20 @@ router.get(
           res.setHeader('Content-Type', 'application/sql');
           res.setHeader(
             'Content-Disposition',
-            `attachment; filename="${String((backup as any).name)}.sql"`
+            `attachment; filename="${String((backup as BackupMetadata).name)}.sql"`
           );
           res.send(
-            `-- Backup metadata for ${String((backup as any).name)}\n-- ID: ${String((backup as any).id)}\n-- Created: ${String((backup as any).createdAt)}`
+            `-- Backup metadata for ${String((backup as BackupMetadata).name)}\n-- ID: ${String((backup as BackupMetadata).id)}\n-- Created: ${String((backup as BackupMetadata).createdAt)}`
           );
           break;
         case 'csv':
           res.setHeader('Content-Type', 'text/csv');
           res.setHeader(
             'Content-Disposition',
-            `attachment; filename="${String((backup as any).name)}.csv"`
+            `attachment; filename="${String((backup as BackupMetadata).name)}.csv"`
           );
           res.send(
-            `id,name,type,status,size,created_at\n${String((backup as any).id)},${String((backup as any).name)},${String((backup as any).type)},${String((backup as any).status)},${String((backup as any).size)},${String((backup as any).createdAt)}`
+            `id,name,type,status,size,created_at\n${String((backup as BackupMetadata).id)},${String((backup as BackupMetadata).name)},${String((backup as BackupMetadata).type)},${String((backup as BackupMetadata).status)},${String((backup as BackupMetadata).size)},${String((backup as BackupMetadata).createdAt)}`
           );
           break;
         default:

@@ -144,11 +144,7 @@ export function getPerformanceSummary(): {
       timestamp: metric.timestamp.toISOString(),
     }));
 
-  return {
-    recentOperations,
-    slowOperations,
-    stats,
-  };
+  return { recentOperations, slowOperations, stats };
 }
 
 /**

@@ -49,18 +49,18 @@ export class TaskServiceResult {
 
         // Create task in transaction
         const task = await this.db.transaction(async db => {
-          const taskId = `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          const taskId = `task_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
           const now = new Date().toISOString();
 
           const newTask: Task = {
             id: taskId,
             title: data.title,
-            description: data.description ?? '',
+            description: data.description || '',
             board_id: data.board_id,
-            column_id: data.column_id ?? 'default',
+            column_id: data.column_id || 'default',
             position: 0,
             priority: data.priority || 5,
-            status: data.status ?? 'todo',
+            status: data.status || 'todo',
             assignee: data.assignee,
             due_date: data.due_date,
             estimated_hours: undefined,
@@ -121,7 +121,7 @@ export class TaskServiceResult {
         // Validate task ID
         const validationResult = validateWith(
           taskId,
-          (id: string) => Boolean(id && id.trim().length > 0),
+          (id: string) => !!id.trim(),
           'Task ID is required'
         );
 
@@ -153,13 +153,13 @@ export class TaskServiceResult {
         // Validate inputs
         const taskIdValidation = validateWith(
           taskId,
-          (id: string) => Boolean(id && id.trim().length > 0),
+          (id: string) => !!id.trim(),
           'Task ID is required'
         );
 
         const updatesValidation = validateWith(
           updates,
-          (data: object) => Boolean(Object.keys(data).length > 0),
+          (data: object) => Object.keys(data).length > 0,
           'No updates provided'
         );
 
@@ -246,7 +246,7 @@ export class TaskServiceResult {
         // Validate task ID
         const validationResult = validateWith(
           taskId,
-          (id: string) => Boolean(id && id.trim().length > 0),
+          (id: string) => !!id.trim(),
           'Task ID is required'
         );
 
@@ -291,23 +291,11 @@ export class TaskServiceResult {
   private validateCreateTaskRequest(data: CreateTaskRequest): Result<CreateTaskRequest, string[]> {
     return validateAll(data, [
       req =>
-        isOk(
-          validateWith(
-            req.title,
-            (t: string) => Boolean(t && t.trim().length > 0),
-            'Title is required'
-          )
-        )
+        isOk(validateWith(req.title, (t: string) => !!t.trim(), 'Title is required'))
           ? Ok(req)
           : Err('Title is required'),
       req =>
-        isOk(
-          validateWith(
-            req.board_id,
-            (b: string) => Boolean(b && b.trim().length > 0),
-            'Board ID is required'
-          )
-        )
+        isOk(validateWith(req.board_id, (b: string) => !!b.trim(), 'Board ID is required'))
           ? Ok(req)
           : Err('Board ID is required'),
       req =>
@@ -360,7 +348,7 @@ export class TaskServiceResult {
     return {
       id: String(row.id),
       title: String(row.title),
-      description: String(row.description ?? ''),
+      description: String(row.description || ''),
       board_id: String(row.board_id),
       column_id: String(row.column_id),
       position: Number(row.position),
@@ -374,7 +362,7 @@ export class TaskServiceResult {
       created_at: new Date(String(row.created_at)),
       updated_at: new Date(String(row.updated_at)),
       completed_at: row.completed_at ? new Date(String(row.completed_at)) : undefined,
-      archived: Boolean(row.archived),
+      archived: !!row.archived,
       metadata: row.metadata ? JSON.parse(String(row.metadata)) : {},
     };
   }

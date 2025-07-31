@@ -249,12 +249,7 @@ export class ApiKeyService {
         gracePeriodEnd: gracePeriodEnd.toISOString(),
       });
 
-      return {
-        oldKeyId: existingKey.id,
-        newKey: newRawKey,
-        newKeyId: newApiKey.id,
-        expiresAt: newApiKey.expiresAt,
-      };
+      return { oldKeyId: existingKey.id, newKey: newRawKey, newKeyId: newApiKey.id, expiresAt: newApiKey.expiresAt };
     } catch (error) {
       logger.error('Failed to rotate API key', { error, keyId });
       throw new BaseServiceError('API_KEY_ROTATION_FAILED', 'Failed to rotate API key');
@@ -433,31 +428,12 @@ export class ApiKeyService {
         LIMIT 10
       `);
 
-      return {
-        totalKeys: stats?.totalKeys || 0,
-        activeKeys: stats?.activeKeys || 0,
-        expiredKeys: stats?.expiredKeys || 0,
-        revokedKeys: stats?.revokedKeys || 0,
-        totalUsage: stats?.totalUsage || 0,
-        topUsedKeys: topUsedRows.map((row: unknown) => {
-          const apiKeyRow = row as ApiKeyRow;
-          return {
-            id: apiKeyRow.id,
-            name: apiKeyRow.name,
-            usageCount: apiKeyRow.usage_count,
-          };
+      return { totalKeys: stats?.totalKeys || 0, activeKeys: stats?.activeKeys || 0, expiredKeys: stats?.expiredKeys || 0, revokedKeys: stats?.revokedKeys || 0, totalUsage: stats?.totalUsage || 0, topUsedKeys: topUsedRows.map((row: unknown) => {, const apiKeyRow = row as ApiKeyRow;, return {, id: apiKeyRow.id, name: apiKeyRow.name, usageCount: apiKeyRow.usage_count };
         }),
       };
     } catch (error) {
       logger.error('Failed to get usage stats', { error });
-      return {
-        totalKeys: 0,
-        activeKeys: 0,
-        expiredKeys: 0,
-        revokedKeys: 0,
-        totalUsage: 0,
-        topUsedKeys: [],
-      };
+      return { totalKeys: 0, activeKeys: 0, expiredKeys: 0, revokedKeys: 0, totalUsage: 0, topUsedKeys: [] };
     }
   }
 
@@ -489,23 +465,7 @@ export class ApiKeyService {
   }
 
   private deserializeApiKey(row: ApiKeyRow): ApiKey {
-    return {
-      id: row.id,
-      keyHash: row.key_hash,
-      name: row.name,
-      description: row.description,
-      permissions: JSON.parse(row.permissions || '[]'),
-      userId: row.user_id,
-      createdAt: new Date(row.created_at),
-      updatedAt: new Date(row.updated_at),
-      expiresAt: row.expires_at ? new Date(row.expires_at) : undefined,
-      lastUsedAt: row.last_used_at ? new Date(row.last_used_at) : undefined,
-      revokedAt: row.revoked_at ? new Date(row.revoked_at) : undefined,
-      isActive: Boolean(row.is_active),
-      rotationHistory: JSON.parse(row.rotation_history || '[]'),
-      usageCount: row.usage_count || 0,
-      rateLimitRpm: row.rate_limit_rpm,
-    };
+    return { id: row.id, keyHash: row.key_hash, name: row.name, description: row.description, permissions: JSON.parse(row.permissions || '[]'), userId: row.user_id, createdAt: new Date(row.created_at), updatedAt: new Date(row.updated_at), expiresAt: row.expires_at ? new Date(row.expires_at) : undefined, lastUsedAt: row.last_used_at ? new Date(row.last_used_at) : undefined, revokedAt: row.revoked_at ? new Date(row.revoked_at) : undefined, isActive: !!row.is_active, rotationHistory: JSON.parse(row.rotation_history || '[]'), usageCount: row.usage_count || 0, rateLimitRpm: row.rate_limit_rpm };
   }
 
   private async ensureApiKeyTable(): Promise<void> {

@@ -8,7 +8,8 @@
  * Patterns: RESTful routes under /tasks/:id/notes
  */
 
-import { Router, Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
 import { NoteService } from '@/services/NoteService';
 import { logger } from '@/utils/logger';
 
@@ -18,7 +19,6 @@ export const taskNotesRoutes = Router({ mergeParams: true });
  * GET /tasks/:id/notes - Get all notes for a task
  */
 taskNotesRoutes.get('/', async (req: Request, res: Response, next: NextFunction) => {
-
   try {
     const taskId = req.params.id;
     const noteService = new NoteService();
@@ -38,7 +38,6 @@ taskNotesRoutes.get('/', async (req: Request, res: Response, next: NextFunction)
  * POST /tasks/:id/notes - Create a note for a task
  */
 taskNotesRoutes.post('/', async (req: Request, res: Response, next: NextFunction) => {
-
   try {
     const taskId = req.params.id;
     const noteData = { ...req.body, task_id: taskId };

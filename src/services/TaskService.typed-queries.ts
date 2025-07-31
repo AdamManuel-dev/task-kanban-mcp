@@ -187,16 +187,7 @@ export class TaskServiceWithTypedQueries {
         filters: Object.keys(filters).length,
       });
 
-      return {
-        tasks: result.rows,
-        total,
-        pagination: {
-          limit,
-          offset,
-          total,
-          pages,
-          currentPage,
-        },
+      return { tasks: result.rows, total, pagination: {, limit, offset, total, pages, currentPage },
       };
     } catch (error) {
       logger.error('Failed to get tasks with typed queries', { error, options });
@@ -438,12 +429,12 @@ export class TaskServiceWithTypedQueries {
         archived: 0,
       };
 
-      statusResult.rows.forEach((row: any) => {
+      statusResult.rows.forEach((row: unknown) => {
         byStatus[row.status as Task['status']] = row.count;
       });
 
       const byPriority: Record<number, number> = {};
-      priorityResult.rows.forEach((row: any) => {
+      priorityResult.rows.forEach((row: unknown) => {
         byPriority[row.priority] = row.count;
       });
 
@@ -458,13 +449,7 @@ export class TaskServiceWithTypedQueries {
         avgPriority,
       });
 
-      return {
-        total,
-        byStatus,
-        byPriority,
-        avgPriority,
-        overdue,
-      };
+      return { total, byStatus, byPriority, avgPriority, overdue };
     } catch (error) {
       logger.error('Failed to get task statistics', { error, boardId });
       throw error;
@@ -506,10 +491,7 @@ export class TaskServiceWithTypedQueries {
         updatedFields: Object.keys(updates),
       });
 
-      return {
-        updated: result.changes,
-        tasks: updatedTasks.rows,
-      };
+      return { updated: result.changes, tasks: updatedTasks.rows };
     } catch (error) {
       logger.error('Failed to bulk update tasks', { error, ids, updates });
       throw error;

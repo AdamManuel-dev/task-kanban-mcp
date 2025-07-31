@@ -15,15 +15,15 @@ interface ActionResult {
   command: string;
   success: boolean;
   output?: string;
-  data?: any;
+  data?: unknown;
   extractedId?: string;
 }
 
 interface TestContext {
-  boards: Map<string, any>;
-  tasks: Map<string, any>;
-  tags: Map<string, any>;
-  notes: Map<string, any>;
+  boards: Map<string, Record<string, unknown>>;
+  tasks: Map<string, Record<string, unknown>>;
+  tags: Map<string, Record<string, unknown>>;
+  notes: Map<string, Record<string, unknown>>;
   currentBoardId?: string;
 }
 
@@ -78,7 +78,7 @@ describe('CLI Random User Interactions E2E Test', () => {
     return actions[0];
   }
 
-  function mockCommand(command: string, data?: any): ActionResult {
+  function mockCommand(command: string, data?: unknown): ActionResult {
     const result: ActionResult = {
       action: command.split(' ')[0],
       command,

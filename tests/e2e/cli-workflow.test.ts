@@ -83,11 +83,11 @@ describe('CLI Complete Workflow E2E Tests', () => {
         cwd: process.cwd(),
       });
 
-      taskChild.stdin.write('First Interactive Task\\n'); // Title
-      taskChild.stdin.write('This task was created interactively in E2E test\\n'); // Description
-      taskChild.stdin.write('P1\\n'); // Priority
-      taskChild.stdin.write('frontend,testing\\n'); // Tags
-      taskChild.stdin.write('\\n'); // Skip due date
+      taskChild.stdin.write('First Interactive Task\n'); // Title
+      taskChild.stdin.write('This task was created interactively in E2E test\n'); // Description
+      taskChild.stdin.write('P1\n'); // Priority
+      taskChild.stdin.write('frontend,testing\n'); // Tags
+      taskChild.stdin.write('\n'); // Skip due date
       taskChild.stdin.end();
 
       let taskOutput = '';

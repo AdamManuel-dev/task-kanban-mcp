@@ -119,13 +119,7 @@ export function responseFormattingMiddleware(
  * Format success response
  */
 export function formatSuccessResponse<T>(data: T, message?: string): ApiResponse<T> {
-  return {
-    success: true,
-    data,
-    meta: {
-      timestamp: new Date().toISOString(),
-      requestId: '', // Will be set by middleware if available
-      ...(message && { message }),
+  return { success: true, data, meta: {, timestamp: new Date().toISOString(), requestId: '', // Will be set by middleware if available, ...(message && { message }),
     },
   };
 }
@@ -134,13 +128,7 @@ export function formatSuccessResponse<T>(data: T, message?: string): ApiResponse
  * Format error response
  */
 export function formatErrorResponse(message: string, details?: unknown): ApiResponse {
-  return {
-    success: false,
-    error: {
-      code: 'ERROR',
-      message,
-      details,
-    },
+  return { success: false, error: {, code: 'ERROR', message, details },
     meta: {
       timestamp: new Date().toISOString(),
       requestId: '', // Will be set by middleware if available

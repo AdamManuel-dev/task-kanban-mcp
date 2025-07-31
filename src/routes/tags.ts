@@ -272,7 +272,7 @@ export function tagRoutes(): Router {
       //   sortBy: sortBy as string,
       //   sortOrder: sortOrder as 'asc' | 'desc',
       //   board_id: board_id as string,
-      //   status: status as any,
+      //   status: status as string,
       // };
 
       const taskIds = await tagService.getTaggedTasks(id);

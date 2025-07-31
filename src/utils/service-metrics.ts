@@ -221,19 +221,7 @@ class ServiceMetricsCollector {
     const totalErrors = services.reduce((sum, s) => sum + (s.totalCalls * s.errorRate) / 100, 0);
     const totalTime = services.reduce((sum, s) => sum + s.totalTime, 0);
 
-    return {
-      totalServices: services.length,
-      totalCalls,
-      averageHealthScore:
-        services.reduce((sum, s) => sum + s.healthScore, 0) / services.length ?? 0,
-      overallErrorRate: totalCalls > 0 ? (totalErrors / totalCalls) * 100 : 0,
-      overallAverageTime: totalCalls > 0 ? totalTime / totalCalls : 0,
-      topServices: this.getTopPerformingServices(5),
-      problematicServices: services
-        .filter(s => s.errorRate > 5 || s.averageTime > 2000)
-        .sort((a, b) => a.healthScore - b.healthScore)
-        .slice(0, 5),
-    };
+    return { totalServices: services.length, totalCalls, averageHealthScore:, services.reduce((sum, s) => sum + s.healthScore, 0) / services.length ?? 0, overallErrorRate: totalCalls > 0 ? (totalErrors / totalCalls) * 100 : 0, overallAverageTime: totalCalls > 0 ? totalTime / totalCalls : 0, topServices: this.getTopPerformingServices(5), problematicServices: services, .filter(s => s.errorRate > 5 || s.averageTime > 2000), .sort((a, b) => a.healthScore - b.healthScore), .slice(0, 5) };
   }
 }
 

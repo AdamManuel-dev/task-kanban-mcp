@@ -117,12 +117,14 @@ jest.doMock('../../../src/utils/errors', () => ({
 
 // Mock auth middleware
 jest.doMock('../../../src/middleware/auth', () => ({
-  requirePermission: jest.fn(() => (req: any, res: any, next: any) => {
-    // Mock authenticated user
-    req.user = { id: 'test-user', permissions: ['read', 'write'] };
-    req.apiKey = 'test-api-key';
-    next();
-  }),
+  requirePermission: jest.fn(
+    () => (req: express.Request, res: express.Response, next: express.NextFunction) => {
+      // Mock authenticated user
+      req.user = { id: 'test-user', permissions: ['read', 'write'] };
+      req.apiKey = 'test-api-key';
+      next();
+    }
+  ),
 }));
 
 describe('Tasks Routes', () => {
@@ -141,7 +143,7 @@ describe('Tasks Routes', () => {
     app.use(express.json());
 
     // Set up middleware
-    app.use((req: any, res, next) => {
+    app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
       req.requestId = 'test-request-id';
       // Mock authenticated user
       req.user = { id: 'test-user', permissions: ['read', 'write'] };
@@ -155,13 +157,15 @@ describe('Tasks Routes', () => {
     app.use('/api/v1/tasks', router);
 
     // Error handling middleware
-    app.use((error: any, req: any, res: any, _next: any) => {
-      // Error logged in test environment for debugging
-      res.status(error.statusCode || 500).json({
-        success: false,
-        error: error.message || 'Internal server error',
-      });
-    });
+    app.use(
+      (error: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+        // Error logged in test environment for debugging
+        res.status(error.statusCode || 500).json({
+          success: false,
+          error: error.message || 'Internal server error',
+        });
+      }
+    );
 
     // Set up test data
     boardId = 'test-board-1';

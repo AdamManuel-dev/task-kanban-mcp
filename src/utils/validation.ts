@@ -617,7 +617,7 @@ export function createValidatedService<T extends object>(
 ): T {
   return new Proxy(service, {
     get(target, propKey) {
-      const originalMethod = (target as any)[propKey];
+      const originalMethod = (target as unknown)[propKey];
 
       if (typeof originalMethod !== 'function') {
         return originalMethod;

@@ -71,8 +71,8 @@ export class TaskHistoryService {
         id,
         task_id: request.task_id,
         field_name: request.field_name,
-        old_value: request.old_value ? String(request.old_value) : null,
-        new_value: request.new_value ? String(request.new_value) : null,
+        old_value: request.old_value ? request.old_value.toString() : null,
+        new_value: request.new_value ? request.new_value.toString() : null,
         changed_by: request.changed_by ?? null,
         changed_at: now,
         reason: request.reason,
@@ -299,7 +299,10 @@ export class TaskHistoryService {
 
       historyQuery += ' ORDER BY th.changed_at DESC';
 
-      const allPriorityChanges = await dbConnection.query<PriorityChangeEntry>(historyQuery, params);
+      const allPriorityChanges = await dbConnection.query<PriorityChangeEntry>(
+        historyQuery,
+        params
+      );
 
       // Count total changes
       const totalPriorityChanges = allPriorityChanges.length;
@@ -308,7 +311,7 @@ export class TaskHistoryService {
       const taskChangeCounts = allPriorityChanges.reduce(
         (
           acc: Record<string, { task_id: string; task_title: string; change_count: number }>,
-          change: any
+          change: unknown
         ) => {
           const key = change.task_id;
           if (!acc[key]) {
@@ -372,7 +375,9 @@ export class TaskHistoryService {
       // This could be enhanced with more sophisticated trend analysis
       // For now, just count based on recent changes per task
       for (const taskId of Object.keys(taskChangeCounts)) {
-        const taskChanges = allPriorityChanges.filter((c: PriorityChangeEntry) => c.task_id === taskId);
+        const taskChanges = allPriorityChanges.filter(
+          (c: PriorityChangeEntry) => c.task_id === taskId
+        );
         if (taskChanges.length >= 2) {
           const recent = parseInt(taskChanges[0].new_value || '1');
           const older = parseInt(taskChanges[taskChanges.length - 1].old_value || '1');
@@ -433,7 +438,7 @@ export class TaskHistoryService {
 
   // Private helper methods
 
-  private mapRowToHistoryEntry(row: any): TaskHistoryEntry {
+  private mapRowToHistoryEntry(row: unknown): TaskHistoryEntry {
     return {
       id: row.id,
       task_id: row.task_id,

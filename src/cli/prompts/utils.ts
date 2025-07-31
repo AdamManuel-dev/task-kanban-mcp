@@ -59,9 +59,7 @@ export async function safePrompt<T>(promptConfig: PromptConfig | PromptConfig[])
 export function createFormatter(context?: string): FormatterInterface {
   const logContext = context ? { context } : {};
 
-  return {
-    info: (message: string): void => {
-      logger.info('Prompt info', { message, ...logContext });
+  return { info: (message: string): void => {, logger.info('Prompt info', { message, ...logContext });
       console.log(chalk.cyan(message));
     },
     success: (message: string): void => {

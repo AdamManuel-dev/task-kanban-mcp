@@ -8,7 +8,7 @@ import { requestIdMiddleware } from './requestId';
 import { cache, invalidateCache, cacheStats } from './responseCache';
 import { batchingMiddleware } from './request-batching';
 
-export async function createApiMiddleware(): Promise<Router> {
+export function createApiMiddleware(): Router {
   const router = Router();
 
   // Request ID middleware (must be first)
@@ -55,7 +55,9 @@ export async function createApiMiddleware(): Promise<Router> {
 
   // Authentication middleware (skip in test environment)
   if (process.env.NODE_ENV !== 'test') {
-    router.use(authenticationMiddleware);
+    router.use((req, res, next) => {
+      authenticationMiddleware(req, res, next).catch(next);
+    });
   }
 
   // Request validation middleware

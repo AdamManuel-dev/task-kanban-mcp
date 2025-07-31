@@ -379,7 +379,7 @@ describe('RollbackManager', () => {
   });
 
   describe('executeRollbackPlan', () => {
-    let mockOperation: any;
+    let mockOperation: () => Promise<unknown>;
     let plan: RollbackPlan;
 
     beforeEach(() => {

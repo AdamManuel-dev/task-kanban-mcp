@@ -1,18 +1,20 @@
-`/**
- * @fileoverview Test coverage improvement tracking for MCP Kanban
- * @lastmodified 2025-07-27T23:45:19Z
- * 
- * Features: Track files with <80% test coverage and improvement plans
- * Main APIs: Coverage analysis, test implementation tracking
- * Constraints: Based on Jest coverage reports, prioritized by importance
- * Patterns: High-priority files first, systematic test improvement
- */
+`/\*\*
+
+- @fileoverview Test coverage improvement tracking for MCP Kanban
+- @lastmodified 2025-07-27T23:45:19Z
+-
+- Features: Track files with <80% test coverage and improvement plans
+- Main APIs: Coverage analysis, test implementation tracking
+- Constraints: Based on Jest coverage reports, prioritized by importance
+- Patterns: High-priority files first, systematic test improvement
+  \*/
 
 # Test Coverage Improvement TODO
 
 This document tracks all files with less than 80% test coverage and provides implementation plans.
 
 ## Summary
+
 - **Total files analyzed**: ~150+ source files
 - **Files needing coverage**: 85+ files with <80% coverage
 - **Current overall coverage**: ~25-30% (estimated)
@@ -21,6 +23,7 @@ This document tracks all files with less than 80% test coverage and provides imp
 ## High Priority Files (0-20% Coverage)
 
 ### Core Services
+
 - [ ] **src/services/NotificationService.ts** (0% coverage)
   - Need tests for: notification delivery, preferences, channels
   - Priority: HIGH - Core functionality
@@ -34,6 +37,7 @@ This document tracks all files with less than 80% test coverage and provides imp
   - Priority: CRITICAL - Security implications
 
 ### CLI Commands
+
 - [ ] **src/cli/commands/backup.ts** (0% coverage)
   - Need tests for: backup creation, restoration, validation
 
@@ -50,6 +54,7 @@ This document tracks all files with less than 80% test coverage and provides imp
   - Need tests for: note operations, CRUD functionality
 
 ### WebSocket System
+
 - [ ] **src/websocket/auth.ts** (0% coverage)
   - Need tests for: websocket authentication, token validation
 
@@ -63,12 +68,14 @@ This document tracks all files with less than 80% test coverage and provides imp
   - Need tests for: subscription management, event routing
 
 ### Route Handlers
+
 - [ ] **src/routes/priorities.ts** (0% coverage)
   - Need tests for: priority CRUD operations, validation
 
 ## Medium Priority Files (20-50% Coverage)
 
 ### MCP Tools
+
 - [ ] **src/mcp/tools.ts** (9.25% coverage)
   - Current: Basic tool registration tested
   - Need: Tool execution, validation, error handling
@@ -78,6 +85,7 @@ This document tracks all files with less than 80% test coverage and provides imp
   - Need: Protocol compliance, message handling
 
 ### Utilities
+
 - [ ] **src/utils/zod-helpers.ts** (9.37% coverage)
   - Current: Basic schema validation
   - Need: Complex validation scenarios, error cases
@@ -91,6 +99,7 @@ This document tracks all files with less than 80% test coverage and provides imp
   - Need: Rate limit scenarios, error handling
 
 ### Services with Low Coverage
+
 - [ ] **src/services/BackupService.ts** (31.14% coverage)
   - Current: Basic backup operations
   - Need: Error scenarios, validation, restoration
@@ -102,6 +111,7 @@ This document tracks all files with less than 80% test coverage and provides imp
 ## Medium-High Priority Files (50-80% Coverage)
 
 ### Database Layer
+
 - [ ] **src/database/integrity.ts** (67.7% coverage)
   - Current: Basic integrity checks
   - Need: Edge cases, corruption scenarios
@@ -115,6 +125,7 @@ This document tracks all files with less than 80% test coverage and provides imp
   - Need: Error handling, edge cases
 
 ### Route Systems
+
 - [ ] **src/routes/tasks.ts** (71.18% coverage)
   - Current: Basic task endpoints
   - Need: Error scenarios, validation
@@ -126,6 +137,7 @@ This document tracks all files with less than 80% test coverage and provides imp
 ## Files with Zero Coverage (Critical)
 
 ### Type Definitions & Improvements
+
 - [ ] **src/types/typeImprovements.ts** (0% coverage)
 - [ ] **src/utils/command-injection-prevention.ts** (0% coverage)
 - [ ] **src/cli/ui/themes/dashboard-themes.ts** (0% coverage)
@@ -133,21 +145,25 @@ This document tracks all files with less than 80% test coverage and provides imp
 ## Implementation Strategy
 
 ### Phase 1: Security & Core Services (Week 1)
+
 1. SecurityService.ts - Authentication/authorization tests
 2. WebSocket auth & handlers - Real-time security
 3. Command injection prevention - Security validations
 
 ### Phase 2: Core Business Logic (Week 2)
+
 1. NotificationService.ts - Core feature tests
 2. RealtimeService.ts - Event system tests
 3. TaskService.ts - Complete CRUD coverage
 
 ### Phase 3: CLI & User Interface (Week 3)
+
 1. CLI commands (backup, config, environment)
 2. Interactive view components
 3. Dashboard themes
 
 ### Phase 4: Integration & Edge Cases (Week 4)
+
 1. MCP protocol compliance
 2. WebSocket connection management
 3. Database integrity scenarios
@@ -155,6 +171,7 @@ This document tracks all files with less than 80% test coverage and provides imp
 ## Test Patterns to Follow
 
 ### Service Tests
+
 ```typescript
 describe('ServiceName', () => {
   beforeEach(() => {
@@ -170,6 +187,7 @@ describe('ServiceName', () => {
 ```
 
 ### CLI Tests
+
 ```typescript
 describe('CLI Command', () => {
   it('should execute with valid inputs', () => {});
@@ -179,6 +197,7 @@ describe('CLI Command', () => {
 ```
 
 ### WebSocket Tests
+
 ```typescript
 describe('WebSocket Handler', () => {
   it('should handle valid messages', () => {});

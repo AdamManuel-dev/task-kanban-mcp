@@ -178,7 +178,7 @@ export class CommandInjectionPrevention {
       // Variable expansion
       /\$\{[^}]*\}/,
       // Globbing attempts
-      /\*|\?|\[.*\]/,
+      /\*|\?|[.*]/,
       // Script execution
       /\.(sh|bat|cmd|ps1|py|rb|pl|php)(\s|$)/i,
       // Network operations
@@ -412,13 +412,7 @@ export class CommandInjectionPrevention {
       }
     }
 
-    return {
-      safe,
-      sanitizedCommand,
-      sanitizedArgs,
-      warnings,
-      blockedPatterns,
-    };
+    return { safe, sanitizedCommand, sanitizedArgs, warnings, blockedPatterns };
   }
 
   /**
@@ -860,11 +854,7 @@ export class CommandInjectionPrevention {
       warnings.push('Suspicious path pattern detected');
     }
 
-    return {
-      safe,
-      normalizedPath,
-      warnings,
-    };
+    return { safe, normalizedPath, warnings };
   }
 }
 

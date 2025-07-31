@@ -532,10 +532,7 @@ export class DatabaseIntegrityChecker {
         const taskGroups = circularDependencies.reduce(
           (groups, dep) => {
             const taskId = dep.task_id;
-            return {
-              ...groups,
-              [taskId]: [...(groups[taskId] || []), dep],
-            };
+            return { ...groups, [taskId]: [...(groups[taskId] || []), dep] };
           },
           {} as Record<string, CircularDependency[]>
         );
@@ -1088,11 +1085,7 @@ export class DatabaseIntegrityChecker {
       issues.push(`Health check failed: ${(error as Error).message}`);
     }
 
-    return {
-      isHealthy: issues.length === 0,
-      issues,
-      recommendations,
-    };
+    return { isHealthy: issues.length === 0, issues, recommendations };
   }
 }
 

@@ -380,7 +380,7 @@ describe('Comprehensive Input Sanitization Testing', () => {
         expect(result.modified).toBe(true);
 
         // Literal \r\n strings should be handled
-        if (payload.includes('\\r\\n')) {
+        if (payload.includes('\r\n')) {
           expect(result.warnings.length).toBeGreaterThan(0);
         }
       });
@@ -393,7 +393,7 @@ describe('Comprehensive Input Sanitization Testing', () => {
         });
 
         // Should be modified if it contained control chars
-        if (payload.includes('\\r') || payload.includes('\\n') || payload.includes('\\x')) {
+        if (payload.includes('\r') || payload.includes('\n') || payload.includes('\x')) {
           expect(result.modified).toBe(true);
           // May get different warning message depending on what was detected first
           expect(result.warnings.length).toBeGreaterThan(0);

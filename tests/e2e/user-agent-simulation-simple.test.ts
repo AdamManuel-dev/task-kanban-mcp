@@ -19,7 +19,7 @@ const execAsync = promisify(exec);
 const logger = {
   debug: (msg: string) => console.debug(`[DEBUG] ${msg}`),
   info: (msg: string) => console.info(`[INFO] ${msg}`),
-  error: (msg: string, err?: any) => console.error(`[ERROR] ${msg}`, err),
+  error: (msg: string, err?: unknown) => console.error(`[ERROR] ${msg}`, err),
 };
 
 interface TaskState {
@@ -125,7 +125,7 @@ describe('User and AI Agent Simulation (Simple)', () => {
       } else {
         throw new Error(`Failed to create board: ${response.error}`);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       userErrors.push(`Create board: ${error.message}`);
       logger.error('Failed to create board', error);
     }
@@ -153,7 +153,7 @@ describe('User and AI Agent Simulation (Simple)', () => {
         } else {
           throw new Error(`Failed to create task: ${response.error}`);
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         userErrors.push(`Create task ${i}: ${error.message}`);
       }
 
@@ -194,7 +194,7 @@ describe('User and AI Agent Simulation (Simple)', () => {
           `);
 
           logger.info(`AI agent completed task: ${taskId}`);
-        } catch (error: any) {
+        } catch (error: unknown) {
           agentErrors.push(`Agent work on task ${taskId}: ${error.message}`);
         }
       }
@@ -210,15 +210,15 @@ describe('User and AI Agent Simulation (Simple)', () => {
 
       if (response.success) {
         const tasks = response.data.items;
-        const todoCount = tasks.filter((t: any) => t.status === 'todo').length;
-        const doneCount = tasks.filter((t: any) => t.status === 'done').length;
+        const todoCount = tasks.filter((t: { status: string }) => t.status === 'todo').length;
+        const doneCount = tasks.filter((t: { status: string }) => t.status === 'done').length;
 
         logger.info(`Final state - Total: ${tasks.length}, Todo: ${todoCount}, Done: ${doneCount}`);
 
         expect(tasks.length).toBe(10);
         expect(doneCount).toBeGreaterThanOrEqual(3);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Failed to get final state', error);
     }
 
@@ -244,7 +244,7 @@ describe('User and AI Agent Simulation (Simple)', () => {
       `);
       const response = JSON.parse(stdout);
       boardId = response.data.id;
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw new Error(`Failed to create board: ${error.message}`);
     }
 

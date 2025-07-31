@@ -52,10 +52,10 @@ module.exports = {
 
     // Additional test-specific rules
     'no-promise-executor-return': 'off',
-    
+
     // Function length rules - relaxed for comprehensive tests
     'max-lines-per-function': 'off',
-    
+
     // Unused variable rules - relaxed for test setup
     '@typescript-eslint/no-unused-vars': 'warn',
   },

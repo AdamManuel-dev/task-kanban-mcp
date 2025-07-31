@@ -129,7 +129,7 @@ export class CacheService<K = string, V = unknown> extends EventEmitter {
     this.emit('set', key, value);
 
     logger.debug('Cache entry set', {
-      key: String(key),
+      key: key.toString(),
       ttl: finalTTL,
       cacheSize: this.cache.size,
     });
@@ -162,7 +162,7 @@ export class CacheService<K = string, V = unknown> extends EventEmitter {
     const existed = this.cache.delete(key);
     if (existed) {
       this.emit('delete', key);
-      logger.debug('Cache entry deleted', { key: String(key) });
+      logger.debug('Cache entry deleted', { key: key.toString() });
     }
     return existed;
   }
@@ -226,20 +226,7 @@ export class CacheService<K = string, V = unknown> extends EventEmitter {
     const entries = Array.from(this.cache.values());
     const timestamps = entries.map(e => e.timestamp);
 
-    return {
-      size: this.cache.size,
-      maxSize: this.options.maxSize,
-      hits: this.stats.hits,
-      misses: this.stats.misses,
-      evictions: this.stats.evictions,
-      hitRate:
-        this.stats.hits + this.stats.misses > 0
-          ? this.stats.hits / (this.stats.hits + this.stats.misses)
-          : 0,
-      memoryUsage: this.estimateMemoryUsage(),
-      oldestEntry: timestamps.length > 0 ? Math.min(...timestamps) : undefined,
-      newestEntry: timestamps.length > 0 ? Math.max(...timestamps) : undefined,
-    };
+    return { size: this.cache.size, maxSize: this.options.maxSize, hits: this.stats.hits, misses: this.stats.misses, evictions: this.stats.evictions, hitRate:, this.stats.hits + this.stats.misses > 0, ? this.stats.hits / (this.stats.hits + this.stats.misses), : 0, memoryUsage: this.estimateMemoryUsage(), oldestEntry: timestamps.length > 0 ? Math.min(...timestamps) : undefined, newestEntry: timestamps.length > 0 ? Math.max(...timestamps) : undefined };
   }
 
   /**
@@ -302,7 +289,7 @@ export class CacheService<K = string, V = unknown> extends EventEmitter {
       this.emit('evict', keyToEvict, entry?.value);
 
       logger.debug('Cache entry evicted', {
-        key: String(keyToEvict),
+        key: keyToEvict.toString(),
         policy: this.options.evictionPolicy,
         cacheSize: this.cache.size,
       });

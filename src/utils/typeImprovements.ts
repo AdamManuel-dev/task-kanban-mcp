@@ -243,11 +243,7 @@ export function createValidator<T>(rules: Array<(value: T) => string | null>): V
       }
     }
 
-    return {
-      valid: errors.length === 0,
-      errors,
-      warnings,
-    };
+    return { valid: errors.length === 0, errors, warnings };
   };
 }
 
@@ -362,12 +358,12 @@ export function throttle<TArgs extends unknown[]>(
 // Export common type replacements for easy import
 export const TypeReplacements = {
   // Database
-  'params: any[]': 'params: QueryParameters',
-  'params: any': 'params: QueryParameters',
+  'params: QueryParameters[]': 'params: QueryParameters',
+  'params: QueryParameters': 'params: QueryParameters',
 
   // Error handling
-  'error: any': 'error: unknown',
-  'err: any': 'err: unknown',
+  'error: unknown': 'error: unknown',
+  'err: unknown': 'err: unknown',
 
   // Data handling
   'data: any': 'data: unknown',

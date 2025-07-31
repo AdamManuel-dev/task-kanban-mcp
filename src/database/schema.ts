@@ -128,7 +128,7 @@ export class SchemaManager {
     } catch (error) {
       logger.error('Failed to create database schema:', error);
       throw new Error(
-        `Schema creation failed: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
+        `Schema creation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
   }
@@ -190,12 +190,12 @@ export class SchemaManager {
       const currentVersion = await this.getCurrentSchemaVersion();
       if (currentVersion !== SchemaManager.SCHEMA_VERSION) {
         result.errors.push(
-          `Schema version mismatch: expected ${String(String(SchemaManager.SCHEMA_VERSION))}, got ${String(currentVersion)}`
+          `Schema version mismatch: expected ${SchemaManager.SCHEMA_VERSION}, got ${currentVersion}`
         );
         result.isValid = false;
       }
 
-      logger.info(`Schema validation completed. Valid: ${String(String(result.isValid))}`);
+      logger.info(`Schema validation completed. Valid: ${result.isValid}`);
       return result;
     } catch (error) {
       logger.error('Schema validation failed:', error);
@@ -273,7 +273,7 @@ export class SchemaManager {
         `);
         await Promise.all(
           triggers.map(async trigger => {
-            await database.run(`DROP TRIGGER IF EXISTS "${String(String(trigger.name))}"`);
+            await database.run(`DROP TRIGGER IF EXISTS "${trigger.name}"`);
           })
         );
 
@@ -284,7 +284,7 @@ export class SchemaManager {
         `);
         await Promise.all(
           indexes.map(async index => {
-            await database.run(`DROP INDEX IF EXISTS "${String(String(index.name))}"`);
+            await database.run(`DROP INDEX IF EXISTS "${index.name}"`);
           })
         );
 
@@ -294,7 +294,7 @@ export class SchemaManager {
         `);
         await Promise.all(
           views.map(async view => {
-            await database.run(`DROP VIEW IF EXISTS "${String(String(view.name))}"`);
+            await database.run(`DROP VIEW IF EXISTS "${view.name}"`);
           })
         );
 
@@ -305,7 +305,7 @@ export class SchemaManager {
         `);
         await Promise.all(
           ftsTables.map(async ftsTable => {
-            await database.run(`DROP TABLE IF EXISTS "${String(String(ftsTable.name))}"`);
+            await database.run(`DROP TABLE IF EXISTS "${ftsTable.name}"`);
           })
         );
 
@@ -329,7 +329,7 @@ export class SchemaManager {
         try {
           await Promise.all(
             tableOrder.map(async tableName => {
-              await database.run(`DROP TABLE IF EXISTS "${String(tableName)}"`);
+              await database.run(`DROP TABLE IF EXISTS "${tableName}"`);
             })
           );
         } catch (e) {
@@ -347,7 +347,7 @@ export class SchemaManager {
         try {
           await Promise.all(
             remainingTables.map(async table => {
-              await database.run(`DROP TABLE IF EXISTS "${String(String(table.name))}"`);
+              await database.run(`DROP TABLE IF EXISTS "${table.name}"`);
             })
           );
         } catch (e) {
@@ -362,7 +362,7 @@ export class SchemaManager {
     } catch (error) {
       logger.error('Failed to drop database schema:', error);
       throw new Error(
-        `Schema drop failed: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
+        `Schema drop failed: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
   }
@@ -385,7 +385,7 @@ export class SchemaManager {
       await Promise.all(
         tables.map(async table => {
           const result = await this.db.queryOne<{ count: number }>(
-            `SELECT COUNT(*) as count FROM ${String(String(table.name))}`
+            `SELECT COUNT(*) as count FROM ${table.name}`
           );
           tableCounts[table.name] = result?.count ?? 0;
         })
@@ -409,7 +409,7 @@ export class SchemaManager {
       return readFileSync(SchemaManager.SCHEMA_FILE, 'utf-8');
     } catch (error) {
       throw new Error(
-        `Failed to read schema file: ${String(String(error instanceof Error ? error.message : 'Unknown error'))}`
+        `Failed to read schema file: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
   }
@@ -505,13 +505,7 @@ export class SchemaManager {
     const views = SchemaManager.extractObjectNames(schemaSQL, 'CREATE VIEW');
     const triggers = SchemaManager.extractObjectNames(schemaSQL, 'CREATE TRIGGER');
 
-    return {
-      version: SchemaManager.SCHEMA_VERSION,
-      tables,
-      indexes,
-      views,
-      triggers,
-    };
+    return { version: SchemaManager.SCHEMA_VERSION, tables, indexes, views, triggers };
   }
 
   private async getCurrentSchema(): Promise<SchemaInfo> {
@@ -553,7 +547,7 @@ export class SchemaManager {
 
   private static extractObjectNames(sql: string, createStatement: string): string[] {
     const regex = new RegExp(
-      `${String(createStatement)}\\s+(?:IF NOT EXISTS\\s+)?(?:\\w+\\.)?([\\w_]+)`,
+      `${createStatement}\\s+(?:IF NOT EXISTS\\s+)?(?:\\w+\\.)?([\\w_]+)`,
       'gi'
     );
     const matches: string[] = [];

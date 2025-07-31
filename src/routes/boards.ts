@@ -166,7 +166,7 @@ export function boardRoutes(): Router {
         const totalBoards = await boardService.getBoards(countOptions);
         const total = totalBoards.length;
 
-        res.apiPagination({
+        return res.apiPagination({
           data: boards,
           page: Math.floor((options.offset || 0) / (options.limit || 50)) + 1,
           limit: options.limit || 50,
@@ -227,7 +227,7 @@ export function boardRoutes(): Router {
       try {
         const boardData = validateInput(BoardValidation.create, req.body);
         const board = await boardService.createBoard(boardData);
-        res.status(201).apiSuccess(board);
+        return res.status(201).apiSuccess(board);
       } catch (error) {
         return next(error);
       }
@@ -275,6 +275,7 @@ export function boardRoutes(): Router {
 
       if (!id) {
         res.status(400).json({ error: 'Board ID is required' });
+        return;
       }
 
       let board;
@@ -292,7 +293,7 @@ export function boardRoutes(): Router {
 
       res.apiSuccess(board);
     } catch (error) {
-      return next(error);
+      next(error);
     }
   });
 
@@ -337,6 +338,7 @@ export function boardRoutes(): Router {
 
         if (!id) {
           res.status(400).json({ error: 'Board ID is required' });
+          return;
         }
 
         const rawUpdateData = validateInput(BoardValidation.update, req.body);
@@ -346,7 +348,7 @@ export function boardRoutes(): Router {
         const board = await boardService.updateBoard(id, updateData);
         res.apiSuccess(board);
       } catch (error) {
-        return next(error);
+        next(error);
       }
     }
   );
@@ -375,12 +377,13 @@ export function boardRoutes(): Router {
 
       if (!id) {
         res.status(400).json({ error: 'Board ID is required' });
+        return;
       }
 
       await boardService.deleteBoard(id);
       res.status(204).send();
     } catch (error) {
-      return next(error);
+      next(error);
     }
   });
 
@@ -735,7 +738,8 @@ export function boardRoutes(): Router {
       };
 
       if (column_id) options.column_id = column_id as string;
-      if (status) options.status = status as 'todo' | 'in_progress' | 'done' | 'blocked' | 'archived';
+      if (status)
+        options.status = status as 'todo' | 'in_progress' | 'done' | 'blocked' | 'archived';
       if (assignee) options.assignee = assignee as string;
       if (search) options.search = search as string;
 

@@ -3,6 +3,7 @@
 ## Any Type Usage to Fix
 
 ### dashboard-manager.ts
+
 1. **Line 698**: `(widget as any).destroy()`
    - **Reason**: blessed-contrib widgets don't have proper type definitions
    - **Proper type**: Should be a union of all possible widget types with destroy method
@@ -14,6 +15,7 @@
    - **Priority**: Low
 
 ### integrity.ts
+
 1. **Lines 129-130**: Helper method returns unknown cast
    - **Reason**: Database query results are untyped
    - **Proper type**: Generic query result type `QueryResult<T>`
@@ -22,15 +24,17 @@
 ## Type Assertions to Remove
 
 ### General Database Queries
+
 - **Pattern**: `result[0] as { count: number }`
 - **Files**: All database service files
 - **Solution**: Add generic typing to database.query() method
 - **Example**:
+
   ```typescript
   // Current
   const result = await db.query('SELECT COUNT(*) as count FROM tasks');
   const count = (result[0] as { count: number }).count;
-  
+
   // Should be
   const result = await db.query<{ count: number }>('SELECT COUNT(*) as count FROM tasks');
   const count = result[0].count;
@@ -50,10 +54,12 @@
 ## Complex Type Patterns to Simplify
 
 ### Union Types
+
 - Many places use complex union types that could be simplified with type aliases
 - Example: `string | number | undefined | null` could be `Nullable<string | number>`
 
 ### Callback Types
+
 - Many callback functions typed as `(error: any) => void`
 - Should use proper error types and Result pattern
 

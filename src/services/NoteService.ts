@@ -205,7 +205,7 @@ export class NoteService {
    * ```typescript
    * const note = await noteService.getNoteById('note-123');
    * if (note) {
-   *   logger.log(`Note: ${String(String(note.content))}`);
+   *   logger.log(`Note: ${note.content}`);
    * }
    * ```
    */
@@ -298,7 +298,7 @@ export class NoteService {
 
       if (contentSearch) {
         conditions.push('n.content LIKE ?');
-        params.push(`%${String(contentSearch)}%`);
+        params.push(`%${contentSearch}%`);
       }
 
       if (dateFrom) {
@@ -311,14 +311,14 @@ export class NoteService {
         params.push(dateTo);
       }
 
-      if (conditions.length > 0) {
+      if (conditions.length) {
         query += ` WHERE ${conditions.join(' AND ')}`;
       }
 
       // Use secure pagination to prevent ORDER BY injection
       const paginationResult = validatePagination(
-        { limit, offset, sortBy, sortOrder }, 
-        'notes', 
+        { limit, offset, sortBy, sortOrder },
+        'notes',
         'n'
       );
       query += ` ${paginationResult.orderByClause} LIMIT ? OFFSET ?`;
@@ -436,7 +436,7 @@ export class NoteService {
       await this.db.execute(
         `
         UPDATE notes 
-        SET ${String(String(updates.join(', ')))}
+        SET ${updates.join(', ')}
         WHERE id = ?
       `,
         params
@@ -519,7 +519,7 @@ export class NoteService {
    * });
    *
    * results.forEach(result => {
-   *   logger.log(`${String(String(result.task_title))}: ${String(String(result.highlighted_content))}`);
+   *   logger.log(`${result.task_title}: ${result.highlighted_content}`);
    * });
    * ```
    */
@@ -554,9 +554,9 @@ export class NoteService {
         WHERE n.content LIKE ?
       `;
 
-      const searchTerm = `%${String(query)}%`;
-      const exactMatch = `%${String(query)}%`;
-      const wordBoundary = `% ${String(query)} %`;
+      const searchTerm = `%${query}%`;
+      const exactMatch = `%${query}%`;
+      const wordBoundary = `% ${query} %`;
 
       const params: QueryParameters = [exactMatch, wordBoundary, searchTerm];
       const conditions: string[] = [];
@@ -580,8 +580,8 @@ export class NoteService {
         conditions.push('n.pinned = TRUE');
       }
 
-      if (conditions.length > 0) {
-        sql += ` AND ${String(String(conditions.join(' AND ')))}`;
+      if (conditions.length) {
+        sql += ` AND ${conditions.join(' AND ')}`;
       }
 
       if (sortBy === 'relevance') {
@@ -589,8 +589,8 @@ export class NoteService {
       } else {
         // Use secure pagination to prevent ORDER BY injection
         const paginationResult = validatePagination(
-          { limit, offset, sortBy, sortOrder }, 
-          'notes', 
+          { limit, offset, sortBy, sortOrder },
+          'notes',
           'n'
         );
         sql += ` ${paginationResult.orderByClause.replace('ORDER BY', '')}`;
@@ -655,7 +655,7 @@ export class NoteService {
     const dateFrom = new Date();
     dateFrom.setDate(dateFrom.getDate() - days);
 
-    return this.getNotes({
+    return await this.getNotes({
       ...paginationOptions,
       ...(board_id ? { board_id } : {}),
       date_from: dateFrom,
@@ -822,9 +822,9 @@ export class NoteService {
    *   days: 30
    * });
    *
-   * logger.log(`Total notes: ${String(String(stats.total))}`);
-   * logger.log(`Blockers: ${String(String(stats.by_category.blocker))}`);
-   * logger.log(`Recent notes (30 days): ${String(String(stats.recent))}`);
+   * logger.log(`Total notes: ${stats.total}`);
+   * logger.log(`Blockers: ${stats.by_category.blocker}`);
+   * logger.log(`Recent notes (30 days): ${stats.recent}`);
    * ```
    */
   async getNoteStats(
@@ -853,18 +853,17 @@ export class NoteService {
         params.push(task_id);
       }
 
-      const whereClause =
-        conditions.length > 0 ? ` WHERE ${String(String(conditions.join(' AND ')))}` : '';
+      const whereClause = conditions.length > 0 ? ` WHERE ${conditions.join(' AND ')}` : '';
 
       const [totalResult, categoryStats, pinnedResult, recentResult] = await Promise.all([
         this.db.queryOne<{ count: number }>(
-          `SELECT COUNT(*) as count ${String(baseQuery)}${String(whereClause)}`,
+          `SELECT COUNT(*) as count ${baseQuery}${whereClause}`,
           params
         ),
         this.db.query<{ category: Note['category']; count: number }>(
           `
           SELECT category, COUNT(*) as count 
-          ${String(baseQuery)}${String(whereClause)}
+          ${baseQuery}${whereClause}
           GROUP BY category
         `,
           params
@@ -872,14 +871,14 @@ export class NoteService {
         this.db.queryOne<{ count: number }>(
           `
           SELECT COUNT(*) as count 
-          ${String(baseQuery)}${String(whereClause)}${String(String(conditions.length > 0 ? ' AND' : ' WHERE'))} n['pinned'] = TRUE
+          ${baseQuery}${whereClause}${String(String(conditions.length > 0 ? ' AND' : ' WHERE'))} n['pinned'] = TRUE
         `,
           params
         ),
         this.db.queryOne<{ count: number }>(
           `
           SELECT COUNT(*) as count 
-          ${String(baseQuery)}${String(whereClause)}${String(String(conditions.length > 0 ? ' AND' : ' WHERE'))} n.created_at >= ?
+          ${baseQuery}${whereClause}${String(String(conditions.length > 0 ? ' AND' : ' WHERE'))} n.created_at >= ?
         `,
           [...params, new Date(Date.now() - days * 24 * 60 * 60 * 1000)]
         ),
@@ -956,18 +955,17 @@ export class NoteService {
         params.push(task_id);
       }
 
-      const whereClause =
-        conditions.length > 0 ? ` WHERE ${String(String(conditions.join(' AND ')))}` : '';
+      const whereClause = conditions.length > 0 ? ` WHERE ${conditions.join(' AND ')}` : '';
 
       const [totalResult, categoryStats] = await Promise.all([
         this.db.queryOne<{ count: number }>(
-          `SELECT COUNT(*) as count ${String(baseQuery)}${String(whereClause)}`,
+          `SELECT COUNT(*) as count ${baseQuery}${whereClause}`,
           params
         ),
         this.db.query<{ category: Note['category']; count: number }>(
           `
           SELECT category, COUNT(*) as count 
-          ${String(baseQuery)}${String(whereClause)}
+          ${baseQuery}${whereClause}
           GROUP BY category
           ORDER BY count DESC
         `,

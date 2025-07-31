@@ -10,7 +10,7 @@ import { dbConnection } from '../../src/database/connection';
 
 describe('HTTP API E2E Tests', () => {
   let app: Express;
-  let server: any;
+  let server: import('http').Server;
   let testApiKey: string;
 
   beforeAll(async (): Promise<void> => {

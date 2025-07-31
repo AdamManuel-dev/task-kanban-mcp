@@ -125,7 +125,7 @@ export class PriorityHistoryService {
     context?: Record<string, unknown>
   ): Promise<PriorityChange> {
     try {
-      const id = `ph_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const id = `ph_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
       const timestamp = new Date();
 
       await dbConnection.execute(
@@ -152,16 +152,7 @@ export class PriorityHistoryService {
         changedBy,
       });
 
-      return {
-        id,
-        task_id: taskId,
-        old_priority: oldPriority,
-        new_priority: newPriority,
-        reason,
-        changed_by: changedBy,
-        context,
-        timestamp,
-      };
+      return { id, task_id: taskId, old_priority: oldPriority, new_priority: newPriority, reason, changed_by: changedBy, context, timestamp };
     } catch (error) {
       logger.error('Failed to record priority change:', error);
       throw error;
@@ -185,8 +176,8 @@ export class PriorityHistoryService {
         task_id: row.task_id,
         old_priority: row.old_priority,
         new_priority: row.new_priority,
-        reason: row.reason || undefined,
-        changed_by: row.changed_by || undefined,
+        reason: row.reason,
+        changed_by: row.changed_by,
         context: row.context ? JSON.parse(row.context) : undefined,
         timestamp: new Date(row.timestamp),
       }));
@@ -288,15 +279,7 @@ export class PriorityHistoryService {
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
 
-      return {
-        total_changes: totalChanges,
-        avg_changes_per_task: avgChangesPerTask,
-        most_changed_tasks: mostChangedTasks,
-        priority_trends: {
-          increases,
-          decreases,
-          unchanged,
-        },
+      return { total_changes: totalChanges, avg_changes_per_task: avgChangesPerTask, most_changed_tasks: mostChangedTasks, priority_trends: {, increases, decreases, unchanged },
         common_reasons: commonReasons,
       };
     } catch (error) {
@@ -343,7 +326,7 @@ export class PriorityHistoryService {
       });
 
       // Analyze each task for patterns
-      for (const [taskId, taskChangeList] of taskChanges.entries()) {
+      for (const [currentTaskId, taskChangeList] of taskChanges.entries()) {
         if (taskChangeList.length < 2) continue;
 
         const task = taskChangeList[0];
@@ -355,7 +338,7 @@ export class PriorityHistoryService {
 
         if (recentChanges.length > 5) {
           patterns.push({
-            task_id: taskId,
+            task_id: currentTaskId,
             pattern_type: 'frequent_changes',
             score: Math.min(recentChanges.length / 10, 1),
             description: `Task has ${recentChanges.length} priority changes in the last 30 days`,
@@ -371,7 +354,7 @@ export class PriorityHistoryService {
         const priorityTrend = this.calculatePriorityTrend(taskChangeList);
         if (priorityTrend > 0.5) {
           patterns.push({
-            task_id: taskId,
+            task_id: currentTaskId,
             pattern_type: 'priority_drift',
             score: priorityTrend,
             description: 'Task priority has been consistently increasing over time',
@@ -385,13 +368,13 @@ export class PriorityHistoryService {
 
         // Pattern 3: Emergency bumps (sudden large increases)
         const emergencyBumps = taskChangeList.filter(
-          (change: any, i: number) =>
+          (change: unknown, i: number) =>
             i > 0 && change.new_priority - (taskChangeList[i - 1].new_priority ?? 0) >= 5
         );
 
         if (emergencyBumps.length > 0) {
           patterns.push({
-            task_id: taskId,
+            task_id: currentTaskId,
             pattern_type: 'emergency_bump',
             score: emergencyBumps.length / taskChangeList.length,
             description: `Task has had ${emergencyBumps.length} emergency priority increases`,
@@ -406,7 +389,7 @@ export class PriorityHistoryService {
         // Pattern 4: Gradual decline (priority decreasing over time)
         if (priorityTrend < -0.3) {
           patterns.push({
-            task_id: taskId,
+            task_id: currentTaskId,
             pattern_type: 'gradual_decline',
             score: Math.abs(priorityTrend),
             description: 'Task priority has been gradually decreasing',
@@ -458,12 +441,12 @@ export class PriorityHistoryService {
       const changes = await dbConnection.query(query, params);
 
       const changesCount = changes.length;
-      const affectedTasks = new Set(changes.map((c: any) => c.task_id)).size;
+      const affectedTasks = new Set(changes.map((c: unknown) => c.task_id)).size;
 
       // Calculate average priority change
       const priorityChanges = changes
-        .filter((c: any) => c.old_priority !== null)
-        .map((c: any) => Math.abs(c.new_priority - c.old_priority));
+        .filter((c: unknown) => c.old_priority !== null)
+        .map((c: unknown) => Math.abs(c.new_priority - c.old_priority));
       const avgPriorityChange =
         priorityChanges.length > 0
           ? priorityChanges.reduce((a, b) => a + b, 0) / priorityChanges.length
@@ -471,7 +454,7 @@ export class PriorityHistoryService {
 
       // Find most active day
       const dayChanges = new Map<string, number>();
-      changes.forEach((change: any) => {
+      changes.forEach((change: unknown) => {
         const day = new Date(change.timestamp).toISOString().split('T')[0];
         dayChanges.set(day, (dayChanges.get(day) ?? 0) + 1);
       });
@@ -483,7 +466,7 @@ export class PriorityHistoryService {
 
       // Find busiest hours
       const hourChanges = new Map<number, number>();
-      changes.forEach((change: any) => {
+      changes.forEach((change: unknown) => {
         const hour = new Date(change.timestamp).getHours();
         hourChanges.set(hour, (hourChanges.get(hour) ?? 0) + 1);
       });
@@ -493,11 +476,7 @@ export class PriorityHistoryService {
         .sort((a, b) => b.changes - a.changes)
         .slice(0, 5);
 
-      return {
-        changes_count: changesCount,
-        affected_tasks: affectedTasks,
-        avg_priority_change: avgPriorityChange,
-        most_active_day: { date: mostActiveDay[0], changes: mostActiveDay[1] },
+      return { changes_count: changesCount, affected_tasks: affectedTasks, avg_priority_change: avgPriorityChange, most_active_day: { date: mostActiveDay[0], changes: mostActiveDay[1] },
         busiest_hours: busiestHours,
       };
     } catch (error) {
@@ -511,7 +490,7 @@ export class PriorityHistoryService {
   private calculatePriorityTrend(changes: unknown[]): number {
     if (changes.length < 3) return 0;
 
-    const priorities = changes.map((c: any) => c.new_priority);
+    const priorities = changes.map((c: unknown) => c.new_priority);
     const n = priorities.length;
     let sumX = 0;
     let sumY = 0;

@@ -419,10 +419,7 @@ export class DatabaseConnection {
         lastID: result.lastID,
         changes: result.changes,
       });
-      return {
-        lastID: result.lastID,
-        changes: result.changes ?? 0,
-      };
+      return { lastID: result.lastID, changes: result.changes ?? 0 };
     } catch (error) {
       logger.error('Statement execution failed', { sql, params, error });
       throw error;
@@ -593,11 +590,7 @@ export class DatabaseConnection {
 
       return {
         connected: true,
-        responsive: responseTime < 1000, // Consider responsive if < 1s
-        stats: {
-          ...stats,
-          responseTime,
-        },
+        responsive: responseTime < 1000, // Consider responsive if < 1s, stats: {, ...stats, responseTime },
       };
     } catch (error) {
       return {
@@ -658,11 +651,7 @@ export class DatabaseConnection {
     ];
 
     try {
-      await Promise.all(
-        pragmas.map(async pragma => {
-          await this.db!.exec(pragma);
-        })
-      );
+      await Promise.all(pragmas.map(async pragma => this.db!.exec(pragma)));
     } catch (error) {
       logger.warn('Failed to apply pragma', { error });
     }

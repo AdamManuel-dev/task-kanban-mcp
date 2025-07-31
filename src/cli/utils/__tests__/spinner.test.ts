@@ -11,7 +11,19 @@ jest.mock('ora');
 
 describe('SpinnerManager', () => {
   let spinnerManager: SpinnerManager;
-  let mockSpinner: any;
+  let mockSpinner: {
+    start: jest.Mock;
+    stop: jest.Mock;
+    succeed: jest.Mock;
+    fail: jest.Mock;
+    warn: jest.Mock;
+    info: jest.Mock;
+    clear: jest.Mock;
+    render: jest.Mock;
+    text: string;
+    color: string;
+    isSpinning: boolean;
+  };
   let consoleSpy: jest.SpyInstance;
 
   beforeEach(() => {
@@ -53,8 +65,8 @@ describe('SpinnerManager', () => {
 
   describe('validation', () => {
     it('should throw error for non-string text', () => {
-      expect(() => spinnerManager.start(123 as any)).toThrow(SpinnerError);
-      expect(() => spinnerManager.start(123 as any)).toThrow('Text must be a string');
+      expect(() => spinnerManager.start(123 as unknown as string)).toThrow(SpinnerError);
+      expect(() => spinnerManager.start(123 as unknown as string)).toThrow('Text must be a string');
     });
 
     it('should throw error for empty text', () => {
@@ -272,9 +284,9 @@ describe('SpinnerManager', () => {
     }, 500);
 
     it('should validate promise parameter', async () => {
-      await expect(spinnerManager.withSpinner('test', null as any)).rejects.toThrow(
-        'Promise is required and must be a valid Promise'
-      );
+      await expect(
+        spinnerManager.withSpinner('test', null as unknown as Promise<unknown>)
+      ).rejects.toThrow('Promise is required and must be a valid Promise');
     });
 
     it('should clear timeout on success', async () => {
@@ -361,15 +373,17 @@ describe('SpinnerManager', () => {
 
     it('should validate steps parameter', async () => {
       await expect(spinnerManager.withSteps([])).rejects.toThrow('Steps must be a non-empty array');
-      await expect(spinnerManager.withSteps(null as any)).rejects.toThrow(
-        'Steps must be a non-empty array'
-      );
+      await expect(
+        spinnerManager.withSteps(
+          null as unknown as Array<{ text: string; action: () => Promise<unknown> }>
+        )
+      ).rejects.toThrow('Steps must be a non-empty array');
     });
 
     it('should handle invalid step', async () => {
       const steps = [
         { text: 'Valid step', action: jest.fn().mockResolvedValue('result') },
-        { text: 'Invalid step', action: null as any },
+        { text: 'Invalid step', action: null as unknown as () => Promise<unknown> },
       ];
 
       await expect(spinnerManager.withSteps(steps)).rejects.toThrow('Invalid step at index 1');

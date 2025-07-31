@@ -48,8 +48,8 @@ jest.mock('@/utils/logger');
 
 describe('DashboardManager', () => {
   let dashboardManager: DashboardManager;
-  let mockTaskService: any;
-  let mockBoardService: any;
+  let mockTaskService: Record<string, unknown>;
+  let mockBoardService: Record<string, unknown>;
 
   beforeEach(() => {
     mockTaskService = {

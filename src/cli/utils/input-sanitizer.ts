@@ -38,10 +38,16 @@ export class InputSanitizer {
     this.purify = DOMPurify(window);
 
     // Configure DOMPurify for strict sanitization
-    this.purify.addHook('beforeSanitizeElements', (node: any) => {
+    this.purify.addHook('beforeSanitizeElements', (node: Node | Element) => {
       // Remove all script tags and event handlers
-      if (node.nodeName === 'SCRIPT' || node.nodeName === 'IFRAME') {
-        node.remove();
+      if (
+        node &&
+        'nodeName' in node &&
+        (node.nodeName === 'SCRIPT' || node.nodeName === 'IFRAME')
+      ) {
+        if ('remove' in node && typeof node.remove === 'function') {
+          node.remove();
+        }
       }
     });
   }
@@ -139,9 +145,9 @@ export class InputSanitizer {
 
     // 6. HTML sanitization
     if (!allowHtml) {
-      sanitized = this.purify.sanitize(sanitized, { ALLOWED_TAGS: [] }) as string;
+      sanitized = this.purify.sanitize(sanitized, { ALLOWED_TAGS: [] });
     } else {
-      sanitized = this.purify.sanitize(sanitized) as string;
+      sanitized = this.purify.sanitize(sanitized);
     }
 
     // 7. Escape special characters for CLI safety
@@ -205,19 +211,27 @@ export class InputSanitizer {
     let sanitized = input;
     let hasInjectionAttempt = false;
 
-    dangerousPatterns.forEach(pattern => {
-      if (pattern.test(sanitized)) {
-        sanitized = sanitized.replace(pattern, '');
-        hasInjectionAttempt = true;
-      }
-    });
+    // Extract pattern checking to reduce complexity
+    const checkAndReplacePatterns = (
+      patterns: RegExp[],
+      replacement: string | ((match: string) => string)
+    ): boolean => {
+      let found = false;
+      patterns.forEach(pattern => {
+        if (pattern.test(sanitized)) {
+          sanitized =
+            typeof replacement === 'string'
+              ? sanitized.replace(pattern, replacement)
+              : sanitized.replace(pattern, replacement);
+          found = true;
+        }
+      });
+      return found;
+    };
 
-    dangerousProtocols.forEach(pattern => {
-      if (pattern.test(sanitized)) {
-        sanitized = sanitized.replace(pattern, 'blocked:');
-        hasInjectionAttempt = true;
-      }
-    });
+    hasInjectionAttempt =
+      checkAndReplacePatterns(dangerousPatterns, '') ||
+      checkAndReplacePatterns(dangerousProtocols, 'blocked:');
 
     if (hasInjectionAttempt) {
       warnings.push('Potential command injection patterns removed');
@@ -241,7 +255,7 @@ export class InputSanitizer {
 
     let escaped = input;
     Object.entries(escapeMap).forEach(([char, replacement]) => {
-      escaped = escaped.replace(new RegExp(`\\${char}`, 'g'), replacement);
+      escaped = escaped.replace(new RegExp(`\${char}`, 'g'), replacement);
     });
 
     if (beforeEscape !== escaped) {
@@ -333,7 +347,7 @@ export class InputSanitizer {
       normalizeWhitespace: true,
       preventInjection: true,
       escapeSpecialChars: true,
-      allowedCharacters: /[\w\s\-_.()[\]!?@#%&+=]/,
+      allowedCharacters: /[\w\s\-_.()[]!?@#%&+=]/,
     });
   }
 
@@ -348,7 +362,7 @@ export class InputSanitizer {
       normalizeWhitespace: true,
       preventInjection: true,
       escapeSpecialChars: false, // Descriptions can have more varied content
-      allowedCharacters: /[\w\s\-_.()[\]!?@#%&+=:;,."']/,
+      allowedCharacters: /[\w\s\-_.()[]!?@#%&+=:;,."']/,
     });
   }
 
@@ -439,10 +453,7 @@ export class InputSanitizer {
       }
     });
 
-    return {
-      suspicious: detectedPatterns.length > 0,
-      patterns: detectedPatterns,
-    };
+    return { suspicious: detectedPatterns.length > 0, patterns: detectedPatterns };
   }
 
   /**
@@ -489,12 +500,7 @@ export class InputSanitizer {
       score -= 10;
     }
 
-    return {
-      safe: score >= 70,
-      score: Math.max(0, score),
-      issues,
-      recommendations,
-    };
+    return { safe: score >= 70, score: Math.max(0, score), issues, recommendations };
   }
 }
 
@@ -569,7 +575,7 @@ export function createSafePromptValidator(
     // Run additional validation if provided
     if (additionalValidation) {
       const result = additionalValidation(sanitized.sanitized);
-      return result === true ? true : result;
+      return result;
     }
 
     return true;

@@ -285,8 +285,8 @@ const migration: TypeSafeMigration = {
    * Validate schema after migration
    */
   async validate(db: Database): Promise<boolean> {
-    const get = promisify(db.get.bind(db)) as (sql: string, params?: any) => Promise<any>;
-    const run = promisify(db.run.bind(db)) as (sql: string, params?: any) => Promise<any>;
+    const get = promisify(db.get.bind(db)) as (sql: string, params?: unknown) => Promise<unknown>;
+    const run = promisify(db.run.bind(db)) as (sql: string, params?: unknown) => Promise<unknown>;
 
     try {
       // Check if table exists
@@ -329,10 +329,12 @@ const migration: TypeSafeMigration = {
       }
 
       // Test basic operations
-      await run(
-        'INSERT INTO tasks_v2 (id, board_id, column_id, title) VALUES (?, ?, ?, ?)',
-        ['test-validation-id', 'test-board', 'todo', 'Test Task']
-      );
+      await run('INSERT INTO tasks_v2 (id, board_id, column_id, title) VALUES (?, ?, ?, ?)', [
+        'test-validation-id',
+        'test-board',
+        'todo',
+        'Test Task',
+      ]);
 
       await run('DELETE FROM tasks_v2 WHERE id = ?', ['test-validation-id']);
 

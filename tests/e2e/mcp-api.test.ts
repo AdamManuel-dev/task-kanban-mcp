@@ -13,9 +13,9 @@ interface MCPMessage {
   jsonrpc: '2.0';
   id?: string | number;
   method?: string;
-  params?: any;
-  result?: any;
-  error?: any;
+  params?: Record<string, unknown>;
+  result?: unknown;
+  error?: { code: number; message: string; data?: unknown };
 }
 
 describe('MCP API E2E Tests', () => {
@@ -149,7 +149,7 @@ describe('MCP API E2E Tests', () => {
     }, 15000);
 
     it('should handle invalid JSON-RPC messages', async () => {
-      const invalidMessage = 'invalid json\\n';
+      const invalidMessage = 'invalid json\n';
 
       mcpProcess.stdin.write(invalidMessage);
 
@@ -538,7 +538,7 @@ describe('MCP API E2E Tests', () => {
     });
 
     it('should handle malformed JSON messages', async () => {
-      const malformedJson = '{"invalid": json,}\\n';
+      const malformedJson = '{"invalid": json,}\n';
 
       mcpProcess.stdin.write(malformedJson);
 
@@ -563,7 +563,7 @@ describe('MCP API E2E Tests', () => {
         },
       };
 
-      const messageStr = `${String(String(JSON.stringify(hugeMessage)))}\\n`;
+      const messageStr = `${String(String(JSON.stringify(hugeMessage)))}\n`;
 
       mcpProcess.stdin.write(messageStr);
 

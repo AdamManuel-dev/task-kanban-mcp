@@ -51,20 +51,10 @@ export class GitService {
       const statusResult = await safeExecute('git', ['status', '--porcelain']);
       const isClean = statusResult.success ? statusResult.stdout.trim().length === 0 : false;
 
-      return {
-        path: repoPath,
-        name,
-        remoteUrl,
-        currentBranch,
-        isClean,
-      };
+      return { path: repoPath, name, remoteUrl, currentBranch, isClean };
     } catch (error) {
       // Fallback with basic info if git commands fail
-      return {
-        path: repoPath,
-        name,
-        isClean: false,
-      };
+      return { path: repoPath, name, isClean: false };
     }
   }
 
@@ -110,7 +100,7 @@ export class GitService {
         `--format=%H|%s|%an|%ad`,
         '--date=iso',
         `-n`,
-        String(limit),
+        limit.toString(),
       ]);
 
       if (!result.success) {

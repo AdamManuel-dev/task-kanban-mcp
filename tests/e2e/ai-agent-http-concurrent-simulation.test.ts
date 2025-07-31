@@ -11,9 +11,11 @@
 // Mock the service metrics decorator first
 import request from 'supertest';
 import type { Express } from 'express';
+import type { Server } from 'http';
 import { v4 as uuidv4 } from 'uuid';
 import { createServer } from '../../src/server';
 import { dbConnection } from '../../src/database/connection';
+import type { Task } from '../../src/types';
 
 jest.mock('../../src/utils/service-metrics', () => ({
   TrackPerformance: () => () => ({}),
@@ -79,9 +81,9 @@ class HTTPAIAgent {
       } else {
         throw new Error(response.body.error || 'Failed to create task');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       success = false;
-      error = err.message;
+      error = err instanceof Error ? err.message : String(err);
       taskId = null;
     }
 
@@ -92,7 +94,7 @@ class HTTPAIAgent {
   async findNextTask(): Promise<{ id: string; title: string } | null> {
     const startTime = Date.now();
     let success = true;
-    let task: any = null;
+    let task: { id: string; title: string } | null = null;
     let error: string | undefined;
 
     try {
@@ -110,9 +112,9 @@ class HTTPAIAgent {
       if (response.body.success && response.body.data.items.length > 0) {
         task = response.body.data.items[0];
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       success = false;
-      error = err.message;
+      error = err instanceof Error ? err.message : String(err);
     }
 
     this.recordAction('find_task', task?.id, startTime, success, error);
@@ -141,9 +143,9 @@ class HTTPAIAgent {
         .send({ status: 'done' });
 
       this.tasksCompleted++;
-    } catch (err: any) {
+    } catch (err: unknown) {
       success = false;
-      error = err.message;
+      error = err instanceof Error ? err.message : String(err);
     }
 
     this.recordAction('work_on_task', taskId, startTime, success, error);
@@ -165,13 +167,13 @@ class HTTPAIAgent {
         const tasks = response.body.data.items;
         analysis = {
           total: tasks.length,
-          todo: tasks.filter((t: any) => t.status === 'todo').length,
-          done: tasks.filter((t: any) => t.status === 'done').length,
+          todo: tasks.filter((t: { status: string }) => t.status === 'todo').length,
+          done: tasks.filter((t: { status: string }) => t.status === 'done').length,
         };
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       success = false;
-      error = err.message;
+      error = err instanceof Error ? err.message : String(err);
     }
 
     this.recordAction('analyze_board', undefined, startTime, success, error);
@@ -239,7 +241,7 @@ class HTTPAIAgent {
 
 describe('AI Agent HTTP Concurrent Simulation', () => {
   let app: Express;
-  let server: any;
+  let server: Server;
   let boardId: string;
   let apiKey: string;
   const agents: HTTPAIAgent[] = [];
@@ -355,11 +357,11 @@ describe('AI Agent HTTP Concurrent Simulation', () => {
       .query({ board_id: boardId, limit: 200 });
 
     const tasks = finalStateResponse.body.data.items;
-    const todoCount = tasks.filter((t: any) => t.status === 'todo').length;
-    const inProgressCount = tasks.filter((t: any) => t.status === 'in_progress').length;
-    const doneCount = tasks.filter((t: any) => t.status === 'done').length;
+    const todoCount = tasks.filter((t: Task) => t.status === 'todo').length;
+    const inProgressCount = tasks.filter((t: Task) => t.status === 'in_progress').length;
+    const doneCount = tasks.filter((t: Task) => t.status === 'done').length;
 
-    console.log('\\n=== HTTP AI Agent Simulation Results ===');
+    console.log('\n=== HTTP AI Agent Simulation Results ===');
     console.log(`Number of agents: ${numAgents}`);
     console.log(`Total duration: ${duration}ms`);
     console.log(`Total actions performed: ${totalActions}`);
@@ -368,14 +370,14 @@ describe('AI Agent HTTP Concurrent Simulation', () => {
     console.log(`Tasks completed via HTTP: ${totalTasksCompleted}`);
     console.log(`Total errors: ${totalErrors}`);
     console.log(`Average action time: ${avgActionTime.toFixed(2)}ms`);
-    console.log('\\nFinal board state (via HTTP):');
+    console.log('\nFinal board state (via HTTP):');
     console.log(`  Total tasks: ${tasks.length}`);
     console.log(`  Todo: ${todoCount}`);
     console.log(`  In Progress: ${inProgressCount}`);
     console.log(`  Done: ${doneCount}`);
 
     // Per-agent metrics
-    console.log('\\nPer-agent HTTP performance:');
+    console.log('\nPer-agent HTTP performance:');
     allMetrics.forEach(m => {
       console.log(
         `  ${m.agentId}: ${m.actionsPerformed} actions, ${m.tasksCreated} created, ${m.tasksCompleted} completed`
@@ -425,7 +427,7 @@ describe('AI Agent HTTP Concurrent Simulation', () => {
     const totalOps = numAgents * actionsPerAgent * 2;
     const opsPerSecond = (totalOps / duration) * 1000;
 
-    console.log('\\n=== HTTP Load Test Results ===');
+    console.log('\n=== HTTP Load Test Results ===');
     console.log(`Total HTTP operations: ${totalOps}`);
     console.log(`Duration: ${duration}ms`);
     console.log(`HTTP Operations per second: ${opsPerSecond.toFixed(2)}`);
@@ -437,7 +439,7 @@ describe('AI Agent HTTP Concurrent Simulation', () => {
       .query({ board_id: boardId, limit: 500 });
 
     const allTasks = integrityResponse.body.data.items;
-    const uniqueIds = new Set(allTasks.map((t: any) => t.id));
+    const uniqueIds = new Set(allTasks.map((t: Task) => t.id));
 
     expect(uniqueIds.size).toBe(allTasks.length); // No duplicate IDs
     expect(opsPerSecond).toBeGreaterThan(100); // At least 100 HTTP ops/sec
@@ -487,7 +489,7 @@ describe('AI Agent HTTP Concurrent Simulation', () => {
     // Collect metrics
     const metrics = collaborativeAgents.map(a => a.getMetrics());
 
-    console.log('\\n=== HTTP Collaboration Pattern Results ===');
+    console.log('\n=== HTTP Collaboration Pattern Results ===');
     metrics.forEach(m => {
       console.log(`${m.agentId}: Created ${m.tasksCreated}, Completed ${m.tasksCompleted}`);
     });

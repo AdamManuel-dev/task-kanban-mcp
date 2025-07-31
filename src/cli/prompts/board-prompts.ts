@@ -38,7 +38,7 @@ export async function quickBoardSetup(
         initial: defaults?.name,
         validate: value => {
           const result = validateBoardName(value);
-          return result === true ? true : result;
+          return result;
         },
       },
       {
@@ -158,7 +158,7 @@ export async function quickBoardSetup(
           validate: value => {
             if (!value) return true; // Allow empty to finish
             const result = validateColumnName(value);
-            return result === true ? true : result;
+            return result;
           },
         });
 
@@ -204,12 +204,7 @@ export async function quickBoardSetup(
     console.log(`Columns: ${columns.map(c => c.name).join(' → ')}`);
     console.log(chalk.gray('─'.repeat(40)));
 
-    return {
-      name: boardInfo.name,
-      description: boardInfo.description ?? undefined,
-      columns,
-      isPublic,
-    };
+    return { name: boardInfo.name, description: boardInfo.description, columns, isPublic };
   } catch (error) {
     logger.error('Quick board setup failed', {
       error: error instanceof Error ? error.message : String(error),
@@ -313,7 +308,7 @@ export async function addColumnPrompt(
         message: 'Column name:',
         validate: value => {
           const result = validateColumnName(value);
-          return result === true ? true : result;
+          return result;
         },
       },
       {
@@ -383,7 +378,7 @@ export async function boardSettingsPrompt(currentSettings: {
         initial: currentSettings.name,
         validate: value => {
           const result = validateBoardName(value);
-          return result === true ? true : result;
+          return result;
         },
       },
       {
@@ -423,16 +418,16 @@ export async function boardSettingsPrompt(currentSettings: {
       changes.name = response.name;
     }
     if (response.description !== currentSettings.description) {
-      changes.description = response.description ?? undefined;
+      changes.description = response.description;
     }
     if (response.isPublic !== currentSettings.isPublic) {
       changes.isPublic = response.isPublic;
     }
     if (response.defaultAssignee !== currentSettings.defaultAssignee) {
-      changes.defaultAssignee = response.defaultAssignee ?? undefined;
+      changes.defaultAssignee = response.defaultAssignee;
     }
     if (response.autoArchiveDays !== currentSettings.autoArchiveDays) {
-      changes.autoArchiveDays = response.autoArchiveDays ?? undefined;
+      changes.autoArchiveDays = response.autoArchiveDays;
     }
 
     logger.info('Board settings updated', {

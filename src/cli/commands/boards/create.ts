@@ -217,13 +217,6 @@ export function registerCreateCommand(boardCmd: Command): void {
           };
 
           const templateKey = options.template as keyof typeof templates;
-          if (!templates[templateKey]) {
-            formatter.error(
-              `Invalid template: ${options.template}. Available: ${Object.keys(templates).join(', ')}`
-            );
-            process.exit(1);
-          }
-
           defaults.columns = templates[templateKey];
         }
 
@@ -273,7 +266,7 @@ export function registerCreateCommand(boardCmd: Command): void {
         }
 
         // Show board details
-        formatter.info('\\n📊 Board Summary:');
+        formatter.info('\n📊 Board Summary:');
         formatter.info(`Name: ${String(chalk.bold(boardData.name))}`);
         if (boardData.description) {
           formatter.info(`Description: ${String(boardData.description)}`);
@@ -297,7 +290,7 @@ export function registerCreateCommand(boardCmd: Command): void {
 
         // Offer quick actions
         if (isSuccessResponse(board)) {
-          formatter.info('\\n💡 Quick Actions:');
+          formatter.info('\n💡 Quick Actions:');
           formatter.info(`  View board: kanban board view ${String(board.data.id)}`);
           formatter.info(`  Create task: kanban task create --interactive`);
           formatter.info(`  List tasks: kanban task list`);

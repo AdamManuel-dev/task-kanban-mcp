@@ -39,17 +39,17 @@ export function taskRoutes(): Router {
   };
 
   // Main task CRUD operations
-  router.get('/', ...listTasksHandler(services as any));
+  router.get('/', ...listTasksHandler(services));
   router.get('/:id', ...getTaskHandler(services));
-  router.post('/', ...createTaskHandler(services as any));
-  router.patch('/:id', ...updateTaskHandler(services));
-  router.delete('/:id', ...deleteTaskHandler(services));
+  router.post('/', ...createTaskHandler(services));
+  router.patch('/:id', updateTaskHandler);
+  router.delete('/:id', deleteTaskHandler);
 
   // Sub-resource routes
-  router.use('/:taskId/notes', taskNotesRoutes(services));
-  router.use('/:taskId/tags', taskTagsRoutes(services));
-  router.use('/:taskId/dependencies', taskDependencyRoutes(services));
-  router.use('/:taskId/subtasks', taskSubtaskRoutes(services));
+  router.use('/:taskId/notes', taskNotesRoutes);
+  router.use('/:taskId/tags', taskTagsRoutes);
+  router.use('/:taskId/dependencies', taskDependencyRoutes);
+  router.use('/:taskId/subtasks', taskSubtaskRoutes);
 
   return router;
 }

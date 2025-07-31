@@ -25,15 +25,15 @@ interface MCPMessage {
   jsonrpc: '2.0';
   id?: string | number;
   method?: string;
-  params?: any;
-  result?: any;
-  error?: any;
+  params?: Record<string, unknown>;
+  result?: unknown;
+  error?: { code: number; message: string; data?: unknown };
 }
 
 interface TestScenario {
   name: string;
   setup: () => Promise<void>;
-  validate: (result: any) => Promise<void>;
+  validate: (result: unknown) => Promise<void>;
   expectedAccuracy: number;
 }
 
@@ -620,7 +620,7 @@ describe('MCP Context Evaluation E2E Test', () => {
     }
 
     // Get context multiple times
-    const contexts: any[] = [];
+    const contexts: string[] = [];
     for (let i = 0; i < 3; i++) {
       const response = await sendMCPMessage({
         jsonrpc: '2.0',

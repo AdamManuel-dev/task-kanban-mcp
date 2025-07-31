@@ -520,7 +520,7 @@ export class TransactionManager {
    * - SERIALIZABLE: Highest isolation, prevents all phenomena
    */
   private async setIsolationLevel(
-    db: any,
+    db: DatabaseConnection,
     level: TransactionOptions['isolationLevel']
   ): Promise<void> {
     if (!level) return;

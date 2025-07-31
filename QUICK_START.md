@@ -3,31 +3,36 @@
 ## 🚀 New User? Start Here!
 
 ### 1. Install and Setup
+
 ```bash
 npm install -g @mcp-kanban/server
 kanban config setup --interactive
 ```
 
 ### 2. Create Your First Board
+
 ```bash
 kanban board quick-setup --template scrum
 ```
 
 ### 3. Add Tasks Interactively
+
 ```bash
 kanban task create --interactive
 ```
 
 ### 4. View Your Board
+
 ```bash
 kanban board view --interactive
 ```
 
 ## 🔧 Upgrading from Old CLI?
 
-**Good news**: All your existing commands still work! 
+**Good news**: All your existing commands still work!
 
 ### Try These Enhanced Features:
+
 ```bash
 # Interactive task creation
 kanban task create --interactive
@@ -42,16 +47,17 @@ kanban board quick-setup --template basic
 ## ⌨️ Essential Keyboard Shortcuts
 
 In interactive modes:
+
 - `j/k` or `↑/↓`: Navigate
 - `Enter`: Select
-- `r`: Refresh  
+- `r`: Refresh
 - `?`: Help
 - `q`: Quit
 
 ## 🔒 Security Features (Automatic)
 
 - ✅ Input sanitization
-- ✅ Command injection prevention  
+- ✅ Command injection prevention
 - ✅ Enhanced error handling
 
 No configuration needed - security is built-in!

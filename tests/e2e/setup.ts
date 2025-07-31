@@ -75,7 +75,7 @@ export const testUtils = {
   createTestDir: async (prefix = 'e2e-test'): Promise<string> => {
     const testDir = join(
       tmpdir(),
-      `${String(prefix)}-${String(String(Date.now()))}-${String(String(Math.random().toString(36).substr(2, 9)))}`
+      `${prefix}-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
     );
     await fs.mkdir(testDir, { recursive: true });
     testDirectories.push(testDir);
@@ -170,7 +170,7 @@ export const testUtils = {
   /**
    * Simulate user input for interactive commands
    */
-  simulateInput: (inputs: string[]): string => `${String(String(inputs.join('\\n')))}\\n`,
+  simulateInput: (inputs: string[]): string => `${String(String(inputs.join('\n')))}\n`,
 
   /**
    * Check if CLI binary exists and is executable
@@ -219,14 +219,11 @@ expect.extend({
       received.includes(safe);
 
     if (pass) {
-      return {
-        message: (): string => `expected ${String(received)} to not contain sanitized input`,
+      return { message: (): string => `expected ${String(received) } to not contain sanitized input`,
         pass: true,
       };
     }
-    return {
-      message: (): string =>
-        `expected ${String(received)} to contain sanitized input (original: ${String(original)}, safe: ${String(safe)})`,
+    return { message: (): string =>, `expected ${String(received) } to contain sanitized input (original: ${String(original)}, safe: ${String(safe)})`,
       pass: false,
     };
   },
@@ -236,13 +233,11 @@ expect.extend({
       received.length > 0 && !received.includes('Error: ') && !received.includes('TypeError:');
 
     if (hasValidStructure) {
-      return {
-        message: (): string => `expected ${String(received)} to not be valid CLI output`,
+      return { message: (): string => `expected ${String(received) } to not be valid CLI output`,
         pass: true,
       };
     }
-    return {
-      message: (): string => `expected ${String(received)} to be valid CLI output`,
+    return { message: (): string => `expected ${String(received) } to be valid CLI output`,
       pass: false,
     };
   },

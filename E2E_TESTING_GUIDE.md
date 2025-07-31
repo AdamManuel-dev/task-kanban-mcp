@@ -59,6 +59,7 @@ npm run test:e2e:watch
 ### Environment Setup
 
 Tests automatically:
+
 - Build the CLI security components
 - Create isolated test environments
 - Clean up resources after completion
@@ -73,7 +74,7 @@ Tests automatically:
 it('should sanitize XSS attempts in task titles', () => {
   const maliciousInput = '<script>alert("xss")</script>My Task';
   const result = execSync(`kanban task create --title "${maliciousInput}"`);
-  
+
   expect(result).toContain('Input sanitized');
   expect(result).not.toContain('<script>');
   expect(result).toContain('My Task');
@@ -93,7 +94,7 @@ it('should sanitize XSS attempts in task titles', () => {
 it('should prevent shell command injection', () => {
   const injectionAttempt = 'test; echo "INJECTED"; cat /etc/passwd';
   const result = execSync(`kanban task create --title "${injectionAttempt}"`);
-  
+
   expect(result).not.toContain('INJECTED');
   expect(result).not.toContain('root:');
 });
@@ -121,19 +122,20 @@ it('should prevent shell command injection', () => {
 // Interactive Task Creation
 it('should handle interactive task creation', async () => {
   const child = spawn('kanban', ['task', 'create', '--interactive']);
-  
+
   // Simulate user typing
   child.stdin.write('Test Task Title\\n');
   child.stdin.write('Task description\\n');
   child.stdin.write('P1\\n');
   child.stdin.end();
-  
+
   // Validate output
   expect(output).toContain('Task created successfully');
 });
 ```
 
 **Validates:**
+
 - Prompt responses
 - Input validation
 - Real-time feedback
@@ -142,6 +144,7 @@ it('should handle interactive task creation', async () => {
 ### Keyboard Navigation Tests
 
 **Validates:**
+
 - Arrow key navigation
 - Vim-style shortcuts (j/k/h/l)
 - Help system (?/q)
@@ -150,6 +153,7 @@ it('should handle interactive task creation', async () => {
 ### Interruption Handling
 
 **Validates:**
+
 - Ctrl+C graceful exit
 - Network error recovery
 - Timeout handling
@@ -160,6 +164,7 @@ it('should handle interactive task creation', async () => {
 ### Complete User Journeys
 
 1. **Project Setup Workflow**
+
    ```bash
    # Full project creation and management
    kanban config setup --interactive
@@ -184,11 +189,11 @@ it('should handle interactive task creation', async () => {
 // Multiple Rapid Operations
 it('should handle multiple rapid operations', async () => {
   const startTime = Date.now();
-  
+
   for (let i = 0; i < 10; i++) {
     execSync(`kanban task create --title "Rapid Task ${i}"`);
   }
-  
+
   const totalTime = Date.now() - startTime;
   expect(totalTime).toBeLessThan(30000); // 30 seconds max
 });
@@ -208,11 +213,11 @@ expect(output).toBeValidCliOutput();
 
 ```typescript
 // Test utilities available in setup.ts
-testUtils.createTestDir()          // Temporary directories
-testUtils.execCli(command)         // Safe CLI execution
-testUtils.validateSanitization()  // Security validation
-testUtils.simulateInput()         // User input simulation
-testUtils.createTestData.board()  // Test data creation
+testUtils.createTestDir(); // Temporary directories
+testUtils.execCli(command); // Safe CLI execution
+testUtils.validateSanitization(); // Security validation
+testUtils.simulateInput(); // User input simulation
+testUtils.createTestData.board(); // Test data creation
 ```
 
 ### Cleanup Management
@@ -227,6 +232,7 @@ testUtils.createTestData.board()  // Test data creation
 ### Output Formats
 
 Tests generate reports in multiple formats:
+
 - Console output with progress
 - JUnit XML for CI integration
 - Coverage reports (optional)
@@ -240,7 +246,7 @@ Tests generate reports in multiple formats:
   run: |
     npm run build:security
     npm run test:e2e
-    
+
 - name: Upload Test Results
   uses: actions/upload-artifact@v2
   with:
@@ -266,12 +272,14 @@ npm run test:e2e -- --testTimeout=120000
 ### Common Issues
 
 1. **Build Not Found**
+
    ```bash
    # Solution: Ensure CLI is built
    npm run build:security
    ```
 
 2. **Timeout Errors**
+
    ```bash
    # Solution: Increase timeout in jest.e2e.config.js
    testTimeout: 60000 // Increase as needed

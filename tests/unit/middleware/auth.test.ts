@@ -4,7 +4,7 @@
  * @description Tests for API key authentication, permission checking, and authorization
  */
 
-import type { Request, Response, NextFunction } from 'express';
+import type { NextFunction } from 'express';
 import {
   authenticationMiddleware,
   requirePermission,
@@ -15,6 +15,7 @@ import {
 } from '@/middleware/auth';
 import { UnauthorizedError, ForbiddenError } from '@/utils/errors';
 import { logger } from '@/utils/logger';
+import type { MockRequest, MockResponse } from '../../utils/test-types';
 
 // Mock the logger
 jest.mock('@/utils/logger', () => ({
@@ -44,8 +45,8 @@ jest.mock('@/config', () => ({
 }));
 
 describe('Authentication Middleware', () => {
-  let mockRequest: Partial<Request> & { apiKey?: string; user?: any; requestId?: string };
-  let mockResponse: Partial<Response>;
+  let mockRequest: MockRequest;
+  let mockResponse: MockResponse;
   let mockNext: NextFunction;
 
   beforeEach(() => {
@@ -70,7 +71,7 @@ describe('Authentication Middleware', () => {
       mockRequest.originalUrl = '/health';
       mockRequest.url = '/health';
 
-      authenticationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      authenticationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith();
       expect(mockNext).not.toHaveBeenCalledWith(expect.any(Error));
@@ -80,7 +81,7 @@ describe('Authentication Middleware', () => {
       mockRequest.originalUrl = '/';
       mockRequest.url = '/';
 
-      authenticationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      authenticationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith();
       expect(mockNext).not.toHaveBeenCalledWith(expect.any(Error));
@@ -90,7 +91,7 @@ describe('Authentication Middleware', () => {
       mockRequest.originalUrl = '/docs';
       mockRequest.url = '/docs';
 
-      authenticationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      authenticationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith();
       expect(mockNext).not.toHaveBeenCalledWith(expect.any(Error));
@@ -100,7 +101,7 @@ describe('Authentication Middleware', () => {
       mockRequest.originalUrl = '/docs/swagger.json';
       mockRequest.url = '/docs/swagger.json';
 
-      authenticationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      authenticationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith();
       expect(mockNext).not.toHaveBeenCalledWith(expect.any(Error));
@@ -109,7 +110,7 @@ describe('Authentication Middleware', () => {
     it('should reject request without API key for protected endpoints', () => {
       (mockRequest.get as jest.Mock).mockReturnValue(undefined);
 
-      authenticationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      authenticationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith(expect.any(UnauthorizedError));
       expect(mockNext).toHaveBeenCalledWith(
@@ -125,7 +126,7 @@ describe('Authentication Middleware', () => {
         return undefined;
       });
 
-      authenticationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      authenticationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith();
       expect(mockRequest.apiKey).toBe('test-api-key-1');
@@ -137,7 +138,7 @@ describe('Authentication Middleware', () => {
         return undefined;
       });
 
-      authenticationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      authenticationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith();
       expect(mockRequest.apiKey).toBe('test-api-key-1');
@@ -149,7 +150,7 @@ describe('Authentication Middleware', () => {
         return undefined;
       });
 
-      authenticationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      authenticationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith(expect.any(UnauthorizedError));
       expect(logger.warn).toHaveBeenCalledWith('Invalid API key attempt', {
@@ -165,7 +166,7 @@ describe('Authentication Middleware', () => {
         return undefined;
       });
 
-      authenticationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      authenticationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockRequest.user).toEqual({
         id: 'test-api-key-1',
@@ -184,7 +185,7 @@ describe('Authentication Middleware', () => {
       };
 
       const middleware = requirePermission('read');
-      middleware(mockRequest as any, mockResponse as any, mockNext);
+      middleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith();
       expect(mockNext).not.toHaveBeenCalledWith(expect.any(Error));
@@ -198,7 +199,7 @@ describe('Authentication Middleware', () => {
       };
 
       const middleware = requirePermission('write');
-      middleware(mockRequest as any, mockResponse as any, mockNext);
+      middleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith(expect.any(ForbiddenError));
       expect(mockNext).toHaveBeenCalledWith(
@@ -216,14 +217,14 @@ describe('Authentication Middleware', () => {
       };
 
       const middleware = requirePermission('read');
-      middleware(mockRequest as any, mockResponse as any, mockNext);
+      middleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith(expect.any(ForbiddenError));
     });
 
     it('should deny access when user is not authenticated', () => {
       const middleware = requirePermission('read');
-      middleware(mockRequest as any, mockResponse as any, mockNext);
+      middleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith(expect.any(ForbiddenError));
     });
@@ -238,7 +239,7 @@ describe('Authentication Middleware', () => {
       };
 
       const middleware = requirePermissions(['read', 'write'], true);
-      middleware(mockRequest as any, mockResponse as any, mockNext);
+      middleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith();
       expect(mockNext).not.toHaveBeenCalledWith(expect.any(Error));
@@ -252,7 +253,7 @@ describe('Authentication Middleware', () => {
       };
 
       const middleware = requirePermissions(['read', 'write'], true);
-      middleware(mockRequest as any, mockResponse as any, mockNext);
+      middleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith(expect.any(ForbiddenError));
     });
@@ -265,7 +266,7 @@ describe('Authentication Middleware', () => {
       };
 
       const middleware = requirePermissions(['read', 'write'], false);
-      middleware(mockRequest as any, mockResponse as any, mockNext);
+      middleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith();
       expect(mockNext).not.toHaveBeenCalledWith(expect.any(Error));
@@ -279,7 +280,7 @@ describe('Authentication Middleware', () => {
       };
 
       const middleware = requirePermissions(['read', 'write'], false);
-      middleware(mockRequest as any, mockResponse as any, mockNext);
+      middleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith(expect.any(ForbiddenError));
     });
@@ -292,7 +293,7 @@ describe('Authentication Middleware', () => {
       };
 
       const middleware = requirePermissions(['read', 'write']);
-      middleware(mockRequest as any, mockResponse as any, mockNext);
+      middleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith();
       expect(mockNext).not.toHaveBeenCalledWith(expect.any(Error));
@@ -334,7 +335,7 @@ describe('Authentication Middleware', () => {
     it('should authenticate valid API key and set user info', () => {
       mockRequest.apiKey = 'test-api-key-1';
 
-      authenticateApiKey(mockRequest as any, mockResponse as any, mockNext);
+      authenticateApiKey(mockRequest, mockResponse, mockNext);
 
       expect(mockRequest.user).toEqual({
         id: 'test-api-key-1',
@@ -347,14 +348,14 @@ describe('Authentication Middleware', () => {
     it('should reject invalid API key', () => {
       mockRequest.apiKey = 'invalid-api-key';
 
-      authenticateApiKey(mockRequest as any, mockResponse as any, mockNext);
+      authenticateApiKey(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith(expect.any(UnauthorizedError));
       expect(mockRequest.user).toBeUndefined();
     });
 
     it('should reject missing API key', () => {
-      authenticateApiKey(mockRequest as any, mockResponse as any, mockNext);
+      authenticateApiKey(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith(expect.any(UnauthorizedError));
       expect(mockRequest.user).toBeUndefined();
@@ -368,7 +369,7 @@ describe('Authentication Middleware', () => {
         return undefined;
       });
 
-      authenticationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      authenticationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith(expect.any(UnauthorizedError));
     });
@@ -379,7 +380,7 @@ describe('Authentication Middleware', () => {
         return undefined;
       });
 
-      authenticationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      authenticationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith(expect.any(UnauthorizedError));
     });
@@ -392,7 +393,7 @@ describe('Authentication Middleware', () => {
         return undefined;
       });
 
-      authenticationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      authenticationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith();
     });
@@ -405,7 +406,7 @@ describe('Authentication Middleware', () => {
         return undefined;
       });
 
-      authenticationMiddleware(mockRequest as any, mockResponse as any, mockNext);
+      authenticationMiddleware(mockRequest, mockResponse, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith();
     });

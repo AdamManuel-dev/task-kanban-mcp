@@ -104,9 +104,18 @@ export class SchedulingService {
     private readonly db: DatabaseConnection,
     private readonly backupService: BackupService
   ) {
-    this.ensureScheduleTable().catch(error =>
-      logger.error('Failed to ensure schedule table on initialization', { error })
-    );
+    // Initialize table asynchronously with proper error handling
+    void this.initializeService();
+  }
+
+  private async initializeService(): Promise<void> {
+    try {
+      await this.ensureScheduleTable();
+      logger.debug('SchedulingService initialized successfully');
+    } catch (error) {
+      logger.error('Failed to initialize SchedulingService', { error });
+      throw error;
+    }
   }
 
   /**
@@ -193,7 +202,7 @@ export class SchedulingService {
     }
 
     const rows = await this.db.query(query, params);
-    return rows.map(row => SchedulingService.deserializeSchedule(row as any));
+    return rows.map(row => SchedulingService.deserializeSchedule(row));
   }
 
   /**
@@ -204,7 +213,7 @@ export class SchedulingService {
    */
   async getScheduleById(id: string): Promise<BackupSchedule | null> {
     const row = await this.db.queryOne('SELECT * FROM backup_schedules WHERE id = ?', [id]);
-    return row ? SchedulingService.deserializeSchedule(row as any) : null;
+    return row ? SchedulingService.deserializeSchedule(row as unknown) : null;
   }
 
   /**
@@ -598,12 +607,12 @@ export class SchedulingService {
       name: row.name,
       cronExpression: row.cron_expression,
       backupType: row.backup_type as 'full' | 'incremental',
-      enabled: Boolean(row.enabled),
+      enabled: !!row.enabled,
       runCount: row.run_count ?? 0,
       failureCount: row.failure_count ?? 0,
       retentionDays: row.retention_days,
-      compressionEnabled: Boolean(row.compression_enabled),
-      verificationEnabled: Boolean(row.verification_enabled),
+      compressionEnabled: !!row.compression_enabled,
+      verificationEnabled: !!row.verification_enabled,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };

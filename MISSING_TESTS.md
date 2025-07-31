@@ -5,10 +5,12 @@ This file documents tests that have been temporarily skipped due to implementati
 ## Error Recovery Tests (tests/unit/utils/error-recovery.test.ts)
 
 ### Circuit Breaker Timeout Test
+
 **Test**: `should handle operation timeout`
 **Issue**: Circuit breaker timeout implementation hangs indefinitely instead of properly timing out operations
 **Impact**: Circuit breaker timeout functionality is not tested
-**Code**: 
+**Code**:
+
 ```typescript
 it('should handle operation timeout', async () => {
   const slowOperation = async () => new Promise(resolve => setTimeout(resolve, 2000));
@@ -17,27 +19,35 @@ it('should handle operation timeout', async () => {
 ```
 
 ### Bulkhead Concurrency Tests
-**Tests**: 
+
+**Tests**:
 - `should queue operations when at concurrency limit`
 - `should handle operation timeout`
 
 **Issue**: Bulkhead implementation hangs in test environment, possibly due to improper queue management or timeout handling
 **Impact**: Bulkhead queue functionality and timeout behavior not tested
 **Code**:
+
 ```typescript
 it('should queue operations when at concurrency limit', async () => {
-  const mockOperation = jest.fn(async () => new Promise(resolve => {
-    setTimeout(() => resolve('success'), 100);
-  }));
-  
-  const promises = Array(5).fill(0).map(async () => bulkhead.execute(mockOperation));
+  const mockOperation = jest.fn(
+    async () =>
+      new Promise(resolve => {
+        setTimeout(() => resolve('success'), 100);
+      })
+  );
+
+  const promises = Array(5)
+    .fill(0)
+    .map(async () => bulkhead.execute(mockOperation));
   const results = await Promise.all(promises);
   expect(results).toEqual(Array(5).fill('success'));
   expect(mockOperation).toHaveBeenCalledTimes(5);
 }, 30000);
 ```
 
-### Health Monitor Tests  
+### Health Monitor Tests
+
 **Tests**:
 - `should register and perform health check`
 - `should handle failing health checks`
@@ -46,10 +56,11 @@ it('should queue operations when at concurrency limit', async () => {
 **Issue**: Health monitor timing issues in test environment - tests hang when waiting for async health checks
 **Impact**: Health monitoring functionality not tested
 **Code**:
+
 ```typescript
 it('should register and perform health check', async () => {
   const mockHealthCheck = jest.fn().mockResolvedValue(true);
-  
+
   healthMonitor.registerHealthCheck({
     name: 'test-service',
     check: mockHealthCheck,
@@ -57,7 +68,7 @@ it('should register and perform health check', async () => {
     timeout: 500,
     retries: 2,
   });
-  
+
   await new Promise(resolve => setTimeout(resolve, 50));
   expect(mockHealthCheck).toHaveBeenCalled();
   expect(healthMonitor.isHealthy('test-service')).toBe(true);
@@ -65,22 +76,24 @@ it('should register and perform health check', async () => {
 ```
 
 ### Error Recovery Manager Tests
+
 **Test**: `should retry on recoverable errors`
 **Issue**: Error recovery manager hangs during retry operations
 **Impact**: Error recovery retry logic not tested
 **Code**:
+
 ```typescript
 it('should retry on recoverable errors', async () => {
   const mockOperation = jest
     .fn()
     .mockRejectedValueOnce(new Error('database locked'))
     .mockResolvedValueOnce('success');
-    
+
   const result = await errorRecoveryManager.executeWithRecovery(mockOperation, {
     maxRetries: 2,
     baseDelay: 10,
   });
-  
+
   expect(result).toBe('success');
   expect(mockOperation).toHaveBeenCalledTimes(2);
 }, 30000);
@@ -102,4 +115,5 @@ These tests appear to fail due to:
 4. Re-enable tests once the underlying implementations are fixed
 
 ## Priority: HIGH
+
 These tests cover critical error handling and resilience functionality that should be properly tested.

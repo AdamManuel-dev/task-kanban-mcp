@@ -417,9 +417,9 @@ export class PerformanceLogger {
    * Create a performance tracking decorator
    */
   createDecorator(operationName?: string) {
-    return (target: any, propertyKey: string, descriptor: PropertyDescriptor) => {
+    return (target: unknown, propertyKey: string, descriptor: PropertyDescriptor) => {
       const originalMethod = descriptor.value;
-      const operation = operationName || `${(target as any).constructor.name}.${propertyKey}`;
+      const operation = operationName || `${target.constructor.name}.${propertyKey}`;
 
       descriptor.value = async function (this: unknown, ...args: unknown[]) {
         return performanceLogger.trackFunction(operation, () => originalMethod.apply(this, args), {
@@ -445,7 +445,7 @@ export class PerformanceLogger {
   }
 
   private generateOperationId(): string {
-    return `perf_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `perf_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
   }
 }
 
@@ -751,7 +751,7 @@ export const logWithContext = (level: string, message: string, meta: unknown = {
 // Hook into Winston to capture logs for analytics
 const originalLog = logger.log;
 // @ts-ignore - Overriding Winston logger method for analytics
-logger.log = function (level: any, message: any, meta: any = {}) {
+logger.log = function (level: unknown, message: unknown, meta: unknown = {}) {
   logAnalytics.addLogEntry(
     typeof level === 'string' ? level : level.level,
     typeof message === 'string' ? message : JSON.stringify(message),

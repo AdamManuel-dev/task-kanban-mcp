@@ -16,17 +16,6 @@
       "@cli/*": ["src/cli/*"]
     }
   },
-  "include": [
-    "src/**/*",
-    "src/**/*.json",
-    "**/*.test.ts",
-    "**/*.spec.ts",
-    "jest.config.js"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "build",
-    "coverage"
-  ]
+  "include": ["src/**/*", "src/**/*.json", "**/*.test.ts", "**/*.spec.ts", "jest.config.js"],
+  "exclude": ["node_modules", "dist", "build", "coverage"]
 }

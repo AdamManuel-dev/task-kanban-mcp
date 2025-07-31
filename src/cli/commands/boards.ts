@@ -160,6 +160,67 @@ interface QuickSetupDefaults {
  * - `unarchive <id>` - Restore archived board
  * - `quick-setup` (alias: `setup`) - Quick board setup with templates
  */
+
+/**
+ * Helper function to build interactive questions for board creation
+ */
+function buildCreateBoardQuestions(options: CreateBoardOptions): Array<{
+  type: string;
+  name: string;
+  message: string;
+  validate?: (input: string) => boolean | string;
+  default?: boolean;
+}> {
+  const questions = [];
+
+  if (!options.name) {
+    questions.push({
+      type: 'input',
+      name: 'name',
+      message: 'Board name:',
+      validate: (input: string) => input.length > 0 || 'Name is required',
+    });
+  }
+
+  if (!options.description) {
+    questions.push({
+      type: 'input',
+      name: 'description',
+      message: 'Board description (optional):',
+    });
+  }
+
+  questions.push({
+    type: 'confirm',
+    name: 'useAsDefault',
+    message: 'Set as default board?',
+    default: false,
+  });
+
+  return questions;
+}
+
+/**
+ * Helper function to merge options with interactive answers
+ */
+function mergeBoardData(
+  options: CreateBoardOptions,
+  answers?: CreateBoardPromptResult
+): CreateBoardData {
+  const boardData: CreateBoardData = {};
+
+  if (answers) {
+    const { useAsDefault, ...restAnswers } = answers;
+    Object.assign(boardData, restAnswers, { useAsDefault: useAsDefault ?? false });
+  }
+
+  // Command line options override answers
+  if (options.name !== undefined) boardData.name = options.name;
+  if (options.description !== undefined) boardData.description = options.description;
+
+  return boardData;
+}
+
 export function registerBoardCommands(program: Command): void {
   const boardCmd = program.command('board').alias('b').description('Manage boards');
 
@@ -277,7 +338,7 @@ export function registerBoardCommands(program: Command): void {
         const board = 'data' in response ? (response.data as BoardData) : undefined;
 
         if (!board) {
-          formatter.error(`Board ${String(id)} not found`);
+          formatter.error(`Board ${id} not found`);
           process.exit(1);
         }
 
@@ -373,7 +434,7 @@ export function registerBoardCommands(program: Command): void {
         // Fetch board data with spinner
         const spinner = new SpinnerManager();
         const boardData = await spinner.withSpinner(
-          `Loading board: ${String(boardId)}`,
+          `Loading board: ${boardId}`,
           apiClient.getBoard(boardId),
           {
             successText: 'Board loaded successfully',
@@ -410,7 +471,7 @@ export function registerBoardCommands(program: Command): void {
           const [currentBoard, setCurrentBoard] = React.useState<BoardData>({
             id: board.id,
             name: board.name,
-            description: board.description ?? undefined,
+            description: board.description,
             archived: board.archived,
             createdAt: board.created_at.toISOString(),
             updatedAt: board.updated_at.toISOString(),
@@ -443,7 +504,7 @@ export function registerBoardCommands(program: Command): void {
                     const boardWithContent: BoardData = {
                       id: refreshedBoard.id,
                       name: refreshedBoard.name,
-                      description: refreshedBoard.description ?? undefined,
+                      description: refreshedBoard.description,
                       archived: refreshedBoard.archived,
                       createdAt: refreshedBoard.created_at.toISOString(),
                       updatedAt: refreshedBoard.updated_at.toISOString(),
@@ -491,7 +552,7 @@ export function registerBoardCommands(program: Command): void {
         };
 
         // Show loading indicator and instructions
-        formatter.info(`Starting interactive board view for: ${String(board.name)}`);
+        formatter.info(`Starting interactive board view for: ${board.name}`);
         formatter.info('Press ? for help, q to quit');
 
         // TODO: Re-enable interactive view once ink module resolution is fixed
@@ -542,53 +603,19 @@ export function registerBoardCommands(program: Command): void {
       let boardData: CreateBoardData = {};
 
       if (options.interactive ?? !options.name) {
-        const questions: Array<{
-          type: string;
-          name: string;
-          message: string;
-          validate?: (input: string) => boolean | string;
-          default?: boolean;
-        }> = [];
-
-        if (!options.name) {
-          questions.push({
-            type: 'input',
-            name: 'name',
-            message: 'Board name:',
-            validate: (input: string) => input.length > 0 || 'Name is required',
-          });
-        }
-
-        if (!options.description) {
-          questions.push({
-            type: 'input',
-            name: 'description',
-            message: 'Board description (optional):',
-          });
-        }
-
-        questions.push({
-          type: 'confirm',
-          name: 'useAsDefault',
-          message: 'Set as default board?',
-          default: false,
-        });
-
+        const questions = buildCreateBoardQuestions(options);
         const inquirer = (await import('inquirer')).default;
         const answers = await inquirer.prompt<CreateBoardPromptResult>(questions);
-        const { useAsDefault, ...restAnswers } = answers;
-        boardData = { ...boardData, ...restAnswers, useAsDefault: useAsDefault ?? false };
+        boardData = mergeBoardData(options, answers);
+      } else {
+        boardData = mergeBoardData(options);
       }
-
-      // Use command line options or answers
-      if (options.name !== undefined) boardData.name = options.name;
-      if (options.description !== undefined) boardData.description = options.description;
 
       try {
         const { useAsDefault, ...createData } = boardData;
         const board = await apiClient.createBoard(createData as CreateBoardRequest);
         if (isSuccessResponse(board)) {
-          formatter.success(`Board created successfully: ${String(board.data.id)}`);
+          formatter.success(`Board created successfully: ${board.data.id}`);
           formatter.output(board.data);
 
           // Set as default if requested from interactive prompt
@@ -619,7 +646,7 @@ export function registerBoardCommands(program: Command): void {
         // Get current board data
         const currentBoard = await apiClient.getBoard(id);
         if (!isSuccessResponse(currentBoard)) {
-          formatter.error(`Board ${String(id)} not found`);
+          formatter.error(`Board ${id} not found`);
           process.exit(1);
         }
 
@@ -674,7 +701,7 @@ export function registerBoardCommands(program: Command): void {
         if (!options.force) {
           const board = await apiClient.getBoard(id);
           if (!isSuccessResponse(board)) {
-            formatter.error(`Board ${String(id)} not found`);
+            formatter.error(`Board ${id} not found`);
             process.exit(1);
           }
 
@@ -730,7 +757,7 @@ export function registerBoardCommands(program: Command): void {
         // Verify board exists
         const board = await apiClient.getBoard(id);
         if (!isSuccessResponse(board)) {
-          formatter.error(`Board ${String(id)} not found`);
+          formatter.error(`Board ${id} not found`);
           process.exit(1);
         }
 

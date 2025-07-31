@@ -77,11 +77,7 @@ export class SeedRunner {
       throw new Error(`Seed ${String(filename)} must export 'name' and 'run' properties`);
     }
 
-    return {
-      name: seed.name,
-      description: seed.description ?? '',
-      run: seed.run,
-    };
+    return { name: seed.name, description: seed.description ?? '', run: seed.run };
   }
 
   /**
@@ -151,11 +147,7 @@ export class SeedRunner {
 
     const pending = allSeeds.filter(name => !appliedSet.has(name));
 
-    return {
-      applied: applied.map(s => s.name),
-      pending,
-      total: allSeeds.length,
-    };
+    return { applied: applied.map(s => s.name), pending, total: allSeeds.length };
   }
 
   /**

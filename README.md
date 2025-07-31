@@ -14,6 +14,7 @@ This system recognizes that modern software development is increasingly done by 
 ## 🎯 Core Purpose
 
 **Free up agent context windows** by externalizing project management, allowing agents to use their full capacity for:
+
 - Understanding complex codebases
 - Implementing sophisticated features
 - Maintaining code quality
@@ -48,16 +49,19 @@ Instead of wasting tokens on "remember to implement X after Y" or "the previous 
 ## 🚀 Key Features for Agent Productivity
 
 ### Context Window Optimization
+
 - **Stateless Task Execution**: Agents don't need to remember previous tasks
 - **On-Demand Context Loading**: Query only the information needed for current work
 - **Task Isolation**: Each task contains all necessary context for completion
 
 ### Multi-Agent Coordination
+
 - **Exclusive Task Locking**: Prevents agents from working on conflicting code
 - **Dependency Awareness**: Agents automatically wait for blocked tasks
 - **Work Distribution**: Intelligently assigns tasks based on agent availability
 
 ### Agent-Optimized Task Structure
+
 ```json
 {
   "task": {
@@ -200,22 +204,24 @@ kanban boundary create \
 
 ```yaml
 # tasks.yaml - Human-defined high-level tasks
-- title: "Implement OAuth2 flow"
+- title: 'Implement OAuth2 flow'
   agent_context:
-    pattern: "server-side-flow"
-    reference_docs: ["RFC-6749"]
-    security_requirements: ["PKCE", "state-parameter"]
-  decomposition: auto  # Let system break this down
+    pattern: 'server-side-flow'
+    reference_docs: ['RFC-6749']
+    security_requirements: ['PKCE', 'state-parameter']
+  decomposition: auto # Let system break this down
 ```
 
 ## 🧠 Advanced Features
 
 ### Semantic Task Routing (Coming Soon)
+
 - Vector embeddings for task similarity
 - Automatic task assignment based on agent history
 - Pattern learning from completed tasks
 
 ### Context Window Analytics
+
 ```bash
 # Monitor agent context usage
 kanban agent stats claude-code --metric context-efficiency
@@ -225,6 +231,7 @@ kanban analyze tasks --suggest-split --max-context 50000
 ```
 
 ### Agent Performance Insights
+
 - Track completion time by task type
 - Identify optimal task sizes for each agent
 - Suggest task batching strategies
@@ -266,6 +273,7 @@ COMPRESS_HISTORICAL_CONTEXT=true
 ## 📊 Observability for Supervisors
 
 ### Real-Time Dashboard
+
 ```bash
 # Launch monitoring interface
 kanban dashboard
@@ -278,6 +286,7 @@ kanban dashboard
 ```
 
 ### Agent Behavior Logs
+
 ```bash
 # Detailed agent decision tracking
 kanban agent trace claude-code --verbose
@@ -305,18 +314,21 @@ kanban analyze context-usage --by-task-type
 ## 🔮 Roadmap
 
 ### Phase 1: Enhanced Agent Coordination (Current)
+
 - ✅ Basic MCP integration
 - ✅ Task isolation and locking
 - 🚧 Multi-agent orchestration
 - 🚧 Context window optimization
 
 ### Phase 2: Intelligent Task Management
+
 - Vector embeddings for semantic search
 - Pattern learning from completions
 - Automatic task decomposition
 - Predictive task assignment
 
 ### Phase 3: Agent Ecosystem
+
 - Plugin system for different agent types
 - Cross-agent knowledge sharing
 - Automated code review workflows

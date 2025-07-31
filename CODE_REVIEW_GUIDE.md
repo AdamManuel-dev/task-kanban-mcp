@@ -7,7 +7,9 @@ This document establishes comprehensive code review standards and processes for 
 ## Review Process
 
 ### 1. Automated Pre-Review
+
 All pull requests trigger automated checks:
+
 - **TypeScript Compilation**: Must pass without errors
 - **ESLint Analysis**: Zero errors required, warnings should be addressed
 - **Test Suite**: All tests must pass with adequate coverage
@@ -16,7 +18,9 @@ All pull requests trigger automated checks:
 - **Bundle Size Check**: Monitor for significant size increases
 
 ### 2. Manual Review Requirements
+
 Manual review is **required** for:
+
 - Changes to critical files (`src/database/`, `src/services/`, `src/middleware/auth/`, `src/mcp/`)
 - Large PRs (>500 lines changed)
 - Breaking changes (marked with `BREAKING CHANGE` or `!` in title)
@@ -25,6 +29,7 @@ Manual review is **required** for:
 - New dependencies or major version updates
 
 ### 3. Review Priorities
+
 - **High**: Security fixes, critical bugs, breaking changes
 - **Medium**: New features, performance improvements, refactoring
 - **Low**: Documentation, minor fixes, cosmetic changes
@@ -32,6 +37,7 @@ Manual review is **required** for:
 ## Review Checklist
 
 ### Code Quality
+
 - [ ] **Readability**: Code is self-documenting with clear naming
 - [ ] **Single Responsibility**: Functions/classes have focused purpose
 - [ ] **DRY Principle**: No unnecessary code duplication
@@ -41,6 +47,7 @@ Manual review is **required** for:
 - [ ] **Complexity**: Avoid deeply nested logic, prefer early returns
 
 ### Architecture & Design
+
 - [ ] **Separation of Concerns**: Clear boundaries between layers
 - [ ] **Dependency Direction**: Dependencies flow toward stable abstractions
 - [ ] **API Design**: RESTful conventions, consistent error responses
@@ -48,6 +55,7 @@ Manual review is **required** for:
 - [ ] **Configuration**: Environment-specific settings handled correctly
 
 ### Security
+
 - [ ] **Input Validation**: All user inputs validated and sanitized
 - [ ] **Authentication**: Proper permission checks and token handling
 - [ ] **SQL Injection**: Parameterized queries, no string concatenation
@@ -56,6 +64,7 @@ Manual review is **required** for:
 - [ ] **Dependencies**: No known vulnerabilities in new/updated packages
 
 ### Performance
+
 - [ ] **Database Queries**: Efficient queries with proper indexes
 - [ ] **N+1 Problems**: Avoided with proper eager loading or batching
 - [ ] **Memory Usage**: No obvious memory leaks or excessive allocation
@@ -63,6 +72,7 @@ Manual review is **required** for:
 - [ ] **Bundle Size**: No unnecessary dependencies or imports
 
 ### Testing
+
 - [ ] **Unit Tests**: New functionality has unit test coverage
 - [ ] **Integration Tests**: API endpoints tested end-to-end
 - [ ] **Edge Cases**: Error conditions and boundary cases tested
@@ -70,6 +80,7 @@ Manual review is **required** for:
 - [ ] **Coverage**: Maintains or improves overall test coverage
 
 ### Documentation
+
 - [ ] **Code Comments**: Complex logic explained with comments
 - [ ] **API Documentation**: Public APIs documented with JSDoc
 - [ ] **README Updates**: Documentation updated for new features
@@ -78,6 +89,7 @@ Manual review is **required** for:
 ## Review Workflow
 
 ### For Authors
+
 1. **Pre-Submit Checklist**:
    - Run `npm test` (all tests pass)
    - Run `npm run lint` (no errors)
@@ -98,6 +110,7 @@ Manual review is **required** for:
    - Thank reviewers for their time
 
 ### For Reviewers
+
 1. **Review Timeline**:
    - **High Priority**: Within 4 hours
    - **Medium Priority**: Within 24 hours
@@ -117,6 +130,7 @@ Manual review is **required** for:
 ## Review Tools & Automation
 
 ### Automated Checks
+
 - **GitHub Actions**: Automated code review workflow
 - **ESLint**: Code style and quality enforcement
 - **TypeScript**: Type safety validation
@@ -125,6 +139,7 @@ Manual review is **required** for:
 - **Function Length Analyzer**: Custom tool for complexity analysis
 
 ### Manual Review Tools
+
 - **GitHub PR Interface**: Code diff review
 - **Branch Protection**: Require reviews before merge
 - **CODEOWNERS**: Automatic reviewer assignment
@@ -133,6 +148,7 @@ Manual review is **required** for:
 ## Common Issues & Solutions
 
 ### Frequent Problems
+
 1. **Long Functions**: Use refactoring tool, extract helper functions
 2. **Missing Error Handling**: Add try-catch blocks, proper logging
 3. **Type Safety**: Replace `any` with proper types
@@ -140,6 +156,7 @@ Manual review is **required** for:
 5. **Missing Tests**: Add unit tests for new functionality
 
 ### Quality Gates
+
 - **Zero ESLint Errors**: Required for merge
 - **All Tests Passing**: Required for merge
 - **Manual Review Approval**: Required for critical changes
@@ -149,6 +166,7 @@ Manual review is **required** for:
 ## Metrics & Improvement
 
 ### Tracked Metrics
+
 - Review turnaround time
 - Defect escape rate
 - Function length violations
@@ -156,20 +174,22 @@ Manual review is **required** for:
 - Security vulnerability count
 
 ### Continuous Improvement
+
 - Monthly review process retrospectives
 - Update guidelines based on common issues
-- Tool improvements and automation enhancements  
+- Tool improvements and automation enhancements
 - Training on new patterns and practices
 
 ## Examples
 
 ### Good Review Comments
+
 ```
 // Constructive feedback
-"Consider extracting this validation logic into a separate function 
+"Consider extracting this validation logic into a separate function
 for reusability. This pattern is used in TaskService.validateInput()."
 
-// Security concern  
+// Security concern
 "This endpoint needs authentication - missing requirePermission middleware."
 
 // Performance suggestion
@@ -177,7 +197,9 @@ for reusability. This pattern is used in TaskService.validateInput()."
 ```
 
 ### PR Approval Criteria
+
 ✅ **Ready to Merge**:
+
 - All automated checks pass
 - Manual review approved
 - No outstanding conversations
@@ -185,6 +207,7 @@ for reusability. This pattern is used in TaskService.validateInput()."
 - Tests added for new functionality
 
 ❌ **Not Ready**:
+
 - Failing tests or compilation
 - Unresolved security issues
 - Missing required reviews
@@ -195,8 +218,9 @@ for reusability. This pattern is used in TaskService.validateInput()."
 Effective code reviews are essential for maintaining code quality, sharing knowledge, and preventing defects. This process balances thorough review with development velocity through automation and clear guidelines.
 
 Regular adherence to these standards will result in:
+
 - Higher code quality and maintainability
-- Reduced bugs and security vulnerabilities  
+- Reduced bugs and security vulnerabilities
 - Better team knowledge sharing
 - More consistent codebase patterns
 - Improved developer productivity

@@ -551,7 +551,7 @@ function createMockErrorEvent(
   timestamp: Date = new Date()
 ): ErrorEvent {
   return {
-    id: `error-${Math.random().toString(36).substr(2, 9)}`,
+    id: `error-${Math.random().toString(36).substring(2, 11)}`,
     timestamp,
     error: new BaseServiceError('TEST_ERROR', message, 400),
     severity,
@@ -566,7 +566,7 @@ function createMockErrorEvent(
 
 function createMockErrorEventWithCode(code: string): ErrorEvent {
   return {
-    id: `error-${Math.random().toString(36).substr(2, 9)}`,
+    id: `error-${Math.random().toString(36).substring(2, 11)}`,
     timestamp: new Date(),
     error: new BaseServiceError(code, 'Test error message', 400),
     severity: 'high',
@@ -585,7 +585,7 @@ function createMockErrorEventWithServiceContext(
   method = 'testMethod'
 ): ErrorEvent {
   return {
-    id: `error-${Math.random().toString(36).substr(2, 9)}`,
+    id: `error-${Math.random().toString(36).substring(2, 11)}`,
     timestamp: new Date(),
     error: new BaseServiceError(code, 'Test error message', 400),
     severity: 'high',

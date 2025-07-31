@@ -157,10 +157,7 @@ export class TaskServiceKysely {
         .orderBy('position', 'asc')
         .execute();
 
-      return {
-        ...task,
-        subtasks,
-      };
+      return { ...task, subtasks };
     } catch (error) {
       logger.error('Failed to get task with subtasks using Kysely', { error, id });
       throw error;

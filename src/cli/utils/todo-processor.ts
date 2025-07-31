@@ -82,11 +82,11 @@ export class TodoProcessor {
     if (!todoMatch) return null;
 
     const [, completed, text] = todoMatch;
-    const id = `todo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const id = `todo_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 
     return {
       id,
-      text: text.trim() ?? '',
+      text: text.trim(),
       completed: completed === 'x',
       priority: 'P3',
       size: 'M',
@@ -223,20 +223,20 @@ export class TodoProcessor {
             },
           }));
 
-          return new Listr(subtasks as any, {
+          return new Listr(subtasks, {
             concurrent: options.concurrent ?? true,
             rendererOptions: {
               showSubtasks: true,
-            } as any,
+            },
           });
         },
-      })) as any,
+      })),
       {
         concurrent: false,
         rendererOptions: {
           showSubtasks: true,
           showTimer: true,
-        } as any,
+        },
       }
     );
 

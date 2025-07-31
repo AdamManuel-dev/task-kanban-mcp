@@ -12,6 +12,7 @@ import { logger } from '@/utils/logger';
 import type { Command } from 'commander';
 import type { CliComponents } from '../types';
 import { extractErrorMessage } from '../../utils/type-guards';
+import { isSuccessResponse } from '../api-client-wrapper';
 
 export function registerSearchCommands(program: Command): void {
   const searchCmd = program.command('search').alias('s').description('Search tasks and content');
@@ -66,7 +67,7 @@ export function registerSearchCommands(program: Command): void {
 
           const results = await apiClient.searchTasks(query, params);
 
-          if (!results || !Array.isArray(results) || results.length === 0) {
+          if (!Array.isArray(results) || results.length === 0) {
             formatter.info(`No tasks found for "${String(query)}"`);
             return;
           }
@@ -109,7 +110,7 @@ export function registerSearchCommands(program: Command): void {
 
           const results = await apiClient.searchNotes(query);
 
-          if (!results || !Array.isArray(results) || results.length === 0) {
+          if (!Array.isArray(results) || results.length === 0) {
             formatter.info(`No notes found for "${String(query)}"`);
             return;
           }
@@ -134,14 +135,22 @@ export function registerSearchCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const results = await apiClient.searchTags(query);
+        const response = await apiClient.searchTags(query);
 
-        if (!results || !Array.isArray(results) || results.length === 0) {
+        if (
+          !isSuccessResponse(response) ||
+          !response.data ||
+          !Array.isArray(response.data) ||
+          response.data.length === 0
+        ) {
           formatter.info(`No tags found for "${String(query)}"`);
           return;
         }
 
-        formatter.success(`Found ${String(results.length)} tags matching "${String(query)}"`);
+        const results = response.data;
+        formatter.success(
+          `Found ${String(Array.isArray(results) ? results.length : 0)} tags matching "${String(query)}"`
+        );
         formatter.output(results, {
           fields: ['id', 'name', 'description', 'taskCount', 'parentId'],
           headers: ['ID', 'Name', 'Description', 'Tasks', 'Parent'],

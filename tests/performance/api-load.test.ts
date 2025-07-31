@@ -250,7 +250,7 @@ describe('API Load Tests', () => {
       const searchTerm = 'searchable';
 
       await dbConnection.transaction(async () => {
-        Array.from({ length: searchableCount }, (_, i) => i).forEach(async i => {
+        for (const i of Array.from({ length: searchableCount }, (_, idx) => idx)) {
           await dbConnection.execute(
             `INSERT INTO tasks (id, title, description, board_id, column_id, status, priority, position, created_at) 
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -266,7 +266,7 @@ describe('API Load Tests', () => {
               new Date().toISOString(),
             ]
           );
-        });
+        }
       });
 
       const startTime = Date.now();
@@ -322,7 +322,7 @@ describe('API Load Tests', () => {
       const iterations = 100;
 
       // Perform sustained operations
-      Array.from({ length: iterations }, (_, i) => i).forEach(async i => {
+      for (const i of Array.from({ length: iterations }, (_, idx) => idx)) {
         await request(app).get('/api/v1/tasks').set('X-API-Key', apiKey).query({ limit: 10 });
 
         // Create and delete task to test cleanup
@@ -340,7 +340,7 @@ describe('API Load Tests', () => {
         await request(app)
           .delete(`/api/v1/tasks/${String(String(createResp.body.data.id))}`)
           .set('X-API-Key', apiKey);
-      });
+      }
 
       // Force garbage collection if available
       if (global.gc) {

@@ -3,6 +3,7 @@ import inquirer from 'inquirer';
 import type { CliComponents, CreateTagRequest } from '../types';
 import type { OutputFormatter } from '../formatter';
 import { logger } from '../../utils/logger';
+import { isSuccessResponse } from '../api-client-wrapper';
 
 /**
  * @fileoverview Tag management CLI commands
@@ -116,7 +117,7 @@ export function registerTagCommands(program: Command): void {
         const tagsResponse = (await apiClient.getTags()) as TagsApiResponse;
         const tags = tagsResponse.data;
 
-        if (!tags || tags.length === 0) {
+        if (tags.length === 0) {
           formatter.info('No tags found');
           return;
         }
@@ -161,11 +162,11 @@ export function registerTagCommands(program: Command): void {
 
       try {
         const tagResponse = (await apiClient.getTag(id)) as TagApiResponse;
-        const tag = tagResponse.data;
-        if (!tag) {
+        if (!isSuccessResponse(tagResponse)) {
           formatter.error(`Tag ${String(id)} not found`);
           process.exit(1);
         }
+        const tag = tagResponse.data;
 
         formatter.output(tag, {
           fields: options.usage
@@ -179,9 +180,13 @@ export function registerTagCommands(program: Command): void {
         if (options.tasks) {
           // Get tasks with this tag
           const tasksResponse = await apiClient.getTasks({ tags: id });
-          if (tasksResponse && 'data' in tasksResponse && tasksResponse.data) {
+          if (
+            isSuccessResponse(tasksResponse) &&
+            Array.isArray(tasksResponse.data) &&
+            tasksResponse.data.length > 0
+          ) {
             formatter.info(`\n📋 Tasks with tag "${tag.name}":`);
-            formatter.output(tasksResponse, {
+            formatter.output(tasksResponse.data, {
               fields: ['id', 'title', 'status', 'priority'],
               headers: ['ID', 'Title', 'Status', 'Priority'],
             });
@@ -398,13 +403,14 @@ export function registerTagCommands(program: Command): void {
       const { apiClient, formatter } = getComponents();
 
       try {
-        const tags = await apiClient.searchTags(query);
+        const response = await apiClient.searchTags(query);
 
-        const searchResults = tags as TagData[];
-        if (!searchResults || searchResults.length === 0) {
+        if (!isSuccessResponse(response) || response.data.length === 0) {
           formatter.info(`No tags found matching "${query}"`);
           return;
         }
+
+        const searchResults = response.data;
 
         const limitNumber = parseInt(options.limit ?? '20', 10);
         formatter.output(searchResults.slice(0, limitNumber), {

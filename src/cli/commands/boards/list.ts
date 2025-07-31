@@ -135,7 +135,7 @@ export function registerListCommands(boardCmd: Command): void {
         formatter.output(board);
 
         if (options.tasks && board.tasks) {
-          formatter.info('\\n--- Tasks ---');
+          formatter.info('\n--- Tasks ---');
           formatter.output(board.tasks, {
             fields: ['id', 'title', 'status', 'priority'],
             headers: ['ID', 'Title', 'Status', 'Priority'],
@@ -143,7 +143,7 @@ export function registerListCommands(boardCmd: Command): void {
         }
 
         if (options.stats) {
-          formatter.info('\\n--- Statistics ---');
+          formatter.info('\n--- Statistics ---');
           try {
             const statsResponse = await apiClient.getBoardStats(id);
             if ('data' in statsResponse) {

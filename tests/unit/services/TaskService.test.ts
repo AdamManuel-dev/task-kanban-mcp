@@ -706,7 +706,7 @@ describe('TaskService', () => {
 
       await expect(
         taskService.updateTask(task.id, {
-          status: 'invalid_status' as any,
+          status: 'invalid_status' as never,
         })
       ).rejects.toThrow();
     });

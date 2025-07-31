@@ -175,15 +175,7 @@ export class ErrorStorage {
     const recentErrors = this.getErrors({ since });
 
     if (recentErrors.length === 0) {
-      return {
-        errorCount: 0,
-        errorRate: 0,
-        averageResponseTime: 0,
-        failureRate: 0,
-        p99ResponseTime: 0,
-        p95ResponseTime: 0,
-        topErrors: [],
-      };
+      return { errorCount: 0, errorRate: 0, averageResponseTime: 0, failureRate: 0, p99ResponseTime: 0, p95ResponseTime: 0, topErrors: [] };
     }
 
     // Count errors by fingerprint
@@ -199,22 +191,10 @@ export class ErrorStorage {
       .slice(0, 10)
       .map(([fingerprint, count]) => {
         const sample = recentErrors.find(e => e.fingerprint === fingerprint);
-        return {
-          error: sample?.error.message ?? 'Unknown error',
-          count,
-          percentage: (count / recentErrors.length) * 100,
-        };
+        return { error: sample?.error.message ?? 'Unknown error', count, percentage: (count / recentErrors.length) * 100 };
       });
 
-    return {
-      errorCount: recentErrors.length,
-      errorRate: recentErrors.length / (timeWindow / 1000 / 60), // errors per minute
-      averageResponseTime: 0, // Would need response time tracking
-      failureRate: 100, // Would need success rate tracking
-      p99ResponseTime: 0,
-      p95ResponseTime: 0,
-      topErrors,
-    };
+    return { errorCount: recentErrors.length, errorRate: recentErrors.length / (timeWindow / 1000 / 60), // errors per minute, averageResponseTime: 0, // Would need response time tracking, failureRate: 100, // Would need success rate tracking, p99ResponseTime: 0, p95ResponseTime: 0, topErrors };
   }
 
   clear(): void {
@@ -413,16 +393,11 @@ export class ErrorMonitor {
   }
 
   private extractTags(error: BaseServiceError, context?: ErrorContext): Record<string, string> {
-    return {
-      code: error.code,
-      service: context?.service || 'unknown',
-      method: context?.method || 'unknown',
-      statusCode: error.statusCode.toString(),
-    };
+    return { code: error.code, service: context?.service || 'unknown', method: context?.method || 'unknown', statusCode: error.statusCode.toString() };
   }
 
   private generateId(): string {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+    return Date.now().toString(36) + Math.random().toString(36).substring(2);
   }
 
   getMetrics(timeWindow?: number): ErrorMetrics {
@@ -488,11 +463,7 @@ export class ErrorMonitor {
 
     const isHealthy = metrics.errorRate < 5 && criticalErrors.length === 0;
 
-    return {
-      isHealthy,
-      summary: isHealthy
-        ? 'System is healthy'
-        : `${metrics.errorCount} errors in last 5 minutes, ${criticalErrors.length} critical`,
+    return { isHealthy, summary: isHealthy, ? 'System is healthy', : `${metrics.errorCount } errors in last 5 minutes, ${criticalErrors.length} critical`,
       metrics,
       recentCriticalErrors: criticalErrors,
     };

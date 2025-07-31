@@ -59,9 +59,9 @@ class AIAgent {
       );
 
       this.tasksCreated++;
-    } catch (err: any) {
+    } catch (err: unknown) {
       success = false;
-      error = err.message;
+      error = err instanceof Error ? err.message : String(err);
       taskId = null;
     }
 
@@ -72,7 +72,7 @@ class AIAgent {
   async findNextTask(): Promise<{ id: string; title: string } | null> {
     const startTime = Date.now();
     let success = true;
-    let task: any = null;
+    let task: { id: string; title: string } | null = null;
     let error: string | undefined;
 
     try {
@@ -85,9 +85,9 @@ class AIAgent {
       );
 
       task = result[0] || null;
-    } catch (err: any) {
+    } catch (err: unknown) {
       success = false;
-      error = err.message;
+      error = err instanceof Error ? err.message : String(err);
     }
 
     this.recordAction('find_task', task?.id, startTime, success, error);
@@ -116,9 +116,9 @@ class AIAgent {
       );
 
       this.tasksCompleted++;
-    } catch (err: any) {
+    } catch (err: unknown) {
       success = false;
-      error = err.message;
+      error = err instanceof Error ? err.message : String(err);
     }
 
     this.recordAction('work_on_task', taskId, startTime, success, error);
@@ -143,9 +143,9 @@ class AIAgent {
       if (result[0]) {
         analysis = result[0];
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       success = false;
-      error = err.message;
+      error = err instanceof Error ? err.message : String(err);
     }
 
     this.recordAction('analyze_board', undefined, startTime, success, error);
@@ -369,8 +369,8 @@ describe('AI Agent Concurrent Simulation', () => {
 
     // Each agent performs rapid operations
     for (const agent of testAgents) {
-      for (let i = 0; i < actionsPerAgent; i++) {
-        operations.push(agent.createTask(`Load test ${i}`, 1).catch(() => {}));
+      for (let idx = 0; idx < actionsPerAgent; idx++) {
+        operations.push(agent.createTask(`Load test ${idx}`, 1).catch(() => {}));
 
         operations.push(
           (async () => {

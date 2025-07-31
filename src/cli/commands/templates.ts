@@ -242,12 +242,12 @@ export function createTemplatesCommand(): Command {
 
         const createRequest: TaskTemplateCreateRequest = {
           name: answers.name,
-          description: answers.description ?? undefined,
+          description: answers.description,
           category: answers.category,
           title_template: answers.title_template,
-          description_template: answers.description_template ?? undefined,
+          description_template: answers.description_template,
           priority: answers.priority,
-          estimated_hours: answers.estimated_hours ?? undefined,
+          estimated_hours: answers.estimated_hours,
           tags: answers.tags ? answers.tags.split(',').map((tag: string) => tag.trim()) : [],
           checklist_items: answers.checklist_items
             ? answers.checklist_items.split(',').map((item: string) => item.trim())

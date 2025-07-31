@@ -17,10 +17,9 @@ const SAFE_FIXES = [
   // Remove clearly unused imports (only when the import is not used anywhere)
   {
     pattern: /import\s+\{\s*([^}]+)\s*\}\s+from\s+['"]([^'"]+)['"];?\s*\n/g,
-    replacement: (match, imports, module) => {
+    replacement: (match, imports, module) =>
       // This is a placeholder - would need AST parsing for safety
-      return match;
-    },
+      match,
     description: 'Remove unused imports (placeholder)',
   },
 

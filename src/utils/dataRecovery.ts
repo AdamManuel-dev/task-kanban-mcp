@@ -197,11 +197,7 @@ export class DataRecoveryManager {
       `Repair process complete: ${repairedCount} repaired, ${unrepairedIssues.length} remaining`
     );
 
-    return {
-      success,
-      repairedIssues: repairedCount,
-      remainingIssues: unrepairedIssues,
-    };
+    return { success, repairedIssues: repairedCount, remainingIssues: unrepairedIssues };
   }
 
   /**
