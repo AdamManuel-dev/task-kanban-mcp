@@ -239,7 +239,13 @@ export class StatisticsCollector {
     const utilization =
       stats.pageCount > 0 ? (stats.size / (stats.pageCount * stats.pageSize)) * 100 : 0;
 
-    return { size: stats.size, sizeFormatted: StatisticsCollector.formatBytes(stats.size), pageCount: stats.pageCount, pageSize: stats.pageSize, utilization: Math.round(utilization * 100) / 100 };
+    return {
+      size: stats.size,
+      sizeFormatted: StatisticsCollector.formatBytes(stats.size),
+      pageCount: stats.pageCount,
+      pageSize: stats.pageSize,
+      utilization: Math.round(utilization * 100) / 100,
+    };
   }
 
   /**
@@ -249,8 +255,8 @@ export class StatisticsCollector {
    */
   public async getTableStatistics(): Promise<TableStats[]> {
     const tables = await this.db.query<{ name: string }>(`
-      SELECT name FROM sqlite_master 
-      WHERE type = 'table' 
+      SELECT name FROM sqlite_master
+      WHERE type = 'table'
       AND name NOT LIKE 'sqlite_%'
       AND name NOT LIKE '%_migrations'
       ORDER BY name
@@ -264,17 +270,17 @@ export class StatisticsCollector {
           ),
           this.db.queryOne<{ size: number }>(
             `
-              SELECT SUM(pgsize) as size 
-              FROM dbstat 
+              SELECT SUM(pgsize) as size
+              FROM dbstat
               WHERE name = ?
             `,
             [table.name]
           ),
           this.db.queryOne<{ count: number }>(
             `
-              SELECT COUNT(*) as count 
-              FROM sqlite_master 
-              WHERE type = 'index' 
+              SELECT COUNT(*) as count
+              FROM sqlite_master
+              WHERE type = 'index'
               AND tbl_name = ?
               AND name NOT LIKE 'sqlite_%'
             `,
@@ -295,7 +301,7 @@ export class StatisticsCollector {
               this.db
                 .queryOne<{ max_time: string }>(
                   `
-                  SELECT MAX("${String(col)}") as max_time 
+                  SELECT MAX("${String(col)}") as max_time
                   FROM "${String(table.name)}"
                 `
                 )
@@ -354,8 +360,8 @@ export class StatisticsCollector {
       sql: string;
     }>(`
       SELECT name, tbl_name, "unique", sql
-      FROM sqlite_master 
-      WHERE type = 'index' 
+      FROM sqlite_master
+      WHERE type = 'index'
       AND name NOT LIKE 'sqlite_%'
       ORDER BY tbl_name, name
     `);
@@ -384,7 +390,7 @@ export class StatisticsCollector {
           // Statistics not available
         }
 
-        const columns = StatisticsCollector.parseIndexColumns(index.sql ?? '');
+        const columns = StatisticsCollector.parseIndexColumns(index.sql);
 
         indexStats.push({
           name: index.name,
@@ -405,9 +411,16 @@ export class StatisticsCollector {
    *
    * @returns {Promise<QueryStats>} Query performance metrics
    */
+  // eslint-disable-next-line complexity
   public getQueryStatistics(): QueryStats {
     if (!this.config.enableQueryMonitoring || !this.queryHistory.length) {
-      return { totalQueries: 0, averageExecutionTime: 0, slowestQuery: null, fastestQuery: null, errorRate: 0, queryTypes: {, select: 0, insert: 0, update: 0, delete: 0, other: 0 },
+      return {
+        totalQueries: 0,
+        averageExecutionTime: 0,
+        slowestQuery: null,
+        fastestQuery: null,
+        errorRate: 0,
+        queryTypes: { select: 0, insert: 0, update: 0, delete: 0, other: 0 },
       };
     }
 
@@ -460,7 +473,15 @@ export class StatisticsCollector {
       }
     });
 
-    return { totalQueries, averageExecutionTime: Math.round(averageExecutionTime * 100) / 100, slowestQuery: slowest, ? {, sql: slowest.sql.substring(0, 100) + (slowest.sql.length > 100 ? '...' : ''), duration: slowest.duration, timestamp: slowest.timestamp }
+    return {
+      totalQueries,
+      averageExecutionTime: Math.round(averageExecutionTime * 100) / 100,
+      slowestQuery: slowest
+        ? {
+            sql: slowest.sql.substring(0, 100) + (slowest.sql.length > 100 ? '...' : ''),
+            duration: slowest.duration,
+            timestamp: slowest.timestamp,
+          }
         : null,
       fastestQuery: fastest
         ? {
@@ -479,6 +500,7 @@ export class StatisticsCollector {
    *
    * @returns {Promise<HealthMetrics>} Health assessment
    */
+  // eslint-disable-next-line complexity
   public async getHealthMetrics(): Promise<HealthMetrics> {
     const startTime = Date.now();
     const issues: string[] = [];
@@ -519,7 +541,7 @@ export class StatisticsCollector {
 
       // Check query performance
       if (this.config.enableQueryMonitoring && this.queryHistory.length > 0) {
-        const queryStats = await this.getQueryStatistics();
+        const queryStats = this.getQueryStatistics();
 
         if (queryStats.errorRate > 5) {
           issues.push(`High query error rate: ${String(String(queryStats.errorRate))}%`);
@@ -542,9 +564,25 @@ export class StatisticsCollector {
       else if (score >= 25) status = 'poor';
       else status = 'critical';
 
-      return { score: Math.max(0, score), status, issues, recommendations, lastCheck: new Date(), responseTime, connectionStatus: 'connected' };
+      return {
+        score: Math.max(0, score),
+        status,
+        issues,
+        recommendations,
+        lastCheck: new Date(),
+        responseTime,
+        connectionStatus: 'connected',
+      };
     } catch (error) {
-      return { score: 0, status: 'critical', issues: ['Database connection failed'], recommendations: ['Check database connection and restart if necessary'], lastCheck: new Date(), responseTime: Date.now() - startTime, connectionStatus: 'error' };
+      return {
+        score: 0,
+        status: 'critical',
+        issues: ['Database connection failed'],
+        recommendations: ['Check database connection and restart if necessary'],
+        lastCheck: new Date(),
+        responseTime: Date.now() - startTime,
+        connectionStatus: 'error',
+      };
     }
   }
 

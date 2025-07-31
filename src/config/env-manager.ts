@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { logger } from '../utils/logger';
 import { CLOUD_ENV } from './cloud-env';
 import { NETWORK_DEFAULTS, TIMING } from '../constants';
+import { generateSecureSecret, isSecureSecret, SecurityError } from './security';
 
 // Pre-defined common schemas to reduce type complexity
 const portSchema = z
@@ -124,45 +125,58 @@ export const ENV_RULES: readonly EnvValidationRule[] = [
       .min(32)
       .refine(
         val => {
-          // In production, reject default/weak secrets
-          if (process.env.NODE_ENV === 'production') {
-            const weakSecrets = [
-              'dev-jwt-secret-change-in-production-min-32-chars',
-              'dev-secret-key-change-in-production',
-              'default-jwt-secret',
-              'change-me',
-              'secret',
-            ];
-            if (weakSecrets.includes(val)) {
-              throw new Error(
-                'Production deployment requires strong JWT_SECRET. Default/weak secrets are not allowed.'
-              );
-            }
+          // In production, require secure secrets
+          if (process.env.NODE_ENV === 'production' && !isSecureSecret(val)) {
+            throw new SecurityError(
+              'Production deployment requires strong JWT_SECRET. Use: openssl rand -base64 48'
+            );
           }
           return true;
         },
-        { message: 'Production requires strong, unique JWT_SECRET' }
+        { message: 'Production requires cryptographically secure JWT_SECRET' }
       ),
     required: false,
     sensitive: true,
-    description: 'JWT signing secret (minimum 32 characters, must be unique in production)',
-    defaultValue: 'dev-jwt-secret-change-in-production-min-32-chars',
+    description: 'JWT signing secret (minimum 32 characters, must be cryptographically secure in production)',
+    defaultValue: process.env.NODE_ENV === 'production' ? undefined : generateSecureSecret(),
   },
   {
     key: 'API_KEY_SECRET',
-    schema: z.string().min(16),
+    schema: z.string().min(32).refine(
+      val => {
+        if (process.env.NODE_ENV === 'production' && !isSecureSecret(val)) {
+          throw new SecurityError(
+            'Production deployment requires strong API_KEY_SECRET. Use: openssl rand -base64 48'
+          );
+        }
+        return true;
+      }
+    ),
     required: false,
     sensitive: true,
-    description: 'API key signing secret (minimum 16 characters)',
-    defaultValue: 'dev-api-secret-change-in-production',
+    description: 'API key signing secret (minimum 32 characters, must be cryptographically secure in production)',
+    defaultValue: process.env.NODE_ENV === 'production' ? undefined : generateSecureSecret(),
   },
   {
     key: 'API_KEYS',
-    schema: arrayStringSchema,
+    schema: arrayStringSchema.refine(
+      val => {
+        if (process.env.NODE_ENV === 'production') {
+          // Ensure no weak API keys in production
+          const weakKeys = val.filter(key => !isSecureSecret(key, 32));
+          if (weakKeys.length > 0) {
+            throw new SecurityError(
+              'Production API keys must be at least 32 characters and cryptographically secure'
+            );
+          }
+        }
+        return true;
+      }
+    ),
     required: false,
     sensitive: true,
-    description: 'Comma-separated list of valid API keys',
-    defaultValue: ['dev-api-key-1'],
+    description: 'Comma-separated list of valid API keys (min 32 chars each in production)',
+    defaultValue: process.env.NODE_ENV === 'production' ? [] : [generateSecureSecret()],
   },
 
   // Performance configuration

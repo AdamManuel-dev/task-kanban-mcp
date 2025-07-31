@@ -8,13 +8,13 @@
  * Patterns: Request validation, service delegation, response formatting
  */
 
-import type { Request, Response, NextFunction } from 'express';
-import { z } from 'zod';
 import { requirePermission } from '@/middleware/auth';
 import { validateRequest } from '@/middleware/validation';
-import { logger } from '@/utils/logger';
-import type { Task, TaskTag, Note } from '@/types';
 import type { CreateTaskRequest } from '@/services/TaskService';
+import type { Note, Task, TaskTag } from '@/types';
+import { logger } from '@/utils/logger';
+import type { NextFunction, Request, RequestHandler, Response } from 'express';
+import { z } from 'zod';
 
 interface CreateNoteRequest {
   task_id: string;
@@ -74,7 +74,7 @@ const createTaskBodySchema = z.object({
 /**
  * Create a new task
  */
-export const createTaskHandler = (services: Services) => [
+export const createTaskHandler = (services: Services): RequestHandler[] => [
   requirePermission('write'),
   validateRequest(createTaskBodySchema),
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {

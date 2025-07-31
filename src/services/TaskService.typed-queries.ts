@@ -10,9 +10,9 @@
 
 import type { Database } from 'sqlite3';
 import { v4 as uuidv4 } from 'uuid';
-import { logger } from '../utils/logger';
+import type { TypeSafeQueryBuilder } from '../database/TypeSafeQueryBuilder';
 import { createQueryBuilder, DefaultSchema, sql } from '../database/TypeSafeQueryBuilder';
-import type { TypeSafeQueryBuilder, type QueryResult } from '../database/TypeSafeQueryBuilder';
+import { logger } from '../utils/logger';
 
 /**
  * Task data types
@@ -187,7 +187,10 @@ export class TaskServiceWithTypedQueries {
         filters: Object.keys(filters).length,
       });
 
-      return { tasks: result.rows, total, pagination: {, limit, offset, total, pages, currentPage },
+      return {
+        tasks: result.rows,
+        total,
+        pagination: { limit, offset, total, pages, currentPage },
       };
     } catch (error) {
       logger.error('Failed to get tasks with typed queries', { error, options });
@@ -334,15 +337,15 @@ export class TaskServiceWithTypedQueries {
     try {
       // Use raw SQL for complex query with subquery
       const { query, parameters } = sql`
-        SELECT 
+        SELECT
           t.*,
           COALESCE(subtask_counts.subtask_count, 0) as subtaskCount
         FROM tasks t
         LEFT JOIN (
-          SELECT 
+          SELECT
             parent_task_id,
             COUNT(*) as subtask_count
-          FROM tasks 
+          FROM tasks
           WHERE parent_task_id IS NOT NULL
           GROUP BY parent_task_id
         ) subtask_counts ON t.id = subtask_counts.parent_task_id
@@ -381,7 +384,7 @@ export class TaskServiceWithTypedQueries {
       const statusResult = await this.queryBuilder.raw(
         `
         SELECT status, COUNT(*) as count
-        FROM tasks 
+        FROM tasks
         WHERE board_id = ?
         GROUP BY status
       `,
@@ -392,7 +395,7 @@ export class TaskServiceWithTypedQueries {
       const priorityResult = await this.queryBuilder.raw(
         `
         SELECT priority, COUNT(*) as count
-        FROM tasks 
+        FROM tasks
         WHERE board_id = ? AND priority IS NOT NULL
         GROUP BY priority
       `,
@@ -403,7 +406,7 @@ export class TaskServiceWithTypedQueries {
       const avgResult = await this.queryBuilder.raw(
         `
         SELECT AVG(priority) as avg_priority
-        FROM tasks 
+        FROM tasks
         WHERE board_id = ? AND priority IS NOT NULL
       `,
         [boardId]
@@ -414,7 +417,7 @@ export class TaskServiceWithTypedQueries {
       const overdueResult = await this.queryBuilder.raw(
         `
         SELECT COUNT(*) as count
-        FROM tasks 
+        FROM tasks
         WHERE board_id = ? AND due_date < ? AND status != 'done'
       `,
         [boardId, now]

@@ -1,13 +1,15 @@
+/* eslint-disable complexity */
+/* eslint-disable class-methods-use-this */
+/* eslint-disable max-lines-per-function */
 /**
  * Task History Service
  * Tracks and manages the history of task changes for audit trail and analytics
  */
 
-import { randomUUID } from 'crypto';
-import { dbConnection } from '@/database/connection';
 import type { QueryParameter } from '@/database/connection';
+import { dbConnection } from '@/database/connection';
 import { logger } from '@/utils/logger';
-import type { Task } from '@/types';
+import { randomUUID } from 'crypto';
 
 export interface TaskHistoryEntry {
   id: string;
@@ -53,9 +55,7 @@ export class TaskHistoryService {
   private static instance: TaskHistoryService;
 
   public static getInstance(): TaskHistoryService {
-    if (!TaskHistoryService.instance) {
-      TaskHistoryService.instance = new TaskHistoryService();
-    }
+    TaskHistoryService.instance = new TaskHistoryService();
     return TaskHistoryService.instance;
   }
 
@@ -71,8 +71,8 @@ export class TaskHistoryService {
         id,
         task_id: request.task_id,
         field_name: request.field_name,
-        old_value: request.old_value ? request.old_value.toString() : null,
-        new_value: request.new_value ? request.new_value.toString() : null,
+        old_value: request.old_value?.toString() ?? null,
+        new_value: request.new_value?.toString() ?? null,
         changed_by: request.changed_by ?? null,
         changed_at: now,
         reason: request.reason,
@@ -166,18 +166,19 @@ export class TaskHistoryService {
 
       if (priorityHistory.length === 0) {
         // No priority changes yet
-        const currentTask = await dbConnection.queryOne('SELECT priority FROM tasks WHERE id = ?', [
-          taskId,
-        ]);
+        const currentTask = await dbConnection.queryOne<{ priority: number }>(
+          'SELECT priority FROM tasks WHERE id = ?',
+          [taskId]
+        );
 
         return {
           task_id: taskId,
           task_title: task.title,
           total_changes: 0,
-          average_priority: currentTask?.priority || 1,
-          highest_priority_ever: currentTask?.priority || 1,
-          lowest_priority_ever: currentTask?.priority || 1,
-          most_common_priority: currentTask?.priority || 1,
+          average_priority: currentTask?.priority ?? 1,
+          highest_priority_ever: currentTask?.priority ?? 1,
+          lowest_priority_ever: currentTask?.priority ?? 1,
+          most_common_priority: currentTask?.priority ?? 1,
           priority_trend: 'stable',
           change_frequency_days: 0,
           recent_changes: [],
@@ -187,8 +188,8 @@ export class TaskHistoryService {
 
       // Calculate analytics
       const priorities = priorityHistory
-        .map(h => parseInt(h.new_value ?? '1'))
-        .filter(p => !isNaN(p));
+        .map(h => parseInt(h.new_value ?? '1', 10))
+        .filter(p => !Number.isNaN(p));
 
       const averagePriority = priorities.reduce((sum, p) => sum + p, 0) / priorities.length;
       const highestPriority = Math.max(...priorities);
@@ -204,7 +205,8 @@ export class TaskHistoryService {
       );
 
       const mostCommonPriority = parseInt(
-        Object.entries(priorityCounts).sort(([, a], [, b]) => b - a)[0][0]
+        Object.entries(priorityCounts).sort(([, a], [, b]) => b - a)[0][0],
+        10
       );
 
       // Calculate trend (compare first and last few values)
@@ -311,10 +313,10 @@ export class TaskHistoryService {
       const taskChangeCounts = allPriorityChanges.reduce(
         (
           acc: Record<string, { task_id: string; task_title: string; change_count: number }>,
-          change: unknown
+          change: PriorityChangeEntry
         ) => {
           const key = change.task_id;
-          if (!acc[key]) {
+          if (acc[key]) {
             acc[key] = {
               task_id: change.task_id,
               task_title: change.task_title,
@@ -337,7 +339,9 @@ export class TaskHistoryService {
         .reduce(
           (acc: Record<string, number>, change: PriorityChangeEntry) => {
             const { reason } = change;
-            acc[reason] = (acc[reason] ?? 0) + 1;
+            if (reason) {
+              acc[reason] = (acc[reason] ?? 0) + 1;
+            }
             return acc;
           },
           {} as Record<string, number>
@@ -350,8 +354,8 @@ export class TaskHistoryService {
 
       // Analyze priority distribution
       const priorityValues = allPriorityChanges
-        .map((change: PriorityChangeEntry) => parseInt(change.new_value ?? '1'))
-        .filter(p => !isNaN(p));
+        .map((change: PriorityChangeEntry) => parseInt(change.new_value ?? '1', 10))
+        .filter(p => !Number.isNaN(p));
 
       const priorityCounts = priorityValues.reduce(
         (acc, priority) => {
@@ -362,7 +366,7 @@ export class TaskHistoryService {
       );
 
       const priorityDistribution = Object.entries(priorityCounts)
-        .map(([priority, count]) => ({ priority: parseInt(priority), count }))
+        .map(([priority, count]) => ({ priority: parseInt(priority, 10), count }))
         .sort((a, b) => a.priority - b.priority);
 
       // Trend analysis (simplified for now)
@@ -379,8 +383,8 @@ export class TaskHistoryService {
           (c: PriorityChangeEntry) => c.task_id === taskId
         );
         if (taskChanges.length >= 2) {
-          const recent = parseInt(taskChanges[0].new_value || '1');
-          const older = parseInt(taskChanges[taskChanges.length - 1].old_value || '1');
+          const recent = parseInt(taskChanges[0].new_value ?? '1', 10);
+          const older = parseInt(taskChanges[taskChanges.length - 1].old_value ?? '1', 10);
 
           if (recent > older) {
             trendAnalysis.increasing_count++;
@@ -439,15 +443,26 @@ export class TaskHistoryService {
   // Private helper methods
 
   private mapRowToHistoryEntry(row: unknown): TaskHistoryEntry {
+    const rowObject = row as {
+      id: string;
+      task_id: string;
+      field_name: string;
+      old_value: string | null;
+      new_value: string | null;
+      changed_by: string | null;
+      changed_at: string;
+      reason: string | null;
+    };
+
     return {
-      id: row.id,
-      task_id: row.task_id,
-      field_name: row.field_name,
-      old_value: row.old_value,
-      new_value: row.new_value,
-      changed_by: row.changed_by,
-      changed_at: new Date(row.changed_at),
-      reason: row.reason,
+      id: rowObject.id,
+      task_id: rowObject.task_id,
+      field_name: rowObject.field_name,
+      old_value: rowObject.old_value,
+      new_value: rowObject.new_value,
+      changed_by: rowObject.changed_by,
+      changed_at: new Date(rowObject.changed_at),
+      reason: rowObject.reason ?? undefined,
     };
   }
 }

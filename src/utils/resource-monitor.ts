@@ -141,7 +141,16 @@ export class ResourceMonitor extends EventEmitter {
    * Get current resource statistics
    */
   getCurrentStats(): ResourceStats {
-    return { memory: this.getMemoryStats(), cpu: this.getCpuStats(), uptime: process.uptime(), eventLoopDelay: this.getEventLoopDelay(), // @ts-ignore - Internal Node.js methods for debugging purposes, activeHandles: process._getActiveHandles?.()?.length ?? 0, // @ts-ignore - Internal Node.js methods for debugging purposes, activeRequests: process._getActiveRequests?.()?.length ?? 0 };
+    return {
+      memory: this.getMemoryStats(),
+      cpu: this.getCpuStats(),
+      uptime: process.uptime(),
+      eventLoopDelay: this.getEventLoopDelay(),
+      // @ts-expect-error - Internal Node.js methods for debugging purposes
+      activeHandles: process._getActiveHandles?.()?.length ?? 0,
+      // @ts-expect-error - Internal Node.js methods for debugging purposes
+      activeRequests: process._getActiveRequests?.()?.length ?? 0,
+    };
   }
 
   /**
@@ -150,7 +159,15 @@ export class ResourceMonitor extends EventEmitter {
   getMemoryStats(): MemoryStats {
     const memUsage = process.memoryUsage();
 
-    return { rss: memUsage.rss, heapTotal: memUsage.heapTotal, heapUsed: memUsage.heapUsed, external: memUsage.external, arrayBuffers: memUsage.arrayBuffers, heapUtilization: (memUsage.heapUsed / memUsage.heapTotal) * 100, timestamp: new Date() };
+    return {
+      rss: memUsage.rss,
+      heapTotal: memUsage.heapTotal,
+      heapUsed: memUsage.heapUsed,
+      external: memUsage.external,
+      arrayBuffers: memUsage.arrayBuffers,
+      heapUtilization: (memUsage.heapUsed / memUsage.heapTotal) * 100,
+      timestamp: new Date(),
+    };
   }
 
   /**
@@ -167,7 +184,12 @@ export class ResourceMonitor extends EventEmitter {
     // Calculate CPU utilization as percentage
     const utilization = Math.min((totalUsage / intervalMicros) * 100, 100);
 
-    return { user: cpuUsage.user, system: cpuUsage.system, utilization: Number.isNaN(utilization) ? 0 : utilization, timestamp: new Date() };
+    return {
+      user: cpuUsage.user,
+      system: cpuUsage.system,
+      utilization: Number.isNaN(utilization) ? 0 : utilization,
+      timestamp: new Date(),
+    };
   }
 
   /**
@@ -356,13 +378,23 @@ export class ResourceMonitor extends EventEmitter {
     const secondAvg = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
 
     const memoryTrend: 'increasing' | 'decreasing' | 'stable' =
+      // eslint-disable-next-line no-nested-ternary
       secondAvg > firstAvg * 1.1
         ? 'increasing'
         : secondAvg < firstAvg * 0.9
           ? 'decreasing'
           : 'stable';
 
-    return { current, average: {, memory: {, rss: memorySum.rss / count, heapUsed: memorySum.heapUsed / count, heapTotal: memorySum.heapTotal / count, heapUtilization: (memorySum.heapUsed / memorySum.heapTotal) * 100, timestamp: new Date() } as MemoryStats,
+    return {
+      current,
+      average: {
+        memory: {
+          rss: memorySum.rss / count,
+          heapUsed: memorySum.heapUsed / count,
+          heapTotal: memorySum.heapTotal / count,
+          heapUtilization: (memorySum.heapUsed / memorySum.heapTotal) * 100,
+          timestamp: new Date(),
+        } as MemoryStats,
         cpu: {
           utilization: cpuSum / count,
           timestamp: new Date(),
@@ -446,7 +478,8 @@ export function getMemoryUsage(): {
 } {
   const stats = resourceMonitor.getMemoryStats();
 
-  return { rss: `${(stats.rss / 1024 / 1024).toFixed(2) }MB`,
+  return {
+    rss: `${(stats.rss / 1024 / 1024).toFixed(2)}MB`,
     heap: `${(stats.heapUsed / 1024 / 1024).toFixed(2)}MB / ${(stats.heapTotal / 1024 / 1024).toFixed(2)}MB`,
     external: `${(stats.external / 1024 / 1024).toFixed(2)}MB`,
     utilization: `${stats.heapUtilization.toFixed(1)}%`,

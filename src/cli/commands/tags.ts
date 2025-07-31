@@ -4,6 +4,7 @@ import type { CliComponents, CreateTagRequest } from '../types';
 import type { OutputFormatter } from '../formatter';
 import { logger } from '../../utils/logger';
 import { isSuccessResponse } from '../api-client-wrapper';
+import { isTag } from '@/utils/type-guards';
 
 /**
  * @fileoverview Tag management CLI commands
@@ -15,18 +16,6 @@ import { isSuccessResponse } from '../api-client-wrapper';
  * Patterns: Interactive prompts, tree display, confirmation dialogs, type guards
  */
 
-/**
- * Type guard to check if an unknown value is a Tag
- */
-function isTag(value: unknown): value is { id: string; name: string; color: string } {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    typeof (value as Record<string, unknown>).id === 'string' &&
-    typeof (value as Record<string, unknown>).name === 'string' &&
-    typeof (value as Record<string, unknown>).color === 'string'
-  );
-}
 
 // Helper function to display tag tree (declared first to avoid hoisting issues)
 function displayTagTree(
@@ -405,12 +394,12 @@ export function registerTagCommands(program: Command): void {
       try {
         const response = await apiClient.searchTags(query);
 
-        if (!isSuccessResponse(response) || response.data.length === 0) {
+        if (!isSuccessResponse(response) || !Array.isArray(response.data) || response.data.length === 0) {
           formatter.info(`No tags found matching "${query}"`);
           return;
         }
 
-        const searchResults = response.data;
+        const searchResults = response.data as TagData[];
 
         const limitNumber = parseInt(options.limit ?? '20', 10);
         formatter.output(searchResults.slice(0, limitNumber), {

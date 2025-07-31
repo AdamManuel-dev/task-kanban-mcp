@@ -28,10 +28,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/require-await */
 import type { Command } from 'commander';
 import { cloudEnvironment } from '../../config';
-import { envManager } from '../../config/env-manager';
 import { generateEnvironmentDocs, validateCloudEnvironment } from '../../config/cloud-env';
-import type { CliComponents } from '../types';
+import { envManager } from '../../config/env-manager';
 import type { OutputFormatter } from '../formatter';
+import type { CliComponents } from '../types';
 
 interface EnvironmentOptions {
   format?: string;
@@ -50,12 +50,22 @@ function getComponents(): CliComponents {
   // eslint-disable-next-line @typescript-eslint/no-unsafe-call
   const serviceContainer = new ServiceContainer();
 
-  return { // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, apiClient: serviceContainer.getApiClient(), // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, formatter: serviceContainer.getFormatter(), // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, config: serviceContainer.getConfig(), // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, services: serviceContainer.getServices() };
+  return {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+    apiClient: serviceContainer.getApiClient(),
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+    formatter: serviceContainer.getFormatter(),
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+    config: serviceContainer.getConfig(),
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+    services: serviceContainer.getServices(),
+  };
 }
 
 /**
  * Shows comprehensive environment information
  */
+// eslint-disable-next-line complexity
 function showEnvironmentInfo(formatter: OutputFormatter, options: EnvironmentOptions): void {
   const { info, validation, urls, features, limits, isCloud, platform } = cloudEnvironment;
 
@@ -215,6 +225,7 @@ function validateEnvironment(
 /**
  * Shows detailed platform-specific information
  */
+// eslint-disable-next-line complexity
 function showPlatformInfo(formatter: OutputFormatter): void {
   const { info, platform, isCloud } = cloudEnvironment;
 
@@ -362,14 +373,6 @@ export function addEnvironmentCommands(program: Command): void {
     .description('Show detailed platform-specific information')
     .action(async () => {
       const { formatter } = getComponents();
-
-      try {
-        showPlatformInfo(formatter);
-      } catch (error) {
-        formatter.error(
-          `Failed to show platform info: ${error instanceof Error ? error.message : 'Unknown error'}`
-        );
-        process.exit(1);
-      }
+      showPlatformInfo(formatter);
     });
 }

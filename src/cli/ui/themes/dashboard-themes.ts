@@ -338,21 +338,32 @@ export class ThemeHelper {
    * Get widget styles for donut charts
    */
   getDonutStyles(): { remainColor: string; colors: string[] } {
-    return { remainColor: this.theme.widgets.donut.remainColor, colors: this.theme.widgets.donut.colors };
+    return {
+      remainColor: this.theme.widgets.donut.remainColor,
+      colors: this.theme.widgets.donut.colors,
+    };
   }
 
   /**
    * Get widget styles for bar charts
    */
   getBarStyles(): { barColor: string; textColor: string } {
-    return { barColor: this.theme.widgets.bar.barColor, textColor: this.theme.widgets.bar.textColor };
+    return {
+      barColor: this.theme.widgets.bar.barColor,
+      textColor: this.theme.widgets.bar.textColor,
+    };
   }
 
   /**
    * Get widget styles for line charts
    */
   getLineStyles(): { style: { line: string; text: string; baseline: string } } {
-    return { style: {, line: this.theme.widgets.line.lineColor, text: this.theme.widgets.line.textColor, baseline: this.theme.widgets.line.baseline },
+    return {
+      style: {
+        line: this.theme.widgets.line.lineColor,
+        text: this.theme.widgets.line.textColor,
+        baseline: this.theme.widgets.line.baseline,
+      },
     };
   }
 
@@ -365,7 +376,11 @@ export class ThemeHelper {
     selectedBg: string;
     border: { type: string; fg: string };
   } {
-    return { fg: this.theme.widgets.table.fg, selectedFg: this.theme.widgets.table.selectedFg, selectedBg: this.theme.widgets.table.selectedBg, border: { type: 'line', fg: this.theme.widgets.table.border },
+    return {
+      fg: this.theme.widgets.table.fg,
+      selectedFg: this.theme.widgets.table.selectedFg,
+      selectedBg: this.theme.widgets.table.selectedBg,
+      border: { type: 'line', fg: this.theme.widgets.table.border },
     };
   }
 
@@ -387,15 +402,18 @@ export class ThemeHelper {
    * Get widget styles for sparkline widgets
    */
   getSparklineStyles(): { style: { fg: string } } {
-    return { style: { fg: this.theme.widgets.sparkline.fg },
-    };
+    return { style: { fg: this.theme.widgets.sparkline.fg } };
   }
 
   /**
    * Get widget styles for box widgets
    */
   getBoxStyles(): { style: { fg: string; bg: string }; border: { type: string; fg: string } } {
-    return { style: {, fg: this.theme.widgets.box.fg, bg: this.theme.widgets.box.bg },
+    return {
+      style: {
+        fg: this.theme.widgets.box.fg,
+        bg: this.theme.widgets.box.bg,
+      },
       border: { type: 'line', fg: this.theme.widgets.box.border },
     };
   }
@@ -404,7 +422,8 @@ export class ThemeHelper {
    * Get header styles
    */
   getHeaderStyles(): { border: { type: string; fg: string }; style: { fg: string; bg: string } } {
-    return { border: { type: 'line', fg: this.theme.colors.border },
+    return {
+      border: { type: 'line', fg: this.theme.colors.border },
       style: {
         fg: this.theme.colors.foreground,
         bg: this.theme.colors.secondary,
@@ -416,7 +435,8 @@ export class ThemeHelper {
    * Get footer styles
    */
   getFooterStyles(): { border: { type: string; fg: string }; style: { fg: string } } {
-    return { border: { type: 'line', fg: this.theme.colors.border },
+    return {
+      border: { type: 'line', fg: this.theme.colors.border },
       style: { fg: this.theme.colors.foreground },
     };
   }

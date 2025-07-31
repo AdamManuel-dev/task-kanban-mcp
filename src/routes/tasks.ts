@@ -239,7 +239,7 @@ export function taskRoutes(): Router {
     '/',
     requirePermission('write'),
     validateRequest(CreateTaskSchema),
-    (req, res, next) => createTask(req, res, next, taskService)
+    async (req, res, next) => createTask(req, res, next, taskService)
   );
 
   /**
@@ -320,7 +320,7 @@ export function taskRoutes(): Router {
     '/:id',
     requirePermission('write'),
     validateRequest(UpdateTaskSchema),
-    (req, res, next) => updateTask(req, res, next, taskService)
+    async (req, res, next) => updateTask(req, res, next, taskService)
   );
 
   /**
@@ -340,7 +340,7 @@ export function taskRoutes(): Router {
     '/:id/priority',
     requirePermission('write'),
     validateRequest(UpdateTaskPrioritySchema),
-    (req, res, next) => updateTaskPriority(req, res, next, taskService)
+    async (req, res, next) => updateTaskPriority(req, res, next, taskService)
   );
 
   /**
@@ -360,7 +360,7 @@ export function taskRoutes(): Router {
    * (subtasks, notes, tags, dependencies). This action cannot be undone.
    */
   // DELETE /api/v1/tasks/:id - Delete task
-  router.delete('/:id', requirePermission('write'), (req, res, next) =>
+  router.delete('/:id', requirePermission('write'), async (req, res, next) =>
     deleteTask(req, res, next, taskService)
   );
 
@@ -397,7 +397,7 @@ export function taskRoutes(): Router {
     '/:id/dependencies',
     requirePermission('write'),
     validateRequest(AddDependencySchema),
-    (req, res, next) => addTaskDependency(req, res, next, taskService)
+    async (req, res, next) => addTaskDependency(req, res, next, taskService)
   );
 
   /**
@@ -430,54 +430,50 @@ export function taskRoutes(): Router {
    * @response 404 - Task not found
    */
   // PATCH /api/v1/tasks/:id/dependencies - Batch update dependencies
-  router.patch('/:id/dependencies', requirePermission('write'), (req, res, next) =>
+  router.patch('/:id/dependencies', requirePermission('write'), async (req, res, next) =>
     batchUpdateDependencies(req, res, next, taskService)
   );
 
   // DELETE /api/v1/tasks/:id/dependencies/:dependsOnId - Remove dependency
-  router.delete('/:id/dependencies/:dependsOnId', requirePermission('write'), (req, res, next) =>
-    removeTaskDependency(req, res, next, taskService)
+  router.delete(
+    '/:id/dependencies/:dependsOnId',
+    requirePermission('write'),
+    async (req, res, next) => removeTaskDependency(req, res, next, taskService)
   );
 
   // GET /api/v1/tasks/:id/dependencies - Get task dependencies
-  router.get('/:id/dependencies', requirePermission('read'), (req, res, next) =>
+  router.get('/:id/dependencies', requirePermission('read'), async (req, res, next) =>
     getTaskDependencies(req, res, next, taskService)
   );
 
   // GET /api/v1/dependencies/graph - Get dependency graph
-  router.get('/dependencies/graph', requirePermission('read'), (req, res, next) =>
+  router.get('/dependencies/graph', requirePermission('read'), async (req, res, next) =>
     getDependencyGraph(req, res, next)
   );
 
   // GET /api/v1/dependencies/critical-path - Get critical path
-  router.get('/dependencies/critical-path', requirePermission('read'), (req, res, next) =>
+  router.get('/dependencies/critical-path', requirePermission('read'), async (req, res, next) =>
     getCriticalPath(req, res, next)
   );
 
   // POST /api/v1/tasks/:id/subtasks - Create subtask
-  router.post(
-    '/:id/subtasks',
-    requirePermission('write'),
-    (req, res, next) => createSubtask(req, res, next, taskService)
+  router.post('/:id/subtasks', requirePermission('write'), async (req, res, next) =>
+    createSubtask(req, res, next, taskService)
   );
 
   // GET /api/v1/tasks/:id/subtasks - List subtasks
-  router.get('/:id/subtasks', requirePermission('read'), (req, res, next) => 
+  router.get('/:id/subtasks', requirePermission('read'), async (req, res, next) =>
     getSubtasks(req, res, next, taskService)
   );
 
   // PATCH /api/v1/subtasks/:id - Update subtask
-  router.patch(
-    '/subtasks/:id',
-    requirePermission('write'),
-    (req, res, next) => updateSubtask(req, res, next, taskService)
+  router.patch('/subtasks/:id', requirePermission('write'), async (req, res, next) =>
+    updateSubtask(req, res, next, taskService)
   );
 
   // DELETE /api/v1/subtasks/:id - Delete subtask
-  router.delete(
-    '/subtasks/:id',
-    requirePermission('write'),
-    (req, res, next) => deleteSubtask(req, res, next, taskService)
+  router.delete('/subtasks/:id', requirePermission('write'), async (req, res, next) =>
+    deleteSubtask(req, res, next, taskService)
   );
 
   /**
@@ -512,12 +508,12 @@ export function taskRoutes(): Router {
    * @response 404 - Task not found
    */
   // POST /api/v1/tasks/:id/notes - Add note to task
-  router.post('/:id/notes', requirePermission('write'), (req, res, next) => 
+  router.post('/:id/notes', requirePermission('write'), async (req, res, next) =>
     addTaskNote(req, res, next, noteService)
   );
 
   // GET /api/v1/tasks/:id/notes - Get task notes
-  router.get('/:id/notes', requirePermission('read'), (req, res, next) => 
+  router.get('/:id/notes', requirePermission('read'), async (req, res, next) =>
     getTaskNotes(req, res, next, noteService)
   );
 

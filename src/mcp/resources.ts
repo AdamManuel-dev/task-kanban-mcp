@@ -1,5 +1,5 @@
-import type { Resource } from '@modelcontextprotocol/sdk/types.js';
 import { logger } from '@/utils/logger';
+import type { Resource } from '@modelcontextprotocol/sdk/types.js';
 import type { MCPServices } from './tools';
 
 export interface ResourceContent {
@@ -21,6 +21,7 @@ export class MCPResourceRegistry {
     this.services = services;
   }
 
+  // eslint-disable-next-line max-lines-per-function
   async listResources(): Promise<Resource[]> {
     return Promise.resolve([
       {
@@ -179,8 +180,8 @@ export class MCPResourceRegistry {
     });
 
     const result: { type: string; action?: string; id: string; params?: Record<string, string> } = {
-      type: type ?? '',
-      id: id ?? '',
+      type,
+      id,
       params,
     };
 
@@ -207,7 +208,9 @@ export class MCPResourceRegistry {
           limit: 1000,
         });
 
-        return { text: JSON.stringify(, {, board_id: parsedUri.id, board_name: board.name, tasks, count: tasks.length },
+        return {
+          text: JSON.stringify(
+            { board_id: parsedUri.id, board_name: board.name, tasks, count: tasks.length },
             null,
             2
           ),
@@ -220,7 +223,9 @@ export class MCPResourceRegistry {
         limit: 100,
       });
 
-      return { text: JSON.stringify(, {, ...board, tasks: tasks.slice(0, 10), // Include only first 10 tasks for overview, task_count: tasks.length },
+      return {
+        text: JSON.stringify(
+          { ...board, tasks: tasks.slice(0, 10), task_count: tasks.length },
           null,
           2
         ),
@@ -230,10 +235,8 @@ export class MCPResourceRegistry {
     // All boards
     const boards = await this.services.boardService.getBoards({ limit: 100 });
 
-    return { text: JSON.stringify(, {, boards, count: boards.length },
-        null,
-        2
-      ),
+    return {
+      text: JSON.stringify({ boards, count: boards.length }, null, 2),
       mimeType: 'application/json',
     };
   }
@@ -250,10 +253,8 @@ export class MCPResourceRegistry {
       const notes = await this.services.noteService.getTaskNotes(parsedUri.id, { limit: 50 });
       const tags = await this.services.tagService.getTaskTags(parsedUri.id);
 
-      return { text: JSON.stringify(, {, ...task, notes, tags },
-          null,
-          2
-        ),
+      return {
+        text: JSON.stringify({ ...task, notes, tags }, null, 2),
         mimeType: 'application/json',
       };
     }
@@ -261,8 +262,11 @@ export class MCPResourceRegistry {
       // Task collections
       switch (parsedUri.action) {
         case 'blocked':
+          // eslint-disable-next-line no-case-declarations
           const blockedTasks = await this.services.taskService.getBlockedTasks();
-          return { text: JSON.stringify(, {, type: 'blocked_tasks', tasks: blockedTasks, count: blockedTasks.length },
+          return {
+            text: JSON.stringify(
+              { type: 'blocked_tasks', tasks: blockedTasks, count: blockedTasks.length },
               null,
               2
             ),
@@ -270,8 +274,11 @@ export class MCPResourceRegistry {
           };
 
         case 'overdue':
+          // eslint-disable-next-line no-case-declarations
           const overdueTasks = await this.services.taskService.getOverdueTasks();
-          return { text: JSON.stringify(, {, type: 'overdue_tasks', tasks: overdueTasks, count: overdueTasks.length },
+          return {
+            text: JSON.stringify(
+              { type: 'overdue_tasks', tasks: overdueTasks, count: overdueTasks.length },
               null,
               2
             ),
@@ -282,13 +289,22 @@ export class MCPResourceRegistry {
           if (!parsedUri.id) {
             throw new Error('Priority level required');
           }
+          // eslint-disable-next-line no-case-declarations
           const priority = parseInt(parsedUri.id, 10);
+          // eslint-disable-next-line no-case-declarations
           const priorityTasks = await this.services.taskService.getTasks({
             priority_min: priority,
             priority_max: priority,
             limit: 200,
           });
-          return { text: JSON.stringify(, {, type: 'priority_tasks', priority_level: priority, tasks: priorityTasks, count: priorityTasks.length },
+          return {
+            text: JSON.stringify(
+              {
+                type: 'priority_tasks',
+                priority_level: priority,
+                tasks: priorityTasks,
+                count: priorityTasks.length,
+              },
               null,
               2
             ),
@@ -302,10 +318,8 @@ export class MCPResourceRegistry {
       // All tasks
       const tasks = await this.services.taskService.getTasks({ limit: 500 });
 
-      return { text: JSON.stringify(, {, tasks, count: tasks.length },
-          null,
-          2
-        ),
+      return {
+        text: JSON.stringify({ tasks, count: tasks.length }, null, 2),
         mimeType: 'application/json',
       };
     }
@@ -320,7 +334,9 @@ export class MCPResourceRegistry {
 
       const notes = await this.services.noteService.searchNotes({ query, limit: 100 });
 
-      return { text: JSON.stringify(, {, type: 'search_results', query, notes, count: notes.length },
+      return {
+        text: JSON.stringify(
+          { type: 'search_results', query, notes, count: notes.length },
           null,
           2
         ),
@@ -330,10 +346,8 @@ export class MCPResourceRegistry {
     // All notes
     const notes = await this.services.noteService.getNotes({ limit: 500 });
 
-    return { text: JSON.stringify(, {, notes, count: notes.length },
-        null,
-        2
-      ),
+    return {
+      text: JSON.stringify({ notes, count: notes.length }, null, 2),
       mimeType: 'application/json',
     };
   }
@@ -342,10 +356,8 @@ export class MCPResourceRegistry {
     if (parsedUri.action === 'hierarchy') {
       const tagTree = await this.services.tagService.getTagHierarchy();
 
-      return { text: JSON.stringify(, {, type: 'tag_hierarchy', tree: tagTree },
-          null,
-          2
-        ),
+      return {
+        text: JSON.stringify({ type: 'tag_hierarchy', tree: tagTree }, null, 2),
         mimeType: 'application/json',
       };
     }
@@ -354,10 +366,8 @@ export class MCPResourceRegistry {
       limit: 200,
     });
 
-    return { text: JSON.stringify(, {, tags, count: tags.length },
-        null,
-        2
-      ),
+    return {
+      text: JSON.stringify({ tags, count: tags.length }, null, 2),
       mimeType: 'application/json',
     };
   }
@@ -400,6 +410,7 @@ export class MCPResourceRegistry {
   private async readReports(parsedUri: ParsedUri): Promise<ResourceContent> {
     switch (parsedUri.action) {
       case 'summary':
+        // eslint-disable-next-line no-case-declarations
         const summary = await this.services.contextService.getProjectContext({
           include_completed: true,
           days_back: 7,
@@ -412,7 +423,9 @@ export class MCPResourceRegistry {
 
       case 'workload':
         // Get all tasks grouped by assignee
+        // eslint-disable-next-line no-case-declarations
         const allTasks = await this.services.taskService.getTasks({ limit: 1000 });
+        // eslint-disable-next-line no-case-declarations
         interface WorkloadStats {
           assignee: string;
           total_tasks: number;
@@ -424,22 +437,11 @@ export class MCPResourceRegistry {
           high_priority: number;
           [key: string]: string | number; // Allow dynamic status keys
         }
+        // eslint-disable-next-line no-case-declarations
         const workloadMap: Record<string, WorkloadStats> = {};
 
         allTasks.forEach(task => {
           const assignee = task.assignee ?? 'unassigned';
-          if (!workloadMap[assignee]) {
-            workloadMap[assignee] = {
-              assignee,
-              total_tasks: 0,
-              todo: 0,
-              in_progress: 0,
-              done: 0,
-              blocked: 0,
-              overdue: 0,
-              high_priority: 0,
-            };
-          }
 
           const stats = workloadMap[assignee];
           stats.total_tasks++;
@@ -456,7 +458,13 @@ export class MCPResourceRegistry {
           }
         });
 
-        return { text: JSON.stringify(, {, type: 'workload_report', workload: Object.values(workloadMap), generated_at: new Date().toISOString() },
+        return {
+          text: JSON.stringify(
+            {
+              type: 'workload_report',
+              workload: Object.values(workloadMap),
+              generated_at: new Date().toISOString(),
+            },
             null,
             2
           ),
@@ -489,7 +497,16 @@ export class MCPResourceRegistry {
         })
       );
 
-      return { text: JSON.stringify(, {, export_type: 'board_complete', board, tasks, notes: allNotes, tags: allTags, exported_at: new Date().toISOString(), counts: {, tasks: tasks.length, notes: allNotes.length, tags: allTags.length },
+      return {
+        text: JSON.stringify(
+          {
+            export_type: 'board_complete',
+            board,
+            tasks,
+            notes: allNotes,
+            tags: allTags,
+            exported_at: new Date().toISOString(),
+            counts: { tasks: tasks.length, notes: allNotes.length, tags: allTags.length },
           },
           null,
           2

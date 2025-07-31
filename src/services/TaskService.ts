@@ -739,12 +739,10 @@ export class TaskService {
   @TrackPerformance('TaskService')
   async updateTask(id: string, data: UpdateTaskRequest): Promise<Task> {
     try {
-      console.log('DEBUG updateTask called with:', { id, data });
       const existingTask = await this.getTaskById(id);
       if (!existingTask) {
         throw TaskService.createError('TASK_NOT_FOUND', 'Task not found', { id });
       }
-      console.log('DEBUG existing task:', existingTask.title);
 
       const { updates, params } = this.buildFieldUpdates(data, existingTask);
 
@@ -763,8 +761,6 @@ export class TaskService {
           params.push(new Date(), id);
 
           const query = `UPDATE tasks SET ${updates.join(', ')} WHERE id = ?`;
-          console.log('DEBUG updateTask query:', query);
-          console.log('DEBUG updateTask params:', params);
 
           const result = await db.run(query, params);
           if (result.changes === 0) {

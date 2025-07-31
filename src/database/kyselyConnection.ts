@@ -140,7 +140,14 @@ export class KyselyConnection {
     };
   }> {
     if (!this._db) {
-      return { status: 'unhealthy', details: {, connected: false, tablesExist: false, canQuery: false, errorMessage: 'Database not initialized' },
+      return {
+        status: 'unhealthy',
+        details: {
+          connected: false,
+          tablesExist: false,
+          canQuery: false,
+          errorMessage: 'Database not initialized',
+        },
       };
     }
 
@@ -148,10 +155,16 @@ export class KyselyConnection {
       // Test basic query
       await this._db.selectFrom('boards').select(['id']).limit(1).execute();
 
-      return { status: 'healthy', details: {, connected: true, tablesExist: true, canQuery: true },
-      };
+      return { status: 'healthy', details: { connected: true, tablesExist: true, canQuery: true } };
     } catch (error) {
-      return { status: 'unhealthy', details: {, connected: this._db !== null, tablesExist: false, canQuery: false, errorMessage: error instanceof Error ? error.message : 'Unknown error' },
+      return {
+        status: 'unhealthy',
+        details: {
+          connected: this._db !== null,
+          tablesExist: false,
+          canQuery: false,
+          errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        },
       };
     }
   }
@@ -178,7 +191,7 @@ export class KyselyConnection {
 
       const tableStats = await Promise.all(
         tables.map(async table => {
-          const countResult = await this._db!.selectFrom(table as unknown)
+          const countResult = await this._db!.selectFrom(table as any)
             .select([this._db!.fn.count<number>('id').as('count')])
             .executeTakeFirst();
 
@@ -186,7 +199,11 @@ export class KyselyConnection {
             `SELECT SUM(pgsize) as size FROM dbstat WHERE name = ?`
           ).get(table);
 
-          return { name: table, rowCount: countResult?.count ?? 0, diskSize: sizeResult?.size ?? 0 };
+          return {
+            name: table,
+            rowCount: countResult?.count ?? 0,
+            diskSize: sizeResult?.size ?? 0,
+          };
         })
       );
 
@@ -206,7 +223,11 @@ export class KyselyConnection {
         >(`SELECT SUM(pgsize) as size FROM dbstat WHERE name LIKE '%-wal'`)
         .get();
 
-      return { tableStats, totalSize: totalSizeResult?.size ?? 0, walSize: walSizeResult?.size ?? 0 };
+      return {
+        tableStats,
+        totalSize: totalSizeResult?.size ?? 0,
+        walSize: walSizeResult?.size ?? 0,
+      };
     } catch (error) {
       logger.error('Failed to get Kysely database stats', { error });
       throw error;

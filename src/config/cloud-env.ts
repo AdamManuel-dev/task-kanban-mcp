@@ -45,7 +45,20 @@ export function detectCloudEnvironment(): CloudEnvironmentInfo {
 
   // Replit detection
   if (env.REPLIT_DB_URL || env.REPL_SLUG) {
-    return { platform: 'replit', isCloud: true, defaultHost: '0.0.0.0', defaultPort: 3000, websocketPort: 3456, features: {, fileWatching: true, processRestart: true, portForwarding: true, terminalAccess: true, gitIntegration: true, environmentSecrets: true },
+    return {
+      platform: 'replit',
+      isCloud: true,
+      defaultHost: '0.0.0.0',
+      defaultPort: 3000,
+      websocketPort: 3456,
+      features: {
+        fileWatching: true,
+        processRestart: true,
+        portForwarding: true,
+        terminalAccess: true,
+        gitIntegration: true,
+        environmentSecrets: true,
+      },
       limits: {
         memory: 1024, // 1GB
         cpu: 1,
@@ -74,7 +87,20 @@ export function detectCloudEnvironment(): CloudEnvironmentInfo {
     const codespaceName = env.CODESPACE_NAME;
     const domain = env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN;
 
-    return { platform: 'codespaces', isCloud: true, defaultHost: '0.0.0.0', defaultPort: 3000, websocketPort: 3456, features: {, fileWatching: true, processRestart: true, portForwarding: true, terminalAccess: true, gitIntegration: true, environmentSecrets: true },
+    return {
+      platform: 'codespaces',
+      isCloud: true,
+      defaultHost: '0.0.0.0',
+      defaultPort: 3000,
+      websocketPort: 3456,
+      features: {
+        fileWatching: true,
+        processRestart: true,
+        portForwarding: true,
+        terminalAccess: true,
+        gitIntegration: true,
+        environmentSecrets: true,
+      },
       limits: {
         memory: 8192, // 8GB (varies by plan)
         cpu: 4,
@@ -93,7 +119,20 @@ export function detectCloudEnvironment(): CloudEnvironmentInfo {
   if (env.GITPOD_WORKSPACE_ID || env.GITPOD_WORKSPACE_URL) {
     const workspaceUrl = env.GITPOD_WORKSPACE_URL;
 
-    return { platform: 'gitpod', isCloud: true, defaultHost: '0.0.0.0', defaultPort: 3000, websocketPort: 3456, features: {, fileWatching: true, processRestart: true, portForwarding: true, terminalAccess: true, gitIntegration: true, environmentSecrets: true },
+    return {
+      platform: 'gitpod',
+      isCloud: true,
+      defaultHost: '0.0.0.0',
+      defaultPort: 3000,
+      websocketPort: 3456,
+      features: {
+        fileWatching: true,
+        processRestart: true,
+        portForwarding: true,
+        terminalAccess: true,
+        gitIntegration: true,
+        environmentSecrets: true,
+      },
       limits: {
         memory: 3584, // 3.5GB (standard)
         cpu: 4,
@@ -110,7 +149,20 @@ export function detectCloudEnvironment(): CloudEnvironmentInfo {
 
   // StackBlitz detection
   if (env.STACKBLITZ) {
-    return { platform: 'stackblitz', isCloud: true, defaultHost: '0.0.0.0', defaultPort: 3000, websocketPort: 3456, features: {, fileWatching: true, processRestart: false, // Limited in StackBlitz, portForwarding: true, terminalAccess: true, gitIntegration: false, // Limited, environmentSecrets: false },
+    return {
+      platform: 'stackblitz',
+      isCloud: true,
+      defaultHost: '0.0.0.0',
+      defaultPort: 3000,
+      websocketPort: 3456,
+      features: {
+        fileWatching: true,
+        processRestart: false,
+        portForwarding: true,
+        terminalAccess: true,
+        gitIntegration: false,
+        environmentSecrets: false,
+      },
       limits: {
         memory: 512, // Limited
         cpu: 1,
@@ -128,7 +180,20 @@ export function detectCloudEnvironment(): CloudEnvironmentInfo {
 
   // CodeSandbox detection
   if (env.CODESANDBOX_SSE) {
-    return { platform: 'codesandbox', isCloud: true, defaultHost: '0.0.0.0', defaultPort: 3000, websocketPort: 3456, features: {, fileWatching: true, processRestart: false, portForwarding: true, terminalAccess: true, gitIntegration: false, environmentSecrets: false },
+    return {
+      platform: 'codesandbox',
+      isCloud: true,
+      defaultHost: '0.0.0.0',
+      defaultPort: 3000,
+      websocketPort: 3456,
+      features: {
+        fileWatching: true,
+        processRestart: false,
+        portForwarding: true,
+        terminalAccess: true,
+        gitIntegration: false,
+        environmentSecrets: false,
+      },
       limits: {
         memory: 1024, // 1GB
         cpu: 1,
@@ -145,7 +210,20 @@ export function detectCloudEnvironment(): CloudEnvironmentInfo {
   }
 
   // Local development environment
-  return { platform: 'local', isCloud: false, defaultHost: 'localhost', defaultPort: 3000, websocketPort: 3001, // Different port for local to avoid conflicts, features: {, fileWatching: true, processRestart: true, portForwarding: false, terminalAccess: true, gitIntegration: true, environmentSecrets: false, // Use .env files },
+  return {
+    platform: 'local',
+    isCloud: false,
+    defaultHost: 'localhost',
+    defaultPort: 3000,
+    websocketPort: 3001, // Different port for local to avoid conflicts
+    features: {
+      fileWatching: true,
+      processRestart: true,
+      portForwarding: false,
+      terminalAccess: true,
+      gitIntegration: true,
+      environmentSecrets: false, // Use .env files
+    },
     limits: {
       memory: Infinity, // No artificial limits
       cpu: Infinity,

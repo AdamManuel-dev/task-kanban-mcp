@@ -1,12 +1,14 @@
+import { logger } from '../../utils/logger';
 import type { ApiClient } from '../client';
 import type { DashboardData } from '../utils/dashboard-manager';
-import { logger } from '../../utils/logger';
 
 /**
  * Service to fetch and transform data for dashboard components
  */
 export class DashboardDataService {
-  constructor(private readonly apiClient: ApiClient) {}
+  constructor(private readonly apiClient: ApiClient) {
+    this.apiClient = apiClient;
+  }
 
   /**
    * Fetch complete dashboard data from API
@@ -15,7 +17,13 @@ export class DashboardDataService {
     try {
       const [tasks, activity] = await Promise.all([this.fetchTasks(), this.fetchActivity()]);
 
-      return { tasks: DashboardDataService.transformTaskData(tasks), velocity: await this.calculateVelocity(), teamMembers: await this.fetchTeamMembers(), burndown: await this.calculateBurndown(), activity: DashboardDataService.transformActivityData(activity) };
+      return {
+        tasks: DashboardDataService.transformTaskData(tasks),
+        velocity: await this.calculateVelocity(),
+        teamMembers: await this.fetchTeamMembers(),
+        burndown: await this.calculateBurndown(),
+        activity: DashboardDataService.transformActivityData(activity),
+      };
     } catch (error) {
       logger.warn(
         'Failed to fetch dashboard data, using sample data:',
@@ -127,6 +135,7 @@ export class DashboardDataService {
       });
 
       return (
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         ('data' in response && Array.isArray(response.data) ? response.data : []).map(
           (item: unknown, index: number) => ({
             period: `W${String(index + 1)}`,
@@ -150,6 +159,7 @@ export class DashboardDataService {
       const response = await this.apiClient.get('/analytics/team-workload');
 
       return (
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         ('data' in response && Array.isArray(response.data) ? response.data : []).map(
           (member: unknown) => {
             const memberObj = member as {
@@ -158,7 +168,11 @@ export class DashboardDataService {
               active_tasks?: number;
               workload_percentage?: number;
             };
-            return { name: memberObj.name ?? memberObj.username ?? 'Unknown', taskCount: memberObj.active_tasks ?? 0, load: memberObj.workload_percentage ?? 0 };
+            return {
+              name: memberObj.name ?? memberObj.username ?? 'Unknown',
+              taskCount: memberObj.active_tasks ?? 0,
+              load: memberObj.workload_percentage ?? 0,
+            };
           }
         ) || DashboardDataService.generateSampleTeamMembers()
       );
@@ -181,7 +195,11 @@ export class DashboardDataService {
           remaining_tasks?: number;
           ideal_remaining?: number;
         };
-        return { day: itemObj.day ?? '', remaining: itemObj.remaining_tasks ?? 0, ideal: itemObj.ideal_remaining ?? 0 };
+        return {
+          day: itemObj.day ?? '',
+          remaining: itemObj.remaining_tasks ?? 0,
+          ideal: itemObj.ideal_remaining ?? 0,
+        };
       });
 
       return burndownData.length > 0 ? burndownData : DashboardDataService.generateSampleBurndown();
@@ -199,7 +217,12 @@ export class DashboardDataService {
         created_at?: string;
         user?: { name?: string; username?: string };
       };
-      return { timestamp: activityObj.created_at, ? new Date(activityObj.created_at).toLocaleTimeString('en-US', {, hour: '2-digit', minute: '2-digit' })
+      return {
+        timestamp: activityObj.created_at
+          ? new Date(activityObj.created_at).toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit',
+            })
           : 'Unknown',
         event: this.formatActivityEvent(activity),
         user: activityObj.user?.name ?? activityObj.user?.username ?? 'System',
@@ -293,7 +316,15 @@ export class DashboardDataService {
    * Generate complete sample data as fallback
    */
   private static generateSampleData(): DashboardData {
-    return { tasks: {, total: 45, byStatus: {, todo: 18, in_progress: 12, done: 13, blocked: 2 },
+    return {
+      tasks: {
+        total: 45,
+        byStatus: {
+          todo: 18,
+          in_progress: 12,
+          done: 13,
+          blocked: 2,
+        },
         byPriority: {
           P1: 8,
           P2: 15,

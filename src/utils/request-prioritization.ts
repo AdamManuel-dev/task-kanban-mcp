@@ -1,3 +1,4 @@
+/* eslint-disable max-classes-per-file */
 /**
  * @fileoverview Request prioritization and scheduling system for batching
  * @lastmodified 2025-07-28T08:55:00Z
@@ -8,7 +9,6 @@
  * Patterns: Priority queue with heap, round-robin scheduling, weighted fair queuing
  */
 
-import { performance } from 'perf_hooks';
 import { logger } from './logger';
 
 // ============================================================================
@@ -414,8 +414,8 @@ export class LoadBalancer {
     let hash = 0;
     for (let i = 0; i < clientId.length; i++) {
       const char = clientId.charCodeAt(i);
-      hash = (hash << 5) - hash + char;
-      hash &= hash; // Convert to 32-bit integer
+      hash = (hash << 5) - hash + char; // eslint-disable-line no-bitwise
+      hash &= hash; // eslint-disable-line no-bitwise
     }
     return Math.abs(hash);
   }
@@ -511,12 +511,12 @@ export class RequestScheduler {
   ): boolean {
     const request: PriorityRequest = {
       id,
-      priority: options.priority || this.config.defaultPriority,
+      priority: options.priority ?? this.config.defaultPriority,
       timestamp: Date.now(),
-      estimatedProcessingTime: options.estimatedProcessingTime || 1000,
+      estimatedProcessingTime: options.estimatedProcessingTime ?? 1000,
       clientId: options.clientId,
       requestType: options.requestType ?? 'unknown',
-      weight: options.weight || 1.0,
+      weight: options.weight ?? 1.0,
       retryCount: 0,
       maxRetries: 3,
       data,
@@ -679,6 +679,9 @@ export class RequestScheduler {
           this.stats.averageWaitTime =
             (this.stats.averageWaitTime * (totalProcessed - 1) + waitTime) / totalProcessed;
         }
+        break;
+
+      default:
         break;
     }
   }

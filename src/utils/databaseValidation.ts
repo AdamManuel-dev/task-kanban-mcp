@@ -239,7 +239,22 @@ export function createValidatedQuery<TOutput, TInput = TOutput>(
   validateMany: (results: unknown[]) => TOutput[];
   validateOptional: (result: unknown) => TOutput | null;
 } {
-  return { /**, * Validate a single row result, */, validateOne: (result: unknown): TOutput => validateRow(result, schema, queryName), /**, * Validate multiple row results, */, validateMany: (results: unknown[]): TOutput[] => validateRows(results, schema, queryName), /**, * Validate an optional single row result, */, validateOptional: (result: unknown): TOutput | null => {, if (result === null || result === undefined) {, return null; }
+  return {
+    /**
+     * Validate a single row result
+     */
+    validateOne: (result: unknown): TOutput => validateRow(result, schema, queryName),
+    /**
+     * Validate multiple row results
+     */
+    validateMany: (results: unknown[]): TOutput[] => validateRows(results, schema, queryName),
+    /**
+     * Validate an optional single row result
+     */
+    validateOptional: (result: unknown): TOutput | null => {
+      if (result === null || result === undefined) {
+        return null;
+      }
       return validateRow(result, schema, queryName);
     },
   };

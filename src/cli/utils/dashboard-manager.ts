@@ -1,8 +1,8 @@
 import blessed from 'blessed';
 import contrib from 'blessed-contrib';
 
-import { DashboardDataService } from '../services/dashboard-data';
 import type { ApiClient } from '../client';
+import { DashboardDataService } from '../services/dashboard-data';
 import { ThemeHelper, getThemeNames } from '../ui/themes/dashboard-themes';
 
 export interface DashboardData {
@@ -52,6 +52,7 @@ export class DashboardManager {
 
   private debugMode = false;
 
+  // eslint-disable-next-line default-param-last
   constructor(config: Partial<DashboardConfig> = {}, apiClient?: ApiClient) {
     this.config = {
       refreshInterval: 30000, // 30 seconds
@@ -77,6 +78,7 @@ export class DashboardManager {
     });
 
     // Create grid
+    // eslint-disable-next-line new-cap
     this.grid = new contrib.grid({
       rows: 12,
       cols: 12,
@@ -89,7 +91,7 @@ export class DashboardManager {
   /**
    * Get key binding configuration
    */
-  private getKeyBindingConfig() {
+  private getKeyBindingConfig(): Array<{ keys: string[]; action: () => void }> {
     return [
       // Exit commands
       {
@@ -167,7 +169,7 @@ export class DashboardManager {
    * Safe refresh data with error handling
    */
   private safeRefreshData(): void {
-    void this.refreshData().catch(error =>
+    this.refreshData().catch(error =>
       this.showErrorNotification(`Failed to refresh data: ${error}`)
     );
   }
@@ -413,7 +415,7 @@ export class DashboardManager {
     focusBox.setContent(`
 🎯 Current Sprint Goals:
 • Complete user authentication system
-• Fix critical login bug 
+• Fix critical login bug
 • Prepare demo for stakeholders
 
 📝 Today's Tasks:
@@ -441,7 +443,7 @@ export class DashboardManager {
    */
   switchLayout(layout: 'overview' | 'velocity' | 'personal'): void {
     this.currentLayout = layout;
-    void this.refreshData().catch(error =>
+    this.refreshData().catch(error =>
       this.showErrorNotification(`Failed to refresh data after layout change: ${error}`)
     );
   }
@@ -455,7 +457,7 @@ export class DashboardManager {
       label: title,
       ...headerStyles,
       align: 'center',
-    });
+    }) as unknown as blessed.Widgets.BoxElement;
 
     const now = new Date().toLocaleString();
     header.setContent(`${title} | ${now} | Press 'h' for help`);
@@ -470,7 +472,7 @@ export class DashboardManager {
     const footer = this.grid.set(12, 0, 1, 12, blessed.box, {
       ...footerStyles,
       align: 'center',
-    });
+    }) as unknown as blessed.Widgets.BoxElement;
 
     const currentTheme = this.themeHelper.getTheme().name;
     footer.setContent(
@@ -550,14 +552,14 @@ export class DashboardManager {
 🎮 Navigation & Controls:
   Layout Switching:
     1, F1      - Overview dashboard
-    2, F2      - Velocity dashboard  
+    2, F2      - Velocity dashboard
     3, F3      - Personal dashboard
 
   Widget Navigation:
     Tab        - Focus next widget
     Shift+Tab  - Focus previous widget
     F, F11     - Toggle fullscreen for focused widget
-    
+
   Dashboard Controls:
     r, F5      - Refresh data manually
     a, F10     - Toggle auto-refresh
@@ -565,7 +567,7 @@ export class DashboardManager {
     s          - Show quick statistics
     d          - Toggle debug mode
     e          - Export dashboard (coming soon)
-    
+
   Help & Exit:
     h, ?, F12  - Show this help
     Escape     - Reset view to default
@@ -618,7 +620,9 @@ Press any key to close this help...
     this.showThemeNotification(`Theme changed to: ${this.config.theme}`);
 
     // Refresh dashboard with new theme
-    void this.refreshData();
+    this.refreshData().catch(error =>
+      this.showErrorNotification(`Failed to refresh dashboard with new theme: ${error}`)
+    );
   }
 
   /**
@@ -642,7 +646,7 @@ Press any key to close this help...
 
     if (this.config.autoRefresh) {
       this.refreshTimer = setInterval(() => {
-        void this.refreshData().catch(error =>
+        this.refreshData().catch(error =>
           this.showErrorNotification(`Failed to auto-refresh data: ${error}`)
         );
       }, this.config.refreshInterval);
@@ -738,7 +742,10 @@ Press any key to close this help...
    * Generate sample data for demo
    */
   private static generateSampleData(): DashboardData {
-    return { tasks: {, total: 45, byStatus: {, todo: 18, in_progress: 12, done: 13, blocked: 2 },
+    return {
+      tasks: {
+        total: 45,
+        byStatus: { todo: 18, in_progress: 12, done: 13, blocked: 2 },
         byPriority: {
           P1: 8,
           P2: 15,
@@ -790,7 +797,7 @@ Press any key to close this help...
    * Start the dashboard
    */
   start(): void {
-    void this.refreshData().catch(error =>
+    this.refreshData().catch(error =>
       this.showErrorNotification(`Failed to refresh data on start: ${String(error)}`)
     );
     this.startAutoRefresh();
@@ -853,7 +860,9 @@ Press any key to close this help...
       // In a real implementation, this would resize the focused widget to full screen
     } else {
       this.showNotification('Exited fullscreen mode');
-      void this.refreshData(); // Restore normal layout
+      this.refreshData().catch(error =>
+        this.showErrorNotification(`Failed to restore normal layout: ${error}`)
+      );
     }
   }
 
@@ -987,7 +996,7 @@ ${String(debugInfo)}
     this.focusedWidget = null;
     this.debugMode = false;
     this.hideDebugOverlay();
-    void this.refreshData();
+    this.refreshData().catch(error => this.showErrorNotification(`Failed to reset view: ${error}`));
     this.showNotification('View reset to default state');
   }
 

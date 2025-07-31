@@ -29,6 +29,7 @@ import { logger } from '@/utils/logger';
 import { UnauthorizedError, ForbiddenError } from '@/utils/errors';
 import { ApiKeyService } from '../services/ApiKeyService';
 import { dbConnection } from '../database/connection';
+import { hashApiKey as secureHashApiKey } from '@/config/security';
 
 interface AuthenticatedRequest extends Request {
   apiKey?: string;
@@ -259,12 +260,8 @@ function hashApiKey(apiKey: string): string {
     throw new Error('Invalid API key for hashing');
   }
 
-  // Use SHA-256 with salt for better security
-  const salt = config.api.keySecret;
-  return crypto
-    .createHash('sha256')
-    .update(apiKey + salt)
-    .digest('hex')
+  // Use secure HMAC-SHA512 hashing from security module
+  return secureHashApiKey(apiKey, config.api.keySecret)
     .substring(0, 16); // Increased from 8 to 16 characters for better uniqueness
 }
 

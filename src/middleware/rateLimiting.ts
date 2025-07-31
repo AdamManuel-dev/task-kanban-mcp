@@ -3,9 +3,9 @@
  * Provides per-user rate limiting, adaptive limits, and comprehensive monitoring
  */
 
-import type { Request, Response, NextFunction } from 'express';
-import { logger } from '@/utils/logger';
 import { config } from '@/config';
+import { logger } from '@/utils/logger';
+import type { NextFunction, Request, Response } from 'express';
 
 interface RateLimitEntry {
   count: number;
@@ -62,7 +62,7 @@ export class EnhancedRateLimiter {
     return (req: Request, res: Response, next: NextFunction): void => {
       const ip = this.getClientIP(req);
       const userId = this.getUserId(req);
-      const endpoint = `${req.method} ${req.route?.path || req.path}`;
+      const endpoint = `${req.method} ${req.route?.path ?? req.path}`;
 
       this.analytics.totalRequests++;
 
@@ -197,7 +197,14 @@ export class EnhancedRateLimiter {
           entry.adaptiveMultiplier = Math.max(0.5, (entry.adaptiveMultiplier || 1.0) * 0.8);
         }
 
-        return { allowed: false, remaining: 0, resetTime: entry.firstRequest + windowMs, limit: effectiveLimit, retryAfter: Math.ceil(userConfig.burstLimit / 10), // 10% of burst limit in seconds, reason: 'Burst limit exceeded' };
+        return {
+          allowed: false,
+          remaining: 0,
+          resetTime: entry.firstRequest + windowMs,
+          limit: effectiveLimit,
+          retryAfter: Math.ceil(userConfig.burstLimit / 10), // 10% of burst limit in seconds
+          reason: 'Burst limit exceeded',
+        };
       }
     } else if (entry.burstCount !== undefined) {
       entry.burstCount = 0;
@@ -275,7 +282,14 @@ export class EnhancedRateLimiter {
     const now = Date.now();
 
     if (!entry) {
-      return { requests: 0, remaining: userConfig.requestsPerMinute, resetTime: now + 60000, limit: userConfig.requestsPerMinute, burstCount: 0, adaptiveMultiplier: 1.0 };
+      return {
+        requests: 0,
+        remaining: userConfig.requestsPerMinute,
+        resetTime: now + 60000,
+        limit: userConfig.requestsPerMinute,
+        burstCount: 0,
+        adaptiveMultiplier: 1.0,
+      };
     }
 
     const windowStart = now - 60000;
@@ -284,7 +298,14 @@ export class EnhancedRateLimiter {
       ? Math.floor(userConfig.requestsPerMinute * (entry.adaptiveMultiplier || 1.0))
       : userConfig.requestsPerMinute;
 
-    return { requests, remaining: Math.max(0, effectiveLimit - requests), resetTime: entry.firstRequest + 60000, limit: effectiveLimit, burstCount: entry.burstCount ?? 0, adaptiveMultiplier: entry.adaptiveMultiplier || 1.0 };
+    return {
+      requests,
+      remaining: Math.max(0, effectiveLimit - requests),
+      resetTime: entry.firstRequest + 60000,
+      limit: effectiveLimit,
+      burstCount: entry.burstCount ?? 0,
+      adaptiveMultiplier: entry.adaptiveMultiplier || 1.0,
+    };
   }
 
   /**
@@ -333,8 +354,11 @@ export class EnhancedRateLimiter {
   /**
    * Extract user ID from request (from auth middleware)
    */
-  private getUserId(req: Request): string | null {
-    return (req as unknown).user?.id || (req as unknown).userId;
+  private getUserId(req: Request): string | undefined {
+    return (
+      (req as { user?: { id: string }; userId?: string }).user?.id ??
+      (req as { userId?: string }).userId
+    );
   }
 
   /**

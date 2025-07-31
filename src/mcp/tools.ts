@@ -246,7 +246,7 @@ export class MCPToolRegistry {
   // Private method implementations
   private async createTask(args: CreateTaskArgs): Promise<ToolResponse> {
     try {
-      const result = await this.services.taskService.createTask(args as unknown);
+      const result = await this.services.taskService.createTask(args as any);
       return { success: true, data: result as unknown };
     } catch (error) {
       return {
@@ -286,7 +286,7 @@ export class MCPToolRegistry {
 
   private async listTasks(args: ListTasksArgs): Promise<ToolResponse> {
     try {
-      const result = await this.services.taskService.getTasks(args as unknown);
+      const result = await this.services.taskService.getTasks(args as any);
       return { success: true, data: result as unknown };
     } catch (error) {
       return {
@@ -298,7 +298,7 @@ export class MCPToolRegistry {
 
   private async searchTasks(args: SearchTasksArgs): Promise<ToolResponse> {
     try {
-      const result = await this.services.taskService.searchTasks(args.query, args as unknown);
+      const result = await this.services.taskService.searchTasks(args.query, args as any);
       return { success: true, data: result as unknown };
     } catch (error) {
       return {
@@ -322,7 +322,7 @@ export class MCPToolRegistry {
 
   private async createBoard(args: CreateBoardArgs): Promise<ToolResponse> {
     try {
-      const result = await this.services.boardService.createBoard(args as unknown);
+      const result = await this.services.boardService.createBoard(args as any);
       return { success: true, data: result as unknown };
     } catch (error) {
       return {
@@ -358,7 +358,7 @@ export class MCPToolRegistry {
 
   private async addNote(args: AddNoteArgs): Promise<ToolResponse> {
     try {
-      const result = await this.services.noteService.createNote(args as unknown);
+      const result = await this.services.noteService.createNote(args as any);
       return { success: true, data: result as unknown };
     } catch (error) {
       return {
@@ -370,7 +370,7 @@ export class MCPToolRegistry {
 
   private async searchNotes(args: SearchNotesArgs): Promise<ToolResponse> {
     try {
-      const result = await this.services.noteService.searchNotes(args as unknown);
+      const result = await this.services.noteService.searchNotes(args as any);
       return { success: true, data: result as unknown };
     } catch (error) {
       return {
@@ -382,7 +382,7 @@ export class MCPToolRegistry {
 
   private async createTag(args: CreateTagArgs): Promise<ToolResponse> {
     try {
-      const result = await this.services.tagService.createTag(args as unknown);
+      const result = await this.services.tagService.createTag(args as any);
       return { success: true, data: result as unknown };
     } catch (error) {
       return {

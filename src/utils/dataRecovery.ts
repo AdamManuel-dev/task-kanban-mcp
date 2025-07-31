@@ -9,11 +9,10 @@
  */
 
 import type { Database } from 'better-sqlite3';
-import path from 'path';
 import fs from 'fs/promises';
-import { v4 as uuidv4 } from 'uuid';
-import { logger } from './logger';
+import path from 'path';
 import { dbConnection } from '../database/connection';
+import { logger } from './logger';
 
 interface CorruptionReport {
   corrupted: boolean;
@@ -66,7 +65,7 @@ export class DataRecoveryManager {
   /**
    * Detect data corruption in the database
    */
-  async detectCorruption(): Promise<CorruptionReport> {
+  detectCorruption(): CorruptionReport {
     logger.info('Starting corruption detection scan...');
 
     const issues: CorruptionIssue[] = [];
@@ -88,19 +87,19 @@ export class DataRecoveryManager {
       }
 
       // Check foreign key constraints
-      await this.checkForeignKeyConstraints(issues);
+      this.checkForeignKeyConstraints(issues);
 
       // Check for orphaned records
-      await this.checkOrphanedRecords(issues);
+      this.checkOrphanedRecords(issues);
 
       // Check for duplicate primary keys
-      await this.checkDuplicateKeys(issues);
+      this.checkDuplicateKeys(issues);
 
       // Check data validity
-      await this.checkDataValidity(issues);
+      this.checkDataValidity(issues);
 
       // Check table consistency
-      await this.checkTableConsistency(issues);
+      this.checkTableConsistency(issues);
     } catch (error) {
       logger.error('Error during corruption detection', { error });
       issues.push({
@@ -167,7 +166,7 @@ export class DataRecoveryManager {
       }
 
       try {
-        const repaired = await this.repairIssue(issue);
+        const repaired = this.repairIssue(issue);
         if (repaired) {
           repairedCount++;
           logger.info(`Repaired issue: ${issue.description}`);
@@ -184,7 +183,7 @@ export class DataRecoveryManager {
 
     // Validate database after repair if requested
     if (options.validateAfterRepair && repairedCount > 0) {
-      const postRepairReport = await this.detectCorruption();
+      const postRepairReport = this.detectCorruption();
       if (postRepairReport.corrupted) {
         logger.warn('Database still has issues after repair', {
           remainingIssues: postRepairReport.issues.length,
@@ -203,7 +202,7 @@ export class DataRecoveryManager {
   /**
    * Validate database integrity
    */
-  async validateIntegrity(): Promise<{ valid: boolean; issues: string[] }> {
+  validateIntegrity(): { valid: boolean; issues: string[] } {
     const issues: string[] = [];
 
     try {
@@ -261,10 +260,10 @@ export class DataRecoveryManager {
 
       // Reconnect to database
       await dbConnection.initialize();
-      this.db = dbConnection.getDatabase() as unknown;
+      this.db = dbConnection.getDatabase() as unknown as Database;
 
       // Validate recovered database
-      const validation = await this.validateIntegrity();
+      const validation = this.validateIntegrity();
       if (!validation.valid) {
         logger.warn('Recovered database has integrity issues', { issues: validation.issues });
       }
@@ -277,7 +276,7 @@ export class DataRecoveryManager {
     }
   }
 
-  private async checkForeignKeyConstraints(issues: CorruptionIssue[]): Promise<void> {
+  private checkForeignKeyConstraints(issues: CorruptionIssue[]): void {
     // Enable foreign key checking temporarily
     this.db.pragma('foreign_keys = ON');
 
@@ -296,12 +295,12 @@ export class DataRecoveryManager {
     }
   }
 
-  private async checkOrphanedRecords(issues: CorruptionIssue[]): Promise<void> {
+  private checkOrphanedRecords(issues: CorruptionIssue[]): void {
     // Check for orphaned tasks (tasks without valid board)
     const orphanedTasks = this.db
       .prepare(
         `
-      SELECT id FROM tasks 
+      SELECT id FROM tasks
       WHERE board_id NOT IN (SELECT id FROM boards)
     `
       )
@@ -324,7 +323,7 @@ export class DataRecoveryManager {
     const orphanedNotes = this.db
       .prepare(
         `
-      SELECT id FROM notes 
+      SELECT id FROM notes
       WHERE task_id NOT IN (SELECT id FROM tasks)
     `
       )
@@ -344,16 +343,16 @@ export class DataRecoveryManager {
     }
   }
 
-  private async checkDuplicateKeys(issues: CorruptionIssue[]): Promise<void> {
+  private checkDuplicateKeys(issues: CorruptionIssue[]): void {
     const tables = ['boards', 'tasks', 'columns', 'notes', 'tags'];
 
     for (const table of tables) {
       const duplicates = this.db
         .prepare(
           `
-        SELECT id, COUNT(*) as count 
-        FROM ${table} 
-        GROUP BY id 
+        SELECT id, COUNT(*) as count
+        FROM ${table}
+        GROUP BY id
         HAVING count > 1
       `
         )
@@ -374,17 +373,17 @@ export class DataRecoveryManager {
     }
   }
 
-  private async checkDataValidity(issues: CorruptionIssue[]): Promise<void> {
+  private checkDataValidity(issues: CorruptionIssue[]): void {
     // Check for invalid dates
     const invalidDates = this.db
       .prepare(
         `
-      SELECT 'tasks' as table_name, id, created_at 
-      FROM tasks 
+      SELECT 'tasks' as table_name, id, created_at
+      FROM tasks
       WHERE created_at IS NULL OR created_at = '' OR datetime(created_at) IS NULL
       UNION ALL
-      SELECT 'notes' as table_name, id, created_at 
-      FROM notes 
+      SELECT 'notes' as table_name, id, created_at
+      FROM notes
       WHERE created_at IS NULL OR created_at = '' OR datetime(created_at) IS NULL
     `
       )
@@ -428,7 +427,7 @@ export class DataRecoveryManager {
     }
   }
 
-  private async checkTableConsistency(issues: CorruptionIssue[]): Promise<void> {
+  private checkTableConsistency(issues: CorruptionIssue[]): void {
     // Check for tasks in non-existent columns
     const invalidColumns = this.db
       .prepare(
@@ -455,7 +454,7 @@ export class DataRecoveryManager {
     }
   }
 
-  private async repairIssue(issue: CorruptionIssue): Promise<boolean> {
+  private repairIssue(issue: CorruptionIssue): boolean {
     const transaction = this.db.transaction(() => {
       switch (issue.type) {
         case 'orphaned_record':
@@ -490,7 +489,7 @@ export class DataRecoveryManager {
     const result = this.db
       .prepare(
         `
-      DELETE FROM ${issue.table} 
+      DELETE FROM ${issue.table}
       WHERE id = ? AND rowid NOT IN (
         SELECT MAX(rowid) FROM ${issue.table} WHERE id = ?
       )
@@ -505,8 +504,8 @@ export class DataRecoveryManager {
       const result = this.db
         .prepare(
           `
-        UPDATE ${issue.table} 
-        SET created_at = datetime('now') 
+        UPDATE ${issue.table}
+        SET created_at = datetime('now')
         WHERE id = ? AND (created_at IS NULL OR created_at = '')
       `
         )
@@ -518,8 +517,8 @@ export class DataRecoveryManager {
       const result = this.db
         .prepare(
           `
-        UPDATE tasks 
-        SET title = 'Untitled Task ' || id 
+        UPDATE tasks
+        SET title = 'Untitled Task ' || id
         WHERE id = ? AND (title IS NULL OR title = '')
       `
         )
@@ -536,10 +535,10 @@ export class DataRecoveryManager {
       const result = this.db
         .prepare(
           `
-        UPDATE tasks 
+        UPDATE tasks
         SET column_id = (
-          SELECT id FROM columns 
-          WHERE board_id = tasks.board_id 
+          SELECT id FROM columns
+          WHERE board_id = tasks.board_id
           ORDER BY position LIMIT 1
         )
         WHERE id = ?
@@ -620,10 +619,12 @@ export class DataRecoveryManager {
 }
 
 // Export a default instance
-export const dataRecovery = new DataRecoveryManager(dbConnection.getDatabase() as unknown);
+export const dataRecovery = new DataRecoveryManager(
+  dbConnection.getDatabase() as unknown as Database
+);
 
 // Export utility functions
-export async function detectDatabaseCorruption(): Promise<CorruptionReport> {
+export function detectDatabaseCorruption(): CorruptionReport {
   return dataRecovery.detectCorruption();
 }
 
@@ -634,7 +635,7 @@ export async function repairDatabaseCorruption(
   return dataRecovery.repairData(report, options);
 }
 
-export async function validateDatabaseIntegrity(): Promise<{ valid: boolean; issues: string[] }> {
+export function validateDatabaseIntegrity(): { valid: boolean; issues: string[] } {
   return dataRecovery.validateIntegrity();
 }
 

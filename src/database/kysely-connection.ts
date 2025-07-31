@@ -32,7 +32,7 @@ export function getKyselyDb(): Kysely<Database> {
 
     kyselyDb = new Kysely<Database>({
       dialect: new SqliteDialect({
-        database: sqlite,
+        database: async () => sqlite as any,
       }),
     });
   }

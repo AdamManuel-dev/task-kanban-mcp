@@ -8,12 +8,11 @@
  * Patterns: Factory pattern for logger creation, configuration injection
  */
 
-import winston from 'winston';
-import path from 'path';
 import fs from 'fs';
-import { logger } from './logger';
-import { contextLogger, auditLogger, performanceLogger, logAnalytics } from './advanced-logging';
+import path from 'path';
+import winston from 'winston';
 import { enableErrorMonitoring } from './errors';
+import { logger } from './logger';
 
 // ============================================================================
 // CONFIGURATION INTERFACES
@@ -430,129 +429,133 @@ export function updateLoggingConfig(updates: Partial<LoggingConfig>): void {
  * Get current logging configuration
  */
 export function getCurrentLoggingConfig(): Partial<LoggingConfig> {
-  return { level: logger.level, enableConsole: logger.transports.some(t => t instanceof winston.transports.Console), enableFile: logger.transports.some(t => t instanceof winston.transports.File), // Add other config properties as needed };
-}
+  return {
+    level: logger.level,
+    enableConsole: logger.transports.some(t => t instanceof winston.transports.Console),
+    enableFile: logger.transports.some(t => t instanceof winston.transports.File), // Add other config properties as needed };
+  };
 
-// ============================================================================
-// HEALTH MONITORING
-// ============================================================================
+  // ============================================================================
+  // HEALTH MONITORING
+  // ============================================================================
 
-/**
- * Monitor logging system health
- */
-export function startLoggingHealthMonitor(): void {
-  const healthCheckInterval = 5 * 60 * 1000; // 5 minutes
+  /**
+   * Monitor logging system health
+   */
+  export function startLoggingHealthMonitor(): void {
+    const healthCheckInterval = 5 * 60 * 1000; // 5 minutes
 
-  setInterval(() => {
-    try {
-      // Check log file accessibility
-      const logFiles = [
-        path.join(process.cwd(), 'logs', 'combined.log'),
-        path.join(process.cwd(), 'logs', 'error.log'),
-      ];
-
-      let allFilesAccessible = true;
-      logFiles.forEach(file => {
-        try {
-          fs.accessSync(file, fs.constants.W_OK);
-        } catch (error) {
-          allFilesAccessible = false;
-          logger.error('Log file not accessible', { file, error: (error as Error).message });
-        }
-      });
-
-      // Check disk space
-      const logDir = path.join(process.cwd(), 'logs');
+    setInterval(() => {
       try {
-        const stats = fs.statSync(logDir);
-        // In a real implementation, you'd check available disk space
-        logger.debug('Logging health check passed', {
-          filesAccessible: allFilesAccessible,
-          logDirectory: logDir,
+        // Check log file accessibility
+        const logFiles = [
+          path.join(process.cwd(), 'logs', 'combined.log'),
+          path.join(process.cwd(), 'logs', 'error.log'),
+        ];
+
+        let allFilesAccessible = true;
+        logFiles.forEach(file => {
+          try {
+            fs.accessSync(file, fs.constants.W_OK);
+          } catch (error) {
+            allFilesAccessible = false;
+            logger.error('Log file not accessible', { file, error: (error as Error).message });
+          }
         });
+
+        // Check disk space
+        const logDir = path.join(process.cwd(), 'logs');
+        try {
+          const stats = fs.statSync(logDir);
+          // In a real implementation, you'd check available disk space
+          logger.debug('Logging health check passed', {
+            filesAccessible: allFilesAccessible,
+            logDirectory: logDir,
+          });
+        } catch (error) {
+          logger.error('Logging health check failed', {
+            error: (error as Error).message,
+          });
+        }
       } catch (error) {
-        logger.error('Logging health check failed', {
+        logger.error('Logging health monitor error', {
           error: (error as Error).message,
         });
       }
-    } catch (error) {
-      logger.error('Logging health monitor error', {
-        error: (error as Error).message,
-      });
-    }
-  }, healthCheckInterval);
+    }, healthCheckInterval);
 
-  logger.info('Logging health monitor started');
-}
+    logger.info('Logging health monitor started');
+  }
 
-// ============================================================================
-// UTILITY FUNCTIONS
-// ============================================================================
+  // ============================================================================
+  // UTILITY FUNCTIONS
+  // ============================================================================
 
-/**
- * Create a child logger with specific context
- */
-export function createChildLogger(context: Record<string, unknown>): winston.Logger {
-  return logger.child(context);
-}
+  /**
+   * Create a child logger with specific context
+   */
+  export function createChildLogger(context: Record<string, unknown>): winston.Logger {
+    return logger.child(context);
+  }
 
-/**
- * Flush all log transports
- */
-export async function flushLogs(): Promise<void> {
-  return new Promise(resolve => {
-    const transports = logger.transports.filter(t => t instanceof winston.transports.File);
+  /**
+   * Flush all log transports
+   */
+  export async function flushLogs(): Promise<void> {
+    return new Promise(resolve => {
+      const transports = logger.transports.filter(t => t instanceof winston.transports.File);
 
-    if (transports.length === 0) {
-      resolve();
-      return;
-    }
+      if (transports.length === 0) {
+        resolve();
+        return;
+      }
 
-    let flushed = 0;
-    transports.forEach(transport => {
-      if ('_flush' in transport && typeof transport._flush === 'function') {
-        transport._flush(() => {
+      let flushed = 0;
+      transports.forEach(transport => {
+        if ('_flush' in transport && typeof transport._flush === 'function') {
+          transport._flush(() => {
+            flushed++;
+            if (flushed === transports.length) {
+              resolve();
+            }
+          });
+        } else {
           flushed++;
           if (flushed === transports.length) {
             resolve();
           }
-        });
-      } else {
-        flushed++;
-        if (flushed === transports.length) {
-          resolve();
         }
+      });
+    });
+  }
+
+  /**
+   * Get logging system statistics
+   */
+  export function getLoggingStats(): {
+    logLevel: string;
+    transports: number;
+    logFiles: Array<{
+      file: string;
+      size: number;
+      lastModified: Date;
+    }>;
+  } {
+    const logFiles = [
+      'logs/combined.log',
+      'logs/error.log',
+      'logs/audit.log',
+      'logs/performance.log',
+    ].map(file => {
+      const fullPath = path.join(process.cwd(), file);
+      try {
+        const stats = fs.statSync(fullPath);
+        return { file, size: stats.size, lastModified: stats.mtime };
+      } catch {
+        return { file, size: 0, lastModified: new Date(0) };
       }
     });
-  });
-}
 
-/**
- * Get logging system statistics
- */
-export function getLoggingStats(): {
-  logLevel: string;
-  transports: number;
-  logFiles: Array<{
-    file: string;
-    size: number;
-    lastModified: Date;
-  }>;
-} {
-  const logFiles = [
-    'logs/combined.log',
-    'logs/error.log',
-    'logs/audit.log',
-    'logs/performance.log',
-  ].map(file => {
-    const fullPath = path.join(process.cwd(), file);
-    try {
-      const stats = fs.statSync(fullPath);
-      return { file, size: stats.size, lastModified: stats.mtime };
-    } catch {
-      return { file, size: 0, lastModified: new Date(0) };
-    }
-  });
-
-  return { logLevel: logger.level, transports: logger.transports.length, logFiles };
+    return { logLevel: logger.level, transports: logger.transports.length, logFiles };
+  }
 }

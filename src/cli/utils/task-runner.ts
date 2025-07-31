@@ -1,11 +1,12 @@
 import { Listr } from 'listr2';
+import type { ListrTask, ListrContext, ListrRenderer } from 'listr2';
 import chalk from 'chalk';
 import { logger } from '../../utils/logger';
 
 export interface TaskItem {
   id: string;
   title: string;
-  action: () => Promise<unknown>;
+  action: (ctx?: ListrContext, task?: ListrTask<ListrContext, ListrRenderer>) => Promise<unknown> | unknown;
   skip?: () => boolean | string;
   enabled?: boolean;
   concurrent?: boolean;
@@ -49,10 +50,6 @@ export class TaskRunner {
       concurrent: options?.concurrent ?? false,
       exitOnError: options?.exitOnError ?? true,
       renderer: this.renderer,
-      rendererOptions: {
-        showSubtasks: true,
-        showTimer: true,
-      },
     });
 
     try {
@@ -74,7 +71,7 @@ export class TaskRunner {
   ): Promise<void> {
     const mainTasks = groups.map(group => ({
       title: group.title,
-      task: (_ctx: unknown, task: unknown): unknown => {
+      task: (_ctx: ListrContext, task: any): any => {
         const subtasks = group.tasks.map(item => ({
           title: item.title,
           task: item.action,

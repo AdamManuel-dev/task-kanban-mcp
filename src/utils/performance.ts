@@ -1,3 +1,4 @@
+/* eslint-disable max-classes-per-file */
 /**
  * @fileoverview Performance monitoring and timing utilities
  * @lastmodified 2025-07-28T17:00:00Z
@@ -115,7 +116,12 @@ export class PerformanceMonitor {
     operationCounts: Record<string, number>;
   } {
     if (this.metrics.length === 0) {
-      return { totalOperations: 0, averageDuration: 0, slowestOperation: null, fastestOperation: null, operationCounts: { },
+      return {
+        totalOperations: 0,
+        averageDuration: 0,
+        slowestOperation: null,
+        fastestOperation: null,
+        operationCounts: {},
       };
     }
 
@@ -138,7 +144,13 @@ export class PerformanceMonitor {
       {} as Record<string, number>
     );
 
-    return { totalOperations: this.metrics.length, averageDuration, slowestOperation, fastestOperation, operationCounts };
+    return {
+      totalOperations: this.metrics.length,
+      averageDuration,
+      slowestOperation,
+      fastestOperation,
+      operationCounts,
+    };
   }
 
   /**
@@ -291,7 +303,18 @@ export function trackMemory(operationName: string): {
   const timer = new Timer(operationName);
   const startMemory = process.memoryUsage();
 
-  return { startMemory, stop: () => {, const duration = timer.stop();, const endMemory = process.memoryUsage();, const memoryDelta = {, rss: endMemory.rss - startMemory.rss, heapTotal: endMemory.heapTotal - startMemory.heapTotal, heapUsed: endMemory.heapUsed - startMemory.heapUsed, external: endMemory.external - startMemory.external, arrayBuffers: endMemory.arrayBuffers - startMemory.arrayBuffers };
+  return {
+    startMemory,
+    stop: () => {
+      const duration = timer.stop();
+      const endMemory = process.memoryUsage();
+      const memoryDelta = {
+        rss: endMemory.rss - startMemory.rss,
+        heapTotal: endMemory.heapTotal - startMemory.heapTotal,
+        heapUsed: endMemory.heapUsed - startMemory.heapUsed,
+        external: endMemory.external - startMemory.external,
+        arrayBuffers: endMemory.arrayBuffers - startMemory.arrayBuffers,
+      };
 
       logger.debug('Memory tracking result', {
         operation: operationName,
@@ -363,7 +386,14 @@ export class Benchmark {
     const variance = this.runs.reduce((acc, val) => acc + (val - mean) ** 2, 0) / this.runs.length;
     const stdDev = Math.sqrt(variance);
 
-    return { runs: this.runs.length, min: sorted[0], max: sorted[sorted.length - 1], mean, median, stdDev };
+    return {
+      runs: this.runs.length,
+      min: sorted[0],
+      max: sorted[sorted.length - 1],
+      mean,
+      median,
+      stdDev,
+    };
   }
 
   /**

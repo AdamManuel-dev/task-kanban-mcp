@@ -1,3 +1,4 @@
+/* eslint-disable max-classes-per-file */
 /**
  * @fileoverview Express middleware for request batching integration
  * @lastmodified 2025-07-28T09:00:00Z
@@ -8,14 +9,13 @@
  * Patterns: Middleware pattern, response transformation, async request handling
  */
 
-import type { Request, Response, NextFunction } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import { Router } from 'express';
 import { performance } from 'perf_hooks';
+import { ValidationError } from '../utils/errors';
 import { logger } from '../utils/logger';
-import { requestBatcher } from '../utils/request-batching';
 import { requestDeduplicator } from '../utils/request-deduplication';
 import { requestScheduler } from '../utils/request-prioritization';
-import { ValidationError } from '../utils/errors';
 
 // ============================================================================
 // TYPES AND INTERFACES
@@ -313,7 +313,11 @@ export class BatchingController {
       if (options.enableDeduplication && this.options.enableDeduplication) {
         const cachedResponse = await this.tryDeduplication(request);
         if (cachedResponse) {
-          return { ...cachedResponse, deduplicated: true, processingTime: performance.now() - startTime };
+          return {
+            ...cachedResponse,
+            deduplicated: true,
+            processingTime: performance.now() - startTime,
+          };
         }
       }
 
@@ -333,9 +337,20 @@ export class BatchingController {
       // Execute the request
       const response = await this.executeRequest(request);
 
-      return { id: request.id, status: response.status, statusText: response.statusText, headers: response.headers, data: response.data, processingTime: performance.now() - startTime };
+      return {
+        id: request.id,
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+        data: response.data,
+        processingTime: performance.now() - startTime,
+      };
     } catch (error) {
-      return { id: request.id, status: 500, statusText: 'Internal Server Error', headers: { },
+      return {
+        id: request.id,
+        status: 500,
+        statusText: 'Internal Server Error',
+        headers: {},
         error: {
           code: 'REQUEST_EXECUTION_ERROR',
           message: 'Failed to execute request',
@@ -359,7 +374,11 @@ export class BatchingController {
       );
 
       if (response) {
-        return { id: request.id, status: 200, statusText: 'OK', headers: { 'content-type': 'application/json' },
+        return {
+          id: request.id,
+          status: 200,
+          statusText: 'OK',
+          headers: { 'content-type': 'application/json' },
           data: response,
           processingTime: 0,
           cached: true,
@@ -399,7 +418,10 @@ export class BatchingController {
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
-    return { status: 200, statusText: 'OK', headers: { 'content-type': 'application/json' },
+    return {
+      status: 200,
+      statusText: 'OK',
+      headers: { 'content-type': 'application/json' },
       data: {
         id: request.id,
         method: request.method,
@@ -472,7 +494,12 @@ export class BatchingController {
     deduplicationEnabled: boolean;
     prioritizationEnabled: boolean;
   } {
-    return { pendingResponses: this.responseAggregator.getPendingCount(), batchingEnabled: this.options.enableBatching, deduplicationEnabled: this.options.enableDeduplication, prioritizationEnabled: this.options.enablePrioritization };
+    return {
+      pendingResponses: this.responseAggregator.getPendingCount(),
+      batchingEnabled: this.options.enableBatching,
+      deduplicationEnabled: this.options.enableDeduplication,
+      prioritizationEnabled: this.options.enablePrioritization,
+    };
   }
 }
 
@@ -590,14 +617,23 @@ export function extractBatchMetadata(req: Request): {
   priority?: number;
   timeout?: number;
 } {
-  return { clientId: req.headers['x-client-id'] as string, priority: req.headers['x-priority'], ? parseInt(req.headers['x-priority'] as string, 10), : undefined, timeout: req.headers['x-timeout'], ? parseInt(req.headers['x-timeout'] as string, 10), : undefined };
+  return {
+    clientId: req.headers['x-client-id'] as string,
+    priority: req.headers['x-priority']
+      ? parseInt(req.headers['x-priority'] as string, 10)
+      : undefined,
+    timeout: req.headers['x-timeout']
+      ? parseInt(req.headers['x-timeout'] as string, 10)
+      : undefined,
+  };
 }
 
 /**
  * Create batch request from Express request
  */
 export function createBatchRequest(req: Request): BatchedRequest {
-  return { id: `req_${Date.now() }_${Math.random().toString(36).substring(2, 11)}`,
+  return {
+    id: `req_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
     method: req.method,
     url: req.originalUrl || req.url,
     headers: req.headers as Record<string, string>,

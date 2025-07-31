@@ -26,24 +26,24 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
   CallToolRequestSchema,
-  ListToolsRequestSchema,
-  ListResourcesRequestSchema,
-  ReadResourceRequestSchema,
   GetPromptRequestSchema,
   ListPromptsRequestSchema,
+  ListResourcesRequestSchema,
+  ListToolsRequestSchema,
+  ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 
 import { config } from '@/config';
-import { logger } from '@/utils/logger';
 import { dbConnection } from '@/database/connection';
-import { TaskService } from '@/services/TaskService';
 import { BoardService } from '@/services/BoardService';
+import { ContextService } from '@/services/ContextService';
 import { NoteService } from '@/services/NoteService';
 import { TagService } from '@/services/TagService';
-import { ContextService } from '@/services/ContextService';
-import { MCPToolRegistry } from './tools';
-import { MCPResourceRegistry } from './resources';
+import { TaskService } from '@/services/TaskService';
+import { logger } from '@/utils/logger';
 import { MCPPromptRegistry } from './prompts';
+import { MCPResourceRegistry } from './resources';
+import { MCPToolRegistry } from './tools';
 
 /**
  * MCP Kanban Server - Main server class for Model Context Protocol integration
@@ -158,12 +158,14 @@ export class MCPKanbanServer {
 
       try {
         const result = await this.toolRegistry.callTool(name, args ?? {});
-        return { content: [, {, type: 'text', text: JSON.stringify(result, null, 2) },
-          ],
-        };
+        return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
       } catch (error) {
         logger.error('MCP tool call failed', { toolName: name, args, error });
-        return { content: [, {, type: 'text', text: `Error: ${String(String(error instanceof Error ? error.message : 'Unknown error')) }`,
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Error: ${String(error instanceof Error ? error.message : 'Unknown error')}`,
             },
           ],
           isError: true,
@@ -182,7 +184,9 @@ export class MCPKanbanServer {
 
       try {
         const resource = await this.resourceRegistry.readResource(uri);
-        return { contents: [, {, uri, mimeType: resource.mimeType ?? 'application/json', text: resource.text },
+        return {
+          contents: [
+            { uri, mimeType: resource.mimeType ?? 'application/json', text: resource.text },
           ],
         };
       } catch (error) {
@@ -341,10 +345,24 @@ export class MCPKanbanServer {
       const resources = await this.resourceRegistry.listResources();
       const prompts = await this.promptRegistry.listPrompts();
 
-      return { status: dbHealth.connected ? 'healthy' : 'unhealthy', database: dbHealth.connected, tools: tools.length, resources: resources.length, prompts: prompts.length, uptime: process.uptime() };
+      return {
+        status: dbHealth.connected ? 'healthy' : 'unhealthy',
+        database: dbHealth.connected,
+        tools: tools.length,
+        resources: resources.length,
+        prompts: prompts.length,
+        uptime: process.uptime(),
+      };
     } catch (error) {
       logger.error('MCP health check failed', { error });
-      return { status: 'unhealthy', database: false, tools: 0, resources: 0, prompts: 0, uptime: process.uptime() };
+      return {
+        status: 'unhealthy',
+        database: false,
+        tools: 0,
+        resources: 0,
+        prompts: 0,
+        uptime: process.uptime(),
+      };
     }
   }
 
@@ -366,7 +384,12 @@ export class MCPKanbanServer {
     capabilities: string[];
     description: string;
   } {
-    return { name: config.mcp.serverName, version: config.mcp.serverVersion, capabilities: ['tools', 'resources', 'prompts'], description: 'MCP server for Kanban task management with AI integration' };
+    return {
+      name: config.mcp.serverName,
+      version: config.mcp.serverVersion,
+      capabilities: ['tools', 'resources', 'prompts'],
+      description: 'MCP server for Kanban task management with AI integration',
+    };
   }
 
   /**

@@ -28,6 +28,7 @@ import {
 
 // Import env-manager after dotenv is loaded
 import { envManager, getEnvValidation } from './env-manager';
+import { isSecureSecret, generateSecureSecret, SecurityError } from './security';
 
 // Load environment variables first
 dotenv.config();
@@ -56,10 +57,42 @@ const configSchema = z.object({
 
   // API Security
   api: z.object({
-    keySecret: z.string().min(16).default('dev-secret-key-change-in-production'),
-    keys: z.array(z.string()).default(['dev-key-1']),
-    corsOrigin: z.union([z.string(), z.array(z.string())]).default('*'),
-    corsCredentials: z.boolean().default(true),
+    keySecret: z.string().min(32).refine(
+      val => {
+        if (process.env.NODE_ENV === 'production' && !isSecureSecret(val)) {
+          throw new SecurityError('API_KEY_SECRET must be secure in production');
+        }
+        return true;
+      }
+    ),
+    keys: z.array(z.string()).refine(
+      val => {
+        if (process.env.NODE_ENV === 'production') {
+          const insecureKeys = val.filter(k => !isSecureSecret(k, 32));
+          if (insecureKeys.length > 0) {
+            throw new SecurityError('All API keys must be secure in production');
+          }
+        }
+        return true;
+      }
+    ),
+    corsOrigin: z.union([z.string(), z.array(z.string()), z.function()]).refine(
+      val => {
+        if (process.env.NODE_ENV === 'production' && val === '*') {
+          throw new SecurityError('CORS must not allow all origins (*) in production');
+        }
+        return true;
+      }
+    ),
+    corsCredentials: z.boolean().refine(
+      val => {
+        if (process.env.NODE_ENV === 'production' && val === true && 
+            (envManager.get('CORS_ORIGIN', '*') === '*')) {
+          throw new SecurityError('CORS credentials cannot be enabled with wildcard origin');
+        }
+        return true;
+      }
+    ),
   }),
 
   // Rate limiting
@@ -77,7 +110,7 @@ const configSchema = z.object({
     corsOrigin: z.string().default('*'),
     heartbeatInterval: z.number().int().positive().default(25000),
     heartbeatTimeout: z.number().int().positive().default(60000),
-    authRequired: z.boolean().default(false),
+    authRequired: z.boolean().default(true),
     authTimeout: z.number().int().positive().default(30000),
     maxConnections: z.number().int().positive().default(1000),
     maxMessagesPerMinute: z.number().int().positive().default(100),
@@ -232,10 +265,10 @@ const rawConfig = {
     verbose: parseEnvVar(getEnv('DATABASE_VERBOSE'), false),
   },
   api: {
-    keySecret: parseEnvVar(getEnv('API_KEY_SECRET'), 'dev-secret-key-change-in-production'),
-    keys: parseEnvVar(getEnv('API_KEYS'), ['dev-key-1']),
-    corsOrigin: parseEnvVar(getEnv('CORS_ORIGIN'), '*'),
-    corsCredentials: parseEnvVar(getEnv('CORS_CREDENTIALS'), true),
+    keySecret: envManager.get('API_KEY_SECRET', process.env.NODE_ENV === 'production' ? '' : generateSecureSecret()),
+    keys: envManager.get('API_KEYS', []),
+    corsOrigin: envManager.get('CORS_ORIGIN', process.env.NODE_ENV === 'production' ? 'http://localhost:3000' : '*'),
+    corsCredentials: envManager.get('CORS_CREDENTIALS', process.env.NODE_ENV === 'production' ? false : true),
   },
   rateLimit: {
     windowMs: parseEnvVar(getEnv('RATE_LIMIT_WINDOW_MS'), 60000),
@@ -249,7 +282,7 @@ const rawConfig = {
     corsOrigin: envManager.get('WEBSOCKET_CORS_ORIGIN', cloudConfig.websocket?.corsOrigin ?? '*'),
     heartbeatInterval: parseEnvVar(getEnv('WEBSOCKET_HEARTBEAT_INTERVAL'), 25000),
     heartbeatTimeout: parseEnvVar(getEnv('WEBSOCKET_HEARTBEAT_TIMEOUT'), 60000),
-    authRequired: parseEnvVar(getEnv('WEBSOCKET_AUTH_REQUIRED'), false),
+    authRequired: parseEnvVar(getEnv('WEBSOCKET_AUTH_REQUIRED'), process.env.NODE_ENV === 'production' ? true : false),
     authTimeout: parseEnvVar(getEnv('WEBSOCKET_AUTH_TIMEOUT'), 30000),
     maxConnections: parseEnvVar(getEnv('WEBSOCKET_MAX_CONNECTIONS'), 1000),
     maxMessagesPerMinute: parseEnvVar(getEnv('WEBSOCKET_MAX_MESSAGES_PER_MINUTE'), 100),

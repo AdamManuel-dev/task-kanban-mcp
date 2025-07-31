@@ -244,10 +244,10 @@ export class BackupEncryptionService {
       logger.info('Encrypting backup file', { inputPath, outputPath });
 
       // Read input file
-      const data = await fs.readFile(inputPath);
+      const backupFileContent = await fs.readFile(inputPath);
 
       // Encrypt data
-      const encryptedBackup = await this.encryptBackup(data, password);
+      const encryptedBackup = await this.encryptBackup(backupFileContent, password);
 
       // Prepare encrypted file content
       const fileContent = {
@@ -417,28 +417,28 @@ export class BackupEncryptionService {
    */
   async testEncryptionRoundtrip(testData?: Buffer): Promise<boolean> {
     try {
-      const data = testData ?? Buffer.from('This is a test backup encryption roundtrip', 'utf-8');
+      const testBackupData = testData ?? Buffer.from('This is a test backup encryption roundtrip', 'utf-8');
       const password = BackupEncryptionService.generateSecurePassword();
 
       // Encrypt
-      const encrypted = await this.encryptBackup(data, password);
+      const encryptedTestData = await this.encryptBackup(testBackupData, password);
 
       // Validate integrity
-      const isValid = await this.validateBackupIntegrity(encrypted);
+      const isValid = await this.validateBackupIntegrity(encryptedTestData);
       if (!isValid) {
         throw new Error('Encrypted backup failed integrity check');
       }
 
       // Decrypt
-      const decrypted = await this.decryptBackup(encrypted, password);
+      const decryptedTestData = await this.decryptBackup(encryptedTestData, password);
 
       // Compare
-      const matches = data.equals(decrypted);
+      const matches = testBackupData.equals(decryptedTestData);
 
       logger.info('Encryption roundtrip test completed', {
         success: matches,
-        dataSize: data.length,
-        encryptedSize: encrypted.encryptedData.length,
+        dataSize: testBackupData.length,
+        encryptedSize: encryptedTestData.encryptedData.length,
       });
 
       return matches;

@@ -8,11 +8,11 @@
  * Patterns: Parameter validation, service delegation, error handling
  */
 
-import type { Request, Response, NextFunction } from 'express';
-import { z } from 'zod';
 import { requirePermission } from '@/middleware/auth';
 import { validateRequest } from '@/middleware/validation';
 import { logger } from '@/utils/logger';
+import type { NextFunction, Request, RequestHandler, Response } from 'express';
+import { z } from 'zod';
 
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -41,7 +41,7 @@ const getTaskQuerySchema = z.object({
 /**
  * Get a single task by ID
  */
-export const getTaskHandler = (services: Services) => [
+export const getTaskHandler = (services: Services): RequestHandler[] => [
   requirePermission('read'),
   validateRequest(getTaskParamsSchema),
   validateRequest(getTaskQuerySchema),

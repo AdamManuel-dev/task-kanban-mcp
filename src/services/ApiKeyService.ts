@@ -8,12 +8,14 @@
  * Patterns: Service pattern, lifecycle management, security best practices
  */
 
-import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
-import { logger } from '../utils/logger';
+import { v4 as uuidv4 } from 'uuid';
+import { envManager } from '../config/env-manager';
+import { hashApiKey } from '../config/security';
 import type { DatabaseConnection, QueryParameters } from '../database/connection';
 import type { ApiKeyRow } from '../database/kyselySchema';
 import { BaseServiceError } from '../utils/errors';
+import { logger } from '../utils/logger';
 
 export interface ApiKey {
   id: string;
@@ -56,7 +58,10 @@ export interface RotateApiKeyResult {
 }
 
 export class ApiKeyService {
-  constructor(private readonly db: DatabaseConnection) {}
+  constructor(private readonly db: DatabaseConnection) {
+    // eslint-disable-next-line no-useless-constructor
+    console.log('ApiKeyService constructor');
+  }
 
   /**
    * Create a new API key
@@ -88,8 +93,8 @@ export class ApiKeyService {
 
       await this.db.execute(
         `INSERT INTO api_keys (
-          id, key_hash, name, description, permissions, user_id, 
-          created_at, updated_at, expires_at, is_active, 
+          id, key_hash, name, description, permissions, user_id,
+          created_at, updated_at, expires_at, is_active,
           rotation_history, usage_count, rate_limit_rpm
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
@@ -206,8 +211,8 @@ export class ApiKeyService {
       // Insert new key
       await this.db.execute(
         `INSERT INTO api_keys (
-          id, key_hash, name, description, permissions, user_id, 
-          created_at, updated_at, expires_at, is_active, 
+          id, key_hash, name, description, permissions, user_id,
+          created_at, updated_at, expires_at, is_active,
           rotation_history, usage_count, rate_limit_rpm
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
@@ -229,8 +234,8 @@ export class ApiKeyService {
 
       // Schedule old key for expiration after grace period
       await this.db.execute(
-        `UPDATE api_keys SET 
-          expires_at = ?, 
+        `UPDATE api_keys SET
+          expires_at = ?,
           updated_at = ?,
           name = ?
         WHERE id = ?`,
@@ -249,7 +254,12 @@ export class ApiKeyService {
         gracePeriodEnd: gracePeriodEnd.toISOString(),
       });
 
-      return { oldKeyId: existingKey.id, newKey: newRawKey, newKeyId: newApiKey.id, expiresAt: newApiKey.expiresAt };
+      return {
+        oldKeyId: existingKey.id,
+        newKey: newRawKey,
+        newKeyId: newApiKey.id,
+        expiresAt: newApiKey.expiresAt,
+      };
     } catch (error) {
       logger.error('Failed to rotate API key', { error, keyId });
       throw new BaseServiceError('API_KEY_ROTATION_FAILED', 'Failed to rotate API key');
@@ -264,12 +274,12 @@ export class ApiKeyService {
       const now = new Date();
 
       await this.db.execute(
-        `UPDATE api_keys SET 
-          is_active = 0, 
-          revoked_at = ?, 
+        `UPDATE api_keys SET
+          is_active = 0,
+          revoked_at = ?,
           updated_at = ?,
-          description = COALESCE(description, '') || CASE 
-            WHEN description IS NOT NULL AND LENGTH(description) > 0 
+          description = COALESCE(description, '') || CASE
+            WHEN description IS NOT NULL AND LENGTH(description) > 0
             THEN ' [Revoked: ' || ? || ']'
             ELSE 'Revoked: ' || ?
           END
@@ -363,19 +373,19 @@ export class ApiKeyService {
 
       // First, get count of expired keys
       const countResult = (await this.db.queryOne(
-        `SELECT COUNT(*) as count FROM api_keys 
+        `SELECT COUNT(*) as count FROM api_keys
          WHERE expires_at IS NOT NULL AND expires_at < ? AND is_active = 1`,
         [now.toISOString()]
       )) as { count: number } | null;
 
-      const expiredCount = countResult?.count || 0;
+      const expiredCount = countResult?.count ?? 0;
 
       if (expiredCount > 0) {
         // Revoke expired keys
         await this.db.execute(
-          `UPDATE api_keys SET 
-            is_active = 0, 
-            revoked_at = ?, 
+          `UPDATE api_keys SET
+            is_active = 0,
+            revoked_at = ?,
             updated_at = ?,
             description = COALESCE(description, '') || ' [Auto-expired]'
           WHERE expires_at IS NOT NULL AND expires_at < ? AND is_active = 1`,
@@ -405,7 +415,7 @@ export class ApiKeyService {
   }> {
     try {
       const stats = (await this.db.queryOne(`
-        SELECT 
+        SELECT
           COUNT(*) as totalKeys,
           SUM(CASE WHEN is_active = 1 AND (expires_at IS NULL OR expires_at > datetime('now')) THEN 1 ELSE 0 END) as activeKeys,
           SUM(CASE WHEN expires_at IS NOT NULL AND expires_at <= datetime('now') THEN 1 ELSE 0 END) as expiredKeys,
@@ -421,38 +431,65 @@ export class ApiKeyService {
       } | null;
 
       const topUsedRows = await this.db.query(`
-        SELECT id, name, usage_count 
-        FROM api_keys 
+        SELECT id, name, usage_count
+        FROM api_keys
         WHERE usage_count > 0
-        ORDER BY usage_count DESC 
+        ORDER BY usage_count DESC
         LIMIT 10
       `);
 
-      return { totalKeys: stats?.totalKeys || 0, activeKeys: stats?.activeKeys || 0, expiredKeys: stats?.expiredKeys || 0, revokedKeys: stats?.revokedKeys || 0, totalUsage: stats?.totalUsage || 0, topUsedKeys: topUsedRows.map((row: unknown) => {, const apiKeyRow = row as ApiKeyRow;, return {, id: apiKeyRow.id, name: apiKeyRow.name, usageCount: apiKeyRow.usage_count };
+      return {
+        totalKeys: stats?.totalKeys ?? 0,
+        activeKeys: stats?.activeKeys ?? 0,
+        expiredKeys: stats?.expiredKeys ?? 0,
+        revokedKeys: stats?.revokedKeys ?? 0,
+        totalUsage: stats?.totalUsage ?? 0,
+        topUsedKeys: topUsedRows.map((row: unknown) => {
+          const apiKeyRow = row as ApiKeyRow;
+          return {
+            id: apiKeyRow.id,
+            name: apiKeyRow.name,
+            usageCount: apiKeyRow.usage_count,
+          };
         }),
       };
     } catch (error) {
       logger.error('Failed to get usage stats', { error });
-      return { totalKeys: 0, activeKeys: 0, expiredKeys: 0, revokedKeys: 0, totalUsage: 0, topUsedKeys: [] };
+      return {
+        totalKeys: 0,
+        activeKeys: 0,
+        expiredKeys: 0,
+        revokedKeys: 0,
+        totalUsage: 0,
+        topUsedKeys: [],
+      };
     }
   }
 
   // Private helper methods
 
   private generateSecureKey(): string {
-    // Generate a 64-character hex key (32 bytes)
-    return crypto.randomBytes(32).toString('hex');
+    // Generate a secure API key with proper prefix
+    const prefix = 'mcp_kanban';
+    const timestamp = Date.now().toString(36);
+    const random = crypto.randomBytes(32).toString('base64url');
+    return `${prefix}_${timestamp}_${random}`;
   }
 
   private hashKey(key: string): string {
-    return crypto.createHash('sha256').update(key).digest('hex');
+    // Use HMAC-SHA512 with secret for API key hashing
+    const apiKeySecret = envManager.get<string>('API_KEY_SECRET');
+    if (!apiKeySecret) {
+      throw new BaseServiceError('API_KEY_SECRET_NOT_CONFIGURED', 'API_KEY_SECRET not configured');
+    }
+    return hashApiKey(key, apiKeySecret);
   }
 
   private async updateKeyUsage(keyId: string): Promise<void> {
     try {
       await this.db.execute(
-        `UPDATE api_keys SET 
-          last_used_at = ?, 
+        `UPDATE api_keys SET
+          last_used_at = ?,
           usage_count = usage_count + 1,
           updated_at = ?
         WHERE id = ?`,
@@ -465,7 +502,23 @@ export class ApiKeyService {
   }
 
   private deserializeApiKey(row: ApiKeyRow): ApiKey {
-    return { id: row.id, keyHash: row.key_hash, name: row.name, description: row.description, permissions: JSON.parse(row.permissions || '[]'), userId: row.user_id, createdAt: new Date(row.created_at), updatedAt: new Date(row.updated_at), expiresAt: row.expires_at ? new Date(row.expires_at) : undefined, lastUsedAt: row.last_used_at ? new Date(row.last_used_at) : undefined, revokedAt: row.revoked_at ? new Date(row.revoked_at) : undefined, isActive: !!row.is_active, rotationHistory: JSON.parse(row.rotation_history || '[]'), usageCount: row.usage_count || 0, rateLimitRpm: row.rate_limit_rpm };
+    return {
+      id: row.id,
+      keyHash: row.key_hash,
+      name: row.name,
+      description: row.description ?? undefined,
+      permissions: JSON.parse(row.permissions) as string[],
+      userId: row.user_id ?? undefined,
+      createdAt: new Date(row.created_at),
+      updatedAt: new Date(row.updated_at),
+      expiresAt: row.expires_at ? new Date(row.expires_at) : undefined,
+      lastUsedAt: row.last_used_at ? new Date(row.last_used_at) : undefined,
+      revokedAt: row.revoked_at ? new Date(row.revoked_at) : undefined,
+      isActive: !!row.is_active,
+      rotationHistory: JSON.parse(row.rotation_history ?? '[]') as string[],
+      usageCount: row.usage_count,
+      rateLimitRpm: row.rate_limit_rpm ?? undefined,
+    };
   }
 
   private async ensureApiKeyTable(): Promise<void> {
@@ -510,7 +563,7 @@ export function startApiKeyCleanup(intervalMs = 3600000): void {
     clearInterval(cleanupInterval);
   }
 
-  cleanupInterval = setInterval(async () => {
+  cleanupInterval = setInterval(() => {
     try {
       // This would need a database connection - in practice, you'd inject this
       logger.info('API key cleanup scheduled - implement with service instance');

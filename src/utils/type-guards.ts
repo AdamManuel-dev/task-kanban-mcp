@@ -1,187 +1,160 @@
 /**
- * @fileoverview Type guards and validation utilities
- * @lastmodified 2025-07-28T12:00:00Z
- *
- * Features: Complex conditional logic simplified into reusable type guards
- * Main APIs: hasValidTaskData(), hasValidBoardData(), isSuccessResponse()
- * Constraints: Maintains type safety while improving readability
- * Patterns: Type guard functions, response validation, data existence checks
+ * @fileoverview Centralized type guards for runtime type checking
+ * @lastmodified 2025-07-31T02:30:00Z
+ * 
+ * Features: Type narrowing, runtime validation, null safety
+ * Main APIs: isTask(), isBoard(), isNote(), isTag(), hasId()
+ * Constraints: Must match type definitions, used across codebase
+ * Patterns: User-defined type guards, type predicates
  */
 
-import type { Task, Board } from '../types';
+import type { Task, Board, Note, Tag } from '@/types';
 
 /**
- * Type guard to check if response contains valid task data array
+ * Check if a value has an id property
  */
-export const hasValidTaskData = (response: unknown): response is { data: Task[] } =>
-  response !== null &&
-  response !== undefined &&
-  typeof response === 'object' &&
-  'data' in response &&
-  Array.isArray((response as { data: unknown }).data) &&
-  (response as { data: unknown[] }).data.length > 0;
+export function hasId(value: unknown): value is { id: string } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'id' in value &&
+    typeof (value as any).id === 'string'
+  );
+}
 
 /**
- * Type guard to check if response contains valid board data array
+ * Type guard for Task objects
  */
-export const hasValidBoardData = (response: unknown): response is { data: Board[] } =>
-  response !== null &&
-  response !== undefined &&
-  typeof response === 'object' &&
-  'data' in response &&
-  Array.isArray((response as { data: unknown }).data) &&
-  (response as { data: unknown[] }).data.length > 0;
+export function isTask(value: unknown): value is Task {
+  if (!hasId(value)) return false;
+  
+  const obj = value as any;
+  return (
+    typeof obj.title === 'string' &&
+    typeof obj.board_id === 'string' &&
+    typeof obj.column_id === 'string' &&
+    typeof obj.position === 'number' &&
+    typeof obj.priority === 'number' &&
+    typeof obj.status === 'string' &&
+    ['todo', 'in_progress', 'done', 'blocked', 'archived'].includes(obj.status) &&
+    typeof obj.archived === 'boolean' &&
+    obj.created_at instanceof Date &&
+    obj.updated_at instanceof Date
+  );
+}
 
 /**
- * Type guard to check if response contains any valid data array
+ * Type guard for Board objects
  */
-export const hasValidData = (response: unknown): response is { data: unknown[] } =>
-  response !== null &&
-  response !== undefined &&
-  typeof response === 'object' &&
-  'data' in response &&
-  Array.isArray((response as { data: unknown }).data) &&
-  (response as { data: unknown[] }).data.length > 0;
+export function isBoard(value: unknown): value is Board {
+  if (!hasId(value)) return false;
+  
+  const obj = value as any;
+  return (
+    typeof obj.name === 'string' &&
+    typeof obj.created_at === 'object' &&
+    typeof obj.updated_at === 'object' &&
+    (obj.description === undefined || typeof obj.description === 'string') &&
+    (obj.metadata === undefined || typeof obj.metadata === 'string')
+  );
+}
 
 /**
- * Type guard to check if response is a success response with data
+ * Type guard for Note objects
  */
-export const isSuccessResponseWithData = <T>(
-  response: unknown
-): response is { success: true; data: T } =>
-  response !== null &&
-  response !== undefined &&
-  typeof response === 'object' &&
-  'success' in response &&
-  (response as { success: unknown }).success &&
-  'data' in response &&
-  (response as { data: unknown }).data !== null &&
-  (response as { data: unknown }).data !== undefined;
+export function isNote(value: unknown): value is Note {
+  if (!hasId(value)) return false;
+  
+  const obj = value as any;
+  return (
+    typeof obj.content === 'string' &&
+    typeof obj.category === 'string' &&
+    ['general', 'idea', 'blocker', 'implementation', 'research'].includes(obj.category) &&
+    typeof obj.created_at === 'object' &&
+    typeof obj.updated_at === 'object' &&
+    (obj.task_id === undefined || typeof obj.task_id === 'string') &&
+    (obj.board_id === undefined || typeof obj.board_id === 'string')
+  );
+}
 
 /**
- * Type guard to check if value is a valid non-empty string
+ * Type guard for Tag objects
  */
-export const isNonEmptyString = (value: unknown): value is string =>
-  typeof value === 'string' && value.trim().length > 0;
+export function isTag(value: unknown): value is Tag {
+  if (!hasId(value)) return false;
+  
+  const obj = value as any;
+  return (
+    typeof obj.name === 'string' &&
+    typeof obj.color === 'string' &&
+    /^#[0-9A-F]{6}$/i.test(obj.color) &&
+    typeof obj.created_at === 'object' &&
+    typeof obj.updated_at === 'object' &&
+    (obj.description === undefined || typeof obj.description === 'string')
+  );
+}
 
 /**
- * Type guard to check if value is a valid number within range
+ * Type guard for arrays of specific types
  */
-export const isValidNumber = (value: unknown, min?: number, max?: number): value is number => {
-  if (typeof value !== 'number' || Number.isNaN(value)) {
-    return false;
-  }
+export function isTaskArray(value: unknown): value is Task[] {
+  return Array.isArray(value) && value.every(isTask);
+}
 
-  if (min !== undefined && value < min) {
-    return false;
-  }
+export function isBoardArray(value: unknown): value is Board[] {
+  return Array.isArray(value) && value.every(isBoard);
+}
 
-  if (max !== undefined && value > max) {
-    return false;
-  }
+export function isNoteArray(value: unknown): value is Note[] {
+  return Array.isArray(value) && value.every(isNote);
+}
 
-  return true;
-};
+export function isTagArray(value: unknown): value is Tag[] {
+  return Array.isArray(value) && value.every(isTag);
+}
 
 /**
- * Type guard to check if value is a valid priority (1-10)
+ * Check if a value is a valid ID string
  */
-export const isValidPriority = (value: unknown): value is number => isValidNumber(value, 1, 10);
+export function isValidId(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0;
+}
 
 /**
- * Type guard to check if object has required properties
+ * Check if a value is a valid date string
  */
-export const hasRequiredProperties = <T extends Record<string, unknown>>(
-  obj: unknown,
-  requiredKeys: Array<keyof T>
-): obj is T => {
-  if (!obj || typeof obj !== 'object') {
-    return false;
-  }
-
-  const objectKeys = Object.keys(obj as Record<string, unknown>);
-  return requiredKeys.every(key => objectKeys.includes(String(key)));
-};
-
-/**
- * Type guard to check if value is a valid task status
- */
-export const isValidTaskStatus = (
-  value: unknown
-): value is 'todo' | 'in_progress' | 'done' | 'blocked' | 'archived' =>
-  typeof value === 'string' &&
-  ['todo', 'in_progress', 'done', 'blocked', 'archived'].includes(value);
-
-/**
- * Type guard to check if value is a valid date string
- */
-export const isValidDateString = (value: unknown): value is string => {
-  if (!isNonEmptyString(value)) {
-    return false;
-  }
-
+export function isDateString(value: unknown): value is string {
+  if (typeof value !== 'string') return false;
   const date = new Date(value);
-  return !Number.isNaN(date.getTime());
-};
+  return !isNaN(date.getTime());
+}
 
 /**
- * Validation helper for API response structure
+ * Type guard for objects with timestamps
  */
-export const validateApiResponse = <T>(
-  response: unknown,
-  validator: (data: unknown) => data is T
-): response is { data: T } =>
-  response !== null &&
-  response !== undefined &&
-  typeof response === 'object' &&
-  'data' in response &&
-  validator((response as { data: unknown }).data);
+export function hasTimestamps(
+  value: unknown
+): value is { created_at: Date; updated_at: Date } {
+  if (typeof value !== 'object' || value === null) return false;
+  
+  const obj = value as any;
+  return (
+    obj.created_at instanceof Date &&
+    obj.updated_at instanceof Date
+  );
+}
 
 /**
- * Type guard to check if error has message property
+ * Type guard for optional fields
  */
-export const isErrorWithMessage = (error: unknown): error is { message: string } =>
-  error !== null &&
-  error !== undefined &&
-  typeof error === 'object' &&
-  'message' in error &&
-  typeof (error as { message: unknown }).message === 'string';
+export function isOptionalString(value: unknown): value is string | undefined {
+  return value === undefined || typeof value === 'string';
+}
 
-/**
- * Safe error message extraction
- */
-export const extractErrorMessage = (error: unknown): string => {
-  if (isErrorWithMessage(error)) {
-    return error.message;
-  }
+export function isOptionalNumber(value: unknown): value is number | undefined {
+  return value === undefined || typeof value === 'number';
+}
 
-  if (typeof error === 'string') {
-    return error;
-  }
-
-  return 'Unknown error occurred';
-};
-
-/**
- * Format error message with context for CLI commands
- */
-export const formatErrorMessage = (prefix: string, error: unknown): string => {
-  const errorMessage = extractErrorMessage(error);
-  return `${prefix}: ${errorMessage}`;
-};
-
-/**
- * Type guard for checking if an error is an Error instance
- */
-export const isError = (value: unknown): value is Error => value instanceof Error;
-
-/**
- * Type guard for checking if value is a record (object with string keys)
- */
-export const isRecord = (value: unknown): value is Record<string, unknown> =>
-  value !== null && typeof value === 'object' && !Array.isArray(value);
-
-/**
- * Get error message with fallback - replaces redundant String(String(...)) pattern
- */
-export const getErrorMessage = (error: unknown): string => extractErrorMessage(error);
+export function isOptionalDate(value: unknown): value is Date | undefined {
+  return value === undefined || value instanceof Date;
+}

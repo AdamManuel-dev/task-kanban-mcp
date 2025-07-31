@@ -11,6 +11,7 @@ import { logger } from '@/utils/logger';
 import { dbConnection } from '@/database/connection';
 import { globalErrorHandler } from '@/utils/errors';
 import { createApiMiddleware } from '@/middleware';
+import { initializeSecurity } from '@/utils/security-init';
 // Check if WebSockets should be enabled
 const enableWebSockets = process.env.ENABLE_WEBSOCKETS !== 'false';
 
@@ -122,7 +123,7 @@ export async function createServer(): Promise<express.Application> {
           filter: true,
           showRequestHeaders: true,
           tryItOutEnabled: true,
-          requestInterceptor: (req: unknown) => {
+          requestInterceptor: (req: any) => {
             // Add authentication header if available
             if (req.headers && !req.headers.Authorization) {
               const apiKey = req.headers['x-api-key'] || req.headers.authorization;
@@ -236,6 +237,10 @@ export async function startServer(): Promise<{
   webSocketManager: unknown;
 }> {
   try {
+    // Initialize security first
+    logger.info('Initializing security configuration...');
+    await initializeSecurity();
+    
     // Initialize database
     logger.info('Initializing database connection...');
     await dbConnection.initialize();
@@ -250,7 +255,7 @@ export async function startServer(): Promise<{
       logger.info('Starting WebSocket server...');
       const { webSocketManager: wsManager } = await import('@/websocket');
       webSocketManager = wsManager;
-      await webSocketManager.start();
+      await (webSocketManager as any).start();
     } else {
       logger.info('WebSocket server disabled via environment configuration');
     }
@@ -282,8 +287,8 @@ export async function startServer(): Promise<{
     // Handle server errors
     server.on('error', (error: unknown) => {
       logger.error('Server error:', {
-        error: error.message,
-        code: error.code,
+        error: (error as any).message,
+        code: (error as any).code,
         port: config.server.port,
       });
       throw error;
@@ -299,7 +304,7 @@ export async function startServer(): Promise<{
         try {
           // Stop WebSocket server conditionally
           if (enableWebSockets && webSocketManager) {
-            await webSocketManager.stop();
+            await (webSocketManager as any).stop();
             logger.info('WebSocket server closed');
           }
 

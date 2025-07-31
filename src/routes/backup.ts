@@ -603,28 +603,22 @@ router.get(
           res.setHeader('Content-Type', 'application/json');
           res.setHeader(
             'Content-Disposition',
-            `attachment; filename="${String((backup as BackupMetadata).name)}.json"`
+            `attachment; filename="${String(backup.name)}.json"`
           );
           res.json(backup);
           break;
         case 'sql':
           res.setHeader('Content-Type', 'application/sql');
-          res.setHeader(
-            'Content-Disposition',
-            `attachment; filename="${String((backup as BackupMetadata).name)}.sql"`
-          );
+          res.setHeader('Content-Disposition', `attachment; filename="${String(backup.name)}.sql"`);
           res.send(
-            `-- Backup metadata for ${String((backup as BackupMetadata).name)}\n-- ID: ${String((backup as BackupMetadata).id)}\n-- Created: ${String((backup as BackupMetadata).createdAt)}`
+            `-- Backup metadata for ${String(backup.name)}\n-- ID: ${String(backup.id)}\n-- Created: ${String(backup.createdAt)}`
           );
           break;
         case 'csv':
           res.setHeader('Content-Type', 'text/csv');
-          res.setHeader(
-            'Content-Disposition',
-            `attachment; filename="${String((backup as BackupMetadata).name)}.csv"`
-          );
+          res.setHeader('Content-Disposition', `attachment; filename="${String(backup.name)}.csv"`);
           res.send(
-            `id,name,type,status,size,created_at\n${String((backup as BackupMetadata).id)},${String((backup as BackupMetadata).name)},${String((backup as BackupMetadata).type)},${String((backup as BackupMetadata).status)},${String((backup as BackupMetadata).size)},${String((backup as BackupMetadata).createdAt)}`
+            `id,name,type,status,size,created_at\n${String(backup.id)},${String(backup.name)},${String(backup.type)},${String(backup.status)},${String(backup.size)},${String(backup.createdAt)}`
           );
           break;
         default:

@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /**
  * @fileoverview Utility functions and shared components for CLI prompts
  * @lastmodified 2025-07-28T10:30:00Z
@@ -8,15 +9,16 @@
  * Patterns: Centralized error handling, consistent formatting, logging integration
  */
 
-import { prompt } from 'enquirer';
 import chalk from 'chalk';
+import { prompt } from 'enquirer';
 import { logger } from '../../utils/logger';
-import type { PromptConfig, FormatterInterface } from './types';
 import { CancellationError, SystemError, handleCliError } from './errors';
+import type { FormatterInterface, PromptConfig } from './types';
 
 /**
  * Wrapper for prompt that handles cancellation and errors
  */
+// eslint-disable-next-line complexity
 export async function safePrompt<T>(promptConfig: PromptConfig | PromptConfig[]): Promise<T> {
   try {
     const result = await prompt(promptConfig);
@@ -59,7 +61,9 @@ export async function safePrompt<T>(promptConfig: PromptConfig | PromptConfig[])
 export function createFormatter(context?: string): FormatterInterface {
   const logContext = context ? { context } : {};
 
-  return { info: (message: string): void => {, logger.info('Prompt info', { message, ...logContext });
+  return {
+    info: (message: string): void => {
+      logger.info('Prompt info', { message, ...logContext });
       console.log(chalk.cyan(message));
     },
     success: (message: string): void => {

@@ -125,17 +125,53 @@ export class ResponsiveDesignHelper {
   ): ResponsiveLayout {
     switch (breakpoint.name) {
       case 'xs':
-        return { columns: 1, itemWidth: size.width - 4, showDetails: false, compactMode: true, maxItems: 5 };
+        return {
+          columns: 1,
+          itemWidth: size.width - 4,
+          showDetails: false,
+          compactMode: true,
+          maxItems: 5,
+        };
       case 'sm':
-        return { columns: 2, itemWidth: Math.floor((size.width - 6) / 2), showDetails: false, compactMode: true, maxItems: 8 };
+        return {
+          columns: 2,
+          itemWidth: Math.floor((size.width - 6) / 2),
+          showDetails: false,
+          compactMode: true,
+          maxItems: 8,
+        };
       case 'md':
-        return { columns: 3, itemWidth: Math.floor((size.width - 8) / 3), showDetails: true, compactMode: false, maxItems: 10 };
+        return {
+          columns: 3,
+          itemWidth: Math.floor((size.width - 8) / 3),
+          showDetails: true,
+          compactMode: false,
+          maxItems: 10,
+        };
       case 'lg':
-        return { columns: 4, itemWidth: Math.floor((size.width - 10) / 4), showDetails: true, compactMode: false, maxItems: 12 };
+        return {
+          columns: 4,
+          itemWidth: Math.floor((size.width - 10) / 4),
+          showDetails: true,
+          compactMode: false,
+          maxItems: 12,
+        };
       case 'xl':
-        return { columns: 5, itemWidth: Math.floor((size.width - 12) / 5), showDetails: true, compactMode: false, maxItems: 15 };
+        return {
+          columns: 5,
+          itemWidth: Math.floor((size.width - 12) / 5),
+          showDetails: true,
+          compactMode: false,
+          maxItems: 15,
+        };
       default:
-        return { columns: 3, itemWidth: Math.floor((size.width - 8) / 3), showDetails: true, compactMode: false, maxItems: 10 };
+        return {
+          columns: 3,
+          itemWidth: Math.floor((size.width - 8) / 3),
+          showDetails: true,
+          compactMode: false,
+          maxItems: 10,
+        };
     }
   }
 
@@ -150,15 +186,39 @@ export class ResponsiveDesignHelper {
 
     switch (breakpoint.name) {
       case 'xs':
-        return { columns: 1, itemWidth: size.width - 2, showDetails: false, compactMode: true, maxItems: Math.min(maxItems, 10) };
+        return {
+          columns: 1,
+          itemWidth: size.width - 2,
+          showDetails: false,
+          compactMode: true,
+          maxItems: Math.min(maxItems, 10),
+        };
       case 'sm':
       case 'md':
-        return { columns: 1, itemWidth: size.width - 4, showDetails: true, compactMode: false, maxItems };
+        return {
+          columns: 1,
+          itemWidth: size.width - 4,
+          showDetails: true,
+          compactMode: false,
+          maxItems,
+        };
       case 'lg':
       case 'xl':
-        return { columns: 1, itemWidth: size.width - 6, showDetails: true, compactMode: false, maxItems };
+        return {
+          columns: 1,
+          itemWidth: size.width - 6,
+          showDetails: true,
+          compactMode: false,
+          maxItems,
+        };
       default:
-        return { columns: 1, itemWidth: size.width - 4, showDetails: true, compactMode: false, maxItems };
+        return {
+          columns: 1,
+          itemWidth: size.width - 4,
+          showDetails: true,
+          compactMode: false,
+          maxItems,
+        };
     }
   }
 
@@ -173,16 +233,46 @@ export class ResponsiveDesignHelper {
 
     switch (breakpoint.name) {
       case 'xs':
-        return { columns: 2, // Minimum viable columns, itemWidth: Math.floor(availableWidth / 2), showDetails: false, compactMode: true, maxItems: size.height - 6 };
+        return {
+          columns: 2,
+          itemWidth: Math.floor(availableWidth / 2),
+          showDetails: false,
+          compactMode: true,
+          maxItems: size.height - 6,
+        };
       case 'sm':
-        return { columns: 3, itemWidth: Math.floor(availableWidth / 3), showDetails: false, compactMode: true, maxItems: size.height - 5 };
+        return {
+          columns: 3,
+          itemWidth: Math.floor(availableWidth / 3),
+          showDetails: false,
+          compactMode: true,
+          maxItems: size.height - 5,
+        };
       case 'md':
-        return { columns: 4, itemWidth: Math.floor(availableWidth / 4), showDetails: true, compactMode: false, maxItems: size.height - 4 };
+        return {
+          columns: 4,
+          itemWidth: Math.floor(availableWidth / 4),
+          showDetails: true,
+          compactMode: false,
+          maxItems: size.height - 4,
+        };
       case 'lg':
       case 'xl':
-        return { columns: 5, itemWidth: Math.floor(availableWidth / 5), showDetails: true, compactMode: false, maxItems: size.height - 4 };
+        return {
+          columns: 5,
+          itemWidth: Math.floor(availableWidth / 5),
+          showDetails: true,
+          compactMode: false,
+          maxItems: size.height - 4,
+        };
       default:
-        return { columns: 4, itemWidth: Math.floor(availableWidth / 4), showDetails: true, compactMode: false, maxItems: size.height - 4 };
+        return {
+          columns: 4,
+          itemWidth: Math.floor(availableWidth / 4),
+          showDetails: true,
+          compactMode: false,
+          maxItems: size.height - 4,
+        };
     }
   }
 
@@ -192,7 +282,13 @@ export class ResponsiveDesignHelper {
   private static getDefaultLayout(breakpoint: BreakpointConfig): ResponsiveLayout {
     const isSmall = breakpoint.name === 'xs' || breakpoint.name === 'sm';
 
-    return { columns: isSmall ? 1 : 2, itemWidth: isSmall ? 40 : 60, showDetails: !isSmall, compactMode: isSmall, maxItems: isSmall ? 8 : 12 };
+    return {
+      columns: isSmall ? 1 : 2,
+      itemWidth: isSmall ? 40 : 60,
+      showDetails: !isSmall,
+      compactMode: isSmall,
+      maxItems: isSmall ? 8 : 12,
+    };
   }
 
   /**

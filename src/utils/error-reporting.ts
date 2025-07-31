@@ -8,11 +8,11 @@
  * Patterns: Builder pattern for reports, aggregation for trends
  */
 
-import { logger } from './logger';
+// eslint-disable-next-line max-classes-per-file
+import type { ErrorEvent } from './error-monitoring';
 import { errorMonitor, getErrorMetrics, getSystemHealth } from './error-monitoring';
 import { errorRecoveryManager } from './error-recovery';
-import type { ErrorEvent, ErrorMetrics } from './error-monitoring';
-import type { BaseServiceError, ErrorContext } from './errors';
+import { logger } from './logger';
 
 // Circuit breaker state interface
 interface CircuitBreakerState {
@@ -194,20 +194,31 @@ export class TrendAnalyzer {
 // ============================================================================
 
 export class DiagnosticsCollector {
-  static async collect(): Promise<DiagnosticInfo> {
+  static collect(): DiagnosticInfo {
     const systemHealth = errorRecoveryManager.getSystemHealth();
 
-    return { timestamp: new Date(), system: {, nodeVersion: process.version, platform: process.platform, uptime: process.uptime(), memoryUsage: process.memoryUsage() },
+    return {
+      timestamp: new Date(),
+      system: {
+        nodeVersion: process.version,
+        platform: process.platform,
+        uptime: process.uptime(),
+        memoryUsage: process.memoryUsage(),
+      },
       application: {
         version: process.env.npm_package_version ?? 'unknown',
         environment: process.env.NODE_ENV ?? 'development',
         configuredFeatures: this.getConfiguredFeatures(),
       },
-      database: await this.getDatabaseInfo(),
+      database: this.getDatabaseInfo(),
       services: {
         activeServices: this.getActiveServices(),
-        circuitBreakerStates: this.extractCircuitBreakerStates(systemHealth.circuitBreakers),
-        bulkheadUtilization: this.calculateBulkheadUtilization(systemHealth.bulkheads),
+        circuitBreakerStates: this.extractCircuitBreakerStates(
+          systemHealth.circuitBreakers as Record<string, CircuitBreakerState>
+        ),
+        bulkheadUtilization: this.calculateBulkheadUtilization(
+          systemHealth.bulkheads as Record<string, BulkheadStats>
+        ),
       },
     };
   }
@@ -222,7 +233,7 @@ export class DiagnosticsCollector {
     return features;
   }
 
-  private static async getDatabaseInfo(): Promise<DiagnosticInfo['database']> {
+  private static getDatabaseInfo(): DiagnosticInfo['database'] {
     try {
       // This would normally check actual database connection
       return { connected: true, poolSize: 10, activeConnections: 2 };
@@ -242,7 +253,7 @@ export class DiagnosticsCollector {
     const states: Record<string, string> = {};
 
     Object.entries(breakers).forEach(([name, state]) => {
-      states[name] = state.state || 'unknown';
+      states[name] = state.state;
     });
 
     return states;
@@ -254,8 +265,8 @@ export class DiagnosticsCollector {
     const utilization: Record<string, number> = {};
 
     Object.entries(bulkheads).forEach(([name, stats]) => {
-      const active = stats.activeRequests || 0;
-      const max = stats.maxConcurrency || 1;
+      const active = stats.activeRequests;
+      const max = stats.maxConcurrency;
       utilization[name] = (active / max) * 100;
     });
 
@@ -351,7 +362,7 @@ export class RootCauseAnalyzer {
 // ============================================================================
 
 export class ErrorReporter {
-  static async generateReport(timeRange: { start: Date; end: Date }): Promise<ErrorReport> {
+  static generateReport(timeRange: { start: Date; end: Date }): ErrorReport {
     const events = errorMonitor
       .getErrors({
         since: timeRange.start,
@@ -362,7 +373,6 @@ export class ErrorReporter {
     const metrics = errorMonitor.getMetrics(timeRange.end.getTime() - timeRange.start.getTime());
 
     const systemHealth = errorRecoveryManager.getSystemHealth();
-    const diagnostics = await DiagnosticsCollector.collect();
 
     // Calculate trends (simplified for demo)
     const hourlyErrorCounts = this.calculateHourlyErrorCounts(events);
@@ -519,7 +529,7 @@ export class ErrorReporter {
 // CONVENIENCE FUNCTIONS
 // ============================================================================
 
-export const generateErrorReport = async (hours = 24): Promise<ErrorReport> => {
+export const generateErrorReport = (hours = 24): ErrorReport => {
   const end = new Date();
   const start = new Date(end.getTime() - hours * 60 * 60 * 1000);
 
@@ -539,5 +549,12 @@ export const getQuickHealthSummary = (): {
     severity: ['critical'],
   });
 
-  return { status: health.isHealthy ? 'healthy' : 'degraded', errorCount: metrics.errorCount, criticalErrors: events.length, recommendations: health.isHealthy, ? ['System is operating normally'], : ['Check error logs', 'Review system health'] };
+  return {
+    status: health.isHealthy ? 'healthy' : 'degraded',
+    errorCount: metrics.errorCount,
+    criticalErrors: events.length,
+    recommendations: health.isHealthy
+      ? ['System is operating normally']
+      : ['Check error logs', 'Review system health'],
+  };
 };

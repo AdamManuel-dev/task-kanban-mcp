@@ -129,7 +129,7 @@ export class CacheService<K = string, V = unknown> extends EventEmitter {
     this.emit('set', key, value);
 
     logger.debug('Cache entry set', {
-      key: key.toString(),
+      key: String(key),
       ttl: finalTTL,
       cacheSize: this.cache.size,
     });
@@ -162,7 +162,7 @@ export class CacheService<K = string, V = unknown> extends EventEmitter {
     const existed = this.cache.delete(key);
     if (existed) {
       this.emit('delete', key);
-      logger.debug('Cache entry deleted', { key: key.toString() });
+      logger.debug('Cache entry deleted', { key: String(key) });
     }
     return existed;
   }
@@ -226,7 +226,20 @@ export class CacheService<K = string, V = unknown> extends EventEmitter {
     const entries = Array.from(this.cache.values());
     const timestamps = entries.map(e => e.timestamp);
 
-    return { size: this.cache.size, maxSize: this.options.maxSize, hits: this.stats.hits, misses: this.stats.misses, evictions: this.stats.evictions, hitRate:, this.stats.hits + this.stats.misses > 0, ? this.stats.hits / (this.stats.hits + this.stats.misses), : 0, memoryUsage: this.estimateMemoryUsage(), oldestEntry: timestamps.length > 0 ? Math.min(...timestamps) : undefined, newestEntry: timestamps.length > 0 ? Math.max(...timestamps) : undefined };
+    return {
+      size: this.cache.size,
+      maxSize: this.options.maxSize,
+      hits: this.stats.hits,
+      misses: this.stats.misses,
+      evictions: this.stats.evictions,
+      hitRate:
+        this.stats.hits + this.stats.misses > 0
+          ? this.stats.hits / (this.stats.hits + this.stats.misses)
+          : 0,
+      memoryUsage: this.estimateMemoryUsage(),
+      oldestEntry: timestamps.length > 0 ? Math.min(...timestamps) : undefined,
+      newestEntry: timestamps.length > 0 ? Math.max(...timestamps) : undefined,
+    };
   }
 
   /**
@@ -280,6 +293,8 @@ export class CacheService<K = string, V = unknown> extends EventEmitter {
       case 'ttl':
         keyToEvict = this.findTTLKey();
         break;
+      default:
+        break;
     }
 
     if (keyToEvict !== undefined) {
@@ -289,7 +304,7 @@ export class CacheService<K = string, V = unknown> extends EventEmitter {
       this.emit('evict', keyToEvict, entry?.value);
 
       logger.debug('Cache entry evicted', {
-        key: keyToEvict.toString(),
+        key: String(keyToEvict),
         policy: this.options.evictionPolicy,
         cacheSize: this.cache.size,
       });
@@ -407,10 +422,10 @@ export class CacheService<K = string, V = unknown> extends EventEmitter {
         return obj.length * 2; // Assuming UTF-16
       case 'object':
         if (Array.isArray(obj)) {
-          return obj.reduce((size, item) => size + this.estimateObjectSize(item), 24);
+          return obj.reduce((size, item) => size + this.estimateObjectSize(item), 24); // eslint-disable-line @typescript-eslint/no-unsafe-argument
         }
         return Object.keys(obj).reduce(
-          (size, key) => size + this.estimateObjectSize(key) + this.estimateObjectSize(obj[key]),
+          (size, key) => size + this.estimateObjectSize(key) + this.estimateObjectSize(obj[key]), // eslint-disable-line @typescript-eslint/no-unsafe-argument
           24
         );
       default:

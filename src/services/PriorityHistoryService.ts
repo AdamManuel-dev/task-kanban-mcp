@@ -3,10 +3,10 @@
  * Tracks and analyzes task priority changes over time
  */
 
-import { dbConnection } from '@/database/connection';
 import type { QueryParameter } from '@/database/connection';
-import { logger } from '@/utils/logger';
+import { dbConnection } from '@/database/connection';
 import type { Task } from '@/types';
+import { logger } from '@/utils/logger';
 
 export interface PriorityChange {
   id: string;
@@ -71,9 +71,7 @@ export class PriorityHistoryService {
   private static instance: PriorityHistoryService;
 
   public static getInstance(): PriorityHistoryService {
-    if (!PriorityHistoryService.instance) {
-      PriorityHistoryService.instance = new PriorityHistoryService();
-    }
+    PriorityHistoryService.instance = new PriorityHistoryService();
     return PriorityHistoryService.instance;
   }
 
@@ -97,12 +95,12 @@ export class PriorityHistoryService {
       `);
 
       await dbConnection.execute(`
-        CREATE INDEX IF NOT EXISTS idx_priority_history_task_id 
+        CREATE INDEX IF NOT EXISTS idx_priority_history_task_id
         ON priority_history (task_id)
       `);
 
       await dbConnection.execute(`
-        CREATE INDEX IF NOT EXISTS idx_priority_history_timestamp 
+        CREATE INDEX IF NOT EXISTS idx_priority_history_timestamp
         ON priority_history (timestamp)
       `);
 
@@ -129,7 +127,7 @@ export class PriorityHistoryService {
       const timestamp = new Date();
 
       await dbConnection.execute(
-        `INSERT INTO priority_history 
+        `INSERT INTO priority_history
          (id, task_id, old_priority, new_priority, reason, changed_by, context, timestamp)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [
@@ -152,7 +150,16 @@ export class PriorityHistoryService {
         changedBy,
       });
 
-      return { id, task_id: taskId, old_priority: oldPriority, new_priority: newPriority, reason, changed_by: changedBy, context, timestamp };
+      return {
+        id,
+        task_id: taskId,
+        old_priority: oldPriority,
+        new_priority: newPriority,
+        reason,
+        changed_by: changedBy,
+        context,
+        timestamp,
+      };
     } catch (error) {
       logger.error('Failed to record priority change:', error);
       throw error;
@@ -165,8 +172,8 @@ export class PriorityHistoryService {
   async getTaskPriorityHistory(taskId: string): Promise<PriorityChange[]> {
     try {
       const rows = await dbConnection.query<PriorityChangeRow>(
-        `SELECT * FROM priority_history 
-         WHERE task_id = ? 
+        `SELECT * FROM priority_history
+         WHERE task_id = ?
          ORDER BY timestamp ASC`,
         [taskId]
       );
@@ -176,8 +183,8 @@ export class PriorityHistoryService {
         task_id: row.task_id,
         old_priority: row.old_priority,
         new_priority: row.new_priority,
-        reason: row.reason,
-        changed_by: row.changed_by,
+        reason: row.reason ?? undefined,
+        changed_by: row.changed_by ?? undefined,
         context: row.context ? JSON.parse(row.context) : undefined,
         timestamp: new Date(row.timestamp),
       }));
@@ -196,7 +203,7 @@ export class PriorityHistoryService {
   ): Promise<PriorityStats> {
     try {
       let baseQuery = `
-        SELECT 
+        SELECT
           ph.*,
           t.title, t.board_id, t.status
         FROM priority_history ph
@@ -248,7 +255,7 @@ export class PriorityHistoryService {
           change_count: count,
           latest_reason: taskLatestReasons.get(taskId),
         }))
-        .filter(item => item.task) // Filter out entries where task is undefined
+        .filter((item: { task: Task }) => item.task !== undefined) // Filter out entries where task is undefined
         .sort((a, b) => b.change_count - a.change_count)
         .slice(0, 10);
 
@@ -279,7 +286,11 @@ export class PriorityHistoryService {
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
 
-      return { total_changes: totalChanges, avg_changes_per_task: avgChangesPerTask, most_changed_tasks: mostChangedTasks, priority_trends: {, increases, decreases, unchanged },
+      return {
+        total_changes: totalChanges,
+        avg_changes_per_task: avgChangesPerTask,
+        most_changed_tasks: mostChangedTasks,
+        priority_trends: { increases, decreases, unchanged },
         common_reasons: commonReasons,
       };
     } catch (error) {
@@ -294,7 +305,7 @@ export class PriorityHistoryService {
   async analyzePriorityPatterns(taskId?: string, boardId?: string): Promise<PriorityPattern[]> {
     try {
       let query = `
-        SELECT 
+        SELECT
           ph.*,
           t.title, t.board_id, t.status, t.estimated_hours
         FROM priority_history ph
@@ -368,7 +379,7 @@ export class PriorityHistoryService {
 
         // Pattern 3: Emergency bumps (sudden large increases)
         const emergencyBumps = taskChangeList.filter(
-          (change: unknown, i: number) =>
+          (change: PriorityChangeWithTaskExtended, i: number) =>
             i > 0 && change.new_priority - (taskChangeList[i - 1].new_priority ?? 0) >= 5
         );
 
@@ -424,7 +435,7 @@ export class PriorityHistoryService {
   }> {
     try {
       let query = `
-        SELECT 
+        SELECT
           ph.*,
           t.board_id
         FROM priority_history ph
@@ -441,12 +452,13 @@ export class PriorityHistoryService {
       const changes = await dbConnection.query(query, params);
 
       const changesCount = changes.length;
-      const affectedTasks = new Set(changes.map((c: unknown) => c.task_id)).size;
+      const affectedTasks = new Set(changes.map((c: PriorityChangeWithTaskExtended) => c.task_id))
+        .size;
 
       // Calculate average priority change
       const priorityChanges = changes
-        .filter((c: unknown) => c.old_priority !== null)
-        .map((c: unknown) => Math.abs(c.new_priority - c.old_priority));
+        .filter((c: PriorityChangeWithTaskExtended) => c.old_priority !== null)
+        .map((c: PriorityChangeWithTaskExtended) => Math.abs(c.new_priority - c.old_priority));
       const avgPriorityChange =
         priorityChanges.length > 0
           ? priorityChanges.reduce((a, b) => a + b, 0) / priorityChanges.length
@@ -454,7 +466,7 @@ export class PriorityHistoryService {
 
       // Find most active day
       const dayChanges = new Map<string, number>();
-      changes.forEach((change: unknown) => {
+      changes.forEach((change: PriorityChangeWithTaskExtended) => {
         const day = new Date(change.timestamp).toISOString().split('T')[0];
         dayChanges.set(day, (dayChanges.get(day) ?? 0) + 1);
       });
@@ -466,7 +478,7 @@ export class PriorityHistoryService {
 
       // Find busiest hours
       const hourChanges = new Map<number, number>();
-      changes.forEach((change: unknown) => {
+      changes.forEach((change: PriorityChangeWithTaskExtended) => {
         const hour = new Date(change.timestamp).getHours();
         hourChanges.set(hour, (hourChanges.get(hour) ?? 0) + 1);
       });
@@ -476,7 +488,11 @@ export class PriorityHistoryService {
         .sort((a, b) => b.changes - a.changes)
         .slice(0, 5);
 
-      return { changes_count: changesCount, affected_tasks: affectedTasks, avg_priority_change: avgPriorityChange, most_active_day: { date: mostActiveDay[0], changes: mostActiveDay[1] },
+      return {
+        changes_count: changesCount,
+        affected_tasks: affectedTasks,
+        avg_priority_change: avgPriorityChange,
+        most_active_day: { date: mostActiveDay[0], changes: mostActiveDay[1] },
         busiest_hours: busiestHours,
       };
     } catch (error) {
@@ -487,10 +503,10 @@ export class PriorityHistoryService {
 
   // Private helper methods
 
-  private calculatePriorityTrend(changes: unknown[]): number {
+  private calculatePriorityTrend(changes: PriorityChangeWithTaskExtended[]): number {
     if (changes.length < 3) return 0;
 
-    const priorities = changes.map((c: unknown) => c.new_priority);
+    const priorities = changes.map((c: PriorityChangeWithTaskExtended) => c.new_priority);
     const n = priorities.length;
     let sumX = 0;
     let sumY = 0;

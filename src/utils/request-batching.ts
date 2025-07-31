@@ -1,3 +1,4 @@
+/* eslint-disable max-classes-per-file */
 /**
  * @fileoverview Request batching system for improved performance
  * @lastmodified 2025-07-28T08:45:00Z
@@ -9,8 +10,8 @@
  */
 
 import { performance } from 'perf_hooks';
-import { logger } from './logger';
 import { BaseServiceError } from './errors';
+import { logger } from './logger';
 
 // ============================================================================
 // TYPES AND INTERFACES
@@ -235,8 +236,8 @@ export class BatchProcessor {
    */
   private sortByPriority(requests: BatchRequest[]): BatchRequest[] {
     return [...requests].sort((a, b) => {
-      const priorityA = a.priority || 5;
-      const priorityB = b.priority || 5;
+      const priorityA = a.priority ?? 5;
+      const priorityB = b.priority ?? 5;
       return priorityA - priorityB; // Lower number = higher priority
     });
   }

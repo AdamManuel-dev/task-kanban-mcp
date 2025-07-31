@@ -1,8 +1,29 @@
-import type { Request, Response, NextFunction } from 'express';
 import { ValidationError } from '@/utils/errors';
+import { logger } from '@/utils/logger';
 import { CommonValidations } from '@/utils/validation';
+import type { NextFunction, Request, Response } from 'express';
 import type { z } from 'zod';
 
+// Constants for validation limits
+const VALIDATION_LIMITS = {
+  MAX_REQUEST_SIZE_MB: 10,
+  MAX_REQUEST_SIZE_BYTES: 10 * 1024 * 1024, // 10MB
+  MAX_QUERY_LIMIT: 1000,
+  MIN_QUERY_LIMIT: 1,
+  MIN_QUERY_OFFSET: 0,
+} as const;
+
+/**
+ * Middleware for basic request validation
+ *
+ * Validates request size, content type, UUID parameters, and query parameters.
+ * Ensures requests meet basic security and format requirements before processing.
+ *
+ * @param req - Express request object
+ * @param _res - Express response object (unused)
+ * @param next - Express next function for middleware chain
+ * @throws ValidationError when validation fails
+ */
 export function requestValidationMiddleware(
   req: Request,
   _res: Response,
@@ -10,7 +31,7 @@ export function requestValidationMiddleware(
 ): void {
   // Validate request size
   const contentLength = parseInt(req.get('Content-Length') ?? '0', 10);
-  const maxSize = 10 * 1024 * 1024; // 10MB
+  const maxSize = VALIDATION_LIMITS.MAX_REQUEST_SIZE_BYTES;
 
   if (contentLength > maxSize) {
     return next(new ValidationError('Request too large'));
@@ -36,15 +57,23 @@ export function requestValidationMiddleware(
   // Validate query parameters
   if (req.query.limit) {
     const limit = parseInt(req.query.limit as string, 10);
-    if (Number.isNaN(limit) || limit <= 0 || limit > 1000) {
-      return next(new ValidationError('Invalid limit parameter'));
+    if (
+      Number.isNaN(limit) ||
+      limit < VALIDATION_LIMITS.MIN_QUERY_LIMIT ||
+      limit > VALIDATION_LIMITS.MAX_QUERY_LIMIT
+    ) {
+      return next(
+        new ValidationError(
+          `Invalid limit parameter. Must be between ${VALIDATION_LIMITS.MIN_QUERY_LIMIT} and ${VALIDATION_LIMITS.MAX_QUERY_LIMIT}`
+        )
+      );
     }
   }
 
   if (req.query.offset) {
     const offset = parseInt(req.query.offset as string, 10);
-    if (Number.isNaN(offset) || offset < 0) {
-      return next(new ValidationError('Invalid offset parameter'));
+    if (Number.isNaN(offset) || offset < VALIDATION_LIMITS.MIN_QUERY_OFFSET) {
+      return next(new ValidationError('Invalid offset parameter. Must be 0 or greater'));
     }
   }
 
@@ -55,6 +84,15 @@ export function requestValidationMiddleware(
   next();
 }
 
+/**
+ * Extracts UUID parameter names from an Express route path
+ *
+ * Identifies route parameters that likely contain UUIDs based on naming conventions
+ * (parameters ending with 'Id' or named 'id').
+ *
+ * @param path - Express route path (e.g., '/api/boards/:boardId/tasks/:taskId')
+ * @returns Array of parameter names that should be validated as UUIDs
+ */
 function extractUuidParams(path: string): string[] {
   const uuidPattern = /:([^/]+)/g;
   const params: string[] = [];
@@ -101,7 +139,7 @@ export function validateRequest<T>(
       next();
     } catch (error) {
       // Log the original error for debugging
-      console.error('Validation middleware error:', error);
+      logger.error('Validation middleware error:', { error, path: req.path, method: req.method });
 
       // Provide meaningful error message based on error type
       const errorMessage =

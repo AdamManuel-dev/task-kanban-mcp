@@ -3,10 +3,39 @@
  * Tracks API performance, database metrics, system health, and provides real-time monitoring
  */
 
-import { EventEmitter } from 'events';
+import { dbConnection, type QueryParameters } from '@/database/connection';
 import { logger } from '@/utils/logger';
-import { dbConnection } from '@/database/connection';
-import type { Request, Response, NextFunction } from 'express';
+import { EventEmitter } from 'events';
+import type { NextFunction, Request, Response } from 'express';
+
+// Constants for performance monitoring thresholds and limits
+const PERFORMANCE_CONSTANTS = {
+  // Time constants (in milliseconds)
+  METRICS_RETENTION_MS: 24 * 60 * 60 * 1000, // 24 hours
+  SLOW_RESPONSE_THRESHOLD_MS: 1000, // 1 second
+  SLOW_QUERY_THRESHOLD_MS: 100, // 100ms
+  LAST_MINUTE_MS: 60 * 1000, // 1 minute
+  LAST_SECOND_MS: 1000, // 1 second
+
+  // HTTP status codes
+  HTTP_ERROR_THRESHOLD: 400, // HTTP error status codes start at 400
+
+  // Percentage thresholds
+  MAX_HEALTH_SCORE: 100,
+  PERCENTAGE_MULTIPLIER: 100,
+
+  // Collection limits
+  MAX_RESPONSE_TIME_SAMPLES: 1000, // Keep last 1000 measurements
+  MAX_RECENT_METRICS: 100, // Last 100 requests for dashboard
+
+  // Health score penalties
+  RESPONSE_TIME_PENALTY_THRESHOLD: 1000, // ms
+  MAX_RESPONSE_TIME_PENALTY: 25,
+  RESPONSE_TIME_PENALTY_DIVISOR: 100,
+
+  // Query truncation
+  QUERY_PREVIEW_LENGTH: 100,
+} as const;
 
 export interface PerformanceMetrics {
   timestamp: number;
@@ -119,14 +148,12 @@ export class PerformanceMonitoringService extends EventEmitter {
 
   private cleanupInterval: NodeJS.Timeout | null = null;
 
-  private readonly metricsRetentionMs = 24 * 60 * 60 * 1000; // 24 hours
+  private readonly metricsRetentionMs = PERFORMANCE_CONSTANTS.METRICS_RETENTION_MS;
 
   private readonly dbQueryTracker = new Map<string, { count: number; totalTime: number }>();
 
   public static getInstance(): PerformanceMonitoringService {
-    if (!PerformanceMonitoringService.instance) {
-      PerformanceMonitoringService.instance = new PerformanceMonitoringService();
-    }
+    PerformanceMonitoringService.instance = new PerformanceMonitoringService();
     return PerformanceMonitoringService.instance;
   }
 
@@ -156,9 +183,10 @@ export class PerformanceMonitoringService extends EventEmitter {
         const queryStart = Date.now();
         dbQueryCount++;
         try {
-          const result = (await originalQuery.call(this, sql, params)) as T[];
+          const result = (await originalQuery.call(this, sql, params as QueryParameters)) as T[];
           const queryTime = Date.now() - queryStart;
           dbQueryTime += queryTime;
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-ignore - Optional global tracking function for debugging
           globalThis.trackDbQuery?.(String(sql), queryTime);
           return result;
@@ -180,7 +208,7 @@ export class PerformanceMonitoringService extends EventEmitter {
 
         const metric: PerformanceMetrics = {
           timestamp: Date.now(),
-          endpoint: `${req.method} ${req.route?.path || req.path}`,
+          endpoint: `${req.method} ${req.route?.path ?? req.path}`,
           method: req.method,
           responseTime,
           statusCode: res.statusCode,
@@ -189,8 +217,8 @@ export class PerformanceMonitoringService extends EventEmitter {
           dbQueryCount,
           dbQueryTime,
           userAgent: req.get('User-Agent') ?? '',
-          userId: (req as unknown).user?.id || '',
-          error: res.statusCode >= 400 ? String(body) : '',
+          userId: (req as unknown as { user?: { id: string } }).user?.id ?? '',
+          error: res.statusCode >= PERFORMANCE_CONSTANTS.HTTP_ERROR_THRESHOLD ? String(body) : '',
         };
 
         PerformanceMonitoringService.getInstance().recordMetric(metric);
@@ -211,7 +239,7 @@ export class PerformanceMonitoringService extends EventEmitter {
     this.emit('metric', metric);
 
     // Log slow requests
-    if (metric.responseTime > 1000) {
+    if (metric.responseTime > PERFORMANCE_CONSTANTS.SLOW_RESPONSE_THRESHOLD_MS) {
       logger.warn('Slow request detected', {
         endpoint: metric.endpoint,
         responseTime: metric.responseTime,
@@ -221,7 +249,7 @@ export class PerformanceMonitoringService extends EventEmitter {
     }
 
     // Log errors
-    if (metric.statusCode >= 400) {
+    if (metric.statusCode >= PERFORMANCE_CONSTANTS.HTTP_ERROR_THRESHOLD) {
       logger.error('Request error', {
         endpoint: metric.endpoint,
         statusCode: metric.statusCode,
@@ -236,9 +264,13 @@ export class PerformanceMonitoringService extends EventEmitter {
    */
   getSystemHealth(): SystemHealthMetrics {
     const now = Date.now();
-    const recentMetrics = this.metrics.filter(m => now - m.timestamp < 60000); // Last minute
+    const recentMetrics = this.metrics.filter(
+      m => now - m.timestamp < PERFORMANCE_CONSTANTS.LAST_MINUTE_MS
+    );
     const totalRequests = recentMetrics.length;
-    const errorCount = recentMetrics.filter(m => m.statusCode >= 400).length;
+    const errorCount = recentMetrics.filter(
+      m => m.statusCode >= PERFORMANCE_CONSTANTS.HTTP_ERROR_THRESHOLD
+    ).length;
     const avgResponseTime =
       totalRequests > 0
         ? recentMetrics.reduce((sum, m) => sum + m.responseTime, 0) / totalRequests
@@ -247,7 +279,21 @@ export class PerformanceMonitoringService extends EventEmitter {
     const memoryUsage = process.memoryUsage();
     const cpuUsage = process.cpuUsage();
 
-    return { uptime: Date.now() - this.startTime, memoryUsage, cpuUsage, activeConnections: this.getActiveConnections(), requestsPerMinute: totalRequests, errorRate: totalRequests > 0 ? (errorCount / totalRequests) * 100 : 0, averageResponseTime: avgResponseTime, databaseHealth: this.getDatabaseHealth(), websocketConnections: this.getWebSocketConnections(), rateLimitHits: this.getRateLimitHits() };
+    return {
+      uptime: Date.now() - this.startTime,
+      memoryUsage,
+      cpuUsage,
+      activeConnections: this.getActiveConnections(),
+      requestsPerMinute: totalRequests,
+      errorRate:
+        totalRequests > 0
+          ? (errorCount / totalRequests) * PERFORMANCE_CONSTANTS.PERCENTAGE_MULTIPLIER
+          : 0,
+      averageResponseTime: avgResponseTime,
+      databaseHealth: this.getDatabaseHealth() as SystemHealthMetrics['databaseHealth'],
+      websocketConnections: this.getWebSocketConnections(),
+      rateLimitHits: this.getRateLimitHits(),
+    };
   }
 
   /**
@@ -255,9 +301,13 @@ export class PerformanceMonitoringService extends EventEmitter {
    */
   getDashboard(): PerformanceDashboard {
     const now = Date.now();
-    const last24h = this.metrics.filter(m => now - m.timestamp < 24 * 60 * 60 * 1000);
+    const last24h = this.metrics.filter(
+      m => now - m.timestamp < PERFORMANCE_CONSTANTS.METRICS_RETENTION_MS
+    );
     const totalRequests = last24h.length;
-    const errorCount = last24h.filter(m => m.statusCode >= 400).length;
+    const errorCount = last24h.filter(
+      m => m.statusCode >= PERFORMANCE_CONSTANTS.HTTP_ERROR_THRESHOLD
+    ).length;
     const avgResponseTime =
       totalRequests > 0 ? last24h.reduce((sum, m) => sum + m.responseTime, 0) / totalRequests : 0;
 
@@ -269,24 +319,26 @@ export class PerformanceMonitoringService extends EventEmitter {
     // Top endpoints analysis
     const endpointStats = this.analyzeEndpoints(last24h);
     const topEndpoints = Object.entries(endpointStats)
-      .map(([endpoint, stats]: [string, unknown]) => ({
+      .map(([endpoint, stats]: [string, EndpointStats]) => ({
         endpoint,
         requests: stats.count,
         averageTime: stats.totalTime / stats.count,
-        errorRate: (stats.errors / stats.count) * 100,
+        errorRate: (stats.errors / stats.count) * 100, // eslint-disable-line no-magic-numbers
       }))
       .sort((a, b) => b.requests - a.requests)
       .slice(0, 10);
 
     // Slow queries
     const slowQueries = Array.from(this.dbQueryTracker.entries())
-      .map(([query, stats]) => ({
-        query: query.substring(0, 100) + (query.length > 100 ? '...' : ''),
+      .map(([query, stats]: [string, { count: number; totalTime: number }]) => ({
+        query:
+          query.substring(0, PERFORMANCE_CONSTANTS.QUERY_PREVIEW_LENGTH) +
+          (query.length > PERFORMANCE_CONSTANTS.QUERY_PREVIEW_LENGTH ? '...' : ''),
         averageTime: stats.totalTime / stats.count,
         count: stats.count,
         lastSeen: now, // Simplified for now
       }))
-      .filter(q => q.averageTime > 100) // Queries slower than 100ms
+      .filter(q => q.averageTime > PERFORMANCE_CONSTANTS.SLOW_QUERY_THRESHOLD_MS)
       .sort((a, b) => b.averageTime - a.averageTime)
       .slice(0, 10);
 
@@ -295,13 +347,25 @@ export class PerformanceMonitoringService extends EventEmitter {
       .filter(([, state]) => state.triggered)
       .map(([ruleId, state]) => {
         const rule = this.alertRules.find(r => r.id === ruleId);
-        return { type: rule?.severity ?? ('warning' as const), message: rule?.name ?? `Alert ${ruleId }`,
+        return {
+          type: rule?.severity ?? ('warning' as const),
+          message: rule?.name ?? `Alert ${ruleId}`,
           timestamp: state.since,
           resolved: false,
         };
       });
 
-    return { overview: {, totalRequests, averageResponseTime: avgResponseTime, errorRate: totalRequests > 0 ? (errorCount / totalRequests) * 100 : 0, uptime: Date.now() - this.startTime, healthScore },
+    return {
+      overview: {
+        totalRequests,
+        averageResponseTime: avgResponseTime,
+        errorRate:
+          totalRequests > 0
+            ? (errorCount / totalRequests) * PERFORMANCE_CONSTANTS.PERCENTAGE_MULTIPLIER
+            : 0,
+        uptime: Date.now() - this.startTime,
+        healthScore,
+      },
       realtime: {
         requestsPerSecond: this.getRequestsPerSecond(),
         activeUsers: this.getActiveUsers(),
@@ -361,7 +425,7 @@ export class PerformanceMonitoringService extends EventEmitter {
         timestamp: Date.now(),
         systemHealth,
         dashboard,
-        recentMetrics: this.metrics.slice(-100), // Last 100 requests
+        recentMetrics: this.metrics.slice(-PERFORMANCE_CONSTANTS.MAX_RECENT_METRICS),
       },
       null,
       2
@@ -379,11 +443,11 @@ export class PerformanceMonitoringService extends EventEmitter {
     // Update response times
     const times = this.responseTimes.get(key) ?? [];
     times.push(metric.responseTime);
-    if (times.length > 1000) times.shift(); // Keep last 1000 measurements
+    if (times.length > PERFORMANCE_CONSTANTS.MAX_RESPONSE_TIME_SAMPLES) times.shift();
     this.responseTimes.set(key, times);
 
     // Update error counts
-    if (metric.statusCode >= 400) {
+    if (metric.statusCode >= PERFORMANCE_CONSTANTS.HTTP_ERROR_THRESHOLD) {
       this.errorCounts.set(key, (this.errorCounts.get(key) ?? 0) + 1);
     }
   }
@@ -411,11 +475,15 @@ export class PerformanceMonitoringService extends EventEmitter {
         value = metric.responseTime;
         break;
       case 'errorRate':
-        const recentMetrics = this.metrics.filter(
-          m => Date.now() - m.timestamp < rule.condition.duration * 1000
-        );
-        const errors = recentMetrics.filter(m => m.statusCode >= 400).length;
-        value = recentMetrics.length > 0 ? (errors / recentMetrics.length) * 100 : 0;
+        {
+          const recentMetrics = this.metrics.filter(
+            m => Date.now() - m.timestamp < rule.condition.duration * 1000
+          );
+          const errors = recentMetrics.filter(
+            m => m.statusCode >= PERFORMANCE_CONSTANTS.HTTP_ERROR_THRESHOLD
+          ).length;
+          value = recentMetrics.length > 0 ? (errors / recentMetrics.length) * 100 : 0;
+        }
         break;
       case 'memoryUsage':
         value = metric.memoryUsage.heapUsed / 1024 / 1024; // MB
@@ -436,7 +504,7 @@ export class PerformanceMonitoringService extends EventEmitter {
     };
 
     const compareFn = operators[rule.condition.operator];
-    return compareFn ? compareFn(value, rule.condition.threshold) : false;
+    return compareFn(value, rule.condition.threshold);
   }
 
   private triggerAlert(rule: AlertRule): void {
@@ -462,6 +530,9 @@ export class PerformanceMonitoringService extends EventEmitter {
       case 'webhook':
         // Would call webhook URL
         break;
+      default:
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+        throw new Error(`Unknown alert action: ${rule.action}`);
     }
   }
 
@@ -559,18 +630,26 @@ export class PerformanceMonitoringService extends EventEmitter {
 
   private calculateHealthScore(): number {
     const health = this.getSystemHealth();
-    let score = 100;
+    let score = PERFORMANCE_CONSTANTS.MAX_HEALTH_SCORE;
 
     // Deduct points for various issues
     if (health.errorRate > 5) score -= Math.min(30, health.errorRate * 2);
-    if (health.averageResponseTime > 1000)
-      score -= Math.min(25, (health.averageResponseTime - 1000) / 100);
+    if (health.averageResponseTime > PERFORMANCE_CONSTANTS.RESPONSE_TIME_PENALTY_THRESHOLD)
+      score -= Math.min(
+        PERFORMANCE_CONSTANTS.MAX_RESPONSE_TIME_PENALTY,
+        (health.averageResponseTime - PERFORMANCE_CONSTANTS.RESPONSE_TIME_PENALTY_THRESHOLD) /
+          PERFORMANCE_CONSTANTS.RESPONSE_TIME_PENALTY_DIVISOR
+      );
     if (health.memoryUsage.heapUsed > 256 * 1024 * 1024) score -= 20; // 256MB threshold
 
     return Math.max(0, Math.round(score));
   }
 
-  private calculateTrends(_metrics: PerformanceMetrics[]): unknown {
+  private calculateTrends(_metrics: PerformanceMetrics[]): {
+    responseTimeTrend: Array<{ timestamp: number; value: number }>;
+    errorRateTrend: Array<{ timestamp: number; value: number }>;
+    throughputTrend: Array<{ timestamp: number; value: number }>;
+  } {
     // Simplified trend calculation - would implement proper time bucketing
     return { responseTimeTrend: [], errorRateTrend: [], throughputTrend: [] };
   }
@@ -579,13 +658,11 @@ export class PerformanceMonitoringService extends EventEmitter {
     const stats: Record<string, EndpointStats> = {};
 
     for (const metric of metrics) {
-      if (!stats[metric.endpoint]) {
-        stats[metric.endpoint] = { count: 0, totalTime: 0, errors: 0 };
-      }
+      stats[metric.endpoint] = { count: 0, totalTime: 0, errors: 0 };
 
       stats[metric.endpoint].count++;
       stats[metric.endpoint].totalTime += metric.responseTime;
-      if (metric.statusCode >= 400) {
+      if (metric.statusCode >= PERFORMANCE_CONSTANTS.HTTP_ERROR_THRESHOLD) {
         stats[metric.endpoint].errors++;
       }
     }
@@ -614,7 +691,9 @@ export class PerformanceMonitoringService extends EventEmitter {
 
   private getRequestsPerSecond(): number {
     const now = Date.now();
-    const lastSecond = this.metrics.filter(m => now - m.timestamp < 1000);
+    const lastSecond = this.metrics.filter(
+      m => now - m.timestamp < PERFORMANCE_CONSTANTS.LAST_SECOND_MS
+    );
     return lastSecond.length;
   }
 
@@ -642,7 +721,7 @@ export class PerformanceMonitoringService extends EventEmitter {
       ``,
       `# HELP http_request_duration_seconds HTTP request duration in seconds`,
       `# TYPE http_request_duration_seconds gauge`,
-      `http_request_duration_seconds ${dashboard.overview.averageResponseTime / 1000}`,
+      `http_request_duration_seconds ${dashboard.overview.averageResponseTime / PERFORMANCE_CONSTANTS.LAST_SECOND_MS}`,
       ``,
       `# HELP http_error_rate HTTP error rate percentage`,
       `# TYPE http_error_rate gauge`,
@@ -654,7 +733,7 @@ export class PerformanceMonitoringService extends EventEmitter {
       ``,
       `# HELP system_uptime_seconds System uptime in seconds`,
       `# TYPE system_uptime_seconds gauge`,
-      `system_uptime_seconds ${health.uptime / 1000}`,
+      `system_uptime_seconds ${health.uptime / PERFORMANCE_CONSTANTS.LAST_SECOND_MS}`,
     ];
 
     return metrics.join('\n');

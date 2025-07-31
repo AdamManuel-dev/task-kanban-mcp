@@ -9,9 +9,9 @@
  */
 
 import { DatabaseConnection } from '@/database/connection';
-import { TaskService } from '@/services/TaskService';
 import { BoardService } from '@/services/BoardService';
 import { NoteService } from '@/services/NoteService';
+import { TaskService } from '@/services/TaskService';
 
 describe('SQL Injection Prevention Verification', () => {
   let connection: DatabaseConnection;
@@ -346,9 +346,9 @@ describe('SQL Injection Prevention Verification', () => {
         // Test a complex join query with potential injection point
         const results = await connection.execute(
           `
-          SELECT t.*, b.name as board_name 
-          FROM tasks t 
-          JOIN boards b ON t.board_id = b.id 
+          SELECT t.*, b.name as board_name
+          FROM tasks t
+          JOIN boards b ON t.board_id = b.id
           WHERE t.title = ?
         `,
           [payload]
@@ -375,8 +375,8 @@ describe('SQL Injection Prevention Verification', () => {
       try {
         const results = await connection.execute(
           `
-          SELECT COUNT(*) as count 
-          FROM tasks 
+          SELECT COUNT(*) as count
+          FROM tasks
           WHERE status = ? AND title LIKE ?
         `,
           ['todo', `%${payload}%`]
@@ -399,7 +399,7 @@ describe('SQL Injection Prevention Verification', () => {
       try {
         const results = await connection.execute(
           `
-          SELECT * FROM tasks 
+          SELECT * FROM tasks
           WHERE board_id IN (
             SELECT id FROM boards WHERE name = ?
           )

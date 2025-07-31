@@ -8,11 +8,11 @@
  * Patterns: Query parameter validation, service delegation, response formatting
  */
 
-import type { Request, Response, NextFunction } from 'express';
-import { z } from 'zod';
 import { requirePermission } from '@/middleware/auth';
 import { validateRequest } from '@/middleware/validation';
 import { logger } from '@/utils/logger';
+import type { NextFunction, Request, RequestHandler, Response } from 'express';
+import { z } from 'zod';
 
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -89,9 +89,9 @@ const listTasksQuerySchema = z.object({
 /**
  * List tasks with filtering, sorting, and pagination
  */
-export const listTasksHandler = (services: Services) => [
+export const listTasksHandler = (services: Services): RequestHandler[] => [
   requirePermission('read'),
-  validateRequest(listTasksQuerySchema, 'query'),
+  validateRequest(listTasksQuerySchema),
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const filters = req.query;
@@ -104,28 +104,28 @@ export const listTasksHandler = (services: Services) => [
       const tasks = await services.taskService.getTasks({
         limit,
         offset,
-        sortBy: (filters.sortBy as string) ?? 'updated_at',
-        sortOrder: (filters.sortOrder as 'asc' | 'desc') ?? 'desc',
-        board_id: filters.board_id as string,
-        column_id: filters.column_id as string,
-        status: filters.status as string,
-        assignee: filters.assignee as string,
-        parent_task_id: filters.parent_task_id as string,
-        search: filters.search as string,
+        sortBy: filters.sortBy as string,
+        sortOrder: filters.sortOrder as 'asc' | 'desc',
+        board_id: filters.board_id,
+        column_id: filters.column_id,
+        status: filters.status,
+        assignee: filters.assignee,
+        parent_task_id: filters.parent_task_id,
+        search: filters.search,
         priority_min: Number(filters.priority_min),
         priority_max: Number(filters.priority_max),
       });
 
       // Get total count for pagination (without limit/offset)
       const totalTasks = await services.taskService.getTasks({
-        sortBy: (filters.sortBy as string) ?? 'updated_at',
-        sortOrder: (filters.sortOrder as 'asc' | 'desc') ?? 'desc',
-        board_id: filters.board_id as string,
-        column_id: filters.column_id as string,
-        status: filters.status as string,
-        assignee: filters.assignee as string,
-        parent_task_id: filters.parent_task_id as string,
-        search: filters.search as string,
+        sortBy: filters.sortBy as string,
+        sortOrder: filters.sortOrder as 'asc' | 'desc',
+        board_id: filters.board_id,
+        column_id: filters.column_id,
+        status: filters.status,
+        assignee: filters.assignee,
+        parent_task_id: filters.parent_task_id,
+        search: filters.search,
         priority_min: Number(filters.priority_min),
         priority_max: Number(filters.priority_max),
       });

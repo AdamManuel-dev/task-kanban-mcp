@@ -8,9 +8,9 @@
  * Patterns: Health checking, metrics aggregation, threshold monitoring, alert generation
  */
 
+import { EventEmitter } from 'events';
 import fs from 'fs/promises';
 import path from 'path';
-import { EventEmitter } from 'events';
 import { logger } from '../utils/logger';
 
 export interface BackupMetrics {
@@ -140,9 +140,9 @@ export class BackupMonitoringService extends EventEmitter {
       // Start periodic monitoring
       this.monitoringInterval = setInterval(
         () => {
-          void this.performHealthCheck().catch(error =>
-            logger.error('Health check failed', { error })
-          );
+          this.performHealthCheck().catch((error: unknown) => {
+            logger.error('Health check failed', { error });
+          });
         },
         this.config.checkInterval * 60 * 1000
       );
@@ -162,7 +162,7 @@ export class BackupMonitoringService extends EventEmitter {
   /**
    * Stop monitoring backups
    */
-  async stopMonitoring(): Promise<void> {
+  stopMonitoring(): void {
     if (!this.isMonitoring) {
       return;
     }
@@ -200,11 +200,7 @@ export class BackupMonitoringService extends EventEmitter {
 
       // Determine overall health
       const healthLevels = [
-        healthStatus.lastBackup.status === 'failed'
-          ? 'critical'
-          : healthStatus.lastBackup.status === 'missing'
-            ? 'warning'
-            : 'healthy',
+        healthStatus.lastBackup.status === 'failed' ? 'critical' : 'healthy',
         healthStatus.storage.status,
         healthStatus.retention.status,
       ];
@@ -216,7 +212,7 @@ export class BackupMonitoringService extends EventEmitter {
       }
 
       // Generate issues and recommendations
-      await this.generateHealthInsights(healthStatus, metrics);
+      this.generateHealthInsights(healthStatus, metrics);
 
       // Check for new alerts
       if (this.config.enableAlerts) {
@@ -296,7 +292,19 @@ export class BackupMonitoringService extends EventEmitter {
       const averageBackupTime = successCount > 0 ? totalTime / successCount : 0;
       const averageBackupSize = totalBackups > 0 ? totalSize / totalBackups : 0;
 
-      return { totalBackups, successfulBackups: successCount, failedBackups: failCount, averageBackupSize, averageBackupTime, lastBackupTime: newestTime?.toISOString() ?? null, oldestBackup: oldestTime?.toISOString() ?? null, newestBackup: newestTime?.toISOString() ?? null, totalStorageUsed: totalSize, compressionRatio: await this.calculateCompressionRatio(backupFiles), retentionCompliance: await this.calculateRetentionCompliance(backupFiles) };
+      return {
+        totalBackups,
+        successfulBackups: successCount,
+        failedBackups: failCount,
+        averageBackupSize,
+        averageBackupTime,
+        lastBackupTime: newestTime?.toISOString() ?? null,
+        oldestBackup: oldestTime?.toISOString() ?? null,
+        newestBackup: newestTime?.toISOString() ?? null,
+        totalStorageUsed: totalSize,
+        compressionRatio: await this.calculateCompressionRatio(backupFiles),
+        retentionCompliance: await this.calculateRetentionCompliance(backupFiles),
+      };
     } catch (error) {
       logger.error('Failed to collect backup metrics', { error });
       throw new Error(`Failed to collect backup metrics: ${(error as Error).message}`);
@@ -328,7 +336,7 @@ export class BackupMonitoringService extends EventEmitter {
 
       return backupFiles.sort((a, b) => a.name.localeCompare(b.name));
     } catch (error: unknown) {
-      if (error.code === 'ENOENT') {
+      if ((error as { code: string }).code === 'ENOENT') {
         logger.warn('Backup directory does not exist', { path: this.config.backupPath });
         return [];
       }
@@ -358,13 +366,20 @@ export class BackupMonitoringService extends EventEmitter {
 
         if (timestampMatch) {
           const timestamp = timestampMatch[1].replace(/-/g, '-').replace(/_/g, '-');
-          return { timestamp: new Date(timestamp.replace(/-/g, '/')).toISOString(), success: !filename.includes('failed') && !filename.includes('error') };
+          return {
+            timestamp: new Date(timestamp.replace(/-/g, '/')).toISOString(),
+            success: !filename.includes('failed') && !filename.includes('error'),
+          };
         }
       }
 
       // Use file modification time as fallback
       const stats = await fs.stat(filePath);
-      return { timestamp: stats.mtime.toISOString(), success: true, // Assume success if file exists, size: stats.size };
+      return {
+        timestamp: stats.mtime.toISOString(),
+        success: true, // Assume success if file exists
+        size: stats.size,
+      };
     } catch (error) {
       logger.warn('Failed to get backup metadata', { filePath, error });
       return null;
@@ -402,7 +417,11 @@ export class BackupMonitoringService extends EventEmitter {
       const ageHours = (Date.now() - mostRecent.timestamp.getTime()) / (1000 * 60 * 60);
       const metadata = await this.getBackupMetadata(mostRecent.path);
 
-      return { status: metadata?.success ? 'success' : 'failed', timestamp: mostRecent.timestamp.toISOString(), ageHours };
+      return {
+        status: metadata?.success ? 'success' : 'failed',
+        timestamp: mostRecent.timestamp.toISOString(),
+        ageHours,
+      };
     } catch (error) {
       logger.error('Failed to check last backup', { error });
       return { status: 'missing', timestamp: null, ageHours: 0 };
@@ -469,7 +488,10 @@ export class BackupMonitoringService extends EventEmitter {
     try {
       const stats = await fs.stat(this.config.backupPath);
       // This is a simplified implementation - in production, you'd use statvfs or similar
-      return { used: stats.size, available: 1024 * 1024 * 1024 * 10, // 10GB available (mock) };
+      return {
+        used: stats.size,
+        available: 1024 * 1024 * 1024 * 10, // 10GB available (mock)
+      };
     } catch (error) {
       logger.warn('Failed to get storage info', { error });
       return { used: 0, available: 0 };
@@ -479,7 +501,7 @@ export class BackupMonitoringService extends EventEmitter {
   /**
    * Calculate compression ratio
    */
-  private async calculateCompressionRatio(backupFiles: Array<{ path: string }>): Promise<number> {
+  private calculateCompressionRatio(backupFiles: Array<{ path: string }>): number {
     // This would need to compare original vs compressed sizes
     // For now, return a reasonable default
     return 0.3; // 30% compression
@@ -502,10 +524,7 @@ export class BackupMonitoringService extends EventEmitter {
   /**
    * Generate health insights
    */
-  private async generateHealthInsights(
-    healthStatus: BackupHealthStatus,
-    metrics: BackupMetrics
-  ): Promise<void> {
+  private generateHealthInsights(healthStatus: BackupHealthStatus, metrics: BackupMetrics): void {
     // Check backup age
     if (healthStatus.lastBackup.ageHours > this.config.alertThresholds.maxBackupAge) {
       healthStatus.issues.push(
@@ -670,7 +689,7 @@ export class BackupMonitoringService extends EventEmitter {
   /**
    * Resolve alert
    */
-  async resolveAlert(alertId: string): Promise<boolean> {
+  resolveAlert(alertId: string): boolean {
     const alert = this.alerts.get(alertId);
     if (alert && !alert.resolved) {
       alert.resolved = true;
@@ -717,7 +736,13 @@ export class BackupMonitoringService extends EventEmitter {
     lastHealthCheck: string | null;
     checkInterval: number;
   } {
-    return { isMonitoring: this.isMonitoring, totalAlerts: this.alerts.size, activeAlerts: this.getActiveAlerts().length, lastHealthCheck: this.lastHealthCheck?.lastBackup.timestamp ?? null, checkInterval: this.config.checkInterval };
+    return {
+      isMonitoring: this.isMonitoring,
+      totalAlerts: this.alerts.size,
+      activeAlerts: this.getActiveAlerts().length,
+      lastHealthCheck: this.lastHealthCheck?.lastBackup.timestamp ?? null,
+      checkInterval: this.config.checkInterval,
+    };
   }
 }
 

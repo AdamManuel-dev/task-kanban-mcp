@@ -1,5 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { logger } from '@/utils/logger';
+import { envManager } from '@/config/env-manager';
+import { isSecureSecret, generateApiKey, hashApiKey } from '@/config/security';
 import type { AuthenticationResult, WebSocketUser } from './types';
 import type { AuthPayload } from './messageTypes';
 
@@ -11,28 +13,35 @@ export class WebSocketAuth {
   }
 
   private initializeApiKeys(): void {
-    // Initialize with API keys from environment - no hardcoded defaults
-    const defaultApiKeys = process.env.DEFAULT_API_KEYS?.split(',') ?? [];
+    // Initialize with API keys from environment
+    const apiKeys = envManager.get<string[]>('API_KEYS', []);
 
-    // Only add valid API keys (minimum length requirements)
-    defaultApiKeys.forEach((key, index) => {
-      if (key && key.length >= 32) {
+    // Add valid API keys from environment
+    apiKeys.forEach((key, index) => {
+      if (key && isSecureSecret(key, 32)) {
         this.apiKeys.set(key, {
           id: `api_user_${String(index)}`,
           name: `API User ${String(index)}`,
           role: 'user',
         });
+      } else if (process.env.NODE_ENV === 'production') {
+        logger.error(`Invalid API key at index ${index} - must be at least 32 characters and secure`);
       }
     });
 
-    // Add a development key only if explicitly enabled and in development
-    if (process.env.NODE_ENV === 'development' && process.env.ENABLE_DEV_API_KEY === 'true') {
-      logger.warn('Development API key enabled - not for production use');
-      this.apiKeys.set('dev-key-12345678901234567890123456789012', {
+    // In development, generate a secure key if none provided
+    if (process.env.NODE_ENV === 'development' && this.apiKeys.size === 0) {
+      const devKey = generateApiKey('dev');
+      logger.warn(`Development API key generated: ${devKey}`);
+      this.apiKeys.set(devKey, {
         id: 'dev_user',
         name: 'Development User',
-        role: 'admin',
+        role: 'user',
       });
+    }
+
+    if (process.env.NODE_ENV === 'production' && this.apiKeys.size === 0) {
+      logger.error('No valid API keys configured for production');
     }
   }
 
@@ -69,9 +78,9 @@ export class WebSocketAuth {
 
   private static async authenticateWithJWT(token: string): Promise<AuthenticationResult> {
     try {
-      const jwtSecret = process.env.JWT_SECRET ?? 'dev-secret-key-change-in-production';
-      if (!jwtSecret || jwtSecret === 'dev-secret-key-change-in-production') {
-        logger.warn('JWT authentication using default secret - configure JWT_SECRET in production');
+      const jwtSecret = envManager.get<string>('JWT_SECRET');
+      if (!jwtSecret) {
+        return { success: false, error: 'JWT authentication not configured' };
       }
 
       const decoded = jwt.verify(token, jwtSecret) as {
@@ -243,9 +252,9 @@ export class WebSocketAuth {
 
   // Generate JWT tokens (for testing or client integration)
   static generateJWT(user: WebSocketUser, permissions: string[], expiresIn = '24h'): string {
-    const jwtSecret = process.env.JWT_SECRET ?? 'dev-secret-key-change-in-production';
-    if (!jwtSecret || jwtSecret === 'dev-secret-key-change-in-production') {
-      logger.warn('JWT generation using default secret - configure JWT_SECRET in production');
+    const jwtSecret = envManager.get<string>('JWT_SECRET');
+    if (!jwtSecret) {
+      throw new Error('JWT_SECRET not configured');
     }
 
     const payload: unknown = {

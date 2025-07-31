@@ -1,4 +1,4 @@
-import type { Request, Response, NextFunction } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 
 export interface ApiResponse<T = unknown> {
   success: boolean;
@@ -37,11 +37,12 @@ export interface ApiPaginationConfig<T> {
 }
 
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Response {
-      apiSuccess<T>(data: T, meta?: Partial<ApiResponse['meta']>): void;
-      apiError(config: ApiErrorConfig): void;
-      apiPagination<T>(config: ApiPaginationConfig<T>): void;
+      apiSuccess: <T>(data: T, meta?: Partial<ApiResponse['meta']>) => void;
+      apiError: (config: ApiErrorConfig) => void;
+      apiPagination: <T>(config: ApiPaginationConfig<T>) => void;
     }
   }
 }
@@ -119,8 +120,10 @@ export function responseFormattingMiddleware(
  * Format success response
  */
 export function formatSuccessResponse<T>(data: T, message?: string): ApiResponse<T> {
-  return { success: true, data, meta: {, timestamp: new Date().toISOString(), requestId: '', // Will be set by middleware if available, ...(message && { message }),
-    },
+  return {
+    success: true,
+    data,
+    meta: { timestamp: new Date().toISOString(), requestId: '', ...(message && { message }) },
   };
 }
 
@@ -128,7 +131,9 @@ export function formatSuccessResponse<T>(data: T, message?: string): ApiResponse
  * Format error response
  */
 export function formatErrorResponse(message: string, details?: unknown): ApiResponse {
-  return { success: false, error: {, code: 'ERROR', message, details },
+  return {
+    success: false,
+    error: { code: 'ERROR', message, details },
     meta: {
       timestamp: new Date().toISOString(),
       requestId: '', // Will be set by middleware if available

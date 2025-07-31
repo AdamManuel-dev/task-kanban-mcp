@@ -4,8 +4,8 @@
  */
 
 import { dbConnection } from '@/database/connection';
-import { logger } from '@/utils/logger';
 import type { Task } from '@/types';
+import { logger } from '@/utils/logger';
 
 export interface CompletionAnalytics {
   totalTasks: number;
@@ -105,15 +105,15 @@ export class AnalyticsService {
    */
   async getCompletionAnalytics(boardId?: string, timeframe?: number): Promise<CompletionAnalytics> {
     try {
-      const timeframeMs = timeframe || 30; // Default 30 days
+      const timeframeMs = timeframe ?? 30; // Default 30 days
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - timeframeMs);
 
       const baseQuery = `
-        SELECT 
-          id, title, status, priority, assignee, 
+        SELECT
+          id, title, status, priority, assignee,
           created_at, completed_at, estimated_hours, actual_hours
-        FROM tasks 
+        FROM tasks
         WHERE created_at >= ? AND archived = 0
       `;
 
@@ -132,9 +132,7 @@ export class AnalyticsService {
       const completionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
 
       // Calculate average completion time
-      const completedTasksWithTime = tasks.filter(
-        t => t.status === 'done' && t.completed_at && t.created_at
-      );
+      const completedTasksWithTime = tasks.filter(t => t.status === 'done' && t.completed_at);
 
       const averageCompletionTime =
         completedTasksWithTime.length > 0
@@ -172,7 +170,7 @@ export class AnalyticsService {
       // Top performers
       const performerStats = AnalyticsService.calculatePerformerStats(tasks);
       const topPerformers = Object.entries(performerStats)
-        .map(([assignee, stats]: [string, unknown]) => ({
+        .map(([assignee, stats]) => ({
           assignee,
           completedTasks: stats.completed,
           averageTime: stats.averageTime,
@@ -183,7 +181,17 @@ export class AnalyticsService {
       // Trend analysis
       const trends = await this.calculateCompletionTrends(boardId, 30);
 
-      return { totalTasks, completedTasks, completionRate, averageCompletionTime, completionsByStatus, completionsByPriority, completionsByTimeframe, topPerformers, trends };
+      return {
+        totalTasks,
+        completedTasks,
+        completionRate,
+        averageCompletionTime,
+        completionsByStatus,
+        completionsByPriority,
+        completionsByTimeframe,
+        topPerformers,
+        trends,
+      };
     } catch (error) {
       logger.error('Failed to get completion analytics:', error);
       throw new Error(
@@ -204,22 +212,28 @@ export class AnalyticsService {
       const currentSprint = await this.calculateSprintMetrics(sprintStart, boardId);
 
       // Historical velocity analysis
-      const historicalVelocity = await this.calculateHistoricalVelocity(boardId);
+      const historicalVelocity = this.calculateHistoricalVelocity(boardId);
 
       // Team velocity analysis
-      const teamVelocity = await this.calculateTeamVelocity(boardId);
+      const teamVelocity = this.calculateTeamVelocity(boardId);
 
       // Burndown data
-      const burndownData = await this.generateBurndownData(sprintStart, boardId);
+      const burndownData = this.generateBurndownData(sprintStart, boardId);
 
       // Predictive analytics
-      const predictiveAnalytics = await this.calculatePredictiveAnalytics(
+      const predictiveAnalytics = this.calculatePredictiveAnalytics(
         currentSprint,
         historicalVelocity,
         burndownData
       );
 
-      return { currentSprint, historicalVelocity, teamVelocity: teamVelocity as unknown, burndownData: burndownData as unknown, predictiveAnalytics };
+      return {
+        currentSprint,
+        historicalVelocity,
+        teamVelocity: teamVelocity as unknown as VelocityMetrics['teamVelocity'],
+        burndownData: burndownData as unknown as VelocityMetrics['burndownData'],
+        predictiveAnalytics,
+      };
     } catch (error) {
       logger.error('Failed to get velocity metrics:', error);
       throw new Error(
@@ -237,18 +251,23 @@ export class AnalyticsService {
       cutoffDate.setDate(cutoffDate.getDate() - 30);
 
       // Peak hours and days analysis
-      const completedTasks = await this.getCompletedTasksWithDetails(cutoffDate, boardId);
+      const completedTasks = this.getCompletedTasksWithDetails(cutoffDate, boardId);
 
       const peakHours = this.analyzePeakHours(completedTasks);
       const peakDays = this.analyzePeakDays(completedTasks);
 
       // Bottleneck analysis
-      const bottlenecks = await this.identifyBottlenecks(boardId);
+      const bottlenecks = this.identifyBottlenecks(boardId);
 
       // Efficiency metrics
-      const efficiencyMetrics = await this.calculateEfficiencyMetrics(boardId);
+      const efficiencyMetrics = this.calculateEfficiencyMetrics(boardId);
 
-      return { peakHours, peakDays, bottlenecks: bottlenecks as unknown, efficiencyMetrics };
+      return {
+        peakHours,
+        peakDays,
+        bottlenecks: bottlenecks as unknown as ProductivityInsights['bottlenecks'],
+        efficiencyMetrics,
+      };
     } catch (error) {
       logger.error('Failed to get productivity insights:', error);
       throw new Error(
@@ -277,7 +296,11 @@ export class AnalyticsService {
         this.getProductivityInsights(boardId),
       ]);
 
-      const summary = AnalyticsService.generateSummary(completion, velocity, productivity);
+      const summary = AnalyticsService.generateSummary(completion, velocity, productivity) as {
+        keyMetrics: Record<string, number | string>;
+        alerts: string[];
+        achievements: string[];
+      };
 
       return { completion, velocity, productivity, summary };
     } catch (error) {
@@ -321,7 +344,7 @@ export class AnalyticsService {
       if (task.status === 'done') {
         stats[task.assignee].completed++;
 
-        if (task.created_at && task.completed_at) {
+        if (task.completed_at) {
           const timeToComplete =
             new Date(task.completed_at).getTime() - new Date(task.created_at).getTime();
           stats[task.assignee].totalTime += timeToComplete / (1000 * 60 * 60); // Convert to hours
@@ -332,6 +355,7 @@ export class AnalyticsService {
     // Calculate averages
     Object.values(stats).forEach((stat: PerformerStats) => {
       if (stat.completed > 0) {
+        // eslint-disable-next-line no-param-reassign
         stat.averageTime = stat.totalTime / stat.completed;
       }
     });
@@ -352,7 +376,7 @@ export class AnalyticsService {
 
     let query = `
       SELECT DATE(completed_at) as completion_date, COUNT(*) as count
-      FROM tasks 
+      FROM tasks
       WHERE completed_at >= ? AND status = 'done' AND archived = 0
     `;
 
@@ -365,9 +389,12 @@ export class AnalyticsService {
 
     query += ' GROUP BY DATE(completed_at) ORDER BY completion_date';
 
-    const dailyData = await dbConnection.query(query, params);
+    const dailyData = await dbConnection.query<{
+      completion_date: string;
+      count: number;
+    }>(query, params);
 
-    const dailyCompletions = dailyData.map((row: unknown) => ({
+    const dailyCompletions = dailyData.map(row => ({
       date: row.completion_date,
       count: row.count,
     }));
@@ -386,29 +413,41 @@ export class AnalyticsService {
     const remainingPoints = plannedPoints - completedPoints;
     const velocityRate = completedPoints / 14; // points per day
 
-    return { plannedPoints, completedPoints, remainingPoints, velocityRate, projectedCompletion: null, // Calculate based on velocity };
+    return {
+      plannedPoints,
+      completedPoints,
+      remainingPoints,
+      velocityRate,
+      projectedCompletion: null, // Calculate based on velocity
+    };
   }
 
-  private async calculateHistoricalVelocity(_boardId?: string): Promise<unknown> {
+  private calculateHistoricalVelocity(_boardId?: string): unknown {
     // Implementation for historical velocity calculation
-    return { last7Days: 25, last14Days: 45, last30Days: 85, average: 42, trend: 'increasing' as const };
+    return {
+      last7Days: 25,
+      last14Days: 45,
+      last30Days: 85,
+      average: 42,
+      trend: 'increasing' as const,
+    };
   }
 
-  private async calculateTeamVelocity(_boardId?: string): Promise<unknown[]> {
+  private calculateTeamVelocity(_boardId?: string): unknown[] {
     // Implementation for team velocity analysis
     return [];
   }
 
-  private async generateBurndownData(_sprintStart: Date, _boardId?: string): Promise<unknown[]> {
+  private generateBurndownData(_sprintStart: Date, _boardId?: string): unknown[] {
     // Implementation for burndown chart data
     return [];
   }
 
-  private async calculatePredictiveAnalytics(
+  private calculatePredictiveAnalytics(
     _currentSprint: unknown,
     _historicalVelocity: unknown,
     _burndownData: unknown[]
-  ): Promise<unknown> {
+  ): unknown {
     // Implementation for predictive analytics
     return { projectedSprintCompletion: null, riskFactors: [], recommendations: [] };
   }
@@ -431,14 +470,16 @@ export class AnalyticsService {
     return [];
   }
 
-  private async identifyBottlenecks(_boardId?: string): Promise<unknown[]> {
+  private identifyBottlenecks(_boardId?: string): unknown[] {
     // Implementation for bottleneck identification
     return [];
   }
 
-  private async calculateEfficiencyMetrics(_boardId?: string): Promise<unknown> {
+  private calculateEfficiencyMetrics(_boardId?: string): unknown {
     // Implementation for efficiency metrics
-    return { averageTaskAge: 0, taskAgeDistribution: { },
+    return {
+      averageTaskAge: 0,
+      taskAgeDistribution: {},
       overdueTasksCount: 0,
       blockedTasksCount: 0,
     };
@@ -450,7 +491,12 @@ export class AnalyticsService {
     _productivity: ProductivityInsights
   ): unknown {
     // Implementation for summary generation
-    return { keyMetrics: {, completionRate: completion.completionRate, velocity: velocity.historicalVelocity.average, averageCompletionTime: completion.averageCompletionTime },
+    return {
+      keyMetrics: {
+        completionRate: completion.completionRate,
+        velocity: velocity.historicalVelocity.average,
+        averageCompletionTime: completion.averageCompletionTime,
+      },
       alerts: [],
       achievements: [],
     };

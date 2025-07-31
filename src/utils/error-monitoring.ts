@@ -1,3 +1,4 @@
+/* eslint-disable max-classes-per-file */
 /**
  * @fileoverview Error monitoring and alerting system
  * @lastmodified 2025-07-28T08:30:00Z
@@ -8,9 +9,9 @@
  * Patterns: Observer pattern for alerts, aggregation for metrics
  */
 
-import { logger } from './logger';
+import type { BaseServiceError, ErrorContext } from './errors';
 import { serializeError } from './errors';
-import type { ErrorContext, BaseServiceError } from './errors';
+import { logger } from './logger';
 
 // ============================================================================
 // TYPES AND INTERFACES
@@ -91,8 +92,8 @@ export class ErrorFingerprinter {
       error.code,
       error.name,
       this.normalizeMessage(error.message),
-      context?.service || 'unknown',
-      context?.method || 'unknown',
+      context?.service ?? 'unknown',
+      context?.method ?? 'unknown',
     ];
 
     // Create a simple hash
@@ -112,8 +113,8 @@ export class ErrorFingerprinter {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
-      hash = (hash << 5) - hash + char;
-      hash &= hash; // Convert to 32-bit integer
+      hash = (hash << 5) - hash + char; // eslint-disable-line no-bitwise
+      hash &= hash; // eslint-disable-line no-bitwise
     }
     return Math.abs(hash).toString(16);
   }
@@ -175,7 +176,15 @@ export class ErrorStorage {
     const recentErrors = this.getErrors({ since });
 
     if (recentErrors.length === 0) {
-      return { errorCount: 0, errorRate: 0, averageResponseTime: 0, failureRate: 0, p99ResponseTime: 0, p95ResponseTime: 0, topErrors: [] };
+      return {
+        errorCount: 0,
+        errorRate: 0,
+        averageResponseTime: 0,
+        failureRate: 0,
+        p99ResponseTime: 0,
+        p95ResponseTime: 0,
+        topErrors: [],
+      };
     }
 
     // Count errors by fingerprint
@@ -191,10 +200,22 @@ export class ErrorStorage {
       .slice(0, 10)
       .map(([fingerprint, count]) => {
         const sample = recentErrors.find(e => e.fingerprint === fingerprint);
-        return { error: sample?.error.message ?? 'Unknown error', count, percentage: (count / recentErrors.length) * 100 };
+        return {
+          error: sample?.error.message ?? 'Unknown error',
+          count,
+          percentage: (count / recentErrors.length) * 100,
+        };
       });
 
-    return { errorCount: recentErrors.length, errorRate: recentErrors.length / (timeWindow / 1000 / 60), // errors per minute, averageResponseTime: 0, // Would need response time tracking, failureRate: 100, // Would need success rate tracking, p99ResponseTime: 0, p95ResponseTime: 0, topErrors };
+    return {
+      errorCount: recentErrors.length,
+      errorRate: recentErrors.length / (timeWindow / 1000 / 60), // errors per minute
+      averageResponseTime: 0, // Would need response time tracking
+      failureRate: 100, // Would need success rate tracking
+      p99ResponseTime: 0,
+      p95ResponseTime: 0,
+      topErrors,
+    };
   }
 
   clear(): void {
@@ -221,11 +242,11 @@ export class AlertManager {
     this.channels.push(channel);
   }
 
-  async checkAlerts(metrics: ErrorMetrics, events: ErrorEvent[]): Promise<void> {
+  checkAlerts(metrics: ErrorMetrics, events: ErrorEvent[]): void {
     for (const rule of this.rules.filter(r => r.enabled)) {
       try {
         if (rule.condition(metrics, events)) {
-          await this.triggerAlert(rule, metrics, events);
+          this.triggerAlert(rule, metrics, events);
         }
       } catch (error) {
         logger.error('Error checking alert rule', {
@@ -236,11 +257,7 @@ export class AlertManager {
     }
   }
 
-  private async triggerAlert(
-    rule: AlertRule,
-    metrics: ErrorMetrics,
-    events: ErrorEvent[]
-  ): Promise<void> {
+  private triggerAlert(rule: AlertRule, metrics: ErrorMetrics, events: ErrorEvent[]): void {
     const now = new Date();
     const lastAlert = this.lastAlerts.get(rule.name);
 
@@ -265,25 +282,27 @@ export class AlertManager {
     for (const channelName of rule.channels) {
       const channel = this.channels.find(c => c.name === channelName && c.enabled);
       if (channel) {
-        await this.sendAlert(channel, alert);
+        this.sendAlert(channel, alert);
       }
     }
   }
 
-  private async sendAlert(channel: AlertChannel, alert: unknown): Promise<void> {
+  private sendAlert(channel: AlertChannel, alert: unknown): void {
     try {
       switch (channel.type) {
         case 'log':
           logger.error('ALERT', alert);
           break;
         case 'webhook':
-          await this.sendWebhookAlert(channel.config as WebhookConfig, alert as ErrorEvent);
+          this.sendWebhookAlert(channel.config as unknown as WebhookConfig, alert as ErrorEvent);
           break;
         case 'email':
-          await this.sendEmailAlert(channel.config as EmailConfig, alert as ErrorEvent);
+          this.sendEmailAlert(channel.config as unknown as EmailConfig, alert as ErrorEvent);
           break;
         case 'slack':
-          await this.sendSlackAlert(channel.config as SlackConfig, alert as ErrorEvent);
+          this.sendSlackAlert(channel.config as unknown as SlackConfig, alert as ErrorEvent);
+          break;
+        default:
           break;
       }
     } catch (error) {
@@ -294,17 +313,17 @@ export class AlertManager {
     }
   }
 
-  private async sendWebhookAlert(config: WebhookConfig, alert: ErrorEvent): Promise<void> {
+  private sendWebhookAlert(config: WebhookConfig, alert: ErrorEvent): void {
     // Implementation would depend on HTTP client availability
     logger.info('Webhook alert would be sent', { url: config.url, alert });
   }
 
-  private async sendEmailAlert(config: EmailConfig, alert: ErrorEvent): Promise<void> {
+  private sendEmailAlert(config: EmailConfig, alert: ErrorEvent): void {
     // Implementation would depend on email service
     logger.info('Email alert would be sent', { to: config.to, alert });
   }
 
-  private async sendSlackAlert(config: SlackConfig, alert: ErrorEvent): Promise<void> {
+  private sendSlackAlert(config: SlackConfig, alert: ErrorEvent): void {
     // Implementation would depend on Slack SDK
     logger.info('Slack alert would be sent', { channel: config.channel, alert });
   }
@@ -393,7 +412,12 @@ export class ErrorMonitor {
   }
 
   private extractTags(error: BaseServiceError, context?: ErrorContext): Record<string, string> {
-    return { code: error.code, service: context?.service || 'unknown', method: context?.method || 'unknown', statusCode: error.statusCode.toString() };
+    return {
+      code: error.code,
+      service: context?.service || 'unknown',
+      method: context?.method || 'unknown',
+      statusCode: error.statusCode.toString(),
+    };
   }
 
   private generateId(): string {
@@ -422,7 +446,7 @@ export class ErrorMonitor {
       clearInterval(this.monitoringInterval);
     }
 
-    this.monitoringInterval = setInterval(async () => {
+    this.monitoringInterval = setInterval(() => {
       try {
         const metrics = this.getMetrics();
         const recentEvents = this.getErrors({
@@ -430,7 +454,7 @@ export class ErrorMonitor {
           limit: 100,
         });
 
-        await this.alertManager.checkAlerts(metrics, recentEvents);
+        this.alertManager.checkAlerts(metrics, recentEvents);
       } catch (error) {
         logger.error('Error in monitoring loop', {
           error: serializeError(error),
@@ -463,7 +487,11 @@ export class ErrorMonitor {
 
     const isHealthy = metrics.errorRate < 5 && criticalErrors.length === 0;
 
-    return { isHealthy, summary: isHealthy, ? 'System is healthy', : `${metrics.errorCount } errors in last 5 minutes, ${criticalErrors.length} critical`,
+    return {
+      isHealthy,
+      summary: isHealthy
+        ? 'System is healthy'
+        : `${metrics.errorCount} errors in last 5 minutes, ${criticalErrors.length} critical`,
       metrics,
       recentCriticalErrors: criticalErrors,
     };

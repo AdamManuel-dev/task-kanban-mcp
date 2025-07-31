@@ -88,7 +88,13 @@ export class AccessibilityHelper {
     light: AccessibleColorPair[];
     highContrast: AccessibleColorPair[];
   } {
-    return { dark: [, {, foreground: '#FFFFFF', // White text, background: '#000000', // Black background, contrastRatio: this.calculateContrastRatio(, { r: 255, g: 255, b: 255 },
+    return {
+      dark: [
+        {
+          foreground: '#FFFFFF', // White text
+          background: '#000000', // Black background
+          contrastRatio: this.calculateContrastRatio(
+            { r: 255, g: 255, b: 255 },
             { r: 0, g: 0, b: 0 }
           ),
         },
@@ -148,6 +154,7 @@ export class AccessibilityHelper {
   /**
    * Generate ARIA labels for CLI components
    */
+  // eslint-disable-next-line complexity
   static generateAriaLabel(element: {
     type: 'task' | 'column' | 'board' | 'button' | 'list';
     name: string;
@@ -184,6 +191,9 @@ export class AccessibilityHelper {
       case 'list':
         parts.push(`List: ${element.name}`);
         if (element.count !== undefined) parts.push(`${element.count} items`);
+        break;
+
+      default:
         break;
     }
 

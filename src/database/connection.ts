@@ -25,14 +25,14 @@
  * ```
  */
 
-import sqlite3 from 'sqlite3';
-import { open, type Database } from 'sqlite';
-import path from 'path';
-import fs from 'fs/promises';
-import { logger } from '@/utils/logger';
 import { config } from '@/config';
-import { SchemaManager } from './schema';
+import { logger } from '@/utils/logger';
+import fs from 'fs/promises';
+import path from 'path';
+import { open, type Database } from 'sqlite';
+import sqlite3 from 'sqlite3';
 import { MigrationRunner } from './migrations';
+import { SchemaManager } from './schema';
 import { SeedRunner } from './seeds';
 
 /**
@@ -530,7 +530,7 @@ export class DatabaseConnection {
     ]);
 
     const stats = await db.get(`
-      SELECT 
+      SELECT
         page_count * page_size as size,
         page_count,
         page_size
@@ -590,7 +590,11 @@ export class DatabaseConnection {
 
       return {
         connected: true,
-        responsive: responseTime < 1000, // Consider responsive if < 1s, stats: {, ...stats, responseTime },
+        responsive: responseTime < 1000, // Consider responsive if < 1s
+        stats: {
+          ...stats,
+          responseTime,
+        },
       };
     } catch (error) {
       return {
@@ -850,6 +854,30 @@ export class DatabaseConnection {
   public async resetSeeds(): Promise<void> {
     const runner = this.getSeedRunner();
     return runner.reset();
+  }
+
+  /**
+   * Compatibility method for services expecting db.get()
+   * Alias for queryOne()
+   */
+  public async get<T = unknown>(sql: string, params: QueryParameters = []): Promise<T | undefined> {
+    return this.queryOne<T>(sql, params);
+  }
+
+  /**
+   * Compatibility method for services expecting db.all()
+   * Alias for query()
+   */
+  public async all<T = unknown>(sql: string, params: QueryParameters = []): Promise<T[]> {
+    return this.query<T>(sql, params);
+  }
+
+  /**
+   * Compatibility method for services expecting db.run()
+   * Alias for execute()
+   */
+  public async run(sql: string, params: QueryParameters = []): Promise<DatabaseExecutionResult> {
+    return this.execute(sql, params);
   }
 }
 
