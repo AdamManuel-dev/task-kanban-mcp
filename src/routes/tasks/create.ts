@@ -11,17 +11,11 @@
 import { requirePermission } from '@/middleware/auth';
 import { validateRequest } from '@/middleware/validation';
 import type { CreateTaskRequest } from '@/services/TaskService';
+import type { CreateNoteRequest } from '@/services/NoteService';
 import type { Note, Task, TaskTag } from '@/types';
 import { logger } from '@/utils/logger';
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import { z } from 'zod';
-
-interface CreateNoteRequest {
-  task_id: string;
-  content: string;
-  category?: string;
-  created_by?: string;
-}
 
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -103,7 +97,6 @@ export const createTaskHandler = (services: Services): RequestHandler[] => [
             task_id: task.id,
             content: noteData.content,
             category: noteData.category || 'general',
-            created_by: req.user?.id,
           });
         }
       }

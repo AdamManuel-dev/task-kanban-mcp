@@ -48,10 +48,11 @@ router.get('/services/:serviceName', (req, res) => {
     const metrics = serviceMetricsCollector.getServiceMetrics(serviceName);
 
     if (!metrics) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         error: `No metrics found for service: ${serviceName}`,
       });
+      return;
     }
 
     // Convert Map to plain object for JSON serialization
@@ -124,8 +125,8 @@ router.get('/top-performers', (req, res) => {
       data: topServices.map(service => ({
         ...service,
         methodMetrics: Array.from(service.methodMetrics.entries()).map(([name, stats]) => ({
-          methodName: name,
           ...stats,
+          methodName: name,
         })),
       })),
       timestamp: Date.now(),
@@ -152,8 +153,8 @@ router.get('/slowest', (req, res) => {
       data: slowestServices.map(service => ({
         ...service,
         methodMetrics: Array.from(service.methodMetrics.entries()).map(([name, stats]) => ({
-          methodName: name,
           ...stats,
+          methodName: name,
         })),
       })),
       timestamp: Date.now(),
@@ -180,8 +181,8 @@ router.get('/highest-errors', (req, res) => {
       data: highErrorServices.map(service => ({
         ...service,
         methodMetrics: Array.from(service.methodMetrics.entries()).map(([name, stats]) => ({
-          methodName: name,
           ...stats,
+          methodName: name,
         })),
       })),
       timestamp: Date.now(),

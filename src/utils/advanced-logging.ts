@@ -419,7 +419,7 @@ export class PerformanceLogger {
   createDecorator(operationName?: string) {
     return (target: unknown, propertyKey: string, descriptor: PropertyDescriptor) => {
       const originalMethod = descriptor.value;
-      const operation = operationName || `${target.constructor.name}.${propertyKey}`;
+      const operation = operationName || `${(target as any).constructor.name}.${propertyKey}`;
 
       descriptor.value = async function (this: unknown, ...args: unknown[]) {
         return performanceLogger.trackFunction(operation, () => originalMethod.apply(this, args), {
@@ -759,5 +759,5 @@ logger.log = function (level: unknown, message: unknown, meta: unknown = {}) {
     meta
   );
 
-  return originalLog.call(this, level, message);
+  return originalLog.call(this, level as any, message);
 };

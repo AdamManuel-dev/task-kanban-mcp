@@ -405,7 +405,7 @@ export class SubscriptionManager {
 
     for (const key of keys) {
       if (current && typeof current === 'object' && key in current) {
-        current = current[key];
+        current = (current as any)[key];
       } else {
         return undefined;
       }

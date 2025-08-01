@@ -5,16 +5,11 @@ import { config } from '@/config';
 import { webSocketManager } from '@/websocket';
 import '@/middleware/response';
 
-// Import the extended response types
-type ExtendedResponse = Response & {
-  apiSuccess: <T>(data: T, meta?: unknown) => void;
-};
-
 export function healthRoutes(): Router {
   const router = Router();
 
   // Basic health check
-  router.get('/health', async (_req: Request, res: ExtendedResponse): Promise<void> => {
+  router.get('/health', async (_req: Request, res: Response) => {
     const health = await dbConnection.healthCheck();
 
     const status = health.connected && health.responsive ? 'healthy' : 'unhealthy';
@@ -37,7 +32,7 @@ export function healthRoutes(): Router {
   });
 
   // Detailed health check
-  router.get('/health/detailed', async (_req: Request, res: ExtendedResponse): Promise<void> => {
+  router.get('/health/detailed', async (_req: Request, res: Response) => {
     const health = await dbConnection.healthCheck();
     const stats = await dbConnection.getStats();
 
@@ -68,7 +63,7 @@ export function healthRoutes(): Router {
   });
 
   // Readiness check
-  router.get('/ready', async (_req: Request, res: ExtendedResponse): Promise<void> => {
+  router.get('/ready', async (_req: Request, res: Response) => {
     try {
       const health = await dbConnection.healthCheck();
 
@@ -94,7 +89,7 @@ export function healthRoutes(): Router {
   });
 
   // Liveness check
-  router.get('/live', (_req: Request, res: ExtendedResponse): void => {
+  router.get('/live', (_req: Request, res: Response) => {
     res.apiSuccess({ alive: true });
   });
 

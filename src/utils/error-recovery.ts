@@ -202,11 +202,11 @@ export class BulkheadIsolation {
   async execute<T>(operation: () => Promise<T>): Promise<T> {
     return new Promise((resolve, reject) => {
       if (this.activeRequests < this.config.maxConcurrency) {
-        this.executeImmediate(operation, resolve, reject);
+        this.executeImmediate(operation, resolve as (value: T | PromiseLike<T>) => void, reject);
       } else if (this.queue.length < this.config.queueSize) {
         this.queue.push({
           operation,
-          resolve,
+          resolve: resolve as (value: unknown) => void,
           reject,
           timestamp: Date.now(),
         });
