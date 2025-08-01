@@ -56,21 +56,22 @@ export class TaskProgressService {
       };
     }
 
-    const completedSubtasks = subtasks.filter(
-      (task: { status: string }) => task.status === 'done' || task.status === 'completed'
+    const completedSubtasks = (subtasks as Array<{ status: string }>).filter(
+      task => task.status === 'done' || task.status === 'completed'
     );
 
     const progressPercentage = Math.round(
       (completedSubtasks.length / subtasks.length) * PROGRESS_CONSTANTS.COMPLETE_PERCENTAGE
     );
 
-    const subtaskBreakdown = subtasks.map(
-      (subtask: { id: string; title: string; status: string }) => ({
-        taskId: subtask.id,
+    const subtaskBreakdown = (subtasks as Array<{ id: string; title: string; status: string }>).map(
+      subtask => ({
+        subtask_id: subtask.id,
         title: subtask.title,
-        status: subtask.status,
-        isCompleted: subtask.status === 'done' || subtask.status === 'completed',
-        weight: PROGRESS_CONSTANTS.DEFAULT_SUBTASK_WEIGHT,
+        status: subtask.status as 'todo' | 'in_progress' | 'done' | 'blocked' | 'archived',
+        individual_progress: subtask.status === 'done' || subtask.status === 'completed' ? 100 : 0,
+        weight_factor: PROGRESS_CONSTANTS.DEFAULT_SUBTASK_WEIGHT,
+        weighted_contribution: (subtask.status === 'done' || subtask.status === 'completed' ? 100 : 0) * PROGRESS_CONSTANTS.DEFAULT_SUBTASK_WEIGHT / subtasks.length,
       })
     );
 
@@ -122,8 +123,8 @@ export class TaskProgressService {
     let completedWeight = 0;
     const completedSubtasks = [];
 
-    const subtaskBreakdown = subtasks.map(
-      (subtask: { id: string; title: string; status: string; weight: number }) => {
+    const subtaskBreakdown = (subtasks as Array<{ id: string; title: string; status: string; weight: number }>).map(
+      subtask => {
         const weight = Math.max(
           PROGRESS_CONSTANTS.MIN_WEIGHT,
           Math.min(PROGRESS_CONSTANTS.MAX_WEIGHT, subtask.weight)
@@ -136,12 +137,16 @@ export class TaskProgressService {
           completedSubtasks.push(subtask);
         }
 
+        const individual_progress = isCompleted ? 100 : 0;
+        const weighted_contribution = totalWeight > 0 ? (individual_progress * weight) / totalWeight : 0;
+
         return {
-          taskId: subtask.id,
+          subtask_id: subtask.id,
           title: subtask.title,
-          status: subtask.status,
-          isCompleted,
-          weight,
+          status: subtask.status as 'todo' | 'in_progress' | 'done' | 'blocked' | 'archived',
+          individual_progress,
+          weight_factor: weight,
+          weighted_contribution,
         };
       }
     );
@@ -221,7 +226,7 @@ export class TaskProgressService {
       throw new Error(`Subtask with ID ${subtaskId} not found`);
     }
 
-    const currentMetadata = task.metadata ? JSON.parse(task.metadata) : {};
+    const currentMetadata = (task as { metadata?: string }).metadata ? JSON.parse((task as { metadata: string }).metadata) : {};
     currentMetadata.weight = clampedWeight;
 
     await this.db.run('UPDATE tasks SET metadata = ? WHERE id = ?', [
@@ -245,7 +250,7 @@ export class TaskProgressService {
    * @param subtaskId - ID of the subtask that changed
    */
   async updateParentProgressOnSubtaskChange(subtaskId: string): Promise<void> {
-    const subtask = await this.db.get('SELECT parent_task_id FROM tasks WHERE id = ?', [subtaskId]);
+    const subtask = await this.db.get('SELECT parent_task_id FROM tasks WHERE id = ?', [subtaskId]) as { parent_task_id?: string } | undefined;
 
     if (!subtask?.parent_task_id) {
       return; // No parent task to update
@@ -258,7 +263,7 @@ export class TaskProgressService {
       subtask.parent_task_id,
     ]);
 
-    const parentMetadata = parentTask?.metadata ? JSON.parse(parentTask.metadata) : {};
+    const parentMetadata = (parentTask as { metadata?: string })?.metadata ? JSON.parse((parentTask as { metadata: string }).metadata) : {};
     parentMetadata.progress = {
       percentage: progressResult.calculated_progress,
       calculationMethod: 'weighted',
@@ -317,7 +322,7 @@ export class TaskProgressService {
     const hierarchySubtasks: SubtaskHierarchy[] = [];
     const currentPath = [...parentPath, parentId];
 
-    for (const subtask of subtasks) {
+    for (const subtask of subtasks as Array<{ id: string }>) {
       const childPath = [...currentPath, subtask.id];
       const nestedSubtasks = await this.buildSubtaskHierarchy(
         subtask.id,
@@ -367,9 +372,9 @@ export class TaskProgressService {
   private async checkAutoCompleteEligibility(parentTaskId: string): Promise<boolean> {
     const parentTask = await this.db.get('SELECT metadata FROM tasks WHERE id = ?', [parentTaskId]);
 
-    if (!parentTask?.metadata) return true;
+    if (!(parentTask as { metadata?: string })?.metadata) return true;
 
-    const metadata = JSON.parse(parentTask.metadata);
+    const metadata = JSON.parse((parentTask as { metadata: string }).metadata);
     return metadata.autoComplete !== false; // Default to true unless explicitly disabled
   }
 }

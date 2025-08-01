@@ -266,7 +266,7 @@ export class BackupEncryptionService {
       logger.info('Backup file encrypted successfully', {
         inputPath,
         outputPath,
-        originalSize: data.length,
+        originalSize: backupFileContent.length,
         encryptedFileSize: JSON.stringify(fileContent).length,
       });
     } catch (error) {

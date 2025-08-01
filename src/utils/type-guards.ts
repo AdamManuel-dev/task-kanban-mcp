@@ -158,3 +158,59 @@ export function isOptionalNumber(value: unknown): value is number | undefined {
 export function isOptionalDate(value: unknown): value is Date | undefined {
   return value === undefined || value instanceof Date;
 }
+
+/**
+ * Extract error message from various error types
+ */
+export function extractErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === 'string') {
+    return error;
+  }
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    return String((error as any).message);
+  }
+  return 'An unknown error occurred';
+}
+
+/**
+ * Format error message for display
+ */
+export function formatErrorMessage(error: unknown): string {
+  return extractErrorMessage(error);
+}
+
+/**
+ * Check if response has valid task data
+ */
+export function hasValidTaskData(response: unknown): response is { data: Task[] } {
+  if (typeof response !== 'object' || response === null) return false;
+  if (!('data' in response)) return false;
+  const data = (response as any).data;
+  return isTaskArray(data);
+}
+
+/**
+ * Check if response has valid board data
+ */
+export function hasValidBoardData(response: unknown): response is { data: Board[] } {
+  if (typeof response !== 'object' || response === null) return false;
+  if (!('data' in response)) return false;
+  const data = (response as any).data;
+  return isBoardArray(data);
+}
+
+/**
+ * Check if response has valid data (generic)
+ */
+export function hasValidData(response: unknown): response is { data: unknown } {
+  return (
+    typeof response === 'object' &&
+    response !== null &&
+    'data' in response &&
+    (response as any).data !== null &&
+    (response as any).data !== undefined
+  );
+}

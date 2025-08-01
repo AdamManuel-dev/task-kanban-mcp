@@ -10,6 +10,7 @@
 
 import type { Request, Response, NextFunction } from 'express';
 import { TaskService } from '@/services/TaskService';
+import { DatabaseConnection } from '@/database/connection';
 import { logger } from '@/utils/logger';
 
 /**
@@ -24,7 +25,8 @@ export const updateTaskHandler = async (
     const taskId = req.params.id;
     const updates = req.body;
 
-    const taskService = new TaskService();
+    const db = await DatabaseConnection.getInstance();
+    const taskService = new TaskService(db);
     const result = await taskService.updateTask(taskId, updates);
     res.json({ success: true, data: result });
   } catch (error) {

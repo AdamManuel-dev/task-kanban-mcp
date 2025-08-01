@@ -80,7 +80,7 @@ export async function updateTaskNote(
     const { noteId } = req.params;
     const updateData = req.body;
     const note = await noteService.updateNote(noteId, updateData);
-    res.apiSuccess(note, 'Task note updated successfully');
+    res.apiSuccess(note);
   } catch (error) {
     next(error);
   }
@@ -95,7 +95,7 @@ export async function deleteTaskNote(
   try {
     const { noteId } = req.params;
     await noteService.deleteNote(noteId);
-    res.apiSuccess(null, 'Task note deleted successfully');
+    res.status(204).send();
   } catch (error) {
     next(error);
   }

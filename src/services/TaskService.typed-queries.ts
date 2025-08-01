@@ -362,7 +362,7 @@ export class TaskServiceWithTypedQueries {
         executionTime: result.executionTime,
       });
 
-      return result.rows as Array<Task & { subtaskCount: number }>;
+      return (result.rows as unknown) as Array<Task & { subtaskCount: number }>;
     } catch (error) {
       logger.error('Failed to get tasks with subtasks', { error, boardId });
       throw error;
@@ -433,17 +433,19 @@ export class TaskServiceWithTypedQueries {
       };
 
       statusResult.rows.forEach((row: unknown) => {
-        byStatus[row.status as Task['status']] = row.count;
+        const typedRow = row as { status: Task['status']; count: number };
+        byStatus[typedRow.status] = typedRow.count;
       });
 
       const byPriority: Record<number, number> = {};
       priorityResult.rows.forEach((row: unknown) => {
-        byPriority[row.priority] = row.count;
+        const typedRow = row as { priority: number; count: number };
+        byPriority[typedRow.priority] = typedRow.count;
       });
 
       const total = Object.values(byStatus).reduce((sum, count) => sum + count, 0);
-      const avgPriority = avgResult.rows[0]?.avg_priority || 0;
-      const overdue = overdueResult.rows[0]?.count || 0;
+      const avgPriority = (avgResult.rows[0] as { avg_priority?: number })?.avg_priority || 0;
+      const overdue = (overdueResult.rows[0] as { count?: number })?.count || 0;
 
       logger.info('Retrieved task statistics', {
         boardId,

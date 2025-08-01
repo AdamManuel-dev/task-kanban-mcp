@@ -57,7 +57,7 @@ export function tagRoutes(): Router {
   router.post('/', requirePermission('write'), async (req, res, next): Promise<void> => {
     try {
       const tagData = validateInput(TagValidation.create, req.body);
-      const tag = await tagService.createTag(tagData);
+      const tag = await tagService.createTag(tagData as { name: string; description?: string; color?: string; parent_tag_id?: string });
       res.status(201).apiSuccess(tag);
     } catch (error) {
       next(error);

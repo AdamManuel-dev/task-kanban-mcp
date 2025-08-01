@@ -20,21 +20,21 @@
  */
 
 import type { UpdateBoardRequest } from '@/types';
-import { logger } from '../utils/logger';
-import type { CreateTaskRequest, UpdateTaskRequest } from '../services/TaskService';
-import { TaskService } from '../services/TaskService';
+import { dbConnection } from '../database/connection';
 import { BoardService } from '../services/BoardService';
 import { NoteService } from '../services/NoteService';
 import { TagService } from '../services/TagService';
-import { dbConnection } from '../database/connection';
+import type { CreateTaskRequest, UpdateTaskRequest } from '../services/TaskService';
+import { TaskService } from '../services/TaskService';
+import { logger } from '../utils/logger';
 import type { WebSocketManager } from './server';
 import type {
-  WebSocketMessage,
   MessageContext,
-  SubscriptionChannel,
   SubscribeMessage,
+  SubscriptionChannel,
   UnsubscribeMessage,
   UpdateSubtaskMessage,
+  WebSocketMessage,
 } from './types';
 
 /**
@@ -490,7 +490,7 @@ export class MessageHandler {
     const { clientId, message } = context;
     const payload = message.payload as UpdateSubtaskMessage['payload'];
 
-    if (!payload.taskId || !payload.updates) {
+    if (!payload.taskId) {
       this.webSocketManager.sendError(
         clientId,
         'INVALID_UPDATE_TASK',
@@ -777,7 +777,7 @@ export class MessageHandler {
       // Check permissions
       if (
         !client.permissions.has('write:all') &&
-        !client.permissions.has(`write:board:${payload.boardId}`)
+        !client.permissions.has(`write:board:${(payload as { boardId?: string }).boardId}`)
       ) {
         this.webSocketManager.sendError(
           clientId,

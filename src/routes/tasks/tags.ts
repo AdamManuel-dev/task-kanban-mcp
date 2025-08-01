@@ -11,8 +11,9 @@
 import type { Request, Response, NextFunction } from 'express';
 import { Router } from 'express';
 import { TagService } from '@/services/TagService';
+import { DatabaseConnection } from '@/database/connection';
 import { logger } from '@/utils/logger';
-import { createServiceErrorHandler } from '@/utils/error-handler';
+import { createServiceError } from '@/utils/error-handler';
 
 export const taskTagsRoutes = Router({ mergeParams: true });
 
@@ -20,18 +21,14 @@ export const taskTagsRoutes = Router({ mergeParams: true });
  * GET /tasks/:id/tags - Get all tags for a task
  */
 taskTagsRoutes.get('/', async (req: Request, res: Response, next: NextFunction) => {
-  const errorHandler = createServiceErrorHandler('getTaskTags', logger);
+  // Error handler for getTaskTags
 
   try {
     const taskId = req.params.id;
-    const tagService = new TagService();
-    const result = await tagService.getTagsByTask(taskId);
-
-    if (result.success) {
-      res.json({ success: true, data: result.data });
-    } else {
-      res.status(400).json(result);
-    }
+    const db = await DatabaseConnection.getInstance();
+    const tagService = new TagService(db);
+    const tags = await tagService.getTaskTags(taskId);
+    res.json({ success: true, data: tags });
   } catch (error) {
     next(error);
   }
@@ -41,11 +38,12 @@ taskTagsRoutes.get('/', async (req: Request, res: Response, next: NextFunction) 
  * POST /tasks/:id/tags/:tagId - Add tag to task
  */
 taskTagsRoutes.post('/:tagId', async (req: Request, res: Response, next: NextFunction) => {
-  const errorHandler = createServiceErrorHandler('addTaskTag', logger);
+  // Error handler for addTaskTag
 
   try {
     const { id: taskId, tagId } = req.params;
-    const tagService = new TagService();
+    const db = await DatabaseConnection.getInstance();
+    const tagService = new TagService(db);
     const result = await tagService.addTagToTask(taskId, tagId);
     res.json({ success: true, data: result });
   } catch (error) {
@@ -57,11 +55,12 @@ taskTagsRoutes.post('/:tagId', async (req: Request, res: Response, next: NextFun
  * DELETE /tasks/:id/tags/:tagId - Remove tag from task
  */
 taskTagsRoutes.delete('/:tagId', async (req: Request, res: Response, next: NextFunction) => {
-  const errorHandler = createServiceErrorHandler('removeTaskTag', logger);
+  // Error handler for removeTaskTag
 
   try {
     const { id: taskId, tagId } = req.params;
-    const tagService = new TagService();
+    const db = await DatabaseConnection.getInstance();
+    const tagService = new TagService(db);
     await tagService.removeTagFromTask(taskId, tagId);
     res.json({ success: true, message: 'Tag removed from task' });
   } catch (error) {

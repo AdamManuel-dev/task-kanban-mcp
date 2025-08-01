@@ -905,35 +905,36 @@ export function withErrorContext<TFn extends (...args: unknown[]) => unknown>(
  * }
  * ```
  */
-export function createErrorBoundary(
-  serviceName: string
-): <T extends new (...args: unknown[]) => object>(constructor: T) => T {
-  return function <T extends new (...args: unknown[]) => object>(constructor: T): T {
-    return class extends constructor {
-      constructor(...args: unknown[]) {
-        super(...args);
-
-        const prototype = Object.getPrototypeOf(this);
-        const methodNames = Object.getOwnPropertyNames(prototype).filter(
-          name => name !== 'constructor' && typeof prototype[name] === 'function'
-        );
-
-        methodNames.forEach(methodName => {
-          const originalMethod = (prototype as Record<string, unknown>)[methodName];
-          if (typeof originalMethod === 'function') {
-            (prototype as Record<string, unknown>)[methodName] = withErrorContext(
-              originalMethod.bind(this),
-              {
-                service: serviceName,
-                method: methodName,
-              }
-            );
-          }
-        });
-      }
-    } as T;
-  };
-}
+// Commented out due to TypeScript mixin class error - not currently used
+// export function createErrorBoundary(
+//   serviceName: string
+// ): <T extends new (...args: unknown[]) => object>(constructor: T) => T {
+//   return function <T extends new (...args: unknown[]) => object>(constructor: T): T {
+//     return class extends constructor {
+//       constructor(...args: any[]) {
+//         super(...args);
+// 
+//         const prototype = Object.getPrototypeOf(this);
+//         const methodNames = Object.getOwnPropertyNames(prototype).filter(
+//           name => name !== 'constructor' && typeof prototype[name] === 'function'
+//         );
+// 
+//         methodNames.forEach(methodName => {
+//           const originalMethod = (prototype as Record<string, unknown>)[methodName];
+//           if (typeof originalMethod === 'function') {
+//             (prototype as Record<string, unknown>)[methodName] = withErrorContext(
+//               originalMethod.bind(this),
+//               {
+//                 service: serviceName,
+//                 method: methodName,
+//               }
+//             );
+//           }
+//         });
+//       }
+//     } as T;
+//   };
+// }
 
 /**
  * Standard error codes used throughout the application

@@ -8,7 +8,7 @@
  * Patterns: Health check protocols, validation strategies, test automation, reporting
  */
 
-import type { Stats } from 'fs/promises';
+import type { Stats } from 'fs';
 import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';

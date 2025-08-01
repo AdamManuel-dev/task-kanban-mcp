@@ -46,9 +46,7 @@ export class AIContextualPrioritizer {
 
   private readonly priorityHistoryService = new PriorityHistoryService();
 
-  constructor(private readonly taskService: TaskService) {
-    // TaskService injected for dependency injection
-  }
+  constructor(private readonly taskService: TaskService) {}
 
   /**
    * Enhanced prioritization with contextual awareness and ML-like capabilities
@@ -117,9 +115,9 @@ export class AIContextualPrioritizer {
     let confidence = 0.5; // Base confidence
 
     // 1. Base Priority Score (20-100 points)
-    const basePriority = (task.priority ?? 1) * 20;
+    const basePriority = task.priority * 20;
     score += basePriority;
-    reasoning.push(`Base priority: ${task.priority ?? 1} (${basePriority} points)`);
+    reasoning.push(`Base priority: ${task.priority} (${basePriority} points)`);
 
     // 2. Due Date Urgency (0-60 points)
     const urgencyBonus = this.calculateUrgencyScore(task);
@@ -155,7 +153,7 @@ export class AIContextualPrioritizer {
     if (similarityScore.reasoning) reasoning.push(similarityScore.reasoning);
 
     // 8. Dependency Impact (0-35 points)
-    const dependencyScore = await this.calculateDependencyImpact(task);
+    const dependencyScore = this.calculateDependencyImpact(task);
     score += dependencyScore.score;
     if (dependencyScore.reasoning) reasoning.push(dependencyScore.reasoning);
 
@@ -274,14 +272,8 @@ export class AIContextualPrioritizer {
     let confidence = 0.3;
     const reasons: string[] = [];
 
-    // Task type preference
-    if (userContext.preferredTaskTypes && task.type) {
-      if (userContext.preferredTaskTypes.includes(task.type)) {
-        score += 15;
-        confidence += 0.3;
-        reasons.push(`Preferred task type (+15 points)`);
-      }
-    }
+    // Task type preference (removed - Task doesn't have type property)
+    // TODO: Consider adding task categorization in the future
 
     // Velocity matching
     if (userContext.taskCompletionVelocity) {
@@ -414,16 +406,16 @@ export class AIContextualPrioritizer {
   /**
    * Calculate dependency impact score
    */
-  private async calculateDependencyImpact(
+  private calculateDependencyImpact(
     _task: Task
-  ): Promise<{ score: number; reasoning?: string }> {
+  ): { score: number; reasoning?: string } {
     try {
       // This would integrate with the existing dependency service
       // For now, a placeholder implementation
 
       // Check if task is blocking others
       const blockingCount = 0; // Would get from dependency service
-      if (blockingCount > 0) {
+      if (blockingCount) {
         const score = Math.min(35, blockingCount * 10);
         return { score, reasoning: `Blocking ${blockingCount} tasks (+${score} points)` };
       }

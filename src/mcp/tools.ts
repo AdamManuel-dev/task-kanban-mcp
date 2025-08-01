@@ -259,9 +259,13 @@ export class MCPToolRegistry {
   private async updateTask(args: UpdateTaskArgs): Promise<ToolResponse> {
     try {
       const { task_id, ...updates } = args;
+      const updateData: ServiceUpdateTaskRequest = {
+        ...updates,
+        due_date: updates.due_date ? new Date(updates.due_date) : undefined,
+      };
       const result = await this.services.taskService.updateTask(
         task_id,
-        updates as ServiceUpdateTaskRequest
+        updateData
       );
       return { success: true, data: result as unknown };
     } catch (error) {
@@ -409,9 +413,7 @@ export class MCPToolRegistry {
 
   private async getProjectContext(args: GetProjectContextArgs): Promise<ToolResponse> {
     try {
-      const result = await this.services.contextService.getProjectContext(
-        (args as unknown).board_id
-      );
+      const result = await this.services.contextService.getProjectContext({});
       return { success: true, data: result as unknown };
     } catch (error) {
       return {

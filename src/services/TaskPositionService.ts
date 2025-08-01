@@ -28,7 +28,7 @@ export class TaskPositionService {
    * @returns Next available position number
    */
   async getNextPosition(columnId: string): Promise<number> {
-    const maxPositionResult = await this.db.get(
+    const maxPositionResult = await this.db.get<{ max_pos: number | null }>(
       'SELECT MAX(position) as max_pos FROM tasks WHERE column_id = ?',
       [columnId]
     );
@@ -147,9 +147,10 @@ export class TaskPositionService {
 
     // Update positions to be sequential starting from 1
     for (let i = 0; i < tasks.length; i++) {
+      const task = tasks[i] as { id: string };
       await this.db.run(
         'UPDATE tasks SET position = ? WHERE id = ?',
-        [i + 1, tasks[i].id]
+        [i + 1, task.id]
       );
     }
 
@@ -171,7 +172,7 @@ export class TaskPositionService {
       [columnId]
     );
 
-    return tasks.map(task => task.id);
+    return tasks.map(task => (task as { id: string }).id);
   }
 
   /**
@@ -191,7 +192,7 @@ export class TaskPositionService {
     );
 
     const issues: string[] = [];
-    const positions = tasks.map(t => t.position);
+    const positions = tasks.map(t => (t as { position: number }).position);
     const uniquePositions = new Set(positions);
 
     // Check for duplicate positions

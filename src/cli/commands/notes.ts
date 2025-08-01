@@ -198,7 +198,7 @@ export function registerNoteCommands(program: Command): void {
           formatter.success(`Note created successfully: ${note.data.id}`);
           formatter.output(note);
         } catch (error) {
-          formatter.error(formatErrorMessage('Failed to create note', error));
+          formatter.error(`Failed to create note: ${formatErrorMessage(error)}`);
           process.exit(1);
         }
       }
@@ -282,7 +282,7 @@ export function registerNoteCommands(program: Command): void {
           formatter.success('Note updated successfully');
           formatter.output(updatedNote);
         } catch (error) {
-          formatter.error(formatErrorMessage('Failed to update note', error));
+          formatter.error(`Failed to update note: ${formatErrorMessage(error)}`);
           process.exit(1);
         }
       }
@@ -324,7 +324,7 @@ export function registerNoteCommands(program: Command): void {
         await apiClient.deleteNote(id);
         formatter.success(`Note ${String(id)} deleted successfully`);
       } catch (error) {
-        formatter.error(formatErrorMessage('Failed to delete note', error));
+        formatter.error(`Failed to delete note: ${formatErrorMessage(error)}`);
         process.exit(1);
       }
     });
@@ -355,7 +355,7 @@ export function registerNoteCommands(program: Command): void {
           headers: ['ID', 'Title', 'Category', 'Content'],
         });
       } catch (error) {
-        formatter.error(formatErrorMessage('Failed to search notes', error));
+        formatter.error(`Failed to search notes: ${formatErrorMessage(error)}`);
         process.exit(1);
       }
     });
@@ -370,7 +370,7 @@ export function registerNoteCommands(program: Command): void {
         await apiClient.updateNote(id, { pinned: true });
         formatter.success(`Note ${String(id)} pinned successfully`);
       } catch (error) {
-        formatter.error(formatErrorMessage('Failed to pin note', error));
+        formatter.error(`Failed to pin note: ${formatErrorMessage(error)}`);
         process.exit(1);
       }
     });
@@ -385,7 +385,7 @@ export function registerNoteCommands(program: Command): void {
         await apiClient.updateNote(id, { pinned: false });
         formatter.success(`Note ${String(id)} unpinned successfully`);
       } catch (error) {
-        formatter.error(formatErrorMessage('Failed to unpin note', error));
+        formatter.error(`Failed to unpin note: ${formatErrorMessage(error)}`);
         process.exit(1);
       }
     });

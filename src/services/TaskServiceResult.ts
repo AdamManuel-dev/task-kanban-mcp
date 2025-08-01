@@ -137,7 +137,7 @@ export class TaskServiceResult {
           throw new Error(`Task not found: ${taskId}`);
         }
 
-        return this.mapRowToTask(row);
+        return this.mapRowToTask(row as Record<string, unknown>);
       },
       'TASK_GET_FAILED',
       `Failed to get task: ${taskId}`

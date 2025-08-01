@@ -16,7 +16,7 @@ import type {
 } from '@/services/TaskService';
 import { NoteService } from '@/services/NoteService';
 import { TagService } from '@/services/TagService';
-import { type Task } from '@/database/schema';
+import type { Task } from '@/types';
 import { NotFoundError, ValidationError } from '@/utils/errors';
 import { validateInput, TaskValidation } from '@/utils/validation';
 
@@ -107,7 +107,7 @@ export async function createTask(
   try {
     const taskData = req.body;
     const task = await taskService.createTask(taskData);
-    res.apiSuccess(task, 'Task created successfully', 201);
+    res.status(201).apiSuccess(task);
   } catch (error) {
     next(error);
   }
@@ -140,7 +140,7 @@ export async function getTaskById(
       throw new NotFoundError('Task', id);
     }
 
-    res.apiSuccess(task, 'Task retrieved successfully');
+    res.apiSuccess(task);
   } catch (error) {
     next(error);
   }
@@ -156,7 +156,7 @@ export async function updateTask(
     const { id } = req.params;
     const updateData = req.body;
     const task = await taskService.updateTask(id, updateData);
-    res.apiSuccess(task, 'Task updated successfully');
+    res.apiSuccess(task);
   } catch (error) {
     next(error);
   }

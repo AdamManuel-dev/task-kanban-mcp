@@ -9,8 +9,15 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import type { DatabaseConnection } from '../database/connection';
-import type { FilterOptions, PaginationOptions, Task } from '../types';
+import type { DatabaseConnection, QueryParameters } from '../database/connection';
+import type {
+  FilterOptions,
+  PaginationOptions,
+  ProgressCalculationResult,
+  SubtaskHierarchy,
+  Task,
+  TaskDependency,
+} from '../types';
 import { logger } from '../utils/logger';
 import { TrackPerformance } from '../utils/service-metrics';
 import { TaskDependencyService } from './TaskDependencyService';
@@ -102,6 +109,7 @@ export class TaskService {
    * @throws Error when validation fails or database operation fails
    */
   @TrackPerformance('task-create')
+  // eslint-disable-next-line complexity
   async createTask(taskData: CreateTaskRequest): Promise<Task> {
     const taskId = uuidv4();
     const now = new Date().toISOString();
@@ -150,17 +158,17 @@ export class TaskService {
       [
         dbValues.id,
         dbValues.title,
-        dbValues.description,
+        dbValues.description ?? '',
         dbValues.board_id,
         dbValues.column_id,
         dbValues.position,
         dbValues.priority,
         dbValues.status,
-        dbValues.assignee,
-        dbValues.due_date,
-        dbValues.estimated_hours,
-        dbValues.parent_task_id,
-        dbValues.metadata,
+        dbValues.assignee ?? '',
+        dbValues.due_date ?? '',
+        dbValues.estimated_hours ?? 0,
+        dbValues.parent_task_id ?? '',
+        dbValues.metadata ?? '',
         dbValues.created_at,
         dbValues.updated_at,
       ]
@@ -188,9 +196,9 @@ export class TaskService {
 
     logger.info('Task created successfully', {
       taskId,
-      title: task.title,
-      boardId: task.board_id,
-      columnId: task.column_id,
+      title: createdTask.title,
+      boardId: createdTask.board_id,
+      columnId: createdTask.column_id,
     });
 
     return createdTask;
@@ -237,7 +245,7 @@ export class TaskService {
       }
     }
 
-    const tasks = await this.db.all(query, params);
+    const tasks = await this.db.all(query, params as QueryParameters);
     return tasks.map(task => this.convertTaskDates(task));
   }
 
@@ -271,11 +279,15 @@ export class TaskService {
     values.push(new Date().toISOString());
     values.push(taskId);
 
-    await this.db.run(`UPDATE tasks SET ${fields.join(', ')} WHERE id = ?`, values);
+    await this.db.run(
+      `UPDATE tasks SET ${fields.join(', ')} WHERE id = ?`,
+      values as QueryParameters
+    );
 
     // Record task update in history
     for (const [field, newValue] of Object.entries(updateData)) {
-      const oldValue = (existingTask as unknown)[field];
+      const oldValue = existingTask[field as keyof Task];
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       if (oldValue !== newValue) {
         await this.taskHistoryService.recordChange({
           task_id: taskId,
@@ -361,63 +373,75 @@ export class TaskService {
   /**
    * Add a dependency between tasks (delegates to TaskDependencyService)
    */
-  async addDependency(taskId: string, dependsOnTaskId: string, metadata?: Record<string, unknown>) {
+  async addDependency(
+    taskId: string,
+    dependsOnTaskId: string,
+    metadata?: Record<string, unknown>
+  ): Promise<TaskDependency> {
     return this.dependencyService.addDependency(taskId, dependsOnTaskId, metadata);
   }
 
   /**
    * Remove a dependency between tasks (delegates to TaskDependencyService)
    */
-  async removeDependency(taskId: string, dependsOnTaskId: string) {
+  async removeDependency(taskId: string, dependsOnTaskId: string): Promise<void> {
     return this.dependencyService.removeDependency(taskId, dependsOnTaskId);
   }
 
   /**
    * Get task dependencies (delegates to TaskDependencyService)
    */
-  async getTaskDependencies(taskId: string) {
+  async getTaskDependencies(taskId: string): Promise<TaskDependency[]> {
     return this.dependencyService.getTaskDependencies(taskId);
   }
 
   /**
    * Calculate parent task progress (delegates to TaskProgressService)
    */
-  async calculateParentTaskProgress(parentTaskId: string) {
+  async calculateParentTaskProgress(parentTaskId: string): Promise<ProgressCalculationResult> {
     return this.progressService.calculateParentTaskProgress(parentTaskId);
   }
 
   /**
    * Get subtask hierarchy (delegates to TaskProgressService)
    */
-  async getSubtaskHierarchy(parentTaskId: string, maxDepth?: number) {
+  async getSubtaskHierarchy(parentTaskId: string, maxDepth?: number): Promise<SubtaskHierarchy> {
     return this.progressService.getSubtaskHierarchy(parentTaskId, maxDepth);
   }
 
   // Private helper methods
 
-  private buildTaskQueryConditions(options: FilterOptions): {
+  private buildTaskQueryConditions(
+    options: FilterOptions & {
+      board_id?: string;
+      column_id?: string;
+      status?: Task['status'];
+      assignee?: string;
+      priority?: number;
+    }
+  ): {
     conditions: string[];
     params: unknown[];
   } {
     const conditions: string[] = [];
     const params: unknown[] = [];
 
-    if (options.board_id) {
+    if (options.board_id !== undefined) {
       conditions.push('board_id = ?');
       params.push(options.board_id);
     }
 
-    if (options.column_id) {
+    if (options.column_id !== undefined) {
       conditions.push('column_id = ?');
       params.push(options.column_id);
     }
 
-    if (options.status) {
+    if (options.status !== undefined) {
       conditions.push('status = ?');
       params.push(options.status);
     }
 
-    if (options.assignee) {
+    if (options.assignee !== undefined) {
       conditions.push('assignee = ?');
       params.push(options.assignee);
     }

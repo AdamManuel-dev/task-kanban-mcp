@@ -8,10 +8,7 @@
 
 import type { ExportData, ExportFileFormat } from '@/services/ExportService';
 import { logger } from '@/utils/logger';
-import type { Board } from '@/types/board';
-import type { Task } from '@/types/task';
-import type { Tag } from '@/types/tag';
-import type { Note } from '@/types/note';
+import type { Board, Task, Tag, Note } from '@/types';
 
 export interface FormatConverterOptions {
   preserveMetadata?: boolean;
@@ -99,26 +96,30 @@ function addItemToSection(
   switch (section) {
     case 'boards':
       if (!data.boards) data.boards = [];
-      data.boards.push(item as Board);
+      data.boards.push(item as unknown as Board);
       break;
     case 'tasks':
       if (!data.tasks) data.tasks = [];
-      data.tasks.push(item as Task);
+      data.tasks.push(item as unknown as Task);
       break;
     case 'tags':
       if (!data.tags) data.tags = [];
-      data.tags.push(item as Tag);
+      data.tags.push(item as unknown as Tag);
       break;
     case 'notes':
       if (!data.notes) data.notes = [];
-      data.notes.push(item as Note);
+      data.notes.push(item as unknown as Note);
       break;
     case 'task_tags':
       if (!data.taskTags) data.taskTags = [];
       data.taskTags.push(item as { task_id: string; tag_id: string });
       break;
     case 'metadata':
-      if (!data.metadata) data.metadata = {} as Record<string, unknown>;
+      if (!data.metadata) data.metadata = {
+        exportDate: new Date().toISOString(),
+        version: '1.0',
+        totalItems: 0
+      };
       (data.metadata as Record<string, unknown>)[item.key as string] = item.value;
       break;
     default:

@@ -39,14 +39,7 @@ interface TaskListOptions {
   };
 }
 
-interface Task {
-  id: string;
-  title: string;
-  description?: string;
-  status?: string;
-  priority?: number;
-  [key: string]: unknown;
-}
+import type { Task } from '@/types';
 
 interface Services {
   taskService: {
@@ -91,7 +84,6 @@ const listTasksQuerySchema = z.object({
  */
 export const listTasksHandler = (services: Services): RequestHandler[] => [
   requirePermission('read'),
-  validateRequest(listTasksQuerySchema),
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const filters = req.query;
@@ -106,28 +98,32 @@ export const listTasksHandler = (services: Services): RequestHandler[] => [
         offset,
         sortBy: filters.sortBy as string,
         sortOrder: filters.sortOrder as 'asc' | 'desc',
-        board_id: filters.board_id,
-        column_id: filters.column_id,
-        status: filters.status,
-        assignee: filters.assignee,
-        parent_task_id: filters.parent_task_id,
-        search: filters.search,
-        priority_min: Number(filters.priority_min),
-        priority_max: Number(filters.priority_max),
+        filters: {
+          board_id: typeof filters.board_id === 'string' ? filters.board_id : undefined,
+          column_id: typeof filters.column_id === 'string' ? filters.column_id : undefined,
+          status: typeof filters.status === 'string' ? filters.status as 'todo' | 'in_progress' | 'done' | 'blocked' | 'archived' : undefined,
+          assignee: typeof filters.assignee === 'string' ? filters.assignee : undefined,
+          parent_task_id: typeof filters.parent_task_id === 'string' ? filters.parent_task_id : undefined,
+          search: typeof filters.search === 'string' ? filters.search : undefined,
+          priority_min: Number(filters.priority_min),
+          priority_max: Number(filters.priority_max),
+        },
       });
 
       // Get total count for pagination (without limit/offset)
       const totalTasks = await services.taskService.getTasks({
         sortBy: filters.sortBy as string,
         sortOrder: filters.sortOrder as 'asc' | 'desc',
-        board_id: filters.board_id,
-        column_id: filters.column_id,
-        status: filters.status,
-        assignee: filters.assignee,
-        parent_task_id: filters.parent_task_id,
-        search: filters.search,
-        priority_min: Number(filters.priority_min),
-        priority_max: Number(filters.priority_max),
+        filters: {
+          board_id: typeof filters.board_id === 'string' ? filters.board_id : undefined,
+          column_id: typeof filters.column_id === 'string' ? filters.column_id : undefined,
+          status: typeof filters.status === 'string' ? filters.status as 'todo' | 'in_progress' | 'done' | 'blocked' | 'archived' : undefined,
+          assignee: typeof filters.assignee === 'string' ? filters.assignee : undefined,
+          parent_task_id: typeof filters.parent_task_id === 'string' ? filters.parent_task_id : undefined,
+          search: typeof filters.search === 'string' ? filters.search : undefined,
+          priority_min: Number(filters.priority_min),
+          priority_max: Number(filters.priority_max),
+        },
       });
 
       const total = totalTasks.length;

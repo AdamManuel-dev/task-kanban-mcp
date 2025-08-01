@@ -98,7 +98,13 @@ export class TaskDependencyService {
     );
 
     // Record in task history
-    await this.taskHistoryService.recordChange(taskId, 'dependency_added');
+    await this.taskHistoryService.recordChange({
+      task_id: taskId,
+      field_name: 'dependency_added',
+      old_value: null,
+      new_value: dependsOnTaskId,
+      changed_by: 'system',
+    });
 
     const dependency = await this.db.queryOne(`SELECT * FROM task_dependencies WHERE id = ?`, [
       dependencyId,
@@ -136,7 +142,13 @@ export class TaskDependencyService {
     );
 
     // Record in task history
-    await this.taskHistoryService.recordChange(taskId, 'dependency_removed');
+    await this.taskHistoryService.recordChange({
+      task_id: taskId,
+      field_name: 'dependency_removed',
+      old_value: dependsOnTaskId,
+      new_value: null,
+      changed_by: 'system',
+    });
 
     logger.info('Task dependency removed', {
       taskId,

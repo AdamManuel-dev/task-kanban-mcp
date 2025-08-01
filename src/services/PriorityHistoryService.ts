@@ -449,16 +449,16 @@ export class PriorityHistoryService {
         params.push(boardId);
       }
 
-      const changes = await dbConnection.query(query, params);
+      const changes = await dbConnection.query<PriorityChangeWithTaskExtended>(query, params);
 
       const changesCount = changes.length;
-      const affectedTasks = new Set(changes.map((c: PriorityChangeWithTaskExtended) => c.task_id))
+      const affectedTasks = new Set(changes.map(c => c.task_id))
         .size;
 
       // Calculate average priority change
       const priorityChanges = changes
-        .filter((c: PriorityChangeWithTaskExtended) => c.old_priority !== null)
-        .map((c: PriorityChangeWithTaskExtended) => Math.abs(c.new_priority - c.old_priority));
+        .filter(c => c.old_priority !== null)
+        .map(c => Math.abs(c.new_priority - c.old_priority!));
       const avgPriorityChange =
         priorityChanges.length > 0
           ? priorityChanges.reduce((a, b) => a + b, 0) / priorityChanges.length
@@ -466,7 +466,7 @@ export class PriorityHistoryService {
 
       // Find most active day
       const dayChanges = new Map<string, number>();
-      changes.forEach((change: PriorityChangeWithTaskExtended) => {
+      changes.forEach(change => {
         const day = new Date(change.timestamp).toISOString().split('T')[0];
         dayChanges.set(day, (dayChanges.get(day) ?? 0) + 1);
       });
@@ -478,7 +478,7 @@ export class PriorityHistoryService {
 
       // Find busiest hours
       const hourChanges = new Map<number, number>();
-      changes.forEach((change: PriorityChangeWithTaskExtended) => {
+      changes.forEach(change => {
         const hour = new Date(change.timestamp).getHours();
         hourChanges.set(hour, (hourChanges.get(hour) ?? 0) + 1);
       });

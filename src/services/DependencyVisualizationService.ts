@@ -86,7 +86,7 @@ export class DependencyVisualizationService {
         id: dep.id,
         task_id: dep.task_id,
         depends_on_task_id: dep.depends_on_task_id,
-        dependency_type: dep.dependency_type,
+        dependency_type: dep.dependency_type as TaskDependency['dependency_type'],
         created_at: new Date(dep.created_at),
       }));
 

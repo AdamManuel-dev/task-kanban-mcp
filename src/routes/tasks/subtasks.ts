@@ -11,7 +11,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { Router } from 'express';
 import { TaskService } from '@/services/TaskService';
-import { dbConnection } from '@/database/connection';
+import { DatabaseConnection } from '@/database/connection';
 import { logger } from '@/utils/logger';
 
 export const taskSubtaskRoutes = Router({ mergeParams: true });
@@ -22,7 +22,8 @@ export const taskSubtaskRoutes = Router({ mergeParams: true });
 taskSubtaskRoutes.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const taskId = req.params.id;
-    const taskService = new TaskService(dbConnection);
+    const db = await DatabaseConnection.getInstance();
+    const taskService = new TaskService(db);
     const result = await taskService.getSubtasks(taskId);
 
     res.json({ success: true, data: result });
@@ -39,7 +40,8 @@ taskSubtaskRoutes.post('/', async (req: Request, res: Response, next: NextFuncti
     const parentTaskId = req.params.id;
     const subtaskData = { ...req.body, parent_task_id: parentTaskId };
 
-    const taskService = new TaskService(dbConnection);
+    const db = await DatabaseConnection.getInstance();
+    const taskService = new TaskService(db);
     const result = await taskService.createTask(subtaskData);
 
     res.status(201).json({ success: true, data: result });
@@ -52,13 +54,14 @@ taskSubtaskRoutes.post('/', async (req: Request, res: Response, next: NextFuncti
  * PUT /tasks/:id/subtasks/:subtaskId - Update a subtask
  */
 taskSubtaskRoutes.put('/:subtaskId', async (req, res, next) => {
-  const errorHandler = createServiceErrorHandler('updateSubtask', logger);
+  // Error handler for updateSubtask
 
   try {
     const { subtaskId } = req.params;
     const updates = req.body;
 
-    const taskService = new TaskService(dbConnection);
+    const db = await DatabaseConnection.getInstance();
+    const taskService = new TaskService(db);
     const result = await taskService.updateTask(subtaskId, updates);
 
     res.json({ success: true, data: result });
@@ -73,7 +76,8 @@ taskSubtaskRoutes.put('/:subtaskId', async (req, res, next) => {
 taskSubtaskRoutes.delete('/:subtaskId', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { subtaskId } = req.params;
-    const taskService = new TaskService(dbConnection);
+    const db = await DatabaseConnection.getInstance();
+    const taskService = new TaskService(db);
     await taskService.deleteTask(subtaskId);
 
     res.json({ success: true, message: 'Subtask deleted successfully' });

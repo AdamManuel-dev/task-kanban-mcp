@@ -424,8 +424,9 @@ export class CacheService<K = string, V = unknown> extends EventEmitter {
         if (Array.isArray(obj)) {
           return obj.reduce((size, item) => size + this.estimateObjectSize(item), 24); // eslint-disable-line @typescript-eslint/no-unsafe-argument
         }
-        return Object.keys(obj).reduce(
-          (size, key) => size + this.estimateObjectSize(key) + this.estimateObjectSize(obj[key]), // eslint-disable-line @typescript-eslint/no-unsafe-argument
+        const objRecord = obj as Record<string, unknown>;
+        return Object.keys(objRecord).reduce(
+          (size, key) => size + this.estimateObjectSize(key) + this.estimateObjectSize(objRecord[key]),
           24
         );
       default:

@@ -11,6 +11,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { Router } from 'express';
 import { NoteService } from '@/services/NoteService';
+import { DatabaseConnection } from '@/database/connection';
 import { logger } from '@/utils/logger';
 
 export const taskNotesRoutes = Router({ mergeParams: true });
@@ -21,14 +22,10 @@ export const taskNotesRoutes = Router({ mergeParams: true });
 taskNotesRoutes.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const taskId = req.params.id;
-    const noteService = new NoteService();
-    const result = await noteService.getNotesByTask(taskId);
-
-    if (result.success) {
-      res.json({ success: true, data: result.data });
-    } else {
-      res.status(400).json(result);
-    }
+    const db = await DatabaseConnection.getInstance();
+    const noteService = new NoteService(db);
+    const notes = await noteService.getTaskNotes(taskId);
+    res.json({ success: true, data: notes });
   } catch (error) {
     next(error);
   }
@@ -42,7 +39,8 @@ taskNotesRoutes.post('/', async (req: Request, res: Response, next: NextFunction
     const taskId = req.params.id;
     const noteData = { ...req.body, task_id: taskId };
 
-    const noteService = new NoteService();
+    const db = await DatabaseConnection.getInstance();
+    const noteService = new NoteService(db);
     const result = await noteService.createNote(noteData);
     res.status(201).json({ success: true, data: result });
   } catch (error) {

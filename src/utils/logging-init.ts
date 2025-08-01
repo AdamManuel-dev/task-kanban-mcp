@@ -121,7 +121,7 @@ export async function initializeLogging(config: Partial<LoggingConfig> = {}): Pr
     }
 
     // Set up log rotation
-    await setupLogRotation({
+    setupLogRotation({
       frequency: 'daily',
       maxSize: '10MB',
       maxFiles: 30,
@@ -129,7 +129,7 @@ export async function initializeLogging(config: Partial<LoggingConfig> = {}): Pr
     });
 
     // Configure dynamic logging features
-    await configureDynamicLogging(finalConfig);
+    configureDynamicLogging(finalConfig);
 
     logger.info('Logging system initialized successfully', {
       config: {
@@ -151,7 +151,7 @@ export async function initializeLogging(config: Partial<LoggingConfig> = {}): Pr
 /**
  * Ensure all required log directories exist
  */
-async function ensureLogDirectories(): Promise<void> {
+function ensureLogDirectories(): void {
   const logDirs = ['logs', 'logs/archive', 'logs/performance', 'logs/audit', 'logs/analytics'];
 
   for (const dir of logDirs) {
@@ -246,6 +246,9 @@ function configureBaseLogger(config: LoggingConfig): void {
           })
         );
         break;
+      case 'stream': {
+        throw new Error('Not implemented yet: "stream" case');
+      }
     }
   });
 
@@ -432,8 +435,9 @@ export function getCurrentLoggingConfig(): Partial<LoggingConfig> {
   return {
     level: logger.level,
     enableConsole: logger.transports.some(t => t instanceof winston.transports.Console),
-    enableFile: logger.transports.some(t => t instanceof winston.transports.File), // Add other config properties as needed };
+    enableFile: logger.transports.some(t => t instanceof winston.transports.File), // Add other config properties as needed
   };
+}
 
   // ============================================================================
   // HEALTH MONITORING
@@ -558,4 +562,3 @@ export function getCurrentLoggingConfig(): Partial<LoggingConfig> {
 
     return { logLevel: logger.level, transports: logger.transports.length, logFiles };
   }
-}

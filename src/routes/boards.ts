@@ -226,7 +226,7 @@ export function boardRoutes(): Router {
     async (req, res, next): Promise<void> => {
       try {
         const boardData = validateInput(BoardValidation.create, req.body);
-        const board = await boardService.createBoard(boardData);
+        const board = await boardService.createBoard(boardData as { name: string; description?: string; color?: string });
         return res.status(201).apiSuccess(board);
       } catch (error) {
         return next(error);
@@ -565,7 +565,7 @@ export function boardRoutes(): Router {
         board_id: id,
       });
 
-      const column = await boardService.createColumn(columnData);
+      const column = await boardService.createColumn(columnData as { board_id: string; name: string; position: number; wip_limit?: number });
       res.status(201).json({
         success: true,
         data: column,

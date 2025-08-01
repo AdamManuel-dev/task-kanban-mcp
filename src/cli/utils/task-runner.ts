@@ -1,12 +1,12 @@
 import { Listr } from 'listr2';
-import type { ListrTask, ListrContext, ListrRenderer } from 'listr2';
+import type { ListrTask, ListrContext } from 'listr2';
 import chalk from 'chalk';
 import { logger } from '../../utils/logger';
 
 export interface TaskItem {
   id: string;
   title: string;
-  action: (ctx?: ListrContext, task?: ListrTask<ListrContext, ListrRenderer>) => Promise<unknown> | unknown;
+  action: (ctx?: ListrContext, task?: ListrTask) => Promise<unknown> | unknown;
   skip?: () => boolean | string;
   enabled?: boolean;
   concurrent?: boolean;
@@ -39,9 +39,9 @@ export class TaskRunner {
       exitOnError?: boolean;
     }
   ): Promise<void> {
-    const listrTasks = tasks.map(task => ({
+    const listrTasks: ListrTask[] = tasks.map(task => ({
       title: task.title,
-      task: task.action,
+      task: task.action as any,
       ...(task.skip && { skip: task.skip }),
       enabled: task.enabled ?? true,
     }));
@@ -71,17 +71,18 @@ export class TaskRunner {
   ): Promise<void> {
     const mainTasks = groups.map(group => ({
       title: group.title,
-      task: (_ctx: ListrContext, task: any): any => {
-        const subtasks = group.tasks.map(item => ({
+      task: () => {
+        const subtasks: ListrTask[] = group.tasks.map(item => ({
           title: item.title,
-          task: item.action,
+          task: item.action as any,
           ...(item.skip && { skip: item.skip }),
           enabled: item.enabled ?? true,
         }));
 
-        return task.newListr(subtasks, {
+        return new Listr(subtasks, {
           concurrent: group.concurrent ?? false,
           exitOnError: options?.exitOnError ?? true,
+          renderer: this.renderer,
         });
       },
     }));
@@ -92,8 +93,7 @@ export class TaskRunner {
       renderer: this.renderer,
       rendererOptions: {
         showSubtasks: true,
-        showTimer: true,
-      },
+      } as any,
     });
 
     try {
@@ -154,8 +154,7 @@ export class TaskRunner {
         renderer: this.renderer,
         rendererOptions: {
           showSubtasks: true,
-          showTimer: true,
-        } as unknown,
+        } as any,
       }
     );
 

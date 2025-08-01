@@ -257,7 +257,7 @@ export class WebSocketAuth {
       throw new Error('JWT_SECRET not configured');
     }
 
-    const payload: unknown = {
+    const payload: Record<string, unknown> = {
       userId: user.id,
       permissions,
     };

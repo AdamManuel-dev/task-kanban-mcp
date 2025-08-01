@@ -137,7 +137,7 @@ export class ContextLogger {
   private log(level: string, message: string, meta: unknown = {}): void {
     const context = ContextLogger.getContext();
     const enhancedMeta = {
-      ...meta,
+      ...(typeof meta === 'object' && meta !== null ? meta : {}),
       context: {
         requestId: context.requestId,
         userId: context.userId,
@@ -227,7 +227,7 @@ export class AuditLogger {
       userId,
       timestamp: new Date(),
       outcome,
-      details,
+      details: details as Record<string, unknown>,
     });
   }
 
@@ -255,7 +255,7 @@ export class AuditLogger {
       userId,
       timestamp: new Date(),
       outcome: 'success',
-      details,
+      details: details as Record<string, unknown>,
     });
   }
 
@@ -373,7 +373,7 @@ export class PerformanceLogger {
         arrayBuffers: endMemory.arrayBuffers - tracking.startMemory.arrayBuffers,
       },
       cpuUsage: endCpu,
-      metadata,
+      metadata: metadata as Record<string, unknown>,
     };
 
     // Log with appropriate level based on performance
@@ -408,7 +408,7 @@ export class PerformanceLogger {
       this.endOperation(operationId, operationName, metadata);
       return result;
     } catch (error) {
-      this.endOperation(operationId, operationName, { ...metadata, error: true });
+      this.endOperation(operationId, operationName, { ...(typeof metadata === 'object' && metadata !== null ? metadata : {}), error: true });
       throw error;
     }
   }
@@ -552,12 +552,13 @@ export class StructuredLogger {
   private sanitizeHeaders(headers: unknown): unknown {
     if (!headers) return undefined;
 
-    const sanitized = { ...headers };
+    const sanitized = { ...(typeof headers === 'object' && headers !== null ? headers : {}) };
 
     // Remove sensitive headers
-    delete sanitized.authorization;
-    delete sanitized.cookie;
-    delete sanitized['x-api-key'];
+    const sanitizedObj = sanitized as Record<string, unknown>;
+    delete sanitizedObj.authorization;
+    delete sanitizedObj.cookie;
+    delete sanitizedObj['x-api-key'];
 
     return sanitized;
   }
@@ -586,7 +587,7 @@ export class LogAnalytics {
       timestamp: new Date(),
       level,
       message,
-      meta,
+      meta: meta as { [key: string]: unknown; context?: LogContext },
     });
 
     // Keep only recent logs to prevent memory bloat
@@ -753,7 +754,7 @@ const originalLog = logger.log;
 // @ts-ignore - Overriding Winston logger method for analytics
 logger.log = function (level: unknown, message: unknown, meta: unknown = {}) {
   logAnalytics.addLogEntry(
-    typeof level === 'string' ? level : level.level,
+    typeof level === 'string' ? level : (level as { level: string }).level,
     typeof message === 'string' ? message : JSON.stringify(message),
     meta
   );

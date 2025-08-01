@@ -28,7 +28,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '@/utils/logger';
-import type { DatabaseConnection, QueryParameters } from '@/database/connection';
+import type { DatabaseConnection, QueryParameters, QueryParameter } from '@/database/connection';
 import { CreateBoardRequest } from '@/types';
 import type {
   Board,
@@ -40,8 +40,7 @@ import type {
   PaginationOptions,
   FilterOptions,
 } from '@/types';
-import type { CacheService } from './CacheService';
-import { boardCache } from './CacheService';
+import { CacheService } from './CacheService';
 import { TrackPerformance } from '../utils/service-metrics';
 import { validatePagination } from '../utils/sql-security';
 
@@ -68,7 +67,7 @@ import { validatePagination } from '../utils/sql-security';
  * ```
  */
 export class BoardService {
-  private readonly cache: CacheService<string, unknown>;
+  private readonly cache: CacheService<string, Board | null>;
 
   /**
    * Initialize BoardService with database connection
@@ -78,9 +77,14 @@ export class BoardService {
    */
   constructor(
     private readonly db: DatabaseConnection,
-    cache?: CacheService<string, unknown>
+    cache?: CacheService<string, Board | null>
   ) {
-    this.cache = cache ?? boardCache;
+    this.cache = cache ?? new CacheService<string, Board | null>({
+      maxSize: 100,
+      defaultTTL: 120000, // 2 minutes
+      enableStats: true,
+      evictionPolicy: 'lru',
+    });
   }
 
   /**
@@ -761,7 +765,7 @@ export class BoardService {
       const existingColumn = existingColumnResults[0];
 
       const updateFields: string[] = [];
-      const updateValues: unknown[] = [];
+      const updateValues: QueryParameter[] = [];
 
       if (data.name !== undefined) {
         updateFields.push('name = ?');

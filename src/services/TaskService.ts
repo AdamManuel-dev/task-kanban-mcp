@@ -47,8 +47,7 @@ import type {
 } from '../types';
 import { TaskHistoryService } from './TaskHistoryService';
 import { PriorityHistoryService } from './PriorityHistoryService';
-import type { CacheService } from './CacheService';
-import { taskCache } from './CacheService';
+import { CacheService } from './CacheService';
 import { TrackPerformance } from '../utils/service-metrics';
 import { validatePagination } from '../utils/sql-security';
 
@@ -158,7 +157,7 @@ export interface TaskWithDependencies extends Task {
  * with proper transaction handling and error recovery.
  */
 export class TaskService {
-  private readonly cache: CacheService<string, unknown>;
+  private readonly cache: CacheService<string, Task | null>;
 
   /**
    * Creates a new TaskService instance
@@ -168,9 +167,14 @@ export class TaskService {
    */
   constructor(
     private readonly db: DatabaseConnection,
-    cache?: CacheService<string, unknown>
+    cache?: CacheService<string, Task | null>
   ) {
-    this.cache = cache ?? taskCache;
+    this.cache = cache ?? new CacheService<string, Task | null>({
+      maxSize: 500,
+      defaultTTL: 60000, // 1 minute
+      enableStats: true,
+      evictionPolicy: 'lru',
+    });
   }
 
   /**
@@ -210,13 +214,13 @@ export class TaskService {
       [data.board_id, data.column_id]
     );
 
-    if (!validationResult?.board_exists) {
+    if (!(validationResult as { board_exists?: number })?.board_exists) {
       throw TaskService.createError('INVALID_BOARD_ID', 'Board not found', {
         board_id: data.board_id,
       });
     }
 
-    if (!validationResult.column_exists) {
+    if (!(validationResult as { column_exists?: number }).column_exists) {
       throw TaskService.createError('INVALID_COLUMN_ID', 'Column not found', {
         column_id: data.column_id,
       });
@@ -664,7 +668,7 @@ export class TaskService {
       await this.adjustPositionsForInsertion(data.column_id!, newPosition);
 
       updates.push('column_id = ?', 'position = ?');
-      params.push(data.column_id, newPosition);
+      params.push(data.column_id!, newPosition);
     } else if (isPositionChange) {
       await this.adjustPositionsForMove(
         existingTask.column_id,
@@ -672,7 +676,7 @@ export class TaskService {
         data.position!
       );
       updates.push('position = ?');
-      params.push(data.position);
+      params.push(data.position!);
     }
   }
 

@@ -301,22 +301,18 @@ export class TaskHistoryService {
 
       historyQuery += ' ORDER BY th.changed_at DESC';
 
-      const allPriorityChanges = await dbConnection.query<PriorityChangeEntry>(
-        historyQuery,
-        params
-      );
+      const allPriorityChanges = await dbConnection.query<
+        PriorityChangeEntry & { task_title: string; board_id: string }
+      >(historyQuery, params);
 
       // Count total changes
       const totalPriorityChanges = allPriorityChanges.length;
 
       // Find most active tasks
       const taskChangeCounts = allPriorityChanges.reduce(
-        (
-          acc: Record<string, { task_id: string; task_title: string; change_count: number }>,
-          change: PriorityChangeEntry
-        ) => {
+        (acc, change) => {
           const key = change.task_id;
-          if (acc[key]) {
+          if (!acc[key]) {
             acc[key] = {
               task_id: change.task_id,
               task_title: change.task_title,

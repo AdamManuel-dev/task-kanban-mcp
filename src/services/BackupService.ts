@@ -1015,8 +1015,25 @@ export class BackupService extends EventEmitter {
       params.push(options.offset);
     }
 
-    const rows = await this.db.query<unknown>(query, params);
-    return rows.map((row: unknown) => BackupService.deserializeBackupMetadata(row));
+    const rows = await this.db.query<{
+      id: string;
+      name: string;
+      description?: string;
+      type: string;
+      status: string;
+      size: number;
+      compressed: number;
+      encrypted: number;
+      verified: number;
+      checksum: string;
+      file_path: string;
+      created_at: string;
+      completed_at?: string;
+      parent_backup_id?: string;
+      retention_policy?: string;
+      error?: string;
+    }>(query, params);
+    return rows.map(row => BackupService.deserializeBackupMetadata(row));
   }
 
   /**
@@ -1103,15 +1120,17 @@ export class BackupService extends EventEmitter {
 
     try {
       // Delete backup file
+      let fileExists = false;
       if (metadata.filePath) {
         try {
           await fs.access(metadata.filePath);
+          fileExists = true;
         } catch {
-          metadata.filePath = undefined;
+          // File doesn't exist
         }
       }
 
-      if (metadata.filePath) {
+      if (fileExists && metadata.filePath) {
         await fs.unlink(metadata.filePath);
       }
 
@@ -1571,8 +1590,8 @@ export class BackupService extends EventEmitter {
   private async checkIndexIntegrity(): Promise<{ name: string; passed: boolean; message: string }> {
     try {
       // Check if required indexes exist
-      const indexes = await this.db.query("SELECT name FROM sqlite_master WHERE type='index'");
-      const indexNames = indexes.map((idx: unknown) => idx.name);
+      const indexes = await this.db.query<{ name: string }>("SELECT name FROM sqlite_master WHERE type='index'");
+      const indexNames = indexes.map(idx => idx.name);
 
       const requiredIndexes = [
         'idx_tasks_board_id',
@@ -1772,7 +1791,7 @@ export class BackupService extends EventEmitter {
         );
 
         // Get table data
-        const data = await this.db.query(`SELECT * FROM ${table.name}`);
+        const data = await this.db.query<Record<string, unknown>>(`SELECT * FROM ${table.name}`);
 
         return { table, schema, data };
       })

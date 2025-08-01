@@ -225,7 +225,7 @@ export class ValidationError extends Error implements ServiceError {
 
   public readonly statusCode = 400;
 
-  public readonly details: unknown;
+  public readonly details: string | number | boolean | null | undefined | Record<string, unknown> | unknown[];
 
   /**
    * Create a validation error
@@ -236,7 +236,7 @@ export class ValidationError extends Error implements ServiceError {
   constructor(message: string, details?: unknown) {
     super(message);
     this.name = 'ValidationError';
-    this.details = details;
+    this.details = details as string | number | boolean | null | undefined | Record<string, unknown> | unknown[];
   }
 }
 

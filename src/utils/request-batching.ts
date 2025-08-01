@@ -574,7 +574,7 @@ export class RequestBatcher {
                 response.error.code,
                 response.error.message,
                 response.status,
-                response.error.details
+                response.error.details as any
               )
             );
           } else {

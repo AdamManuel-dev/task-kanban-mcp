@@ -201,7 +201,23 @@ export class SchedulingService {
       }
     }
 
-    const rows = await this.db.query(query, params);
+    const rows = await this.db.query<{
+      id: string;
+      name: string;
+      description?: string;
+      cron_expression: string;
+      backup_type: string;
+      enabled: number;
+      last_run_at?: string;
+      next_run_at?: string;
+      run_count: number;
+      failure_count: number;
+      retention_days: number;
+      compression_enabled: number;
+      verification_enabled: number;
+      created_at: string;
+      updated_at: string;
+    }>(query, params);
     return rows.map(row => SchedulingService.deserializeSchedule(row));
   }
 
@@ -212,8 +228,24 @@ export class SchedulingService {
    * @returns {Promise<BackupSchedule | null>} Schedule or null if not found
    */
   async getScheduleById(id: string): Promise<BackupSchedule | null> {
-    const row = await this.db.queryOne('SELECT * FROM backup_schedules WHERE id = ?', [id]);
-    return row ? SchedulingService.deserializeSchedule(row as unknown) : null;
+    const row = await this.db.queryOne<{
+      id: string;
+      name: string;
+      description?: string;
+      cron_expression: string;
+      backup_type: string;
+      enabled: number;
+      last_run_at?: string;
+      next_run_at?: string;
+      run_count: number;
+      failure_count: number;
+      retention_days: number;
+      compression_enabled: number;
+      verification_enabled: number;
+      created_at: string;
+      updated_at: string;
+    }>('SELECT * FROM backup_schedules WHERE id = ?', [id]);
+    return row ? SchedulingService.deserializeSchedule(row) : null;
   }
 
   /**

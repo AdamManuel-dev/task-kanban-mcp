@@ -237,7 +237,7 @@ export class TransactionManager {
       const result = await this.db.transaction(async db => {
         // Set isolation level if specified
         if (options.isolationLevel) {
-          await this.setIsolationLevel(db, options.isolationLevel);
+          await this.setIsolationLevel(db as unknown as DatabaseConnection, options.isolationLevel);
         }
 
         // Set timeout if specified
@@ -534,7 +534,7 @@ export class TransactionManager {
 
     const sqlLevel = isolationLevelMap[level];
     if (sqlLevel) {
-      await db.exec(`SET TRANSACTION ISOLATION LEVEL ${sqlLevel}`);
+      await db.execute(`SET TRANSACTION ISOLATION LEVEL ${sqlLevel}`);
     }
   }
 

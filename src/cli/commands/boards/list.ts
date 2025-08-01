@@ -94,9 +94,9 @@ export function registerListCommands(boardCmd: Command): void {
         // Filter based on options
         let filteredBoards = boards;
         if (options.active) {
-          filteredBoards = boards.filter((board: Board) => !board.archived);
+          filteredBoards = boards.filter(board => !board.archived);
         } else if (options.archived) {
-          filteredBoards = boards.filter((board: Board) => board.archived);
+          filteredBoards = boards.filter(board => board.archived);
         }
 
         formatOutput(filteredBoards, {
