@@ -25,7 +25,9 @@ export class WebSocketAuth {
           role: 'user',
         });
       } else if (process.env.NODE_ENV === 'production') {
-        logger.error(`Invalid API key at index ${index} - must be at least 32 characters and secure`);
+        logger.error(
+          `Invalid API key at index ${index} - must be at least 32 characters and secure`
+        );
       }
     });
 

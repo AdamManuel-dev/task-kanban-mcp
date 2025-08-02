@@ -41,7 +41,7 @@ export class TaskRunner {
   ): Promise<void> {
     const listrTasks: ListrTask[] = tasks.map(task => ({
       title: task.title,
-      task: task.action as any,
+      task: task.action as unknown,
       ...(task.skip && { skip: task.skip }),
       enabled: task.enabled ?? true,
     }));
@@ -74,7 +74,7 @@ export class TaskRunner {
       task: () => {
         const subtasks: ListrTask[] = group.tasks.map(item => ({
           title: item.title,
-          task: item.action as any,
+          task: item.action as unknown,
           ...(item.skip && { skip: item.skip }),
           enabled: item.enabled ?? true,
         }));
@@ -93,7 +93,7 @@ export class TaskRunner {
       renderer: this.renderer,
       rendererOptions: {
         showSubtasks: true,
-      } as any,
+      } as unknown,
     });
 
     try {
@@ -154,7 +154,7 @@ export class TaskRunner {
         renderer: this.renderer,
         rendererOptions: {
           showSubtasks: true,
-        } as any,
+        } as unknown,
       }
     );
 

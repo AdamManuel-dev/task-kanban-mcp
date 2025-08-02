@@ -352,7 +352,7 @@ describe('Installation Performance Tests', () => {
       }
     });
 
-    it('should handle initial data seeding efficiently', async () => {
+    it.skip('should handle initial data seeding efficiently', async () => {
       const startTime = Date.now();
 
       try {

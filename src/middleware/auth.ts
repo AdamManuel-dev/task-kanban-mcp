@@ -27,9 +27,9 @@ import crypto from 'crypto';
 import { config } from '@/config';
 import { logger } from '@/utils/logger';
 import { UnauthorizedError, ForbiddenError } from '@/utils/errors';
+import { hashApiKey as secureHashApiKey } from '@/config/security';
 import { ApiKeyService } from '../services/ApiKeyService';
 import { dbConnection } from '../database/connection';
-import { hashApiKey as secureHashApiKey } from '@/config/security';
 
 interface AuthenticatedRequest extends Request {
   apiKey?: string;
@@ -261,8 +261,7 @@ function hashApiKey(apiKey: string): string {
   }
 
   // Use secure HMAC-SHA512 hashing from security module
-  return secureHashApiKey(apiKey, config.api.keySecret)
-    .substring(0, 16); // Increased from 8 to 16 characters for better uniqueness
+  return secureHashApiKey(apiKey, config.api.keySecret).substring(0, 16); // Increased from 8 to 16 characters for better uniqueness
 }
 
 /**

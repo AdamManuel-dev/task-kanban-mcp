@@ -417,7 +417,8 @@ export class BackupEncryptionService {
    */
   async testEncryptionRoundtrip(testData?: Buffer): Promise<boolean> {
     try {
-      const testBackupData = testData ?? Buffer.from('This is a test backup encryption roundtrip', 'utf-8');
+      const testBackupData =
+        testData ?? Buffer.from('This is a test backup encryption roundtrip', 'utf-8');
       const password = BackupEncryptionService.generateSecurePassword();
 
       // Encrypt

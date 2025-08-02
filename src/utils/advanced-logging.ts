@@ -408,7 +408,10 @@ export class PerformanceLogger {
       this.endOperation(operationId, operationName, metadata);
       return result;
     } catch (error) {
-      this.endOperation(operationId, operationName, { ...(typeof metadata === 'object' && metadata !== null ? metadata : {}), error: true });
+      this.endOperation(operationId, operationName, {
+        ...(typeof metadata === 'object' && metadata !== null ? metadata : {}),
+        error: true,
+      });
       throw error;
     }
   }
@@ -419,7 +422,7 @@ export class PerformanceLogger {
   createDecorator(operationName?: string) {
     return (target: unknown, propertyKey: string, descriptor: PropertyDescriptor) => {
       const originalMethod = descriptor.value;
-      const operation = operationName || `${(target as any).constructor.name}.${propertyKey}`;
+      const operation = operationName || `${target.constructor.name}.${propertyKey}`;
 
       descriptor.value = async function (this: unknown, ...args: unknown[]) {
         return performanceLogger.trackFunction(operation, () => originalMethod.apply(this, args), {
@@ -759,5 +762,5 @@ logger.log = function (level: unknown, message: unknown, meta: unknown = {}) {
     meta
   );
 
-  return originalLog.call(this, level as any, message);
+  return originalLog.call(this, level, message);
 };

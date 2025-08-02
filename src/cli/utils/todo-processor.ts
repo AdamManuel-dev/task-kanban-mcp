@@ -235,7 +235,7 @@ export class TodoProcessor {
         concurrent: false,
         rendererOptions: {
           showSubtasks: true,
-        } as any,
+        } as unknown,
       }
     );
 

@@ -913,12 +913,12 @@ export function withErrorContext<TFn extends (...args: unknown[]) => unknown>(
 //     return class extends constructor {
 //       constructor(...args: any[]) {
 //         super(...args);
-// 
+//
 //         const prototype = Object.getPrototypeOf(this);
 //         const methodNames = Object.getOwnPropertyNames(prototype).filter(
 //           name => name !== 'constructor' && typeof prototype[name] === 'function'
 //         );
-// 
+//
 //         methodNames.forEach(methodName => {
 //           const originalMethod = (prototype as Record<string, unknown>)[methodName];
 //           if (typeof originalMethod === 'function') {

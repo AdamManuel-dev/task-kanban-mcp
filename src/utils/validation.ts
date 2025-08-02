@@ -225,7 +225,14 @@ export class ValidationError extends Error implements ServiceError {
 
   public readonly statusCode = 400;
 
-  public readonly details: string | number | boolean | null | undefined | Record<string, unknown> | unknown[];
+  public readonly details:
+    | string
+    | number
+    | boolean
+    | null
+    | undefined
+    | Record<string, unknown>
+    | unknown[];
 
   /**
    * Create a validation error
@@ -236,7 +243,14 @@ export class ValidationError extends Error implements ServiceError {
   constructor(message: string, details?: unknown) {
     super(message);
     this.name = 'ValidationError';
-    this.details = details as string | number | boolean | null | undefined | Record<string, unknown> | unknown[];
+    this.details = details as
+      | string
+      | number
+      | boolean
+      | null
+      | undefined
+      | Record<string, unknown>
+      | unknown[];
   }
 }
 
@@ -617,7 +631,7 @@ export function createValidatedService<T extends object>(
 ): T {
   return new Proxy(service, {
     get(target, propKey) {
-      const originalMethod = (target as any)[propKey];
+      const originalMethod = (target as unknown)[propKey];
 
       if (typeof originalMethod !== 'function') {
         return originalMethod;

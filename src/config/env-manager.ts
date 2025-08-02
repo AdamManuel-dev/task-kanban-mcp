@@ -137,42 +137,43 @@ export const ENV_RULES: readonly EnvValidationRule[] = [
       ),
     required: false,
     sensitive: true,
-    description: 'JWT signing secret (minimum 32 characters, must be cryptographically secure in production)',
+    description:
+      'JWT signing secret (minimum 32 characters, must be cryptographically secure in production)',
     defaultValue: process.env.NODE_ENV === 'production' ? undefined : generateSecureSecret(),
   },
   {
     key: 'API_KEY_SECRET',
-    schema: z.string().min(32).refine(
-      val => {
+    schema: z
+      .string()
+      .min(32)
+      .refine(val => {
         if (process.env.NODE_ENV === 'production' && !isSecureSecret(val)) {
           throw new SecurityError(
             'Production deployment requires strong API_KEY_SECRET. Use: openssl rand -base64 48'
           );
         }
         return true;
-      }
-    ),
+      }),
     required: false,
     sensitive: true,
-    description: 'API key signing secret (minimum 32 characters, must be cryptographically secure in production)',
+    description:
+      'API key signing secret (minimum 32 characters, must be cryptographically secure in production)',
     defaultValue: process.env.NODE_ENV === 'production' ? undefined : generateSecureSecret(),
   },
   {
     key: 'API_KEYS',
-    schema: arrayStringSchema.refine(
-      val => {
-        if (process.env.NODE_ENV === 'production') {
-          // Ensure no weak API keys in production
-          const weakKeys = val.filter(key => !isSecureSecret(key, 32));
-          if (weakKeys.length > 0) {
-            throw new SecurityError(
-              'Production API keys must be at least 32 characters and cryptographically secure'
-            );
-          }
+    schema: arrayStringSchema.refine(val => {
+      if (process.env.NODE_ENV === 'production') {
+        // Ensure no weak API keys in production
+        const weakKeys = val.filter(key => !isSecureSecret(key, 32));
+        if (weakKeys.length > 0) {
+          throw new SecurityError(
+            'Production API keys must be at least 32 characters and cryptographically secure'
+          );
         }
-        return true;
       }
-    ),
+      return true;
+    }),
     required: false,
     sensitive: true,
     description: 'Comma-separated list of valid API keys (min 32 chars each in production)',

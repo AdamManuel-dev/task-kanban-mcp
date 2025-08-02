@@ -14,6 +14,8 @@ import { logger } from '@/utils/logger';
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import { z } from 'zod';
 
+import type { Task } from '@/types';
+
 interface AuthenticatedRequest extends Request {
   user?: {
     id: string;
@@ -38,8 +40,6 @@ interface TaskListOptions {
     priority_max?: number;
   };
 }
-
-import type { Task } from '@/types';
 
 interface Services {
   taskService: {
@@ -101,9 +101,13 @@ export const listTasksHandler = (services: Services): RequestHandler[] => [
         filters: {
           board_id: typeof filters.board_id === 'string' ? filters.board_id : undefined,
           column_id: typeof filters.column_id === 'string' ? filters.column_id : undefined,
-          status: typeof filters.status === 'string' ? filters.status as 'todo' | 'in_progress' | 'done' | 'blocked' | 'archived' : undefined,
+          status:
+            typeof filters.status === 'string'
+              ? (filters.status as 'todo' | 'in_progress' | 'done' | 'blocked' | 'archived')
+              : undefined,
           assignee: typeof filters.assignee === 'string' ? filters.assignee : undefined,
-          parent_task_id: typeof filters.parent_task_id === 'string' ? filters.parent_task_id : undefined,
+          parent_task_id:
+            typeof filters.parent_task_id === 'string' ? filters.parent_task_id : undefined,
           search: typeof filters.search === 'string' ? filters.search : undefined,
           priority_min: Number(filters.priority_min),
           priority_max: Number(filters.priority_max),
@@ -117,9 +121,13 @@ export const listTasksHandler = (services: Services): RequestHandler[] => [
         filters: {
           board_id: typeof filters.board_id === 'string' ? filters.board_id : undefined,
           column_id: typeof filters.column_id === 'string' ? filters.column_id : undefined,
-          status: typeof filters.status === 'string' ? filters.status as 'todo' | 'in_progress' | 'done' | 'blocked' | 'archived' : undefined,
+          status:
+            typeof filters.status === 'string'
+              ? (filters.status as 'todo' | 'in_progress' | 'done' | 'blocked' | 'archived')
+              : undefined,
           assignee: typeof filters.assignee === 'string' ? filters.assignee : undefined,
-          parent_task_id: typeof filters.parent_task_id === 'string' ? filters.parent_task_id : undefined,
+          parent_task_id:
+            typeof filters.parent_task_id === 'string' ? filters.parent_task_id : undefined,
           search: typeof filters.search === 'string' ? filters.search : undefined,
           priority_min: Number(filters.priority_min),
           priority_max: Number(filters.priority_max),

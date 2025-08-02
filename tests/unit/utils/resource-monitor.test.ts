@@ -13,9 +13,9 @@ import {
   getMemoryUsage,
   trackResourceUsage,
   initializeResourceMonitoring,
-  type ResourceStats,
-  type MemoryStats,
-  type CpuStats,
+  // type ResourceStats, // Currently unused
+  // type MemoryStats, // Currently unused
+  // type CpuStats, // Currently unused
   type ResourceMonitorConfig,
 } from '../../../src/utils/resource-monitor';
 
@@ -468,6 +468,7 @@ describe('Real-world Integration Scenarios', () => {
     setTimeout(() => {
       const stats = errorMonitor.getCurrentStats();
       expect(stats).toBeDefined();
+      expect(errorHandled).toBe(false); // Error should not be emitted in this test
 
       errorMonitor.destroy();
       done();

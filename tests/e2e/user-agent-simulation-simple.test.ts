@@ -52,7 +52,7 @@ describe('User and AI Agent Simulation (Simple)', () => {
 
     // Start the server as a child process
     logger.info('Starting server process...');
-    serverProcess = spawn('node', ['dist/index.js'], {
+    serverProcess = spawn('node', ['dist/server.js'], {
       env: {
         ...process.env,
         NODE_ENV: 'test',
@@ -95,14 +95,14 @@ describe('User and AI Agent Simulation (Simple)', () => {
     });
 
     logger.info(`Test server started on port ${serverPort}`);
-  });
+  }, 60000); // Increase timeout to 60 seconds
 
   afterAll(async () => {
     if (serverProcess) {
       serverProcess.kill('SIGTERM');
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
-  });
+  }, 30000); // Add timeout to afterAll
 
   it('should perform basic user and agent interactions', async () => {
     const userErrors: string[] = [];

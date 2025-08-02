@@ -115,11 +115,12 @@ function addItemToSection(
       data.taskTags.push(item as { task_id: string; tag_id: string });
       break;
     case 'metadata':
-      if (!data.metadata) data.metadata = {
-        exportDate: new Date().toISOString(),
-        version: '1.0',
-        totalItems: 0
-      };
+      if (!data.metadata)
+        data.metadata = {
+          exportDate: new Date().toISOString(),
+          version: '1.0',
+          totalItems: 0,
+        };
       (data.metadata as Record<string, unknown>)[item.key as string] = item.value;
       break;
     default:

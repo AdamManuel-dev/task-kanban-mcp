@@ -531,8 +531,8 @@ export function tracingMiddleware(config: Partial<TracingConfig> = {}) {
     }
 
     // Attach span to request for use in handlers
-    (req as any).traceSpan = rootSpan;
-    (req as any).traceManager = traceManager;
+    (req as unknown).traceSpan = rootSpan;
+    (req as unknown).traceManager = traceManager;
 
     // Inject trace context into response headers
     traceManager.injectContext(rootSpan, res.getHeaders() as Record<string, string>);
@@ -541,7 +541,7 @@ export function tracingMiddleware(config: Partial<TracingConfig> = {}) {
     const originalSend = res.send;
     res.send = function (body: unknown) {
       traceManager.setSpanTag(rootSpan, 'http.status_code', res.statusCode);
-      traceManager.setSpanTag(rootSpan, 'http.response_size', Buffer.byteLength((body as any) || ''));
+      traceManager.setSpanTag(rootSpan, 'http.response_size', Buffer.byteLength(body || ''));
 
       if (res.statusCode >= 400) {
         const error = new Error(`HTTP ${res.statusCode}`);
@@ -561,14 +561,14 @@ export function tracingMiddleware(config: Partial<TracingConfig> = {}) {
  * Get current trace span from request
  */
 export function getCurrentSpan(req: Request): TraceSpan | undefined {
-  return (req as any).traceSpan;
+  return (req as unknown).traceSpan;
 }
 
 /**
  * Get trace manager from request
  */
 export function getTraceManager(req: Request): TraceManager | undefined {
-  return (req as any).traceManager || globalTraceManager;
+  return (req as unknown).traceManager || globalTraceManager;
 }
 
 /**

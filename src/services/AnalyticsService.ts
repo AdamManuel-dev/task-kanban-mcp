@@ -409,7 +409,7 @@ export class AnalyticsService {
   }
 
   private async calculateSprintMetrics(
-    _sprintStart: Date, 
+    _sprintStart: Date,
     _boardId?: string
   ): Promise<{
     plannedPoints: number;
@@ -433,9 +433,7 @@ export class AnalyticsService {
     };
   }
 
-  private async calculateHistoricalVelocity(
-    _boardId?: string
-  ): Promise<{
+  private async calculateHistoricalVelocity(_boardId?: string): Promise<{
     last7Days: number;
     last14Days: number;
     last30Days: number;
@@ -452,14 +450,14 @@ export class AnalyticsService {
     };
   }
 
-  private async calculateTeamVelocity(
-    _boardId?: string
-  ): Promise<Array<{
-    assignee: string;
-    velocity: number;
-    consistency: number;
-    trend: 'increasing' | 'decreasing' | 'stable';
-  }>> {
+  private async calculateTeamVelocity(_boardId?: string): Promise<
+    Array<{
+      assignee: string;
+      velocity: number;
+      consistency: number;
+      trend: 'increasing' | 'decreasing' | 'stable';
+    }>
+  > {
     // Implementation for team velocity analysis
     return [];
   }
@@ -467,12 +465,14 @@ export class AnalyticsService {
   private async generateBurndownData(
     _sprintStart: Date,
     _boardId?: string
-  ): Promise<Array<{
-    date: string;
-    planned: number;
-    actual: number;
-    ideal: number;
-  }>> {
+  ): Promise<
+    Array<{
+      date: string;
+      planned: number;
+      actual: number;
+      ideal: number;
+    }>
+  > {
     // Implementation for burndown chart data
     return [];
   }
@@ -525,21 +525,19 @@ export class AnalyticsService {
     return [];
   }
 
-  private async identifyBottlenecks(
-    _boardId?: string
-  ): Promise<Array<{
-    type: 'assignee' | 'status' | 'priority' | 'board';
-    identifier: string;
-    impact: number;
-    suggestion: string;
-  }>> {
+  private async identifyBottlenecks(_boardId?: string): Promise<
+    Array<{
+      type: 'assignee' | 'status' | 'priority' | 'board';
+      identifier: string;
+      impact: number;
+      suggestion: string;
+    }>
+  > {
     // Implementation for bottleneck identification
     return [];
   }
 
-  private async calculateEfficiencyMetrics(
-    _boardId?: string
-  ): Promise<{
+  private async calculateEfficiencyMetrics(_boardId?: string): Promise<{
     averageTaskAge: number;
     taskAgeDistribution: Record<string, number>;
     overdueTasksCount: number;

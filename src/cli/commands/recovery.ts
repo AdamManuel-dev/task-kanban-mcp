@@ -32,7 +32,7 @@ recoveryCommand
     try {
       console.log(chalk.blue('🔍 Scanning database for corruption...\n'));
 
-      const report = await detectDatabaseCorruption();
+      const report = detectDatabaseCorruption();
 
       if (!report.corrupted) {
         console.log(chalk.green('✅ No corruption detected. Database is healthy.'));
@@ -91,7 +91,7 @@ recoveryCommand
       console.log(chalk.blue('🔧 Starting database repair process...\n'));
 
       // First, scan for issues
-      const report = await detectDatabaseCorruption();
+      const report = detectDatabaseCorruption();
 
       if (!report.corrupted) {
         console.log(chalk.green('✅ No corruption detected. Database is already healthy.'));
@@ -183,7 +183,7 @@ recoveryCommand
     try {
       console.log(chalk.blue('🔍 Validating database integrity...\n'));
 
-      const result = await validateDatabaseIntegrity();
+      const result = validateDatabaseIntegrity();
 
       if (result.valid) {
         console.log(chalk.green('✅ Database integrity validation passed'));

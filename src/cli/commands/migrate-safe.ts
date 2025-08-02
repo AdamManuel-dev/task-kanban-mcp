@@ -49,7 +49,11 @@ async function withMigrationRunner(
   } catch (error) {
     logger.error('Migration command failed:', error);
     // eslint-disable-next-line no-console
-    console.error(chalk.red(`ERROR: Migration failed: ${error}`));
+    console.error(
+      chalk.red(
+        `ERROR: Migration failed: ${error instanceof Error ? error.message : String(error)}`
+      )
+    );
     process.exit(1);
   } finally {
     await dbConnection.close();
@@ -483,7 +487,11 @@ export function createMigrateSafeCommand(): Command {
       } catch (error) {
         logger.error('Failed to create migration:', error);
         // eslint-disable-next-line no-console
-        console.error(chalk.red(`ERROR: Failed to create migration: ${error}`));
+        console.error(
+          chalk.red(
+            `ERROR: Failed to create migration: ${error instanceof Error ? error.message : String(error)}`
+          )
+        );
         process.exit(1);
       }
     });

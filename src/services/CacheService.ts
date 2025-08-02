@@ -426,7 +426,8 @@ export class CacheService<K = string, V = unknown> extends EventEmitter {
         }
         const objRecord = obj as Record<string, unknown>;
         return Object.keys(objRecord).reduce(
-          (size, key) => size + this.estimateObjectSize(key) + this.estimateObjectSize(objRecord[key]),
+          (size, key) =>
+            size + this.estimateObjectSize(key) + this.estimateObjectSize(objRecord[key]),
           24
         );
       default:

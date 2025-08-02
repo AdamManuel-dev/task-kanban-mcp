@@ -1,10 +1,10 @@
 import type { Command } from 'commander';
 import inquirer from 'inquirer';
+import { isTag } from '@/utils/type-guards';
 import type { CliComponents, CreateTagRequest } from '../types';
 import type { OutputFormatter } from '../formatter';
 import { logger } from '../../utils/logger';
 import { isSuccessResponse } from '../api-client-wrapper';
-import { isTag } from '@/utils/type-guards';
 
 /**
  * @fileoverview Tag management CLI commands
@@ -15,7 +15,6 @@ import { isTag } from '@/utils/type-guards';
  * Constraints: Requires API client, handles hierarchical relationships
  * Patterns: Interactive prompts, tree display, confirmation dialogs, type guards
  */
-
 
 // Helper function to display tag tree (declared first to avoid hoisting issues)
 function displayTagTree(
@@ -394,7 +393,11 @@ export function registerTagCommands(program: Command): void {
       try {
         const response = await apiClient.searchTags(query);
 
-        if (!isSuccessResponse(response) || !Array.isArray(response.data) || response.data.length === 0) {
+        if (
+          !isSuccessResponse(response) ||
+          !Array.isArray(response.data) ||
+          response.data.length === 0
+        ) {
           formatter.info(`No tags found matching "${query}"`);
           return;
         }

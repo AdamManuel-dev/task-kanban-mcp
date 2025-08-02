@@ -123,7 +123,7 @@ export async function createServer(): Promise<express.Application> {
           filter: true,
           showRequestHeaders: true,
           tryItOutEnabled: true,
-          requestInterceptor: (req: any) => {
+          requestInterceptor: (req: unknown) => {
             // Add authentication header if available
             if (req.headers && !req.headers.Authorization) {
               const apiKey = req.headers['x-api-key'] || req.headers.authorization;
@@ -240,7 +240,7 @@ export async function startServer(): Promise<{
     // Initialize security first
     logger.info('Initializing security configuration...');
     await initializeSecurity();
-    
+
     // Initialize database
     logger.info('Initializing database connection...');
     await dbConnection.initialize();
@@ -255,7 +255,7 @@ export async function startServer(): Promise<{
       logger.info('Starting WebSocket server...');
       const { webSocketManager: wsManager } = await import('@/websocket');
       webSocketManager = wsManager;
-      await (webSocketManager as any).start();
+      await webSocketManager.start();
     } else {
       logger.info('WebSocket server disabled via environment configuration');
     }
@@ -287,8 +287,8 @@ export async function startServer(): Promise<{
     // Handle server errors
     server.on('error', (error: unknown) => {
       logger.error('Server error:', {
-        error: (error as any).message,
-        code: (error as any).code,
+        error: error.message,
+        code: error.code,
         port: config.server.port,
       });
       throw error;
@@ -304,7 +304,7 @@ export async function startServer(): Promise<{
         try {
           // Stop WebSocket server conditionally
           if (enableWebSockets && webSocketManager) {
-            await (webSocketManager as any).stop();
+            await (webSocketManager as unknown).stop();
             logger.info('WebSocket server closed');
           }
 

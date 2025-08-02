@@ -1,7 +1,7 @@
 /**
  * @fileoverview Standardized error handling utilities
  * @lastmodified 2025-07-31T12:00:00Z
- * 
+ *
  * Features: Consistent error logging, error type detection, service error creation
  * Main APIs: handleServiceError(), createServiceError(), logAndThrow()
  * Constraints: Works with logger system, maintains error context
@@ -34,22 +34,22 @@ export const ERROR_CODES = {
   VALIDATION_FAILED: 'VALIDATION_FAILED',
   INVALID_INPUT: 'INVALID_INPUT',
   MISSING_REQUIRED_FIELD: 'MISSING_REQUIRED_FIELD',
-  
+
   // Resource errors
   RESOURCE_NOT_FOUND: 'RESOURCE_NOT_FOUND',
   RESOURCE_ALREADY_EXISTS: 'RESOURCE_ALREADY_EXISTS',
   RESOURCE_CONFLICT: 'RESOURCE_CONFLICT',
-  
+
   // Operation errors
   OPERATION_FAILED: 'OPERATION_FAILED',
   CIRCULAR_DEPENDENCY: 'CIRCULAR_DEPENDENCY',
   DEPENDENCY_VIOLATION: 'DEPENDENCY_VIOLATION',
-  
+
   // System errors
   DATABASE_ERROR: 'DATABASE_ERROR',
   EXTERNAL_SERVICE_ERROR: 'EXTERNAL_SERVICE_ERROR',
   CONFIGURATION_ERROR: 'CONFIGURATION_ERROR',
-  
+
   // Security errors
   UNAUTHORIZED: 'UNAUTHORIZED',
   FORBIDDEN: 'FORBIDDEN',
@@ -58,7 +58,7 @@ export const ERROR_CODES = {
 
 /**
  * Create a standardized service error
- * 
+ *
  * @param code - Error code from ERROR_CODES
  * @param message - Human-readable error message
  * @param context - Error context information
@@ -75,17 +75,17 @@ export function createServiceError(
   error.service = context.service;
   error.operation = context.operation;
   error.details = context.details;
-  
+
   return error;
 }
 
 /**
  * Handle service errors with consistent logging and error transformation
- * 
+ *
  * This function provides a standardized way to handle errors across services.
  * It logs the error with appropriate context and can optionally transform
  * the error into a ServiceError.
- * 
+ *
  * @param error - The caught error
  * @param context - Context information about the error
  * @param transformToServiceError - Whether to wrap in ServiceError
@@ -97,7 +97,7 @@ export function handleServiceError(
   transformToServiceError = true
 ): never {
   const originalError = error instanceof Error ? error : new Error(String(error));
-  
+
   // Log the error with full context
   logger.error(`${context.service} operation failed`, {
     service: context.service,
@@ -111,14 +111,14 @@ export function handleServiceError(
     const serviceError = new Error(
       `${context.operation} failed: ${originalError.message}`
     ) as ServiceError;
-    
+
     serviceError.name = 'ServiceError';
     serviceError.code = ERROR_CODES.OPERATION_FAILED;
     serviceError.service = context.service;
     serviceError.operation = context.operation;
     serviceError.details = context.details;
     serviceError.originalError = originalError;
-    
+
     throw serviceError;
   }
 
@@ -127,10 +127,10 @@ export function handleServiceError(
 
 /**
  * Log an error and throw a ServiceError in one operation
- * 
+ *
  * Convenience function for common pattern of logging an error
  * and then throwing a ServiceError.
- * 
+ *
  * @param code - Error code
  * @param message - Error message
  * @param context - Error context
@@ -153,7 +153,7 @@ export function logAndThrow(
 
 /**
  * Wrap an async operation with standardized error handling
- * 
+ *
  * @param operation - Async operation to wrap
  * @param context - Error context for logging
  * @returns Promise that resolves to operation result or throws ServiceError
@@ -174,7 +174,7 @@ export async function withErrorHandling<T>(
 
 /**
  * Check if an error is a ServiceError
- * 
+ *
  * @param error - Error to check
  * @returns True if error is a ServiceError
  */
@@ -184,7 +184,7 @@ export function isServiceError(error: unknown): error is ServiceError {
 
 /**
  * Extract error message safely from unknown error
- * 
+ *
  * @param error - Error to extract message from
  * @returns Error message string
  */
@@ -200,7 +200,7 @@ export function getErrorMessage(error: unknown): string {
 
 /**
  * Common validation error helper
- * 
+ *
  * @param fieldName - Name of the field that failed validation
  * @param value - Value that failed validation
  * @param requirement - Description of the requirement
@@ -221,7 +221,7 @@ export function throwValidationError(
 
 /**
  * Common not found error helper
- * 
+ *
  * @param resourceType - Type of resource (e.g., 'Task', 'Board')
  * @param identifier - Resource identifier that wasn't found
  * @param context - Service context

@@ -3,7 +3,7 @@
  */
 
 import fs from 'fs';
-import path from 'path';
+// import path from 'path'; // Currently unused
 import {
   initializeLogging,
   setupLogRotation,

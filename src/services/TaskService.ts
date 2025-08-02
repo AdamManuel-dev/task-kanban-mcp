@@ -169,12 +169,14 @@ export class TaskService {
     private readonly db: DatabaseConnection,
     cache?: CacheService<string, Task | null>
   ) {
-    this.cache = cache ?? new CacheService<string, Task | null>({
-      maxSize: 500,
-      defaultTTL: 60000, // 1 minute
-      enableStats: true,
-      evictionPolicy: 'lru',
-    });
+    this.cache =
+      cache ??
+      new CacheService<string, Task | null>({
+        maxSize: 500,
+        defaultTTL: 60000, // 1 minute
+        enableStats: true,
+        evictionPolicy: 'lru',
+      });
   }
 
   /**
@@ -214,7 +216,7 @@ export class TaskService {
       [data.board_id, data.column_id]
     );
 
-    if (!(validationResult as { board_exists?: number })?.board_exists) {
+    if (!(validationResult as { board_exists?: number }).board_exists) {
       throw TaskService.createError('INVALID_BOARD_ID', 'Board not found', {
         board_id: data.board_id,
       });

@@ -452,8 +452,7 @@ export class PriorityHistoryService {
       const changes = await dbConnection.query<PriorityChangeWithTaskExtended>(query, params);
 
       const changesCount = changes.length;
-      const affectedTasks = new Set(changes.map(c => c.task_id))
-        .size;
+      const affectedTasks = new Set(changes.map(c => c.task_id)).size;
 
       // Calculate average priority change
       const priorityChanges = changes

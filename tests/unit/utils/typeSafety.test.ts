@@ -23,7 +23,6 @@ enum TaskPriority {
 
 // Mock validation function
 const validateInput = (schema: unknown, data: Record<string, unknown>) => {
-  if (!data) throw new Error('Data is required');
   if (schema === 'create' && !data.title) throw new Error('Title is required');
   if (schema === 'create' && !data.board_id) throw new Error('Board ID is required');
   return data;
@@ -510,10 +509,8 @@ describe('Type Safety Tests', () => {
         optional?: string | undefined;
         nullable: string | null;
       }): OptionalPropsInterface => {
-        // Filter out undefined values to comply with exactOptionalPropertyTypes
-        const filtered = Object.fromEntries(
-          Object.entries(data).filter(([, value]) => value !== undefined)
-        );
+        // Convert data to result format
+        const filtered = Object.fromEntries(Object.entries(data));
 
         // Type assertion is safe here since we know the structure
         return filtered as unknown as OptionalPropsInterface;

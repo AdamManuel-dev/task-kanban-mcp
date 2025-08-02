@@ -79,12 +79,14 @@ export class BoardService {
     private readonly db: DatabaseConnection,
     cache?: CacheService<string, Board | null>
   ) {
-    this.cache = cache ?? new CacheService<string, Board | null>({
-      maxSize: 100,
-      defaultTTL: 120000, // 2 minutes
-      enableStats: true,
-      evictionPolicy: 'lru',
-    });
+    this.cache =
+      cache ??
+      new CacheService<string, Board | null>({
+        maxSize: 100,
+        defaultTTL: 120000, // 2 minutes
+        enableStats: true,
+        evictionPolicy: 'lru',
+      });
   }
 
   /**

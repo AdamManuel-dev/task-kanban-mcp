@@ -191,7 +191,7 @@ export class KyselyConnection {
 
       const tableStats = await Promise.all(
         tables.map(async table => {
-          const countResult = await this._db!.selectFrom(table as any)
+          const countResult = await this._db!.selectFrom(table as unknown)
             .select([this._db!.fn.count<number>('id').as('count')])
             .executeTakeFirst();
 

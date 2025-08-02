@@ -406,9 +406,7 @@ export class AIContextualPrioritizer {
   /**
    * Calculate dependency impact score
    */
-  private calculateDependencyImpact(
-    _task: Task
-  ): { score: number; reasoning?: string } {
+  private calculateDependencyImpact(_task: Task): { score: number; reasoning?: string } {
     try {
       // This would integrate with the existing dependency service
       // For now, a placeholder implementation

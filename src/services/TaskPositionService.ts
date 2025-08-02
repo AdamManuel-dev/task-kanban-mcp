@@ -1,7 +1,7 @@
 /**
  * @fileoverview Task Position Management Service
  * @lastmodified 2025-07-31T12:00:00Z
- * 
+ *
  * Features: Task positioning, column reordering, position adjustment algorithms
  * Main APIs: moveTask(), getNextPosition(), adjustPositionsForInsertion()
  * Constraints: Maintains sequential positioning, handles column moves
@@ -13,7 +13,7 @@ import type { DatabaseConnection } from '../database/connection';
 
 /**
  * Service responsible for managing task positions within columns
- * 
+ *
  * Handles positioning logic for tasks, including moving tasks between columns,
  * adjusting positions when tasks are inserted or removed, and maintaining
  * proper sequential ordering.
@@ -23,7 +23,7 @@ export class TaskPositionService {
 
   /**
    * Get the next available position in a column
-   * 
+   *
    * @param columnId - ID of the column to get next position for
    * @returns Next available position number
    */
@@ -39,10 +39,10 @@ export class TaskPositionService {
 
   /**
    * Adjust positions for all tasks after insertion point
-   * 
+   *
    * When a task is inserted at a specific position, all tasks at or after
    * that position need to be shifted down by 1.
-   * 
+   *
    * @param columnId - Column where insertion occurred
    * @param position - Position where task was inserted
    */
@@ -60,10 +60,10 @@ export class TaskPositionService {
 
   /**
    * Adjust positions for all tasks after removal point
-   * 
+   *
    * When a task is removed from a position, all tasks after that position
    * need to be shifted up by 1 to fill the gap.
-   * 
+   *
    * @param columnId - Column where removal occurred
    * @param position - Position where task was removed
    */
@@ -81,10 +81,10 @@ export class TaskPositionService {
 
   /**
    * Handle position adjustments when moving task between columns
-   * 
+   *
    * This method handles the complex logic of moving a task from one position
    * to another, potentially across different columns.
-   * 
+   *
    * @param taskId - ID of task being moved
    * @param oldColumnId - Original column ID
    * @param newColumnId - Destination column ID
@@ -117,7 +117,7 @@ export class TaskPositionService {
       // Moving between different columns
       // First, adjust positions in the old column (fill the gap)
       await this.adjustPositionsForRemoval(oldColumnId, oldPosition);
-      
+
       // Then, adjust positions in the new column (make space)
       await this.adjustPositionsForInsertion(newColumnId, newPosition);
     }
@@ -133,10 +133,10 @@ export class TaskPositionService {
 
   /**
    * Normalize positions in a column to ensure sequential ordering
-   * 
+   *
    * Over time, position gaps may form due to various operations.
    * This method ensures positions are sequential starting from 1.
-   * 
+   *
    * @param columnId - Column to normalize positions for
    */
   async normalizePositions(columnId: string): Promise<void> {
@@ -148,10 +148,7 @@ export class TaskPositionService {
     // Update positions to be sequential starting from 1
     for (let i = 0; i < tasks.length; i++) {
       const task = tasks[i] as { id: string };
-      await this.db.run(
-        'UPDATE tasks SET position = ? WHERE id = ?',
-        [i + 1, task.id]
-      );
+      await this.db.run('UPDATE tasks SET position = ? WHERE id = ?', [i + 1, task.id]);
     }
 
     logger.info('Normalized positions for column', {
@@ -162,7 +159,7 @@ export class TaskPositionService {
 
   /**
    * Get all tasks in a column ordered by position
-   * 
+   *
    * @param columnId - Column to get tasks for
    * @returns Array of task IDs in position order
    */
@@ -177,7 +174,7 @@ export class TaskPositionService {
 
   /**
    * Validate that positions in a column are properly sequential
-   * 
+   *
    * @param columnId - Column to validate
    * @returns Object containing validation result and any issues found
    */

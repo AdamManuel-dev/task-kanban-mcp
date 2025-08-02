@@ -16,12 +16,14 @@ Transform your Claude Desktop experience with intelligent task management, proje
 ### Method 1: Direct Installation (Recommended)
 
 1. **Download the Extension**
+
    ```bash
    git clone https://github.com/yourusername/mcp-kanban.git
    cd mcp-kanban
    ```
 
 2. **Build the Extension**
+
    ```bash
    npm install
    npm run build
@@ -29,6 +31,7 @@ Transform your Claude Desktop experience with intelligent task management, proje
 
 3. **Configure Claude Desktop**
    Add the following to your Claude Desktop MCP configuration:
+
    ```json
    {
      "mcpServers": {
@@ -46,11 +49,13 @@ Transform your Claude Desktop experience with intelligent task management, proje
 ### Method 2: Package Installation
 
 1. **Install from Package**
+
    ```bash
    npm install -g mcp-kanban
    ```
 
 2. **Configure Claude Desktop**
+
    ```json
    {
      "mcpServers": {
@@ -94,57 +99,67 @@ Transform your Claude Desktop experience with intelligent task management, proje
 ### Basic Task Management
 
 **Create a new task:**
-```
+
+```text
 Claude, create a task titled "Implement user authentication" with high priority and assign it to john@example.com
 ```
 
 **Update task status:**
-```
+
+```text
 Claude, move task AUTH-123 to "In Progress" and add a note about the current blocker
 ```
 
 **List tasks by criteria:**
-```
+
+```text
 Claude, show me all high-priority tasks assigned to the frontend team that are due this week
 ```
 
 ### Advanced Features
 
 **Analyze project dependencies:**
-```
+
+```text
 Claude, show me the critical path for the user management project and identify any bottlenecks
 ```
 
 **Get productivity insights:**
-```
+
+```text
 Claude, generate a team productivity report for the last sprint with completion rates and velocity trends
 ```
 
 **Create from templates:**
-```
+
+```text
 Claude, create a bug report task for the login issue using the standard bug template
 ```
 
 ### Analytics and Reporting
 
 **Project status overview:**
-```
+
+```text
 Claude, give me a comprehensive status update on all active projects with key metrics and upcoming deadlines
 ```
 
 **Team performance analysis:**
-```
+
+```text
 Claude, analyze team performance for Q4 and suggest improvements based on velocity and completion patterns
 ```
 
 **Resource planning:**
-```
+
+```text
 Claude, help me plan the next sprint by analyzing current velocity and suggesting optimal task allocation
 ```
 
 ## 🛠️ Available Commands
 
 ### Task Management
+
 - `create_task` - Create new tasks with full metadata
 - `update_task` - Modify existing tasks
 - `delete_task` - Remove tasks and dependencies
@@ -152,28 +167,33 @@ Claude, help me plan the next sprint by analyzing current velocity and suggestin
 - `search_tasks` - Full-text search across tasks
 
 ### Subtasks & Dependencies
+
 - `create_subtask` - Break down complex tasks
 - `add_dependency` - Link related tasks
 - `get_critical_path` - Analyze project timelines
 - `visualize_dependencies` - Generate dependency graphs
 
 ### Board Management
+
 - `create_board` - Set up new project boards
 - `list_boards` - View available boards
 - `get_board_analytics` - Board-specific metrics
 
 ### Analytics & Insights
+
 - `get_analytics` - Comprehensive analytics data
 - `get_velocity_metrics` - Team velocity tracking
 - `get_productivity_insights` - Performance analysis
 - `generate_reports` - Custom report generation
 
 ### Templates & Automation
+
 - `create_template` - Define task templates
 - `list_templates` - Browse available templates
 - `apply_template` - Use templates for consistency
 
 ### Backup & Data
+
 - `backup_data` - Create data backups
 - `export_data` - Export in various formats
 - `get_system_health` - Monitor system status
@@ -187,18 +207,20 @@ Claude, help me plan the next sprint by analyzing current velocity and suggestin
 
 ### Common Issues
 
-**Connection Failed**
-```
+#### **Connection Failed**
+
+```text
 Issue: Unable to connect to MCP Kanban server
-Solution: 
+Solution:
 1. Verify server URL is correct
 2. Check that the server is running
 3. Validate API key permissions
 4. Test connectivity: curl http://your-server/api/health
 ```
 
-**Authentication Errors**
-```
+#### **Authentication Errors**
+
+```text
 Issue: API key authentication failed
 Solution:
 1. Verify API key is correct
@@ -207,8 +229,9 @@ Solution:
 4. Test with: curl -H "Authorization: Bearer YOUR_KEY" http://your-server/api/boards
 ```
 
-**Real-time Updates Not Working**
-```
+#### **Real-time Updates Not Working**
+
+```text
 Issue: WebSocket connection fails
 Solution:
 1. Check firewall settings
@@ -219,8 +242,9 @@ Solution:
 
 ### Performance Optimization
 
-**Slow Response Times**
-```
+#### **Slow Response Times**
+
+```text
 Solutions:
 1. Enable caching in server configuration
 2. Use filters to limit data queries
@@ -228,8 +252,9 @@ Solutions:
 4. Monitor network latency
 ```
 
-**High Memory Usage**
-```
+#### **High Memory Usage**
+
+```text
 Solutions:
 1. Limit real-time subscription scope
 2. Reduce analytics data retention
@@ -240,6 +265,7 @@ Solutions:
 ### Debug Mode
 
 Enable debug logging:
+
 ```json
 {
   "mcpServers": {
@@ -308,7 +334,7 @@ For organizations with multiple teams:
 - **Documentation**: [Full docs](https://github.com/yourusername/mcp-kanban/docs)
 - **Issues**: [GitHub Issues](https://github.com/yourusername/mcp-kanban/issues)
 - **Community**: [Discord Server](https://discord.gg/mcp-kanban)
-- **Email**: support@mcp-kanban.com
+- **Email**: <support@mcp-kanban.com>
 
 ## 📄 License
 
@@ -318,7 +344,7 @@ MIT License - see [LICENSE](../LICENSE) for details.
 
 Try these example conversations to get started:
 
-```
+```text
 "Claude, help me set up a new project board for our mobile app development"
 
 "Claude, analyze our team's velocity over the last 3 sprints and suggest improvements"
@@ -328,4 +354,4 @@ Try these example conversations to get started:
 "Claude, identify the critical path for our product launch and highlight any risks"
 ```
 
-Experience the future of AI-powered project management with MCP Kanban! 🎉 
+Experience the future of AI-powered project management with MCP Kanban! 🎉

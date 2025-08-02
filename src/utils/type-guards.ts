@@ -1,7 +1,7 @@
 /**
  * @fileoverview Centralized type guards for runtime type checking
  * @lastmodified 2025-07-31T02:30:00Z
- * 
+ *
  * Features: Type narrowing, runtime validation, null safety
  * Main APIs: isTask(), isBoard(), isNote(), isTag(), hasId()
  * Constraints: Must match type definitions, used across codebase
@@ -18,7 +18,7 @@ export function hasId(value: unknown): value is { id: string } {
     typeof value === 'object' &&
     value !== null &&
     'id' in value &&
-    typeof (value as any).id === 'string'
+    typeof (value as unknown).id === 'string'
   );
 }
 
@@ -27,8 +27,8 @@ export function hasId(value: unknown): value is { id: string } {
  */
 export function isTask(value: unknown): value is Task {
   if (!hasId(value)) return false;
-  
-  const obj = value as any;
+
+  const obj = value as unknown;
   return (
     typeof obj.title === 'string' &&
     typeof obj.board_id === 'string' &&
@@ -48,8 +48,8 @@ export function isTask(value: unknown): value is Task {
  */
 export function isBoard(value: unknown): value is Board {
   if (!hasId(value)) return false;
-  
-  const obj = value as any;
+
+  const obj = value as unknown;
   return (
     typeof obj.name === 'string' &&
     typeof obj.created_at === 'object' &&
@@ -64,8 +64,8 @@ export function isBoard(value: unknown): value is Board {
  */
 export function isNote(value: unknown): value is Note {
   if (!hasId(value)) return false;
-  
-  const obj = value as any;
+
+  const obj = value as unknown;
   return (
     typeof obj.content === 'string' &&
     typeof obj.category === 'string' &&
@@ -82,8 +82,8 @@ export function isNote(value: unknown): value is Note {
  */
 export function isTag(value: unknown): value is Tag {
   if (!hasId(value)) return false;
-  
-  const obj = value as any;
+
+  const obj = value as unknown;
   return (
     typeof obj.name === 'string' &&
     typeof obj.color === 'string' &&
@@ -132,16 +132,11 @@ export function isDateString(value: unknown): value is string {
 /**
  * Type guard for objects with timestamps
  */
-export function hasTimestamps(
-  value: unknown
-): value is { created_at: Date; updated_at: Date } {
+export function hasTimestamps(value: unknown): value is { created_at: Date; updated_at: Date } {
   if (typeof value !== 'object' || value === null) return false;
-  
-  const obj = value as any;
-  return (
-    obj.created_at instanceof Date &&
-    obj.updated_at instanceof Date
-  );
+
+  const obj = value as unknown;
+  return obj.created_at instanceof Date && obj.updated_at instanceof Date;
 }
 
 /**
@@ -170,7 +165,7 @@ export function extractErrorMessage(error: unknown): string {
     return error;
   }
   if (typeof error === 'object' && error !== null && 'message' in error) {
-    return String((error as any).message);
+    return String((error as unknown).message);
   }
   return 'An unknown error occurred';
 }
@@ -188,7 +183,7 @@ export function formatErrorMessage(error: unknown): string {
 export function hasValidTaskData(response: unknown): response is { data: Task[] } {
   if (typeof response !== 'object' || response === null) return false;
   if (!('data' in response)) return false;
-  const data = (response as any).data;
+  const { data } = response as unknown;
   return isTaskArray(data);
 }
 
@@ -198,7 +193,7 @@ export function hasValidTaskData(response: unknown): response is { data: Task[] 
 export function hasValidBoardData(response: unknown): response is { data: Board[] } {
   if (typeof response !== 'object' || response === null) return false;
   if (!('data' in response)) return false;
-  const data = (response as any).data;
+  const { data } = response as unknown;
   return isBoardArray(data);
 }
 
@@ -210,7 +205,7 @@ export function hasValidData(response: unknown): response is { data: unknown } {
     typeof response === 'object' &&
     response !== null &&
     'data' in response &&
-    (response as any).data !== null &&
-    (response as any).data !== undefined
+    (response as unknown).data !== null &&
+    (response as unknown).data !== undefined
   );
 }

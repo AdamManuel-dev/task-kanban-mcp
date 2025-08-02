@@ -543,7 +543,11 @@ export function validateAndSanitizeInput(
 
       return finalResult;
     }
-    return { valid: false, sanitized: input, error: typeof validationResult === 'string' ? validationResult : 'Validation failed' };
+    return {
+      valid: false,
+      sanitized: input,
+      error: typeof validationResult === 'string' ? validationResult : 'Validation failed',
+    };
   } catch (error) {
     return {
       valid: false,

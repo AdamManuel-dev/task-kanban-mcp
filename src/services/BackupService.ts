@@ -1590,7 +1590,9 @@ export class BackupService extends EventEmitter {
   private async checkIndexIntegrity(): Promise<{ name: string; passed: boolean; message: string }> {
     try {
       // Check if required indexes exist
-      const indexes = await this.db.query<{ name: string }>("SELECT name FROM sqlite_master WHERE type='index'");
+      const indexes = await this.db.query<{ name: string }>(
+        "SELECT name FROM sqlite_master WHERE type='index'"
+      );
       const indexNames = indexes.map(idx => idx.name);
 
       const requiredIndexes = [
@@ -1802,7 +1804,7 @@ export class BackupService extends EventEmitter {
         sql += `${schema.sql};\n\n`;
       }
       for (const row of data) {
-        const columns = Object.keys(row as Record<string, unknown>);
+        const columns = Object.keys(row);
         const values = columns.map(col => {
           const value = row[col];
           if (value === null || value === undefined) return 'NULL';

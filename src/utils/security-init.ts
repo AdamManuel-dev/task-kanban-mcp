@@ -1,7 +1,7 @@
 /**
  * @fileoverview Security initialization and validation
  * @lastmodified 2025-07-31T01:50:00Z
- * 
+ *
  * Features: Production security validation, secret generation helper, startup checks
  * Main APIs: initializeSecurity(), validateSecurityConfig(), generateProductionSecrets()
  * Constraints: Must run before server start, blocks on security errors in production
@@ -9,15 +9,15 @@
  */
 
 import { config } from '@/config';
-import { logger } from './logger';
-import { 
-  isSecureSecret, 
-  generateSecureSecret, 
+import {
+  isSecureSecret,
+  generateSecureSecret,
   SecurityError,
   generateApiKey,
   validateProductionSecurity,
-  securityConfigSchema
+  securityConfigSchema,
 } from '@/config/security';
+import { logger } from './logger';
 
 /**
  * Initialize and validate security configuration
@@ -25,7 +25,7 @@ import {
 export async function initializeSecurity(): Promise<void> {
   try {
     logger.info('Initializing security configuration...');
-    
+
     const isProduction = process.env.NODE_ENV === 'production';
     const securityConfig = {
       jwt: {
@@ -67,34 +67,35 @@ export async function initializeSecurity(): Promise<void> {
         },
       },
     };
-    
+
     // Validate security configuration
     const validatedConfig = securityConfigSchema.parse(securityConfig);
-    
+
     // Additional production validation
     validateProductionSecurity(validatedConfig);
-    
+
     // Log security status
     if (isProduction) {
       logger.info('Production security validation passed');
-      
+
       // Log CORS configuration (without exposing secrets)
       logger.info('CORS configuration:', {
-        origin: typeof config.api.corsOrigin === 'string' 
-          ? config.api.corsOrigin 
-          : 'Multiple origins configured',
+        origin:
+          typeof config.api.corsOrigin === 'string'
+            ? config.api.corsOrigin
+            : 'Multiple origins configured',
         credentials: config.api.corsCredentials,
       });
-      
+
       // Verify API keys are configured
       if (!config.api.keys || config.api.keys.length === 0) {
         throw new SecurityError('No API keys configured for production');
       }
-      
+
       logger.info(`${config.api.keys.length} API keys configured`);
     } else {
       logger.warn('Running in development mode - relaxed security settings active');
-      
+
       // Generate example secure values for development
       logger.info('Example secure values for production:');
       logger.info(`  JWT_SECRET="${generateSecureSecret()}"`);
@@ -103,22 +104,22 @@ export async function initializeSecurity(): Promise<void> {
       logger.info(`  CORS_ORIGIN="https://yourdomain.com"`);
       logger.info(`  CORS_CREDENTIALS="false"`);
     }
-    
+
     // Check for security warnings
     const warnings: string[] = [];
-    
+
     if (!isProduction && config.api.corsCredentials && config.api.corsOrigin === '*') {
       warnings.push('CORS credentials enabled with wildcard origin - security risk');
     }
-    
+
     if (config.api.keys.some(key => key.length < 32)) {
       warnings.push('Some API keys are shorter than recommended 32 characters');
     }
-    
+
     if (warnings.length > 0) {
       logger.warn('Security warnings:', warnings);
     }
-    
+
     logger.info('Security initialization complete');
   } catch (error) {
     if (error instanceof SecurityError) {
@@ -164,13 +165,8 @@ export function generateProductionSecrets(): void {
  * Check if running with default/insecure configuration
  */
 export function hasInsecureDefaults(): boolean {
-  const insecurePatterns = [
-    /^dev-/i,
-    /^test-/i,
-    /^default/i,
-    /^change-?me/i,
-  ];
-  
+  const insecurePatterns = [/^dev-/i, /^test-/i, /^default/i, /^change-?me/i];
+
   return (
     insecurePatterns.some(pattern => pattern.test(config.api.keySecret)) ||
     config.api.corsOrigin === '*' ||
