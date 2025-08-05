@@ -205,7 +205,7 @@ jobs:
 
       - name: Upload installation logs
         if: failure()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: linux-install-logs-${{ matrix.container || matrix.os }}-node${{ matrix.node-version }}
           path: |
@@ -291,7 +291,7 @@ jobs:
 
       - name: Upload Windows installation logs
         if: failure()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: windows-install-logs-node${{ matrix.node-version }}-${{ matrix.install-method }}
           path: |
@@ -374,7 +374,7 @@ jobs:
 
       - name: Upload macOS installation logs
         if: failure()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: macos-install-logs-node${{ matrix.node-version }}-${{ matrix.install-method }}
           path: |
@@ -428,7 +428,7 @@ jobs:
           fi
 
       - name: Upload packages
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: distribution-packages
           path: /tmp/mcp-kanban-build/
@@ -510,7 +510,7 @@ jobs:
           time timeout 5s node dist/index.js --port 3004 || true
 
       - name: Upload performance results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: performance-results
           path: |
