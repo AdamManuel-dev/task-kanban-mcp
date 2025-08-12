@@ -40,7 +40,7 @@ jobs:
       test-matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -73,7 +73,7 @@ jobs:
         test-type: ${{ fromJson(needs.setup.outputs.test-matrix) }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -341,7 +341,7 @@ jobs:
     if: always()
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Download all artifacts
         uses: actions/download-artifact@v3
