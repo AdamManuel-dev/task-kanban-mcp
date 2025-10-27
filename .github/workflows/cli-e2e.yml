@@ -60,7 +60,7 @@ jobs:
     
     - name: Upload test results
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: cli-e2e-results-${{ matrix.os }}-${{ matrix.node-version }}
         path: |
@@ -69,7 +69,7 @@ jobs:
     
     - name: Upload CLI logs on failure
       if: failure()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: cli-logs-${{ matrix.os }}-${{ matrix.node-version }}
         path: |
